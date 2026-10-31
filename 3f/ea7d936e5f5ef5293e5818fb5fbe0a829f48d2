@@ -1,0 +1,41 @@
+Makefile
+  s_3031b504518be3::t_eae1bcda1b83cf 3
+  s_3031b504518be3::t_d692a9ef0dad5e 9,11
+catala/params_2024.catala_en
+  s_3031b504518be3::t_4215e360b9730c 56-58
+  s_3031b504518be3::t_ed742be53454ae 1-55,59-182
+catala/CONVENTIONS.md
+  s_3031b504518be3::t_dae67331a259bb 1-158,160-238,241-280,282-328,330-334
+  s_3031b504518be3::t_1eb1df65f6df79 329
+  s_3031b504518be3::t_9b8dbd0462cb86 159
+  s_3031b504518be3::t_194057474832d9 239-240
+  s_3031b504518be3::t_5c56db773ab8bb 281
+README.md
+  s_3031b504518be3::t_302c24b5b6ec21 9
+catala/types.catala_en
+  s_3031b504518be3::t_38893ec66c5fa4 1-89
+catala/tests/test_rounding.catala_en
+  s_3031b504518be3::t_13ab0fdf67fbce 1-104
+catala/rounding.catala_en
+  s_3031b504518be3::t_c2a022f2639174 67,77
+  s_3031b504518be3::t_95c19a6374a9fb 3-25,36-66,68-76,78-104
+  s_3031b504518be3::t_7dd8bc6b103c9a 28-30
+  s_3031b504518be3::t_f9a5b6b7307bb6 26-27,31-35
+  s_3031b504518be3::t_05d266238cc72b 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3fea7d936e5f5ef5293e5818fb5fbe0a829f48d2",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
