@@ -1,0 +1,39 @@
+lean/README.md
+  s_3031b504518be3::t_36b7a481c6a7f9 1-22,24
+  s_3031b504518be3::t_06ae71693b6560 23
+.gitignore
+  s_3031b504518be3::t_36b7a481c6a7f9 7-8
+lean/lake-manifest.json
+  s_3031b504518be3::t_f2bf8427c21ec0 1-26
+Makefile
+  s_3031b504518be3::t_36b7a481c6a7f9 14-21
+  s_3031b504518be3::t_0428ce390d0fbb 22
+lean/.gitignore
+  s_3031b504518be3::t_ef4e278e343937 1
+lean/UsTax.lean
+  s_3031b504518be3::t_6343015f12e89e 1-2
+lean/UsTax/Audit.lean
+  s_3031b504518be3::t_ead51e414d763d 1-58
+lean/UsTax/Basic.lean
+  s_3031b504518be3::t_501b9e1651ed45 1-4
+lean/lakefile.toml
+  s_3031b504518be3::t_d309f8290d9c06 1-18
+lean/lean-toolchain
+  s_3031b504518be3::t_580e53eac956c4 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8798ef50b917394f634bee0a30c35af01a26ace1",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
