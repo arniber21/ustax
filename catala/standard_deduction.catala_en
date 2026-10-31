@@ -1,0 +1,294 @@
+> Module Standard_deduction
+
+# Standard deduction (Form 1040 line 12)
+
+Direct File module `standardDeduction.xml`. Issue #11. Tests are in
+`catala/tests/test_standard_deduction.catala_en`.
+
+> Using Types
+> Using Params_2024 as P
+
+Inputs follow `catala/CONVENTIONS.md`: filing status, the age and blindness
+flags, and the dependent-filer flag are plain inputs here. They are computed
+by the filers and household modules (#15 to #20), which take the Direct File
+facts named in the comment on each input. The one exception is the age test
+itself (section "Age 65 and the day before the birthday"), which is a small
+self-contained scope so the day-before-birthday rule can be tested.
+
+## 26 U.S.C. § 63(c) Standard deduction
+
+### (1) In general
+
+"Except as otherwise provided in this subsection, the term "standard
+deduction" means the sum of— (A) the basic standard deduction, and (B) the
+additional standard deduction." (`sources/statute/irc-63.html`)
+
+### (2) Basic standard deduction
+
+"(A) 200 percent of the dollar amount in effect under subparagraph (C) for the
+taxable year in the case of— (i) a joint return, or (ii) a surviving spouse
+(as defined in section 2(a)), (B) $4,400 in the case of a head of household
+(as defined in section 2(b)), or (C) $3,000 in any other case." For taxable
+years 2018 to 2025, § 63(c)(7) substitutes $18,000 and $12,000 and § 63(c)(4)
+indexes them. The TY2024 results are in Rev. Proc. 2023-34 § 3.15(1)
+(`sources/revproc/rp-23-34.pdf` p 12) and are the `Params_2024` constants
+`std_deduction_*`.
+
+Direct File: `/singleOrMFSStandardDeduction` (14,600), `/MFJStandardDeduction`
+(29,200), `/HoHStandardDeduction` (21,900) and `/filingStatusStandardDeduction`,
+which gives MFJ and QSS the joint amount, Single and MFS the unmarried amount
+and HoH the head-of-household amount.
+
+### (3) Additional standard deduction for aged and blind
+
+"the additional standard deduction is the sum of each additional amount to
+which the taxpayer is entitled under subsection (f)."
+
+### (5) Limitation on basic standard deduction in the case of certain dependents
+
+"In the case of an individual with respect to whom a deduction under section
+151 is allowable to another taxpayer ..., the basic standard deduction
+applicable to such individual ... shall not exceed the greater of— (A) $500,
+or (B) the sum of $250 and such individual's earned income." Indexed for 2024
+to $1,300 and $450 (Rev. Proc. 2023-34 § 3.15(2), `rp-23-34.pdf` p 12).
+
+### (6) Certain individuals, etc., not eligible for standard deduction
+
+"(A) a married individual filing a separate return where either spouse
+itemizes deductions, (B) a nonresident alien individual, ... the standard
+deduction shall be zero." Direct File does not model these cases: itemizing is
+out of scope (issue #11 "Out of scope") and nonresident aliens are knocked
+out elsewhere. Not modelled here.
+
+## 26 U.S.C. § 63(f) Aged or blind additional amounts
+
+"(1) The taxpayer shall be entitled to an additional amount of $600— (A) for
+himself if he has attained age 65 before the close of his taxable year, and
+(B) for the spouse of the taxpayer if the spouse has attained age 65 before
+the close of the taxable year and an additional exemption is allowable to the
+taxpayer for such spouse under section 151(b). (2) ... for blind ... (3) In
+the case of an individual who is not married and is not a surviving spouse,
+paragraphs (1) and (2) shall be applied by substituting "$750" for "$600"."
+The 2024 amounts are $1,550 and $1,950 (Rev. Proc. 2023-34 § 3.15(3),
+`rp-23-34.pdf` p 12; Form 1040 instructions `i1040gi--2024.pdf` p 34).
+
+"if the spouse dies during the taxable year the determination of whether such
+spouse is blind shall be made as of the time of such death."
+
+### Age 65 and the day before the birthday
+
+Pub. 501 and the Form 1040 instructions treat a person as age 65 at the end of
+the year if the 65th birthday is on or before January 1 of the next year
+(`sources/pubs`, Pub. 501; Direct File `/filers/*/age65OrOlder` description,
+`filers.xml` line 648). Direct File implements this by counting the birthday
+as the day before the date of birth (`/filers/*/dayBeforeDateOfBirth`,
+`filers.xml` line 357): a person born on January 1, 1960 turns 65 on
+December 31, 2024 and gets the extra amount.
+
+For a spouse who died in the year, the age is the age on the date of death,
+again with the day before the birthday as the birthday
+(`/secondaryFilerAgeDayBeforeDeath`, `filers.xml` line 3457;
+`/MFJDeceasedSpouseReachedAge65ForStandardD`, line 3659).
+
+```catala-metadata
+declaration scope Age65DayBeforeBirthday:
+  # Inputs: the birth date and the date at which age is measured
+  # (December 31 of the tax year for a living filer, the date of death for a
+  # deceased spouse).
+  input date_of_birth content date
+  input as_of content date
+  # DF: filers.xml /filers/*/dayBeforeDateOfBirth
+  internal day_before_birthday content date
+  # DF: filers.xml /filers/*/ageCalculatedDayBeforeDOB (living filer) and
+  # /secondaryFilerAgeDayBeforeDeath (deceased spouse): completed years
+  # from the day before the date of birth to `as_of`.
+  output age content integer
+  # DF: filers.xml /filers/*/age65OrOlder and
+  # /MFJDeceasedSpouseReachedAge65ForStandardD
+  output is_65_or_older condition
+```
+
+```catala
+scope Age65DayBeforeBirthday:
+  definition day_before_birthday equals date_of_birth - 1 day
+  definition age equals
+    (Date.get_year of as_of - Date.get_year of day_before_birthday) -
+    (if (Date.get_month of as_of < Date.get_month of day_before_birthday)
+        or (Date.get_month of as_of = Date.get_month of day_before_birthday
+            and Date.get_day of as_of < Date.get_day of day_before_birthday)
+     then 1 else 0)
+  rule is_65_or_older under condition age >= 65 consequence fulfilled
+```
+
+## Standard deduction scope
+
+Direct File facts, in order: `/filerMFSAndSpouseIsEligibleForStandardDeductions`,
+`/isSpouseInfoApplicableForStandardDeductions`,
+`/secondaryFilerIs65OrOlderForDeduction`,
+`/secondaryFilerAdditionalStandardDeductionItems`, `/isSpouse65OrOlder`,
+`/additionalStandardDeductionItems`, `/additionalStandardDeductionMultiplier`,
+`/additionalStandardDeduction`, `/filingStatusStandardDeduction`,
+`/normalStandardDeduction`, `/minimumStandardDeduction`, `/standardDeduction`.
+
+```catala-metadata
+declaration scope StandardDeduction:
+  # DF: filingStatus.xml /filingStatus (Writable)
+  input filing_status content Types.FilingStatus
+  # DF: filingStatus.xml /treatAsMFS
+  input treat_as_mfs condition
+  # DF: filers.xml /primaryFiler/isBlind
+  input primary_filer_is_blind condition
+  # DF: filers.xml /primaryFiler/age65OrOlder
+  input primary_filer_age65_or_older condition
+  # DF: filers.xml /secondaryFiler/isBlind
+  input secondary_filer_is_blind condition
+  # DF: filers.xml /secondaryFiler/age65OrOlder
+  input secondary_filer_age65_or_older condition
+  # DF: filers.xml /isWidowedInTaxYear
+  input is_widowed_in_tax_year condition
+  # DF: filers.xml /MFJDeceasedSpouseReachedAge65ForStandardD
+  input mfj_deceased_spouse_reached_age65 condition
+  # DF: filers.xml /MFSSpouse65OrOlder (Writable)
+  input mfs_spouse_65_or_older condition
+  # DF: filers.xml /MFSSpouseProvidesNoBenefits
+  input mfs_spouse_provides_no_benefits condition
+  # DF: filers.xml /treatFilersAsDependents
+  input treat_filers_as_dependents condition
+  # DF: income.xml /employerIncomeSubtotal (earned income for the
+  # dependent minimum)
+  input employer_income_subtotal content money
+
+  # DF: standardDeduction.xml /filerMFSAndSpouseIsEligibleForStandardDeductions
+  internal filer_mfs_and_spouse_is_eligible_for_standard_deductions condition
+  # DF: /isSpouseInfoApplicableForStandardDeductions
+  output is_spouse_info_applicable_for_standard_deductions condition
+  # DF: /secondaryFilerIs65OrOlderForDeduction
+  internal secondary_filer_is_65_or_older_for_deduction condition
+  # DF: /secondaryFilerAdditionalStandardDeductionItems
+  internal secondary_filer_additional_standard_deduction_items content integer
+  # DF: /isSpouse65OrOlder (Form 1040 Spouse65OrOlderInd)
+  output is_spouse_65_or_older condition
+  # DF: /additionalStandardDeductionItems
+  output additional_standard_deduction_items content integer
+  # DF: /additionalStandardDeductionMultiplier
+  internal additional_standard_deduction_multiplier content money
+  # DF: /additionalStandardDeduction
+  internal additional_standard_deduction content money
+  # DF: /filingStatusStandardDeduction
+  internal filing_status_standard_deduction content money
+  # DF: /normalStandardDeduction
+  internal normal_standard_deduction content money
+  # DF: /minimumStandardDeduction
+  internal minimum_standard_deduction content money
+  # DF: /standardDeduction; Form 1040 line 12
+  output standard_deduction content money
+```
+
+### Whose age and blindness count
+
+"for the spouse of the taxpayer if the spouse has attained age 65 ..." (§ 63(f)(1)(B)).
+Direct File counts the second filer's items only for MFJ, or for MFS when the
+spouse is eligible for a standard deduction (the spouse files no return, has
+no gross income and cannot be claimed as a dependent). This is Pub. 501's rule
+that a married person filing separately may claim the spouse's additional
+amount only if the spouse has no gross income, is not filing a return and
+cannot be claimed as a dependent.
+
+```catala
+scope StandardDeduction:
+  # DF: /filerMFSAndSpouseIsEligibleForStandardDeductions
+  definition filer_mfs_and_spouse_is_eligible_for_standard_deductions equals
+    treat_as_mfs and not mfs_spouse_provides_no_benefits
+
+  # DF: /isSpouseInfoApplicableForStandardDeductions
+  definition is_spouse_info_applicable_for_standard_deductions equals
+    filing_status = MarriedFilingJointly
+    or filer_mfs_and_spouse_is_eligible_for_standard_deductions
+
+  # DF: /secondaryFilerIs65OrOlderForDeduction. For MFJ with a spouse who
+  # died in the year the age at death is used (the input already is).
+  definition secondary_filer_is_65_or_older_for_deduction equals
+    if filing_status = MarriedFilingJointly and is_widowed_in_tax_year
+    then mfj_deceased_spouse_reached_age65
+    else if filing_status = MarriedFilingSeparately
+    then mfs_spouse_65_or_older
+    else (not (filing_status = HeadOfHousehold))
+         and secondary_filer_age65_or_older
+
+  # DF: /secondaryFilerAdditionalStandardDeductionItems
+  definition secondary_filer_additional_standard_deduction_items equals
+    if is_spouse_info_applicable_for_standard_deductions then
+      (if secondary_filer_is_blind then 1 else 0) +
+      (if secondary_filer_is_65_or_older_for_deduction then 1 else 0)
+    else 0
+
+  # DF: /isSpouse65OrOlder
+  rule is_spouse_65_or_older
+    under condition is_spouse_info_applicable_for_standard_deductions
+                    and secondary_filer_is_65_or_older_for_deduction
+    consequence fulfilled
+
+  # DF: /additionalStandardDeductionItems (primary: blind, 65 or older)
+  definition additional_standard_deduction_items equals
+    (if primary_filer_is_blind then 1 else 0) +
+    (if primary_filer_age65_or_older then 1 else 0) +
+    secondary_filer_additional_standard_deduction_items
+```
+
+### Amounts
+
+```catala
+scope StandardDeduction:
+  # Rev. Proc. 2023-34 §3.15(3). DF: /additionalStandardDeductionMultiplier
+  definition additional_standard_deduction_multiplier equals
+    match filing_status with pattern
+    -- Single : P.std_deduction_additional_unmarried
+    -- HeadOfHousehold : P.std_deduction_additional_unmarried
+    -- MarriedFilingJointly : P.std_deduction_additional_married
+    -- QualifyingSurvivingSpouse : P.std_deduction_additional_married
+    -- MarriedFilingSeparately : P.std_deduction_additional_married
+
+  # IRC 63(c)(3). DF: /additionalStandardDeduction
+  definition additional_standard_deduction equals
+    additional_standard_deduction_multiplier *
+    (decimal of additional_standard_deduction_items)
+
+  # IRC 63(c)(2). DF: /filingStatusStandardDeduction
+  definition filing_status_standard_deduction equals
+    match filing_status with pattern
+    -- Single : P.std_deduction_unmarried
+    -- MarriedFilingSeparately : P.std_deduction_married_separate
+    -- HeadOfHousehold : P.std_deduction_head_of_household
+    -- MarriedFilingJointly : P.std_deduction_joint_or_surviving_spouse
+    -- QualifyingSurvivingSpouse : P.std_deduction_joint_or_surviving_spouse
+
+  # IRC 63(c)(1). DF: /normalStandardDeduction
+  definition normal_standard_deduction equals
+    filing_status_standard_deduction + additional_standard_deduction
+```
+
+### Filers who can be claimed as a dependent
+
+The dependent limit of § 63(c)(5) applies to the *basic* standard deduction.
+Direct File adds the additional amount inside the minimum instead, so the
+minimum is `GreaterOf($1,300, earned + $450) + additional`, and the result is
+the lesser of the minimum and the normal amount. This is the arithmetic of the
+Pub. 501 "Standard Deduction Worksheet for Dependents" (the greater of $1,300
+or earned income plus $450, capped at the basic amount, then the additional
+amounts are added), because
+`min(max(1300, e+450) + add, basic + add) = min(max(1300, e+450), basic) + add`.
+
+```catala
+scope StandardDeduction:
+  # IRC 63(c)(5), Rev. Proc. 2023-34 §3.15(2). DF: /minimumStandardDeduction
+  definition minimum_standard_deduction equals
+    (Money.max of P.std_deduction_dependent_floor,
+       (employer_income_subtotal + P.std_deduction_dependent_earned_income_addition))
+    + additional_standard_deduction
+
+  # Form 1040 line 12. DF: /standardDeduction
+  definition standard_deduction equals
+    if treat_filers_as_dependents
+    then Money.min of minimum_standard_deduction, normal_standard_deduction
+    else normal_standard_deduction
+```
