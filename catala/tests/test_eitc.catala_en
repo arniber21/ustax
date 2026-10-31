@@ -903,7 +903,7 @@ declaration scope TestCombatPayAloneIsNotEarnedIncome:
   r scope Ret
 
 scope TestCombatPayAloneIsNotEarnedIncome:
-  # DF-BUG(26-a): earned income $0 and $5,000 of combat pay not elected. The
+  # DF-BUG(17): earned income $0 and $5,000 of combat pay not elected. The
   # credit is a percentage of earned income, so it is $0 (DF gives $2).
   definition r.employer_income_subtotal equals $0
   definition r.agi equals $0

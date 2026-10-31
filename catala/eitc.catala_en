@@ -303,7 +303,7 @@ take the credit"), so the rule stands as the law says.
 
 ```catala
 scope EitcTable:
-  # DF-BUG(26-a): candidate. IRC 32(a), 32(b)(2); Rev. Proc. 2023-34 § 3.06(1).
+  # DF-BUG(17): candidate. IRC 32(a), 32(b)(2); Rev. Proc. 2023-34 § 3.06(1).
   # DF has no zero case; see the text above.
   rule no_credit under condition
     earned_income <= $0
