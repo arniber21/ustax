@@ -29,7 +29,7 @@ export function Tooltip({ content, children }: TooltipProps) {
         className="tip__trigger"
         aria-describedby={id}
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen(true)}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
       >
