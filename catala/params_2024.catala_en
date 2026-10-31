@@ -199,3 +199,40 @@ declaration niit_threshold_other content money equals $200,000
 # SSA-1099 repayment knockout threshold (unemployment.xml, socialSecurity.xml).
 declaration claim_of_right_threshold content money equals $3,000
 ```
+
+## Schedule R (issue #30)
+
+```catala-metadata
+# Schedule R, credit for the elderly or the disabled (#30). Not indexed for
+# inflation, so the same in every year (VERIFICATION.md, conventions Q9).
+# IRC 22(c)(2)(A) (sources/statute/irc-22.html): initial amount "$5,000 in the
+# case of a single individual, or a joint return where only one spouse is a
+# qualified individual", "$7,500 in the case of a joint return where both
+# spouses are qualified individuals", "$3,750 in the case of a married
+# individual filing a separate return". Schedule R line 10, f1040sr--2024.pdf
+# p 2. Table 1 of i1040sr--2024.pdf p 7 uses the same figures as the limit on
+# nontaxable pensions ("equal to or more than").
+declaration edc_initial_amount_single_or_one_qualified content money equals $5,000
+declaration edc_initial_amount_joint_both_qualified content money equals $7,500
+declaration edc_initial_amount_married_separate content money equals $3,750
+
+# IRC 22(d): reduce by one-half of the excess of AGI over "$7,500" (single),
+# "$10,000" (joint return), "$5,000" (married filing separately). Schedule R
+# line 15, f1040sr--2024.pdf p 2.
+declaration edc_agi_threshold_single content money equals $7,500
+declaration edc_agi_threshold_joint content money equals $10,000
+declaration edc_agi_threshold_married_separate content money equals $5,000
+
+# i1040sr--2024.pdf p 7, Table 1: AGI "$17,500 or more" (single, HoH, QSS),
+# "$20,000 or more" (joint, only one spouse qualifies), "$25,000 or more"
+# (joint, both qualify), "$12,500 or more" (MFS, lived apart all year).
+declaration edc_agi_limit_single_hoh_qss content money equals $17,500
+declaration edc_agi_limit_joint_one_qualified content money equals $20,000
+declaration edc_agi_limit_joint_both_qualified content money equals $25,000
+declaration edc_agi_limit_married_separate content money equals $12,500
+
+# IRC 22(a): "15 percent of such individual's section 22 amount" (Schedule R
+# line 20). IRC 22(d): "one-half of the excess" (line 17).
+declaration edc_credit_rate content decimal equals 15%
+declaration edc_agi_reduction_rate content decimal equals 50%
+```

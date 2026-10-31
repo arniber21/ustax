@@ -1,0 +1,954 @@
+# Tests for the Elderly_and_disabled module
+
+Run with `clerk test`. Named scopes with concrete numbers (issue #30), worked out
+by hand line by line from Schedule R (`sources/forms-instructions/f1040sr--2024.pdf`
+p 2) and its instructions (`i1040sr--2024.pdf` pp R-5 to R-7). The oracle comparison
+is `make difftest SCOPE=elderly_and_disabled`.
+
+> Using Types
+> Using Elderly_and_disabled as E
+
+## Helper: one Schedule R run
+
+`pd` and `sd` say that the primary or secondary filer is retired on permanent and
+total disability with taxable disability income `pinc` or `sinc` (and has W-2
+wages, and no mandatory retirement age). `p65` and `s65` are the ages. `tax` is
+Credit Limit Worksheet line 3.
+
+```catala
+declaration scope Run:
+  input filing_status content Types.FilingStatus
+  input apart condition
+  input p65 condition
+  input s65 condition
+  input pd condition
+  input pinc content money
+  input sd condition
+  input sinc content money
+  input agi content money
+  input ss content money
+  input o13b content money
+  input tax content money
+  sr scope E.ScheduleR
+  output edc_line1 condition
+  output edc_line2 condition
+  output edc_line3 condition
+  output edc_line4 condition
+  output edc_line5 condition
+  output edc_line6 condition
+  output edc_line7 condition
+  output edc_line8 condition
+  output edc_line9 condition
+  output edc_filing_status_amt content money
+  output status_based_disability_income content money
+  output lesser content money
+  output edc_total_non_taxable_amount content money
+  output edc_exemption_amount content money
+  output edc_magi content money
+  output edc_half_magi content money
+  output edc_adjusted_credit_amount content money
+  output edc_net_credit_amount content money
+  output net_edc_amount content money
+  output edc_tax_liability_limit content money
+  output total_edc content money
+  output agi_limit content money
+  output nontaxable_limit content money
+  output qualified condition
+  output receiving condition
+
+scope Run:
+  definition sr.filing_status equals filing_status
+  definition sr.lived_apart_all_year equals apart
+  definition sr.primary_age65_or_older equals p65
+  definition sr.secondary_age65_or_older equals s65
+  definition sr.primary_answers equals E.DisabilityAnswers {
+    -- is_retired_on_perm_or_total_disability: pd
+    -- employer_has_mandatory_retirement_age: false
+    -- has_met_employer_mandatory_retirement_age: false
+    -- are_payments_taxable_disability_income: pd
+    -- writable_total_taxable_disability_amount: pinc
+    -- has_w2_wages: pd
+  }
+  definition sr.secondary_answers equals E.DisabilityAnswers {
+    -- is_retired_on_perm_or_total_disability: sd
+    -- employer_has_mandatory_retirement_age: false
+    -- has_met_employer_mandatory_retirement_age: false
+    -- are_payments_taxable_disability_income: sd
+    -- writable_total_taxable_disability_amount: sinc
+    -- has_w2_wages: sd
+  }
+  definition sr.agi equals agi
+  definition sr.non_taxable_social_security_benefits equals ss
+  definition sr.self_reported_non_taxable_payments equals o13b
+  definition sr.credit_limit_worksheet_line_3 equals tax
+  definition edc_line1 equals sr.edc_line1
+  definition edc_line2 equals sr.edc_line2
+  definition edc_line3 equals sr.edc_line3
+  definition edc_line4 equals sr.edc_line4
+  definition edc_line5 equals sr.edc_line5
+  definition edc_line6 equals sr.edc_line6
+  definition edc_line7 equals sr.edc_line7
+  definition edc_line8 equals sr.edc_line8
+  definition edc_line9 equals sr.edc_line9
+  definition edc_filing_status_amt equals sr.edc_filing_status_amt
+  definition status_based_disability_income equals sr.status_based_disability_income
+  definition lesser equals sr.lesser_of_filing_status_amount_and_taxable_disability_income
+  definition edc_total_non_taxable_amount equals sr.edc_total_non_taxable_amount
+  definition edc_exemption_amount equals sr.edc_exemption_amount
+  definition edc_magi equals sr.edc_magi
+  definition edc_half_magi equals sr.edc_half_magi
+  definition edc_adjusted_credit_amount equals sr.edc_adjusted_credit_amount
+  definition edc_net_credit_amount equals sr.edc_net_credit_amount
+  definition net_edc_amount equals sr.net_edc_amount
+  definition edc_tax_liability_limit equals sr.edc_tax_liability_limit
+  definition total_edc equals sr.total_edc
+  definition agi_limit equals sr.edc_agi_limit
+  definition nontaxable_limit equals sr.edc_non_taxable_limit
+  definition qualified equals sr.qualified_for_credit_for_elderly_and_disabled
+  definition receiving equals sr.is_receiving_edc
+```
+
+## Cases
+
+Issue #30: single age 66, AGI $10,000, no nontaxable social security: line 16 =
+10,000 - 7,500 = 2,500, line 17 = 1,250, line 19 = 5,000 - 1,250 = 3,750, line 20
+= 15% x 3,750 = 562.50, rounded to $563. Single, AGI $17,500: not qualified (the
+AGI test is strict). Married filing jointly with both spouses 65 or older: AGI
+limit $25,000 (24,000 gives 7,500 - 7,000 = 500, so $75; 25,000 gives none).
+Married filing separately, lines 8 and 9: $3,750 initial amount, $5,000 exemption,
+only if the spouses lived apart all year. The instructions' examples: Jesse (p R-5,
+credit $51) and Riley and Parker (p R-6, no credit).
+
+Other lines: MFJ box 7 (one spouse 65 or older, the other not disabled) has the
+$20,000 AGI limit; box 6 line 11 adds $5,000 to the disabled spouse's income
+(instructions Example 1 of Part III, $9,000); boxes 4 and 5 cap line 12 at the
+disability income; nontaxable social security and self-reported nontaxable
+payments reduce line 19 and, at $5,000 for a single filer, remove the credit.
+
+```catala
+#[test]
+declaration scope TestCases:
+  output ok condition
+  single66_agi10000 scope Run
+  single66_tax_limited scope Run
+  single66_agi17500 scope Run
+  single66_agi17499 scope Run
+  single66_agi17498 scope Run
+  single66_agi7500_full scope Run
+  single66_no_tax scope Run
+  single66_ss1000 scope Run
+  single66_ss5000 scope Run
+  single66_ss4999 scope Run
+  single66_13b scope Run
+  mfj_both65_agi24000 scope Run
+  mfj_both65_agi25000 scope Run
+  mfj_both65_agi10000 scope Run
+  mfj_secondary65_only_box7 scope Run
+  mfj_one65_agi20000 scope Run
+  mfj_both_under65_nobody_disabled scope Run
+  mfs65_apart_agi8000 scope Run
+  mfs65_together scope Run
+  mfs65_apart_agi12500 scope Run
+  mfs_disabled_apart scope Run
+  mfs_disabled_together scope Run
+  jesse scope Run
+  single_disabled_small_income scope Run
+  mfj_box6 scope Run
+  mfj_box6_primary_disabled scope Run
+  mfj_box4 scope Run
+  mfj_box5 scope Run
+  riley_parker scope Run
+  riley_parker_agi24000 scope Run
+  mfj_box4_no_tax scope Run
+  hoh_70 scope Run
+
+scope TestCases:
+  rule ok fulfilled
+  definition single66_agi10000.filing_status equals Single
+  definition single66_agi10000.apart equals false
+  definition single66_agi10000.p65 equals true
+  definition single66_agi10000.s65 equals false
+  definition single66_agi10000.pd equals false
+  definition single66_agi10000.pinc equals $0
+  definition single66_agi10000.sd equals false
+  definition single66_agi10000.sinc equals $0
+  definition single66_agi10000.agi equals $10,000
+  definition single66_agi10000.ss equals $0
+  definition single66_agi10000.o13b equals $0
+  definition single66_agi10000.tax equals $10,000
+  definition single66_tax_limited.filing_status equals Single
+  definition single66_tax_limited.apart equals false
+  definition single66_tax_limited.p65 equals true
+  definition single66_tax_limited.s65 equals false
+  definition single66_tax_limited.pd equals false
+  definition single66_tax_limited.pinc equals $0
+  definition single66_tax_limited.sd equals false
+  definition single66_tax_limited.sinc equals $0
+  definition single66_tax_limited.agi equals $10,000
+  definition single66_tax_limited.ss equals $0
+  definition single66_tax_limited.o13b equals $0
+  definition single66_tax_limited.tax equals $500
+  definition single66_agi17500.filing_status equals Single
+  definition single66_agi17500.apart equals false
+  definition single66_agi17500.p65 equals true
+  definition single66_agi17500.s65 equals false
+  definition single66_agi17500.pd equals false
+  definition single66_agi17500.pinc equals $0
+  definition single66_agi17500.sd equals false
+  definition single66_agi17500.sinc equals $0
+  definition single66_agi17500.agi equals $17,500
+  definition single66_agi17500.ss equals $0
+  definition single66_agi17500.o13b equals $0
+  definition single66_agi17500.tax equals $10,000
+  definition single66_agi17499.filing_status equals Single
+  definition single66_agi17499.apart equals false
+  definition single66_agi17499.p65 equals true
+  definition single66_agi17499.s65 equals false
+  definition single66_agi17499.pd equals false
+  definition single66_agi17499.pinc equals $0
+  definition single66_agi17499.sd equals false
+  definition single66_agi17499.sinc equals $0
+  definition single66_agi17499.agi equals $17,499
+  definition single66_agi17499.ss equals $0
+  definition single66_agi17499.o13b equals $0
+  definition single66_agi17499.tax equals $10,000
+  definition single66_agi17498.filing_status equals Single
+  definition single66_agi17498.apart equals false
+  definition single66_agi17498.p65 equals true
+  definition single66_agi17498.s65 equals false
+  definition single66_agi17498.pd equals false
+  definition single66_agi17498.pinc equals $0
+  definition single66_agi17498.sd equals false
+  definition single66_agi17498.sinc equals $0
+  definition single66_agi17498.agi equals $17,498
+  definition single66_agi17498.ss equals $0
+  definition single66_agi17498.o13b equals $0
+  definition single66_agi17498.tax equals $10,000
+  definition single66_agi7500_full.filing_status equals Single
+  definition single66_agi7500_full.apart equals false
+  definition single66_agi7500_full.p65 equals true
+  definition single66_agi7500_full.s65 equals false
+  definition single66_agi7500_full.pd equals false
+  definition single66_agi7500_full.pinc equals $0
+  definition single66_agi7500_full.sd equals false
+  definition single66_agi7500_full.sinc equals $0
+  definition single66_agi7500_full.agi equals $7,500
+  definition single66_agi7500_full.ss equals $0
+  definition single66_agi7500_full.o13b equals $0
+  definition single66_agi7500_full.tax equals $10,000
+  definition single66_no_tax.filing_status equals Single
+  definition single66_no_tax.apart equals false
+  definition single66_no_tax.p65 equals true
+  definition single66_no_tax.s65 equals false
+  definition single66_no_tax.pd equals false
+  definition single66_no_tax.pinc equals $0
+  definition single66_no_tax.sd equals false
+  definition single66_no_tax.sinc equals $0
+  definition single66_no_tax.agi equals $10,000
+  definition single66_no_tax.ss equals $0
+  definition single66_no_tax.o13b equals $0
+  definition single66_no_tax.tax equals $0
+  definition single66_ss1000.filing_status equals Single
+  definition single66_ss1000.apart equals false
+  definition single66_ss1000.p65 equals true
+  definition single66_ss1000.s65 equals false
+  definition single66_ss1000.pd equals false
+  definition single66_ss1000.pinc equals $0
+  definition single66_ss1000.sd equals false
+  definition single66_ss1000.sinc equals $0
+  definition single66_ss1000.agi equals $10,000
+  definition single66_ss1000.ss equals $1,000
+  definition single66_ss1000.o13b equals $0
+  definition single66_ss1000.tax equals $10,000
+  definition single66_ss5000.filing_status equals Single
+  definition single66_ss5000.apart equals false
+  definition single66_ss5000.p65 equals true
+  definition single66_ss5000.s65 equals false
+  definition single66_ss5000.pd equals false
+  definition single66_ss5000.pinc equals $0
+  definition single66_ss5000.sd equals false
+  definition single66_ss5000.sinc equals $0
+  definition single66_ss5000.agi equals $0
+  definition single66_ss5000.ss equals $5,000
+  definition single66_ss5000.o13b equals $0
+  definition single66_ss5000.tax equals $10,000
+  definition single66_ss4999.filing_status equals Single
+  definition single66_ss4999.apart equals false
+  definition single66_ss4999.p65 equals true
+  definition single66_ss4999.s65 equals false
+  definition single66_ss4999.pd equals false
+  definition single66_ss4999.pinc equals $0
+  definition single66_ss4999.sd equals false
+  definition single66_ss4999.sinc equals $0
+  definition single66_ss4999.agi equals $0
+  definition single66_ss4999.ss equals $4,999
+  definition single66_ss4999.o13b equals $0
+  definition single66_ss4999.tax equals $10,000
+  definition single66_13b.filing_status equals Single
+  definition single66_13b.apart equals false
+  definition single66_13b.p65 equals true
+  definition single66_13b.s65 equals false
+  definition single66_13b.pd equals false
+  definition single66_13b.pinc equals $0
+  definition single66_13b.sd equals false
+  definition single66_13b.sinc equals $0
+  definition single66_13b.agi equals $0
+  definition single66_13b.ss equals $0
+  definition single66_13b.o13b equals $425
+  definition single66_13b.tax equals $10,000
+  definition mfj_both65_agi24000.filing_status equals MarriedFilingJointly
+  definition mfj_both65_agi24000.apart equals false
+  definition mfj_both65_agi24000.p65 equals true
+  definition mfj_both65_agi24000.s65 equals true
+  definition mfj_both65_agi24000.pd equals false
+  definition mfj_both65_agi24000.pinc equals $0
+  definition mfj_both65_agi24000.sd equals false
+  definition mfj_both65_agi24000.sinc equals $0
+  definition mfj_both65_agi24000.agi equals $24,000
+  definition mfj_both65_agi24000.ss equals $0
+  definition mfj_both65_agi24000.o13b equals $0
+  definition mfj_both65_agi24000.tax equals $10,000
+  definition mfj_both65_agi25000.filing_status equals MarriedFilingJointly
+  definition mfj_both65_agi25000.apart equals false
+  definition mfj_both65_agi25000.p65 equals true
+  definition mfj_both65_agi25000.s65 equals true
+  definition mfj_both65_agi25000.pd equals false
+  definition mfj_both65_agi25000.pinc equals $0
+  definition mfj_both65_agi25000.sd equals false
+  definition mfj_both65_agi25000.sinc equals $0
+  definition mfj_both65_agi25000.agi equals $25,000
+  definition mfj_both65_agi25000.ss equals $0
+  definition mfj_both65_agi25000.o13b equals $0
+  definition mfj_both65_agi25000.tax equals $10,000
+  definition mfj_both65_agi10000.filing_status equals MarriedFilingJointly
+  definition mfj_both65_agi10000.apart equals false
+  definition mfj_both65_agi10000.p65 equals true
+  definition mfj_both65_agi10000.s65 equals true
+  definition mfj_both65_agi10000.pd equals false
+  definition mfj_both65_agi10000.pinc equals $0
+  definition mfj_both65_agi10000.sd equals false
+  definition mfj_both65_agi10000.sinc equals $0
+  definition mfj_both65_agi10000.agi equals $10,000
+  definition mfj_both65_agi10000.ss equals $0
+  definition mfj_both65_agi10000.o13b equals $0
+  definition mfj_both65_agi10000.tax equals $10,000
+  definition mfj_secondary65_only_box7.filing_status equals MarriedFilingJointly
+  definition mfj_secondary65_only_box7.apart equals false
+  definition mfj_secondary65_only_box7.p65 equals false
+  definition mfj_secondary65_only_box7.s65 equals true
+  definition mfj_secondary65_only_box7.pd equals false
+  definition mfj_secondary65_only_box7.pinc equals $0
+  definition mfj_secondary65_only_box7.sd equals false
+  definition mfj_secondary65_only_box7.sinc equals $0
+  definition mfj_secondary65_only_box7.agi equals $15,000
+  definition mfj_secondary65_only_box7.ss equals $0
+  definition mfj_secondary65_only_box7.o13b equals $0
+  definition mfj_secondary65_only_box7.tax equals $10,000
+  definition mfj_one65_agi20000.filing_status equals MarriedFilingJointly
+  definition mfj_one65_agi20000.apart equals false
+  definition mfj_one65_agi20000.p65 equals true
+  definition mfj_one65_agi20000.s65 equals false
+  definition mfj_one65_agi20000.pd equals false
+  definition mfj_one65_agi20000.pinc equals $0
+  definition mfj_one65_agi20000.sd equals false
+  definition mfj_one65_agi20000.sinc equals $0
+  definition mfj_one65_agi20000.agi equals $20,000
+  definition mfj_one65_agi20000.ss equals $0
+  definition mfj_one65_agi20000.o13b equals $0
+  definition mfj_one65_agi20000.tax equals $10,000
+  definition mfj_both_under65_nobody_disabled.filing_status equals MarriedFilingJointly
+  definition mfj_both_under65_nobody_disabled.apart equals false
+  definition mfj_both_under65_nobody_disabled.p65 equals false
+  definition mfj_both_under65_nobody_disabled.s65 equals false
+  definition mfj_both_under65_nobody_disabled.pd equals false
+  definition mfj_both_under65_nobody_disabled.pinc equals $0
+  definition mfj_both_under65_nobody_disabled.sd equals false
+  definition mfj_both_under65_nobody_disabled.sinc equals $0
+  definition mfj_both_under65_nobody_disabled.agi equals $5,000
+  definition mfj_both_under65_nobody_disabled.ss equals $0
+  definition mfj_both_under65_nobody_disabled.o13b equals $0
+  definition mfj_both_under65_nobody_disabled.tax equals $10,000
+  definition mfs65_apart_agi8000.filing_status equals MarriedFilingSeparately
+  definition mfs65_apart_agi8000.apart equals true
+  definition mfs65_apart_agi8000.p65 equals true
+  definition mfs65_apart_agi8000.s65 equals false
+  definition mfs65_apart_agi8000.pd equals false
+  definition mfs65_apart_agi8000.pinc equals $0
+  definition mfs65_apart_agi8000.sd equals false
+  definition mfs65_apart_agi8000.sinc equals $0
+  definition mfs65_apart_agi8000.agi equals $8,000
+  definition mfs65_apart_agi8000.ss equals $0
+  definition mfs65_apart_agi8000.o13b equals $0
+  definition mfs65_apart_agi8000.tax equals $10,000
+  definition mfs65_together.filing_status equals MarriedFilingSeparately
+  definition mfs65_together.apart equals false
+  definition mfs65_together.p65 equals true
+  definition mfs65_together.s65 equals false
+  definition mfs65_together.pd equals false
+  definition mfs65_together.pinc equals $0
+  definition mfs65_together.sd equals false
+  definition mfs65_together.sinc equals $0
+  definition mfs65_together.agi equals $8,000
+  definition mfs65_together.ss equals $0
+  definition mfs65_together.o13b equals $0
+  definition mfs65_together.tax equals $10,000
+  definition mfs65_apart_agi12500.filing_status equals MarriedFilingSeparately
+  definition mfs65_apart_agi12500.apart equals true
+  definition mfs65_apart_agi12500.p65 equals true
+  definition mfs65_apart_agi12500.s65 equals false
+  definition mfs65_apart_agi12500.pd equals false
+  definition mfs65_apart_agi12500.pinc equals $0
+  definition mfs65_apart_agi12500.sd equals false
+  definition mfs65_apart_agi12500.sinc equals $0
+  definition mfs65_apart_agi12500.agi equals $12,500
+  definition mfs65_apart_agi12500.ss equals $0
+  definition mfs65_apart_agi12500.o13b equals $0
+  definition mfs65_apart_agi12500.tax equals $10,000
+  definition mfs_disabled_apart.filing_status equals MarriedFilingSeparately
+  definition mfs_disabled_apart.apart equals true
+  definition mfs_disabled_apart.p65 equals false
+  definition mfs_disabled_apart.s65 equals false
+  definition mfs_disabled_apart.pd equals true
+  definition mfs_disabled_apart.pinc equals $2,000
+  definition mfs_disabled_apart.sd equals false
+  definition mfs_disabled_apart.sinc equals $0
+  definition mfs_disabled_apart.agi equals $6,000
+  definition mfs_disabled_apart.ss equals $0
+  definition mfs_disabled_apart.o13b equals $0
+  definition mfs_disabled_apart.tax equals $10,000
+  definition mfs_disabled_together.filing_status equals MarriedFilingSeparately
+  definition mfs_disabled_together.apart equals false
+  definition mfs_disabled_together.p65 equals false
+  definition mfs_disabled_together.s65 equals false
+  definition mfs_disabled_together.pd equals true
+  definition mfs_disabled_together.pinc equals $2,000
+  definition mfs_disabled_together.sd equals false
+  definition mfs_disabled_together.sinc equals $0
+  definition mfs_disabled_together.agi equals $6,000
+  definition mfs_disabled_together.ss equals $0
+  definition mfs_disabled_together.o13b equals $0
+  definition mfs_disabled_together.tax equals $10,000
+  definition jesse.filing_status equals Single
+  definition jesse.apart equals false
+  definition jesse.p65 equals false
+  definition jesse.s65 equals false
+  definition jesse.pd equals true
+  definition jesse.pinc equals $15,000
+  definition jesse.sd equals false
+  definition jesse.sinc equals $0
+  definition jesse.agi equals $15,100
+  definition jesse.ss equals $700
+  definition jesse.o13b equals $0
+  definition jesse.tax equals $51
+  definition single_disabled_small_income.filing_status equals Single
+  definition single_disabled_small_income.apart equals false
+  definition single_disabled_small_income.p65 equals false
+  definition single_disabled_small_income.s65 equals false
+  definition single_disabled_small_income.pd equals true
+  definition single_disabled_small_income.pinc equals $3,000
+  definition single_disabled_small_income.sd equals false
+  definition single_disabled_small_income.sinc equals $0
+  definition single_disabled_small_income.agi equals $3,000
+  definition single_disabled_small_income.ss equals $0
+  definition single_disabled_small_income.o13b equals $0
+  definition single_disabled_small_income.tax equals $10,000
+  definition mfj_box6.filing_status equals MarriedFilingJointly
+  definition mfj_box6.apart equals false
+  definition mfj_box6.p65 equals true
+  definition mfj_box6.s65 equals false
+  definition mfj_box6.pd equals false
+  definition mfj_box6.pinc equals $0
+  definition mfj_box6.sd equals true
+  definition mfj_box6.sinc equals $4,000
+  definition mfj_box6.agi equals $20,000
+  definition mfj_box6.ss equals $0
+  definition mfj_box6.o13b equals $0
+  definition mfj_box6.tax equals $10,000
+  definition mfj_box6_primary_disabled.filing_status equals MarriedFilingJointly
+  definition mfj_box6_primary_disabled.apart equals false
+  definition mfj_box6_primary_disabled.p65 equals false
+  definition mfj_box6_primary_disabled.s65 equals true
+  definition mfj_box6_primary_disabled.pd equals true
+  definition mfj_box6_primary_disabled.pinc equals $4,000
+  definition mfj_box6_primary_disabled.sd equals false
+  definition mfj_box6_primary_disabled.sinc equals $0
+  definition mfj_box6_primary_disabled.agi equals $20,000
+  definition mfj_box6_primary_disabled.ss equals $0
+  definition mfj_box6_primary_disabled.o13b equals $0
+  definition mfj_box6_primary_disabled.tax equals $10,000
+  definition mfj_box4.filing_status equals MarriedFilingJointly
+  definition mfj_box4.apart equals false
+  definition mfj_box4.p65 equals false
+  definition mfj_box4.s65 equals false
+  definition mfj_box4.pd equals true
+  definition mfj_box4.pinc equals $3,000
+  definition mfj_box4.sd equals false
+  definition mfj_box4.sinc equals $0
+  definition mfj_box4.agi equals $12,000
+  definition mfj_box4.ss equals $0
+  definition mfj_box4.o13b equals $0
+  definition mfj_box4.tax equals $10,000
+  definition mfj_box5.filing_status equals MarriedFilingJointly
+  definition mfj_box5.apart equals false
+  definition mfj_box5.p65 equals false
+  definition mfj_box5.s65 equals false
+  definition mfj_box5.pd equals true
+  definition mfj_box5.pinc equals $3,000
+  definition mfj_box5.sd equals true
+  definition mfj_box5.sinc equals $6,000
+  definition mfj_box5.agi equals $12,000
+  definition mfj_box5.ss equals $0
+  definition mfj_box5.o13b equals $0
+  definition mfj_box5.tax equals $10,000
+  definition riley_parker.filing_status equals MarriedFilingJointly
+  definition riley_parker.apart equals false
+  definition riley_parker.p65 equals false
+  definition riley_parker.s65 equals false
+  definition riley_parker.pd equals true
+  definition riley_parker.pinc equals $6,400
+  definition riley_parker.sd equals true
+  definition riley_parker.sinc equals $1,700
+  definition riley_parker.agi equals $29,350
+  definition riley_parker.ss equals $2,000
+  definition riley_parker.o13b equals $0
+  definition riley_parker.tax equals $10,000
+  definition riley_parker_agi24000.filing_status equals MarriedFilingJointly
+  definition riley_parker_agi24000.apart equals false
+  definition riley_parker_agi24000.p65 equals false
+  definition riley_parker_agi24000.s65 equals false
+  definition riley_parker_agi24000.pd equals true
+  definition riley_parker_agi24000.pinc equals $6,400
+  definition riley_parker_agi24000.sd equals true
+  definition riley_parker_agi24000.sinc equals $1,700
+  definition riley_parker_agi24000.agi equals $24,000
+  definition riley_parker_agi24000.ss equals $2,000
+  definition riley_parker_agi24000.o13b equals $0
+  definition riley_parker_agi24000.tax equals $10,000
+  definition mfj_box4_no_tax.filing_status equals MarriedFilingJointly
+  definition mfj_box4_no_tax.apart equals false
+  definition mfj_box4_no_tax.p65 equals false
+  definition mfj_box4_no_tax.s65 equals false
+  definition mfj_box4_no_tax.pd equals true
+  definition mfj_box4_no_tax.pinc equals $3,000
+  definition mfj_box4_no_tax.sd equals false
+  definition mfj_box4_no_tax.sinc equals $0
+  definition mfj_box4_no_tax.agi equals $12,000
+  definition mfj_box4_no_tax.ss equals $0
+  definition mfj_box4_no_tax.o13b equals $0
+  definition mfj_box4_no_tax.tax equals $0
+  definition hoh_70.filing_status equals HeadOfHousehold
+  definition hoh_70.apart equals false
+  definition hoh_70.p65 equals true
+  definition hoh_70.s65 equals false
+  definition hoh_70.pd equals false
+  definition hoh_70.pinc equals $0
+  definition hoh_70.sd equals false
+  definition hoh_70.sinc equals $0
+  definition hoh_70.agi equals $9,000
+  definition hoh_70.ss equals $0
+  definition hoh_70.o13b equals $0
+  definition hoh_70.tax equals $10,000
+  assertion single66_agi10000.edc_line1 = true
+  assertion single66_agi10000.edc_filing_status_amt = $5,000
+  assertion single66_agi10000.edc_magi = $2,500
+  assertion single66_agi10000.edc_half_magi = $1,250
+  assertion single66_agi10000.edc_adjusted_credit_amount = $1,250
+  assertion single66_agi10000.edc_net_credit_amount = $3,750
+  assertion single66_agi10000.net_edc_amount = $563
+  assertion single66_agi10000.qualified = true
+  assertion single66_agi10000.total_edc = $563
+  assertion single66_agi10000.receiving = true
+  assertion single66_agi10000.agi_limit = $17,500
+  assertion single66_tax_limited.net_edc_amount = $563
+  assertion single66_tax_limited.edc_tax_liability_limit = $500
+  assertion single66_tax_limited.total_edc = $500
+  assertion single66_agi17500.qualified = false
+  assertion single66_agi17500.total_edc = $0
+  assertion single66_agi17500.receiving = false
+  assertion single66_agi17500.edc_net_credit_amount = $0
+  assertion single66_agi17499.edc_half_magi = $5,000
+  assertion single66_agi17499.edc_net_credit_amount = $0
+  assertion single66_agi17499.qualified = false
+  assertion single66_agi17499.total_edc = $0
+  assertion single66_agi17498.edc_half_magi = $4,999
+  assertion single66_agi17498.edc_net_credit_amount = $1
+  assertion single66_agi17498.net_edc_amount = $0
+  assertion single66_agi17498.qualified = true
+  assertion single66_agi17498.total_edc = $0
+  assertion single66_agi17498.receiving = false
+  assertion single66_agi7500_full.edc_half_magi = $0
+  assertion single66_agi7500_full.edc_net_credit_amount = $5,000
+  assertion single66_agi7500_full.net_edc_amount = $750
+  assertion single66_agi7500_full.total_edc = $750
+  assertion single66_no_tax.edc_tax_liability_limit = $0
+  assertion single66_no_tax.qualified = false
+  assertion single66_no_tax.total_edc = $0
+  assertion single66_ss1000.edc_total_non_taxable_amount = $1,000
+  assertion single66_ss1000.edc_adjusted_credit_amount = $2,250
+  assertion single66_ss1000.edc_net_credit_amount = $2,750
+  assertion single66_ss1000.net_edc_amount = $413
+  assertion single66_ss1000.total_edc = $413
+  assertion single66_ss5000.qualified = false
+  assertion single66_ss5000.total_edc = $0
+  assertion single66_ss5000.nontaxable_limit = $5,000
+  assertion single66_ss4999.qualified = true
+  assertion single66_ss4999.edc_net_credit_amount = $1
+  assertion single66_ss4999.total_edc = $0
+  assertion single66_13b.edc_total_non_taxable_amount = $425
+  assertion single66_13b.edc_net_credit_amount = $4,575
+  assertion single66_13b.net_edc_amount = $686
+  assertion single66_13b.total_edc = $686
+  assertion mfj_both65_agi24000.edc_line3 = true
+  assertion mfj_both65_agi24000.edc_filing_status_amt = $7,500
+  assertion mfj_both65_agi24000.edc_exemption_amount = $10,000
+  assertion mfj_both65_agi24000.edc_half_magi = $7,000
+  assertion mfj_both65_agi24000.edc_net_credit_amount = $500
+  assertion mfj_both65_agi24000.net_edc_amount = $75
+  assertion mfj_both65_agi24000.qualified = true
+  assertion mfj_both65_agi24000.total_edc = $75
+  assertion mfj_both65_agi24000.agi_limit = $25,000
+  assertion mfj_both65_agi24000.nontaxable_limit = $7,500
+  assertion mfj_both65_agi25000.qualified = false
+  assertion mfj_both65_agi25000.total_edc = $0
+  assertion mfj_both65_agi10000.edc_net_credit_amount = $7,500
+  assertion mfj_both65_agi10000.net_edc_amount = $1,125
+  assertion mfj_both65_agi10000.total_edc = $1,125
+  assertion mfj_secondary65_only_box7.edc_line7 = true
+  assertion mfj_secondary65_only_box7.edc_filing_status_amt = $5,000
+  assertion mfj_secondary65_only_box7.edc_exemption_amount = $10,000
+  assertion mfj_secondary65_only_box7.edc_half_magi = $2,500
+  assertion mfj_secondary65_only_box7.edc_net_credit_amount = $2,500
+  assertion mfj_secondary65_only_box7.net_edc_amount = $375
+  assertion mfj_secondary65_only_box7.qualified = true
+  assertion mfj_secondary65_only_box7.total_edc = $375
+  assertion mfj_secondary65_only_box7.agi_limit = $20,000
+  assertion mfj_secondary65_only_box7.nontaxable_limit = $5,000
+  assertion mfj_one65_agi20000.qualified = false
+  assertion mfj_one65_agi20000.total_edc = $0
+  assertion mfj_one65_agi20000.agi_limit = $20,000
+  assertion mfj_both_under65_nobody_disabled.qualified = false
+  assertion mfj_both_under65_nobody_disabled.total_edc = $0
+  assertion mfj_both_under65_nobody_disabled.edc_filing_status_amt = $0
+  assertion mfs65_apart_agi8000.edc_line8 = true
+  assertion mfs65_apart_agi8000.edc_filing_status_amt = $3,750
+  assertion mfs65_apart_agi8000.edc_exemption_amount = $5,000
+  assertion mfs65_apart_agi8000.edc_half_magi = $1,500
+  assertion mfs65_apart_agi8000.edc_net_credit_amount = $2,250
+  assertion mfs65_apart_agi8000.net_edc_amount = $338
+  assertion mfs65_apart_agi8000.qualified = true
+  assertion mfs65_apart_agi8000.total_edc = $338
+  assertion mfs65_apart_agi8000.agi_limit = $12,500
+  assertion mfs65_apart_agi8000.nontaxable_limit = $3,750
+  assertion mfs65_together.edc_line8 = true
+  assertion mfs65_together.qualified = false
+  assertion mfs65_together.total_edc = $0
+  assertion mfs65_apart_agi12500.qualified = false
+  assertion mfs65_apart_agi12500.total_edc = $0
+  assertion mfs_disabled_apart.edc_line9 = true
+  assertion mfs_disabled_apart.edc_filing_status_amt = $3,750
+  assertion mfs_disabled_apart.status_based_disability_income = $2,000
+  assertion mfs_disabled_apart.lesser = $2,000
+  assertion mfs_disabled_apart.edc_exemption_amount = $5,000
+  assertion mfs_disabled_apart.edc_half_magi = $500
+  assertion mfs_disabled_apart.edc_net_credit_amount = $1,500
+  assertion mfs_disabled_apart.net_edc_amount = $225
+  assertion mfs_disabled_apart.qualified = true
+  assertion mfs_disabled_apart.total_edc = $225
+  assertion mfs_disabled_together.edc_line9 = false
+  assertion mfs_disabled_together.qualified = false
+  assertion mfs_disabled_together.total_edc = $0
+  assertion jesse.edc_line2 = true
+  assertion jesse.edc_filing_status_amt = $5,000
+  assertion jesse.status_based_disability_income = $15,000
+  assertion jesse.lesser = $5,000
+  assertion jesse.edc_total_non_taxable_amount = $700
+  assertion jesse.edc_half_magi = $3,800
+  assertion jesse.edc_adjusted_credit_amount = $4,500
+  assertion jesse.edc_net_credit_amount = $500
+  assertion jesse.net_edc_amount = $75
+  assertion jesse.edc_tax_liability_limit = $51
+  assertion jesse.qualified = true
+  assertion jesse.total_edc = $51
+  assertion single_disabled_small_income.edc_line2 = true
+  assertion single_disabled_small_income.lesser = $3,000
+  assertion single_disabled_small_income.edc_half_magi = $0
+  assertion single_disabled_small_income.edc_net_credit_amount = $3,000
+  assertion single_disabled_small_income.net_edc_amount = $450
+  assertion single_disabled_small_income.total_edc = $450
+  assertion mfj_box6.edc_line6 = true
+  assertion mfj_box6.edc_line7 = false
+  assertion mfj_box6.edc_filing_status_amt = $7,500
+  assertion mfj_box6.status_based_disability_income = $9,000
+  assertion mfj_box6.lesser = $7,500
+  assertion mfj_box6.edc_half_magi = $5,000
+  assertion mfj_box6.edc_net_credit_amount = $2,500
+  assertion mfj_box6.net_edc_amount = $375
+  assertion mfj_box6.qualified = true
+  assertion mfj_box6.total_edc = $375
+  assertion mfj_box6.agi_limit = $25,000
+  assertion mfj_box6_primary_disabled.edc_line6 = true
+  assertion mfj_box6_primary_disabled.status_based_disability_income = $9,000
+  assertion mfj_box6_primary_disabled.lesser = $7,500
+  assertion mfj_box6_primary_disabled.total_edc = $375
+  assertion mfj_box4.edc_line4 = true
+  assertion mfj_box4.edc_filing_status_amt = $5,000
+  assertion mfj_box4.status_based_disability_income = $3,000
+  assertion mfj_box4.lesser = $3,000
+  assertion mfj_box4.edc_half_magi = $1,000
+  assertion mfj_box4.edc_net_credit_amount = $2,000
+  assertion mfj_box4.net_edc_amount = $300
+  assertion mfj_box4.qualified = true
+  assertion mfj_box4.total_edc = $300
+  assertion mfj_box4.agi_limit = $20,000
+  assertion mfj_box5.edc_line5 = true
+  assertion mfj_box5.edc_filing_status_amt = $7,500
+  assertion mfj_box5.status_based_disability_income = $9,000
+  assertion mfj_box5.lesser = $7,500
+  assertion mfj_box5.edc_half_magi = $1,000
+  assertion mfj_box5.edc_net_credit_amount = $6,500
+  assertion mfj_box5.net_edc_amount = $975
+  assertion mfj_box5.qualified = true
+  assertion mfj_box5.total_edc = $975
+  assertion mfj_box5.agi_limit = $25,000
+  assertion riley_parker.edc_line5 = false
+  assertion riley_parker.edc_net_credit_amount = $0
+  assertion riley_parker.qualified = false
+  assertion riley_parker.total_edc = $0
+  assertion riley_parker_agi24000.edc_line5 = true
+  assertion riley_parker_agi24000.status_based_disability_income = $8,100
+  assertion riley_parker_agi24000.lesser = $7,500
+  assertion riley_parker_agi24000.edc_half_magi = $7,000
+  assertion riley_parker_agi24000.edc_adjusted_credit_amount = $9,000
+  assertion riley_parker_agi24000.edc_net_credit_amount = $0
+  assertion riley_parker_agi24000.qualified = false
+  assertion riley_parker_agi24000.total_edc = $0
+  assertion mfj_box4_no_tax.edc_line4 = false
+  assertion mfj_box4_no_tax.edc_filing_status_amt = $0
+  assertion mfj_box4_no_tax.qualified = false
+  assertion mfj_box4_no_tax.total_edc = $0
+  assertion hoh_70.edc_line1 = true
+  assertion hoh_70.edc_net_credit_amount = $4,250
+  assertion hoh_70.net_edc_amount = $638
+  assertion hoh_70.total_edc = $638
+```
+
+## Hypotheses are satisfiable, and the spec rejects bad outputs
+
+The cases above are the concrete inputs. The assertions below reject known-bad
+results: the credit without the 15% step ($3,750), the unrounded 15% ($562.50),
+the credit at the strict AGI limit, a credit for MFS spouses who lived together,
+the AGI test of the wrong (joint) limit for a one-qualified couple, and the credit
+above the tax.
+
+```catala
+#[test]
+declaration scope TestRejectsBad:
+  output ok condition
+  a scope Run
+  b scope Run
+  c scope Run
+  d scope Run
+  e scope Run
+
+scope TestRejectsBad:
+  rule ok fulfilled
+  definition a.filing_status equals Single
+  definition a.apart equals false
+  definition a.p65 equals true
+  definition a.s65 equals false
+  definition a.pd equals false
+  definition a.pinc equals $0
+  definition a.sd equals false
+  definition a.sinc equals $0
+  definition a.agi equals $10,000
+  definition a.ss equals $0
+  definition a.o13b equals $0
+  definition a.tax equals $10,000
+  definition b.filing_status equals Single
+  definition b.apart equals false
+  definition b.p65 equals true
+  definition b.s65 equals false
+  definition b.pd equals false
+  definition b.pinc equals $0
+  definition b.sd equals false
+  definition b.sinc equals $0
+  definition b.agi equals $17,500
+  definition b.ss equals $0
+  definition b.o13b equals $0
+  definition b.tax equals $10,000
+  definition c.filing_status equals MarriedFilingSeparately
+  definition c.apart equals false
+  definition c.p65 equals true
+  definition c.s65 equals false
+  definition c.pd equals false
+  definition c.pinc equals $0
+  definition c.sd equals false
+  definition c.sinc equals $0
+  definition c.agi equals $8,000
+  definition c.ss equals $0
+  definition c.o13b equals $0
+  definition c.tax equals $10,000
+  definition d.filing_status equals MarriedFilingJointly
+  definition d.apart equals false
+  definition d.p65 equals true
+  definition d.s65 equals false
+  definition d.pd equals false
+  definition d.pinc equals $0
+  definition d.sd equals false
+  definition d.sinc equals $0
+  definition d.agi equals $22,000
+  definition d.ss equals $0
+  definition d.o13b equals $0
+  definition d.tax equals $10,000
+  definition e.filing_status equals Single
+  definition e.apart equals false
+  definition e.p65 equals true
+  definition e.s65 equals false
+  definition e.pd equals false
+  definition e.pinc equals $0
+  definition e.sd equals false
+  definition e.sinc equals $0
+  definition e.agi equals $10,000
+  definition e.ss equals $0
+  definition e.o13b equals $0
+  definition e.tax equals $100
+
+  assertion a.total_edc = $563
+  assertion not (a.total_edc = $3,750)
+  assertion not (a.total_edc = $562.50)
+  assertion not (a.total_edc = $562)
+  assertion b.total_edc = $0
+  assertion not (b.qualified)
+  assertion c.total_edc = $0
+  assertion not (c.total_edc = $338)
+  # one spouse 65 or older, AGI 22,000: over the $20,000 limit for one
+  # qualified spouse (the joint limit $25,000 would wrongly allow it)
+  assertion d.agi_limit = $20,000
+  assertion d.total_edc = $0
+  # credit above the tax is rejected
+  assertion e.total_edc = $100
+  assertion not (e.total_edc = $563)
+```
+
+## Disability answers
+
+Direct answers for a single filer under 65 whose only income is the taxable
+disability pension in W-2 wages: AGI = income = $4,000, so line 16 is 0 and the
+credit is 15% x min(5,000, 4,000) = $600.
+
+```catala
+declaration scope RunSingleDisabled:
+  input ret content boolean
+  input has content boolean
+  input met content boolean
+  input pay content boolean
+  input inc content money
+  input w2 content boolean
+  sr scope E.ScheduleR
+  output edc_line2 condition
+  output edc_net_credit_amount content money
+  output total_edc content money
+  output qualified condition
+
+scope RunSingleDisabled:
+  definition sr.filing_status equals Single
+  definition sr.lived_apart_all_year equals false
+  definition sr.primary_age65_or_older equals false
+  definition sr.secondary_age65_or_older equals false
+  definition sr.primary_answers equals E.DisabilityAnswers {
+    -- is_retired_on_perm_or_total_disability: ret
+    -- employer_has_mandatory_retirement_age: has
+    -- has_met_employer_mandatory_retirement_age: met
+    -- are_payments_taxable_disability_income: pay
+    -- writable_total_taxable_disability_amount: inc
+    -- has_w2_wages: w2
+  }
+  definition sr.secondary_answers equals E.DisabilityAnswers {
+    -- is_retired_on_perm_or_total_disability: false
+    -- employer_has_mandatory_retirement_age: false
+    -- has_met_employer_mandatory_retirement_age: false
+    -- are_payments_taxable_disability_income: false
+    -- writable_total_taxable_disability_amount: $0
+    -- has_w2_wages: false
+  }
+  definition sr.agi equals $4,000
+  definition sr.non_taxable_social_security_benefits equals $0
+  definition sr.self_reported_non_taxable_payments equals $0
+  definition sr.credit_limit_worksheet_line_3 equals $10,000
+  definition edc_line2 equals sr.edc_line2
+  definition edc_net_credit_amount equals sr.edc_net_credit_amount
+  definition total_edc equals sr.total_edc
+  definition qualified equals sr.qualified_for_credit_for_elderly_and_disabled
+```
+
+Cases: `mandatory_retirement_met` (single under 65, retired on disability, employer has a mandatory retirement age and the filer has reached it: no credit); `mandatory_retirement_not_met` (same, but the filer has not reached it: credit); `no_disability_payments` (retired on disability but the payments are not taxable disability income); `zero_disability_income` (retired on disability, taxable payments of $0); `not_retired` (not retired on disability); `no_w2_wages` (disability income asked only of a filer with W-2 wages (DF scope limit)).
+
+```catala
+#[test]
+declaration scope TestDisabilityAnswers:
+  output ok condition
+  mandatory_retirement_met scope RunSingleDisabled
+  mandatory_retirement_not_met scope RunSingleDisabled
+  no_disability_payments scope RunSingleDisabled
+  zero_disability_income scope RunSingleDisabled
+  not_retired scope RunSingleDisabled
+  no_w2_wages scope RunSingleDisabled
+
+scope TestDisabilityAnswers:
+  rule ok fulfilled
+  definition mandatory_retirement_met.ret equals true
+  definition mandatory_retirement_met.has equals true
+  definition mandatory_retirement_met.met equals true
+  definition mandatory_retirement_met.pay equals true
+  definition mandatory_retirement_met.inc equals $4,000
+  definition mandatory_retirement_met.w2 equals true
+  definition mandatory_retirement_not_met.ret equals true
+  definition mandatory_retirement_not_met.has equals true
+  definition mandatory_retirement_not_met.met equals false
+  definition mandatory_retirement_not_met.pay equals true
+  definition mandatory_retirement_not_met.inc equals $4,000
+  definition mandatory_retirement_not_met.w2 equals true
+  definition no_disability_payments.ret equals true
+  definition no_disability_payments.has equals false
+  definition no_disability_payments.met equals false
+  definition no_disability_payments.pay equals false
+  definition no_disability_payments.inc equals $4,000
+  definition no_disability_payments.w2 equals true
+  definition zero_disability_income.ret equals true
+  definition zero_disability_income.has equals false
+  definition zero_disability_income.met equals false
+  definition zero_disability_income.pay equals true
+  definition zero_disability_income.inc equals $0
+  definition zero_disability_income.w2 equals true
+  definition not_retired.ret equals false
+  definition not_retired.has equals false
+  definition not_retired.met equals false
+  definition not_retired.pay equals true
+  definition not_retired.inc equals $4,000
+  definition not_retired.w2 equals true
+  definition no_w2_wages.ret equals true
+  definition no_w2_wages.has equals false
+  definition no_w2_wages.met equals false
+  definition no_w2_wages.pay equals true
+  definition no_w2_wages.inc equals $4,000
+  definition no_w2_wages.w2 equals false
+  assertion mandatory_retirement_met.edc_line2 = false
+  assertion mandatory_retirement_met.qualified = false
+  assertion mandatory_retirement_met.total_edc = $0
+  assertion mandatory_retirement_not_met.edc_line2 = true
+  assertion mandatory_retirement_not_met.qualified = true
+  assertion mandatory_retirement_not_met.edc_net_credit_amount = $4,000
+  assertion mandatory_retirement_not_met.total_edc = $600
+  assertion no_disability_payments.edc_line2 = false
+  assertion no_disability_payments.qualified = false
+  assertion no_disability_payments.total_edc = $0
+  assertion zero_disability_income.edc_line2 = false
+  assertion zero_disability_income.qualified = false
+  assertion zero_disability_income.total_edc = $0
+  assertion not_retired.edc_line2 = false
+  assertion not_retired.qualified = false
+  assertion not_retired.total_edc = $0
+  assertion no_w2_wages.edc_line2 = false
+  assertion no_w2_wages.qualified = false
+  assertion no_w2_wages.total_edc = $0
+```
