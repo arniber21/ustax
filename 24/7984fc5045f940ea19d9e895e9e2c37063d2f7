@@ -1,0 +1,42 @@
+scripts/gen_tax_rates_tests.py
+  s_3031b504518be3::t_645223ccbb0c17 94-95
+  s_3031b504518be3::t_4201081d98309d 47,49-50
+  s_3031b504518be3::t_5a8f9df08b5b25 45
+  s_3031b504518be3::t_895e44a6a900d4 122
+  s_3031b504518be3::t_1db07e3464c4ea 155
+  s_3031b504518be3::t_6738b5bf213af3 1-44,46,48,51-93,96-121,123-154,156-167
+catala/tests/test_tax_rates_table.catala_en
+  s_3031b504518be3::t_7ebf4ee42b293d 1-2096,2098-2108,2110-2112
+  s_3031b504518be3::t_678c0db8745838 2097,2109
+catala/tests/test_tax_rates.catala_en
+  s_3031b504518be3::t_08933d6b282538 266
+  s_3031b504518be3::t_aef157dc59ca30 92-93
+  s_3031b504518be3::t_8279d3d915e902 245
+  s_3031b504518be3::t_84891ac1e758bc 1-91,94-158,160-167,169-244,246-265,267-270
+  s_3031b504518be3::t_8b7bd5a6a48258 159
+  s_3031b504518be3::t_4020134e177bba 168
+catala/tax_rates.catala_en
+  s_3031b504518be3::t_6496f0285c9f70 97,111
+  s_3031b504518be3::t_6e184dda823f46 1-96,98-110,112-124,130-198,222-246,248-249,251
+  s_3031b504518be3::t_7c75f9124f5139 247,250
+  s_3031b504518be3::t_c18d69a1a08a6e 125-129
+  s_3031b504518be3::t_c9f0e96fe7c394 199-221
+catala/tests/test_tax_rates_oracle.catala_en
+  s_3031b504518be3::t_7ebf4ee42b293d 1-350
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "247984fc5045f940ea19d9e895e9e2c37063d2f7",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
