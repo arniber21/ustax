@@ -267,11 +267,24 @@ outputs.
 
 ## 8. Quirk policy (scope.md section 11)
 
-Default: **reproduce the reference**, mark the definition with a
-`# QUIRK(Qn):` comment (section 5), and track the item in issue #60. Where
-the statute or the IRS instructions clearly differ, the line below says so
-and the item is flagged **[HUMAN]** for a decision. Items were re-read in the
-XML on 2026-10-31; the result of the re-read is part of each line.
+**Policy changed by the human (2026-11-01): do not accept bugs from Direct
+File.** The statute and the IRS instructions win. Where the XML disagrees
+with the law, implement the law, mark the definition `# DF-BUG(n):` with a
+citation, and log it in `docs/direct-file-bugs.md` (the project credits
+these as bugs discovered by the formalization). Where a divergence changes
+the oracle value on some scenario, list that scenario/path in the module's
+difftest mapping as a `knownDivergence` tied to the bug number, so the pass
+count stays honest (divergences are reported separately, never silently
+passed). Engine artefacts that are not tax rules (Float conversion,
+HALF_EVEN cents) are computed exactly. If you are unsure whether it is a
+bug, implement the statute reading, log it as `candidate`, and say so in
+the PR.
+
+The table below was written under the old "reproduce the reference" default.
+Where a row says **Reproduce** and the row is also a divergence from law
+(Q2, Q4 AOC, Q6, Q-R1), the new policy applies: owner issue #60 and each
+module's owner re-decides it; until then `# QUIRK` comments mark the spots
+to revisit.
 
 | # | scope.md section 11 item | Policy |
 |---|---|---|
