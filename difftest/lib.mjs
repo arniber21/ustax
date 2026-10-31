@@ -189,3 +189,17 @@ export function compareOutputs(mapping, facts, catalaOut) {
   }
   return results;
 }
+
+// ---------------------------------------------------------------------------------------------
+// One source of truth for a scenario's scope input (used by run.mjs and lean.mjs).
+// ---------------------------------------------------------------------------------------------
+
+/** The Catala JSON input object of a mapping for one scenario's facts. Throws if a field cannot be mapped. */
+export function buildInput(mapping, facts) {
+  return Object.fromEntries(Object.entries(mapping.inputs).map(([k, f]) => [k, f(facts)]));
+}
+
+/** The text written to the input file given to `clerk run --input=` and to `ustax run` (same bytes). */
+export function inputFileText(input) {
+  return JSON.stringify(input, null, 1) + '\n';
+}
