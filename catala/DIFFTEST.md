@@ -85,3 +85,13 @@ want checked (for example `/agi`, `/totalIncome`); each becomes one fact check p
 `placeholderFalse: true` (a Placeholder `false` is checked as an expected `false`; it means "not knocked out",
 `oracle/README.md`). Result: 157/157 checks pass; the 4 knocked-out scenarios are DF-BUG-8 and are listed as
 `knownDivergence`. `docs/knockout-inventory.md` lists every `flow.xml` member and its status.
+
+## Lean vs Catala (issue #41 and later Lean modules)
+
+`make lean-difftest-rates` (`node difftest/lean_rates.mjs`) compares the Lean calculator with Catala and the
+oracle for the rate schedule: the `ustax` executable (`lean/`, `ustax run TentativeTax`, JSON lines) against one
+`clerk run` of the batch wrapper `catala/tests/difftest_tax_rates_batch.catala_en` (2,402 incomes x 5 statuses,
+three outputs each, exact cents), then Lean against `/tentativeTaxFromTaxableIncome` on the 157 scenarios that
+are not knocked out. `clerk` needs `ninja` on `PATH`. `--perturb` adds one cent to every Lean output (every check
+must fail); `--dense 100 1000000` sweeps every dollar to $1,000,000. The pattern for later modules is in
+`lean/README.md`, "Pattern for Lean modules".

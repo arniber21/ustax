@@ -16,3 +16,8 @@ rev = "v4.35.0"
 
 [[lean_lib]]
 name = "UsTax"
+
+# Command-line driver (Main.lean): `lake build ustax`, then `.lake/build/bin/ustax`.
+[[lean_exe]]
+name = "ustax"
+root = "Main"

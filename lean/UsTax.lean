@@ -8,3 +8,10 @@ import UsTax.Defaults
 import UsTax.Lists
 import UsTax.Date
 import UsTax.HelpersProps
+import UsTax.Types
+import UsTax.TaxRates
+import UsTax.TaxRates.Spec
+import UsTax.TaxRates.Lemmas
+import UsTax.TaxRates.Props
+import UsTax.TaxRates.TaxTable
+import UsTax.Cli
