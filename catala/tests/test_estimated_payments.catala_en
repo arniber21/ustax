@@ -1,0 +1,116 @@
+# Tests for the Estimated_payments module
+
+Run with `clerk test`. Concrete cases of issue #25, plus rejected bad
+outputs. Oracle comparison: `make difftest SCOPE=estimated_payments`.
+
+> Using Estimated_payments as E
+
+## Flag false: the amount is ignored
+
+```catala
+#[test]
+declaration scope TestFlagFalseIgnoresAmount:
+  r scope E.EstimatedPayments
+
+scope TestFlagFalseIgnoresAmount:
+  definition r.paid_estimated_taxes_or_from_last_year equals false
+  definition r.estimated_tax_payment_writable equals $500.00
+  definition r.paid_estimated_taxes_or_from_last_year_under_different_name equals false
+  definition r.paid_estimated_taxes_with_former_spouse equals E.PaidWithFormerSpouse.Neither
+  assertion r.estimated_and_from_last_year = $0
+  assertion not r.unsupported
+```
+
+## Flag true: $500.49 gives $500, and bad outputs are rejected
+
+```catala
+#[test]
+declaration scope TestRoundsDown:
+  r scope E.EstimatedPayments
+
+scope TestRoundsDown:
+  definition r.paid_estimated_taxes_or_from_last_year equals true
+  definition r.estimated_tax_payment_writable equals $500.49
+  definition r.paid_estimated_taxes_or_from_last_year_under_different_name equals false
+  definition r.paid_estimated_taxes_with_former_spouse equals E.PaidWithFormerSpouse.Neither
+  assertion r.estimated_and_from_last_year = $500.00
+  assertion r.estimated_and_from_last_year != $500.49
+  assertion r.estimated_and_from_last_year != $0
+  assertion not r.unsupported
+```
+
+```catala
+#[test]
+declaration scope TestRoundsHalfUp:
+  r scope E.EstimatedPayments
+
+scope TestRoundsHalfUp:
+  definition r.paid_estimated_taxes_or_from_last_year equals true
+  definition r.estimated_tax_payment_writable equals $10.50
+  definition r.paid_estimated_taxes_or_from_last_year_under_different_name equals false
+  definition r.paid_estimated_taxes_with_former_spouse equals E.PaidWithFormerSpouse.Neither
+  assertion r.estimated_and_from_last_year = $11.00
+```
+
+## Name change knockout
+
+```catala
+#[test]
+declaration scope TestNameChangeKnockout:
+  r scope E.EstimatedPayments
+  r_not_paid scope E.EstimatedPayments
+
+scope TestNameChangeKnockout:
+  definition r.paid_estimated_taxes_or_from_last_year equals true
+  definition r.estimated_tax_payment_writable equals $500.00
+  definition r.paid_estimated_taxes_or_from_last_year_under_different_name equals true
+  definition r.paid_estimated_taxes_with_former_spouse equals E.PaidWithFormerSpouse.Neither
+  definition r_not_paid.paid_estimated_taxes_or_from_last_year equals false
+  definition r_not_paid.estimated_tax_payment_writable equals $0
+  definition r_not_paid.paid_estimated_taxes_or_from_last_year_under_different_name equals true
+  definition r_not_paid.paid_estimated_taxes_with_former_spouse equals E.PaidWithFormerSpouse.Neither
+  assertion r.ko_knockout_paid_estimated_taxes_under_different_last_name
+  assertion r.unsupported
+  # the amount is still computed (conventions section 6, item 4)
+  assertion r.estimated_and_from_last_year = $500.00
+  # a "different name" answer is irrelevant when no payment was made
+  assertion not r_not_paid.unsupported
+```
+
+## Former spouse
+
+```catala
+#[test]
+declaration scope TestFormerSpouse:
+  tp scope E.EstimatedPayments
+  sp scope E.EstimatedPayments
+  both scope E.EstimatedPayments
+  none scope E.EstimatedPayments
+
+scope TestFormerSpouse:
+  definition tp.paid_estimated_taxes_or_from_last_year equals true
+  definition tp.estimated_tax_payment_writable equals $1.00
+  definition tp.paid_estimated_taxes_or_from_last_year_under_different_name equals false
+  definition tp.paid_estimated_taxes_with_former_spouse equals E.PaidWithFormerSpouse.TpDid
+  definition sp.paid_estimated_taxes_or_from_last_year equals true
+  definition sp.estimated_tax_payment_writable equals $1.00
+  definition sp.paid_estimated_taxes_or_from_last_year_under_different_name equals false
+  definition sp.paid_estimated_taxes_with_former_spouse equals E.PaidWithFormerSpouse.SpouseDid
+  definition both.paid_estimated_taxes_or_from_last_year equals true
+  definition both.estimated_tax_payment_writable equals $1.00
+  definition both.paid_estimated_taxes_or_from_last_year_under_different_name equals false
+  definition both.paid_estimated_taxes_with_former_spouse equals E.PaidWithFormerSpouse.BothDid
+  definition none.paid_estimated_taxes_or_from_last_year equals true
+  definition none.estimated_tax_payment_writable equals $1.00
+  definition none.paid_estimated_taxes_or_from_last_year_under_different_name equals false
+  definition none.paid_estimated_taxes_with_former_spouse equals E.PaidWithFormerSpouse.Neither
+  assertion tp.tp_paid_estimated_taxes_with_former_spouse
+  assertion not tp.spouse_paid_estimated_taxes_with_former_spouse
+  assertion sp.spouse_paid_estimated_taxes_with_former_spouse
+  assertion not sp.tp_paid_estimated_taxes_with_former_spouse
+  assertion both.tp_paid_estimated_taxes_with_former_spouse
+  assertion both.spouse_paid_estimated_taxes_with_former_spouse
+  assertion not none.some_tp_paid_estimated_taxes_with_former_spouse
+  assertion tp.some_tp_paid_estimated_taxes_with_former_spouse
+  assertion not tp.unsupported
+```

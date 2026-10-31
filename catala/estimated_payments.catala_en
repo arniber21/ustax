@@ -1,0 +1,129 @@
+> Module Estimated_payments
+> Using Rounding as R
+
+# Estimated tax payments: Form 1040 line 26
+
+Catala module for Direct File `estimatedPayments.xml` (issue #25, `scope.md`
+section 3.7). It computes Form 1040 line 26, "2024 estimated tax payments and
+amount applied from 2023 return" (`f1040--2024.pdf` p 2), from the filer's
+yes/no answer and the amount, and it reproduces the one knockout that module
+defines: payments made under a different legal name.
+
+Conventions: `catala/CONVENTIONS.md`. Inputs are complete (section 3), so the
+DF `IsComplete` tests and `estimatedTaxesIsComplete` are not modelled. The
+oracle comparison is `make difftest SCOPE=estimated_payments`.
+
+Facts skipped: `/estimatedTaxesIsComplete` (screen-flow state, section 3),
+`/paidEstimatedTaxesWithFormerSpouseOptions` (UI option list: the enumeration
+below carries all four values, and the MFJ gate on `spouseDid`/`bothDid` is a
+UI restriction), `/primaryFilerDivorcedSpouseTaxID` and
+`/secondaryFilerDivorcedSpouseTaxID` (identity data printed on the form, not
+used in any computation).
+
+## Declarations
+
+```catala-metadata
+declaration enumeration PaidWithFormerSpouse:
+  -- SpouseDid
+  -- BothDid
+  -- TpDid
+  -- Neither
+
+declaration scope EstimatedPayments:
+  # DF: estimatedPayments.xml /paidEstimatedTaxesOrFromLastYear (Writable Boolean)
+  input paid_estimated_taxes_or_from_last_year content boolean
+  # DF: estimatedPayments.xml /estimatedTaxPaymentWritable (Writable Dollar)
+  input estimated_tax_payment_writable content money
+  # DF: estimatedPayments.xml /paidEstimatedTaxesOrFromLastYearUnderDifferentName
+  input paid_estimated_taxes_or_from_last_year_under_different_name content boolean
+  # DF: estimatedPayments.xml /paidEstimatedTaxesWithFormerSpouse (Writable Enum)
+  input paid_estimated_taxes_with_former_spouse content PaidWithFormerSpouse
+
+  # Form 1040 line 26. DF: estimatedPayments.xml /estimatedAndFromLastYear
+  output estimated_and_from_last_year content money
+
+  # DF: estimatedPayments.xml /spousePaidEstimatedTaxesWithFormerSpouse
+  output spouse_paid_estimated_taxes_with_former_spouse condition
+  # DF: estimatedPayments.xml /tpPaidEstimatedTaxesWithFormerSpouse
+  output tp_paid_estimated_taxes_with_former_spouse condition
+  # DF: estimatedPayments.xml /someTPPaidEstimatedTaxesWithFormerSpouse
+  output some_tp_paid_estimated_taxes_with_former_spouse condition
+
+  # DF: estimatedPayments.xml /knockoutPaidEstimatedTaxesUnderDifferentLastName
+  output ko_knockout_paid_estimated_taxes_under_different_last_name condition
+  output unsupported condition
+```
+
+## Form 1040 line 26
+
+The 1040 instructions for line 26 (`i1040gi--2024.pdf`, PDF p 37): "Enter
+any estimated federal income tax payments you made for 2024. Include any
+overpayment that you applied to your 2024 estimated tax from your 2023 return
+or an amended return (Form 1040-X)."
+
+Direct File asks for the amount only when the filer says they paid, and
+rounds the result to whole dollars (`Round` around the `Switch`). With
+complete inputs the "if complete and true" test is the flag itself.
+
+```catala
+scope EstimatedPayments:
+  # Form 1040 line 26, f1040--2024.pdf p 2
+  # DF: estimatedPayments.xml /estimatedAndFromLastYear
+  definition estimated_and_from_last_year equals
+    R.round_dollar of (
+      if paid_estimated_taxes_or_from_last_year
+      then estimated_tax_payment_writable
+      else $0
+    )
+```
+
+## Payments made with a former spouse
+
+The instructions (`i1040gi--2024.pdf`, PDF p 37): "Divorced taxpayers. If you got
+divorced in 2024 and you made joint estimated tax payments with your former
+spouse, enter your former spouse's SSN in the space provided on the front of
+Form 1040 or 1040-SR." These facts only decide which former-spouse SSN fields
+the form shows; they do not change line 26 and Direct File defines no
+knockout for them (`flow.xml` lists only the different-name knockout). They
+are outputs so the caller can see them.
+
+```catala
+scope EstimatedPayments:
+  # DF: estimatedPayments.xml /spousePaidEstimatedTaxesWithFormerSpouse
+  definition spouse_paid_estimated_taxes_with_former_spouse equals
+    paid_estimated_taxes_with_former_spouse = BothDid
+    or paid_estimated_taxes_with_former_spouse = SpouseDid
+
+  # DF: estimatedPayments.xml /tpPaidEstimatedTaxesWithFormerSpouse
+  definition tp_paid_estimated_taxes_with_former_spouse equals
+    paid_estimated_taxes_with_former_spouse = BothDid
+    or paid_estimated_taxes_with_former_spouse = TpDid
+
+  # DF: estimatedPayments.xml /someTPPaidEstimatedTaxesWithFormerSpouse
+  definition some_tp_paid_estimated_taxes_with_former_spouse equals
+    spouse_paid_estimated_taxes_with_former_spouse
+    or tp_paid_estimated_taxes_with_former_spouse
+```
+
+## Name change knockout
+
+The instructions (`i1040gi--2024.pdf`, PDF p 37): "Name change. If you changed your
+name and you made estimated tax payments using your former name, attach a
+statement to the front of Form 1040 or 1040-SR that explains all the payments
+you and your spouse made in 2024 and the name(s) and SSN(s) under which you
+made them." Direct File cannot attach a statement, so it knocks the flow out.
+
+```catala
+scope EstimatedPayments:
+  # DF: estimatedPayments.xml /knockoutPaidEstimatedTaxesUnderDifferentLastName
+  # (flow.xml line 65, aggregated into /flowIsKnockedOut)
+  rule ko_knockout_paid_estimated_taxes_under_different_last_name
+    under condition
+      paid_estimated_taxes_or_from_last_year
+      and paid_estimated_taxes_or_from_last_year_under_different_name
+    consequence fulfilled
+
+  rule unsupported
+    under condition ko_knockout_paid_estimated_taxes_under_different_last_name
+    consequence fulfilled
+```
