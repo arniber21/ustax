@@ -1,0 +1,35 @@
+catala/tests/test_standard_deduction.catala_en
+  s_3031b504518be3::t_314c900bfd0b18 333-334
+  s_3031b504518be3::t_48a3b330605fea 1-26,32-108,110-121,123-134,136-147,149-189,191-202,204-215,217-228,230-266,268-279,281-292,294-305,307-332,335-365
+  s_3031b504518be3::t_3a81d94e3b43d6 27-31,109,122,135,148,190,203,216,229,267,280,293,306
+oracle/gen_standard_deduction_difftest.py
+  s_3031b504518be3::t_d0e8fc4fe93d73 1-51,54-58,60-96,98-122,124,126-131,134-135
+  s_3031b504518be3::t_4caa8d73d9d9b1 132-133
+  s_3031b504518be3::t_fe36301c91eab0 59
+  s_3031b504518be3::t_0ff4b9d5ee37c6 53,123,125
+  s_3031b504518be3::t_ea9733fb4d2b1d 52
+  s_3031b504518be3::t_fb85b41a003ad8 97
+catala/tests/oracle_standard_deduction.catala_en
+  s_3031b504518be3::t_0ff4b9d5ee37c6 1-405
+catala/standard_deduction.catala_en
+  s_3031b504518be3::t_c3661c8923743b 286
+  s_3031b504518be3::t_5931d0fde4f169 105
+  s_3031b504518be3::t_43424240b86b4b 1-104,106-114,119-285,287-294
+  s_3031b504518be3::t_115e1ca4925a91 115-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f25ae38dc27730a9f3fe257d84dad71e21f283c3",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
