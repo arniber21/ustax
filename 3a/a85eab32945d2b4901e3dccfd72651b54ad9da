@@ -1,0 +1,19 @@
+README.md
+  s_0d8e6885dfc713::t_8fb5da9ae6fc2f 12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3aa85eab32945d2b4901e3dccfd72651b54ad9da",
+  "prompts": {},
+  "sessions": {
+    "s_0d8e6885dfc713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e76ffac-8c18-4392-9af1-e389934a7217",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
