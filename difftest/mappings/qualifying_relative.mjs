@@ -83,13 +83,13 @@ export default {
   // Places where we follow the law and DF does not (CONVENTIONS section 8, docs/direct-file-bugs.md).
   knownDivergence: [
     ...['hoh-cdcc-combat-pay', 'hoh-cdcc-multiple-careproviders'].map((s) => ({
-      bug: 'DF-BUG(17-a)', scenario: `${s}~e626fc63-667a-4639-ac65-1e68ce9d0d2e`, path: P + 'qualifyingRelative',
+      bug: 'DF-BUG(15)', scenario: `${s}~e626fc63-667a-4639-ac65-1e68ce9d0d2e`, path: P + 'qualifyingRelative',
       note: "the filer's own qualifying child (4-year-old) also answers the qualifying relative questions; " +
         'IRC 152(d)(1)(D) "not a qualifying child of such taxpayer": we say false, DF true. qcOrQr and ' +
         'eligibleDependent agree.',
     })),
     {
-      bug: 'DF-BUG(17-b)', scenario: '(none in the oracle)', path: P + 'notQualifyingChildTest',
+      bug: 'DF-BUG(16)', scenario: '(none in the oracle)', path: P + 'notQualifyingChildTest',
       note: 'a person who can be the qualifying child of another taxpayer but fails DF\'s gate ' +
         '(askAboutQCOfAnother: not younger than this filer, or fails the gross income test): ' +
         'we use the answer, DF ignores it.',

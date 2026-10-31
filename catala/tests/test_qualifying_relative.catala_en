@@ -490,7 +490,7 @@ scope TestEligibleNotClaimed:
   assertion not d.is_claimed_if_claimable
 ```
 
-### DF-BUG(17-a): the filer's own qualifying child is not a qualifying relative
+### DF-BUG(15): the filer's own qualifying child is not a qualifying relative
 
 Pub 501 p 18, Not a Qualifying Child Test, Example 1: a 22-year-old student
 child who lives with the filer and meets all the qualifying child tests "isn't
@@ -523,7 +523,7 @@ scope TestOwnQualifyingChildNotQualifyingRelative:
   assertion d.eligible_dependent
 ```
 
-### DF-BUG(17-b): an older sibling who is a parent's qualifying child
+### DF-BUG(16): an older sibling who is a parent's qualifying child
 
 The filer, born 2004-03-01, is 20. Their sibling, born 2003-01-10, is 21, a
 full-time student, and lived with the filer 8 months; the sibling had $2,000
@@ -597,7 +597,7 @@ scope TestHousehold:
   assertion h.claimed_dependents_count = 1
 ```
 
-### DF-BUG(17-b), the other side: a "yes" the statute rules out is ignored
+### DF-BUG(16), the other side: a "yes" the statute rules out is ignored
 
 A 9-year-old child who lived with the filer all year but provided over half
 of their own support. They fail the support test of IRC 152(c)(1)(D), so they

@@ -42,7 +42,7 @@ Facts read from outside the person, all inputs here:
 
 The inputs are complete (CONVENTIONS section 3). Where DF's question gates
 disagree with the statute, the statute wins (CONVENTIONS section 8,
-`# DF-BUG(n):` comments; two cases below, `DF-BUG(17-a)` and `DF-BUG(17-b)`).
+`# DF-BUG(n):` comments; two cases below, `DF-BUG(15)` and `DF-BUG(16)`).
 
 Not here, on purpose: the children of divorced or separated parents and
 multiple support agreements (IRC 152(e), 152(d)(3), issue #18 and the
@@ -122,13 +122,13 @@ declaration scope DependentTest:
   # DF: /familyAndHousehold/*/qualifyingChild (copied from `qc`)
   output qualifying_child condition
   # DF: /familyAndHousehold/*/askAboutQCOfAnother (DF's question gate; kept
-  # for comparison, not used by the rules below: DF-BUG(17-b))
+  # for comparison, not used by the rules below: DF-BUG(16))
   output ask_about_qc_of_another condition
   # DF: /familyAndHousehold/*/isQualifyingChildOfAnother (DF's value, with the
   # gate; kept for comparison and for the HoH/EITC modules)
   output is_qualifying_child_of_another condition
   # The person passes the parts of IRC 152(c) that do not depend on the
-  # taxpayer (no DF fact; DF-BUG(17-b))
+  # taxpayer (no DF fact; DF-BUG(16))
   output could_be_qualifying_child_of_some_taxpayer condition
   # DF: /familyAndHousehold/*/notQualifyingChildTest
   output not_qualifying_child_test condition
@@ -236,7 +236,7 @@ DF's `notQualifyingChildTest` only tests "of any other taxpayer", so DF
 calls a qualifying child of the filer who also passes the other three tests a
 qualifying relative. That changes no dependent (`qcOrQr` is true either way)
 but the HoH rules read `qualifyingRelative` directly (`hohQualifyingPerson`,
-lines 3390 and 3404). We follow the statute: `DF-BUG(17-a)`. The oracle shows
+lines 3390 and 3404). We follow the statute: `DF-BUG(15)`. The oracle shows
 it on two persons (a 4-year-old child in `hoh-cdcc-combat-pay` and
 `hoh-cdcc-multiple-careproviders`: DF `qualifyingRelative` true, here false).
 Those children pass DF's qualifying child branch of `hohQualifyingPerson` as
@@ -252,7 +252,7 @@ scope DependentTest:
     and qr_support_test
   consequence fulfilled
 
-  # DF-BUG(17-a): DF's /qualifyingRelative omits "not a qualifying child of
+  # DF-BUG(15): DF's /qualifyingRelative omits "not a qualifying child of
   # such taxpayer" (IRC 152(d)(1)(D); Pub 501 p 18, Example 1). We add it.
   # Status: candidate. Oracle: 2 persons differ on this fact (text above).
   # IRC 152(d)(1); Pub 501 p 18. DF: /familyAndHousehold/*/qualifyingRelative
@@ -309,7 +309,7 @@ depend on who the taxpayer is: the support test (152(c)(1)(D)), the joint
 return test (152(c)(1)(E)), and the age limits without "younger than the
 taxpayer" (152(c)(3): under 19, or a student under 24, or permanently and
 totally disabled). A "yes" for anybody else contradicts the statute and is
-ignored. This is `DF-BUG(17-b)`. The DF valueThe DF value
+ignored. This is `DF-BUG(16)`. The DF valueThe DF value
 `isQualifyingChildOfAnother` (line 2565) is still computed, as the output
 `is_qualifying_child_of_another`, because the HoH and EITC rules (issues #19,
 #26) read it.
@@ -332,7 +332,7 @@ scope DependentTest:
     and (qualifying_child or not qc.qc_of_another_but_not)
   consequence fulfilled
 
-  # DF-BUG(17-b): DF reads the "qualifying child of another taxpayer" answer
+  # DF-BUG(16): DF reads the "qualifying child of another taxpayer" answer
   # only behind askAboutQCOfAnother, which requires the person to pass the age
   # test for this filer ("younger than the taxpayer", IRC 152(c)(3)(A)) and
   # the other qualifying relative or qualifying child tests. The other
@@ -347,7 +347,7 @@ scope DependentTest:
   consequence fulfilled
 
   # IRC 152(c)(1)(D), (E), (3) without "younger than the taxpayer"; no DF fact
-  # (DF-BUG(17-b), text above)
+  # (DF-BUG(16), text above)
   rule could_be_qualifying_child_of_some_taxpayer under condition
     qc.qc_support_test
     and qc.joint_return_test
