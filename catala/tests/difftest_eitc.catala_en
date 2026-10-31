@@ -1,0 +1,160 @@
+# Earned income credit: Filers feeding Eitc (difftest scaffold)
+
+> Using Types
+> Using Filers as F
+> Using Form_w2s as W
+> Using Eitc as E
+
+This scope exists for `make difftest SCOPE=eitc` and as the reference for the
+wiring the orchestrator adds to `Form1040` (issue #26): `Filers.Filers`
+supplies the filer facts of the earned income credit, `Eitc.EarnedIncomeCredit`
+computes line 27. The return figures (line 1z, AGI, interest, combat pay) and
+the children counts are inputs here, taken from the oracle; in the full return
+they come from `Form1040`, `Form_w2s.FormW2s` and the household modules.
+
+```catala
+declaration scope EitcFromFilers:
+  # ---- Filers.Filers inputs (see catala/filers.catala_en) ----
+  input filing_status content Types.FilingStatus
+  input marital_status content F.MaritalStatus
+  input year_of_spouse_death content F.YearOfSpouseDeath
+  input primary_filer content F.FilerAnswers
+  input secondary_filer content F.FilerAnswers
+  input secondary_filer_date_of_death content date
+  input primary_filer_potential_claimer_filed_only_for_refund condition
+  input mfj_required_to_file condition
+  input mfj_dependents_filing_for_credits condition
+  input lived_together_all_year_with_spouse condition
+  input spouse_lived_together_months content F.SpouseLivedTogetherMonths
+  input writable_lived_apart_last_six_months condition
+  input writable_separation_agreement condition
+  input can_file_jointly_year_of_spouse_death condition
+  input in_registered_domestic_partnership condition
+  input filer_residence_and_income_state content Types.ScopedState
+  input spouse_itemizes condition
+  input mfs_living_spouse_filing_return condition
+  input mfs_deceased_spouse_filing_return condition
+  input mfs_spouse_has_gross_income condition
+  input eligible_for_hoh condition
+  # ---- Eitc.EarnedIncomeCredit inputs that Filers does not supply ----
+  input employer_income_subtotal content money
+  input agi content money
+  input tax_exempt_interest content money
+  input interest_income content money
+  input ordinary_dividends content money
+  input capital_gains_or_losses content money
+  input primary_filer_combat_pay content money
+  input mfj_spouse_combat_pay content money
+  input all_combat_pay content money
+  input combat_pay_election_made condition
+  input combat_pay_election content W.CombatPayElection
+  input num_eitc_qualifying_children content integer
+  input num_eitc_qualifying_children_for_calculation content integer
+  input filers_have_valid_ssns_for_eitc condition
+  input eitc_qc_of_another condition
+  input eitc_qc_of_another_required_to_file condition
+  input eitc_qc_of_another_is_filing condition
+  input eitc_qc_of_another_is_filing_refund_only condition
+  input eitc_had_improper_claims condition
+  input eitc_improper_claims_due_to_qc condition
+  input eitc_improper_claim_taken_since_disallowal condition
+  input eitc_received_improper_claims_notice content E.ImproperClaimsNotice
+  input eitc_improper_claims_notice_expired condition
+
+  f scope F.Filers
+  e scope E.EarnedIncomeCredit
+
+  # Oracle checks (DF paths)
+  output earned_income_credit content money
+  output is_receiving_eitc condition
+  output eitc8862_required condition
+  output fails_eitc_qc_test condition
+  output receiving_eitc_while_separated_checkbox condition
+  output unsupported condition
+
+scope EitcFromFilers:
+  definition f.filing_status equals filing_status
+  definition f.marital_status equals marital_status
+  definition f.year_of_spouse_death equals year_of_spouse_death
+  definition f.primary_filer equals primary_filer
+  definition f.secondary_filer equals secondary_filer
+  definition f.secondary_filer_date_of_death equals secondary_filer_date_of_death
+  definition f.primary_filer_potential_claimer_filed_only_for_refund equals
+    primary_filer_potential_claimer_filed_only_for_refund
+  definition f.mfj_required_to_file equals mfj_required_to_file
+  definition f.mfj_dependents_filing_for_credits equals
+    mfj_dependents_filing_for_credits
+  definition f.lived_together_all_year_with_spouse equals
+    lived_together_all_year_with_spouse
+  definition f.spouse_lived_together_months equals spouse_lived_together_months
+  definition f.writable_lived_apart_last_six_months equals
+    writable_lived_apart_last_six_months
+  definition f.writable_separation_agreement equals writable_separation_agreement
+  definition f.can_file_jointly_year_of_spouse_death equals
+    can_file_jointly_year_of_spouse_death
+  definition f.in_registered_domestic_partnership equals
+    in_registered_domestic_partnership
+  definition f.filer_residence_and_income_state equals
+    filer_residence_and_income_state
+  definition f.spouse_itemizes equals spouse_itemizes
+  definition f.mfs_living_spouse_filing_return equals mfs_living_spouse_filing_return
+  definition f.mfs_deceased_spouse_filing_return equals
+    mfs_deceased_spouse_filing_return
+  definition f.mfs_spouse_has_gross_income equals mfs_spouse_has_gross_income
+  definition f.eligible_for_hoh equals eligible_for_hoh
+
+  definition e.filing_status equals filing_status
+  definition e.employer_income_subtotal equals employer_income_subtotal
+  definition e.agi equals agi
+  definition e.tax_exempt_interest equals tax_exempt_interest
+  definition e.interest_income equals interest_income
+  definition e.ordinary_dividends equals ordinary_dividends
+  definition e.capital_gains_or_losses equals capital_gains_or_losses
+  definition e.primary_filer_combat_pay equals primary_filer_combat_pay
+  definition e.mfj_spouse_combat_pay equals mfj_spouse_combat_pay
+  definition e.all_combat_pay equals all_combat_pay
+  definition e.combat_pay_election_made equals combat_pay_election_made
+  definition e.combat_pay_election equals combat_pay_election
+  definition e.num_eitc_qualifying_children equals num_eitc_qualifying_children
+  definition e.num_eitc_qualifying_children_for_calculation equals
+    num_eitc_qualifying_children_for_calculation
+  definition e.is_married equals f.is_married
+  definition e.treat_as_mfs equals f.treat_as_mfs
+  definition e.special_rule_for_separated_spouses equals
+    f.special_rule_for_separated_spouses
+  definition e.treat_filers_as_dependents equals f.treat_filers_as_dependents
+  definition e.is_mfj_dependent equals f.is_mfj_dependent
+  definition e.filers_us_citizen_or_ra_all_year equals
+    f.filers_us_citizen_or_ra_all_year
+  definition e.filers_have_valid_ssns_for_eitc equals filers_have_valid_ssns_for_eitc
+  definition e.primary_filer_age25_or_older_for_eitc equals
+    f.primary_filer_age25_or_older_for_eitc
+  definition e.primary_filer_age64_or_younger_for_eitc equals
+    f.primary_filer_age64_or_younger_for_eitc
+  definition e.secondary_filer_age25_or_older_for_eitc equals
+    f.secondary_filer_age25_or_older_for_eitc
+  definition e.secondary_filer_age64_or_younger_for_eitc equals
+    f.secondary_filer_age64_or_younger_for_eitc
+  definition e.eitc_qc_of_another equals eitc_qc_of_another
+  definition e.eitc_qc_of_another_required_to_file equals
+    eitc_qc_of_another_required_to_file
+  definition e.eitc_qc_of_another_is_filing equals eitc_qc_of_another_is_filing
+  definition e.eitc_qc_of_another_is_filing_refund_only equals
+    eitc_qc_of_another_is_filing_refund_only
+  definition e.eitc_had_improper_claims equals eitc_had_improper_claims
+  definition e.eitc_improper_claims_due_to_qc equals eitc_improper_claims_due_to_qc
+  definition e.eitc_improper_claim_taken_since_disallowal equals
+    eitc_improper_claim_taken_since_disallowal
+  definition e.eitc_received_improper_claims_notice equals
+    eitc_received_improper_claims_notice
+  definition e.eitc_improper_claims_notice_expired equals
+    eitc_improper_claims_notice_expired
+
+  definition earned_income_credit equals e.earned_income_credit
+  definition is_receiving_eitc equals e.is_receiving_eitc
+  definition eitc8862_required equals e.eitc8862_required
+  definition fails_eitc_qc_test equals e.fails_eitc_qc_test
+  definition receiving_eitc_while_separated_checkbox equals
+    e.receiving_eitc_while_separated_checkbox
+  definition unsupported equals e.unsupported
+```

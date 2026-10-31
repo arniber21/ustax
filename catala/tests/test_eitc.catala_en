@@ -1,0 +1,997 @@
+# Tests for the Eitc module (earned income credit, Form 1040 line 27)
+
+Run with `clerk test`. Each named scope is one concrete return worked by hand
+from IRC 32, Rev. Proc. 2023-34 § 3.06 and the 2024 EIC Table of the Form 1040
+instructions (`sources/forms-instructions/i1040gi--2024.pdf` pp 46 to 56), as
+quoted in `catala/eitc.catala_en`. Every scope sets satisfiable inputs (a
+return a filer could file) and asserts the expected credit and, where it
+matters, the rejection of the wrong one. The whole printed table is checked
+row by row in `test_eitc_table_golden.catala_en`; the oracle comparison is
+`make difftest SCOPE=eitc`.
+
+> Using Eitc as E
+> Using Params_2024 as P
+> Using Types
+> Using Form_w2s as W
+
+## Helper: a return with default answers
+
+The default is a single filer aged 40, a citizen with a valid SSN, no
+children, no combat pay, no other income than wages of $8,260 (so AGI is
+$8,260), and nobody who could claim the filer as a qualifying child. A test
+overrides only what it tests.
+
+```catala
+declaration scope Ret:
+  context filing_status content Types.FilingStatus
+  context employer_income_subtotal content money
+  context agi content money
+  context tax_exempt_interest content money
+  context interest_income content money
+  context ordinary_dividends content money
+  context capital_gains_or_losses content money
+  context primary_filer_combat_pay content money
+  context mfj_spouse_combat_pay content money
+  context all_combat_pay content money
+  context combat_pay_election_made condition
+  context combat_pay_election content W.CombatPayElection
+  context num_eitc_qualifying_children content integer
+  context num_eitc_qualifying_children_for_calculation content integer
+  context is_married condition
+  context treat_as_mfs condition
+  context special_rule_for_separated_spouses condition
+  context treat_filers_as_dependents condition
+  context is_mfj_dependent condition
+  context filers_us_citizen_or_ra_all_year condition
+  context filers_have_valid_ssns_for_eitc condition
+  context primary_filer_age25_or_older_for_eitc condition
+  context primary_filer_age64_or_younger_for_eitc condition
+  context secondary_filer_age25_or_older_for_eitc condition
+  context secondary_filer_age64_or_younger_for_eitc condition
+  context eitc_qc_of_another condition
+  context eitc_qc_of_another_required_to_file condition
+  context eitc_qc_of_another_is_filing condition
+  context eitc_qc_of_another_is_filing_refund_only condition
+  context eitc_had_improper_claims condition
+  context eitc_improper_claims_due_to_qc condition
+  context eitc_improper_claim_taken_since_disallowal condition
+  context eitc_received_improper_claims_notice content E.ImproperClaimsNotice
+  context eitc_improper_claims_notice_expired condition
+  e scope E.EarnedIncomeCredit
+  output earned_income_credit content money
+  output eitc_qualified condition
+  output maybe_eligible_for_eitc condition
+  output below_eitc_investment_income_limit condition
+  output eitc_qc_test condition
+  output eitc_notice_test condition
+  output eitc8862_required condition
+  output ko_claimed_spouse_combat_pay_without_mfj condition
+  output unsupported condition
+  output receiving_eitc_while_separated_checkbox condition
+  output amount_without content money
+  output amount_primary content money
+  output amount_secondary content money
+  output amount_both content money
+  output recommendation content W.CombatPayElection
+
+scope Ret:
+  definition filing_status equals Single
+  definition employer_income_subtotal equals $8,260
+  definition agi equals $8,260
+  definition tax_exempt_interest equals $0
+  definition interest_income equals $0
+  definition ordinary_dividends equals $0
+  definition capital_gains_or_losses equals $0
+  definition primary_filer_combat_pay equals $0
+  definition mfj_spouse_combat_pay equals $0
+  definition all_combat_pay equals primary_filer_combat_pay + mfj_spouse_combat_pay
+  definition combat_pay_election_made equals false
+  definition combat_pay_election equals NoCombatPay
+  definition num_eitc_qualifying_children equals 0
+  definition num_eitc_qualifying_children_for_calculation equals
+    num_eitc_qualifying_children
+  definition is_married equals false
+  definition treat_as_mfs equals false
+  definition special_rule_for_separated_spouses equals false
+  definition treat_filers_as_dependents equals false
+  definition is_mfj_dependent equals false
+  definition filers_us_citizen_or_ra_all_year equals true
+  definition filers_have_valid_ssns_for_eitc equals true
+  definition primary_filer_age25_or_older_for_eitc equals true
+  definition primary_filer_age64_or_younger_for_eitc equals true
+  definition secondary_filer_age25_or_older_for_eitc equals true
+  definition secondary_filer_age64_or_younger_for_eitc equals true
+  definition eitc_qc_of_another equals false
+  definition eitc_qc_of_another_required_to_file equals false
+  definition eitc_qc_of_another_is_filing equals false
+  definition eitc_qc_of_another_is_filing_refund_only equals false
+  definition eitc_had_improper_claims equals false
+  definition eitc_improper_claims_due_to_qc equals false
+  definition eitc_improper_claim_taken_since_disallowal equals false
+  definition eitc_received_improper_claims_notice equals NotAnswered
+  definition eitc_improper_claims_notice_expired equals false
+
+  definition e.filing_status equals filing_status
+  definition e.employer_income_subtotal equals employer_income_subtotal
+  definition e.agi equals agi
+  definition e.tax_exempt_interest equals tax_exempt_interest
+  definition e.interest_income equals interest_income
+  definition e.ordinary_dividends equals ordinary_dividends
+  definition e.capital_gains_or_losses equals capital_gains_or_losses
+  definition e.primary_filer_combat_pay equals primary_filer_combat_pay
+  definition e.mfj_spouse_combat_pay equals mfj_spouse_combat_pay
+  definition e.all_combat_pay equals all_combat_pay
+  definition e.combat_pay_election_made equals combat_pay_election_made
+  definition e.combat_pay_election equals combat_pay_election
+  definition e.num_eitc_qualifying_children equals num_eitc_qualifying_children
+  definition e.num_eitc_qualifying_children_for_calculation equals
+    num_eitc_qualifying_children_for_calculation
+  definition e.is_married equals is_married
+  definition e.treat_as_mfs equals treat_as_mfs
+  definition e.special_rule_for_separated_spouses equals
+    special_rule_for_separated_spouses
+  definition e.treat_filers_as_dependents equals treat_filers_as_dependents
+  definition e.is_mfj_dependent equals is_mfj_dependent
+  definition e.filers_us_citizen_or_ra_all_year equals
+    filers_us_citizen_or_ra_all_year
+  definition e.filers_have_valid_ssns_for_eitc equals
+    filers_have_valid_ssns_for_eitc
+  definition e.primary_filer_age25_or_older_for_eitc equals
+    primary_filer_age25_or_older_for_eitc
+  definition e.primary_filer_age64_or_younger_for_eitc equals
+    primary_filer_age64_or_younger_for_eitc
+  definition e.secondary_filer_age25_or_older_for_eitc equals
+    secondary_filer_age25_or_older_for_eitc
+  definition e.secondary_filer_age64_or_younger_for_eitc equals
+    secondary_filer_age64_or_younger_for_eitc
+  definition e.eitc_qc_of_another equals eitc_qc_of_another
+  definition e.eitc_qc_of_another_required_to_file equals
+    eitc_qc_of_another_required_to_file
+  definition e.eitc_qc_of_another_is_filing equals eitc_qc_of_another_is_filing
+  definition e.eitc_qc_of_another_is_filing_refund_only equals
+    eitc_qc_of_another_is_filing_refund_only
+  definition e.eitc_had_improper_claims equals eitc_had_improper_claims
+  definition e.eitc_improper_claims_due_to_qc equals eitc_improper_claims_due_to_qc
+  definition e.eitc_improper_claim_taken_since_disallowal equals
+    eitc_improper_claim_taken_since_disallowal
+  definition e.eitc_received_improper_claims_notice equals
+    eitc_received_improper_claims_notice
+  definition e.eitc_improper_claims_notice_expired equals
+    eitc_improper_claims_notice_expired
+
+  definition earned_income_credit equals e.earned_income_credit
+  definition eitc_qualified equals e.eitc_qualified
+  definition maybe_eligible_for_eitc equals e.maybe_eligible_for_eitc
+  definition below_eitc_investment_income_limit equals
+    e.below_eitc_investment_income_limit
+  definition eitc_qc_test equals e.eitc_qc_test
+  definition eitc_notice_test equals e.eitc_notice_test
+  definition eitc8862_required equals e.eitc8862_required
+  definition ko_claimed_spouse_combat_pay_without_mfj equals
+    e.ko_claimed_spouse_combat_pay_without_mfj
+  definition unsupported equals e.unsupported
+  definition receiving_eitc_while_separated_checkbox equals
+    e.receiving_eitc_while_separated_checkbox
+  definition amount_without equals e.eitc_amount_without_combat_pay
+  definition amount_primary equals e.eitc_amount_with_primary_combat_pay
+  definition amount_secondary equals e.eitc_amount_with_secondary_combat_pay
+  definition amount_both equals e.eitc_amount_with_both_tp_combat_pay
+  definition recommendation equals e.combat_pay_recommendation
+```
+
+## The maximum credit of the four columns (issue #26)
+
+Pub. 596 (2024) and Rev. Proc. 2023-34 § 3.06(1): maximum credit $632, $4,213,
+$6,960, $7,830 at earned income $8,260, $12,390, $17,400, $17,400. The maximum
+is the credit percentage times the earned income amount, rounded to the dollar
+(DF `/maxEitcWith0QualifyingChildren` and the others).
+
+```catala
+#[test]
+declaration scope TestMaximumCreditIsRateTimesEarnedIncomeAmount:
+  output ok condition
+
+scope TestMaximumCreditIsRateTimesEarnedIncomeAmount:
+  rule ok under condition
+    $1 * (round of ((P.eitc_earned_income_amount_0_children / $1)
+                    * P.eitc_credit_percentage_0_children))
+      = P.eitc_max_credit_0_children
+    and $1 * (round of ((P.eitc_earned_income_amount_1_child / $1)
+                        * P.eitc_credit_percentage_1_child))
+      = P.eitc_max_credit_1_child
+    and $1 * (round of ((P.eitc_earned_income_amount_2_or_more_children / $1)
+                        * P.eitc_credit_percentage_2_children))
+      = P.eitc_max_credit_2_children
+    and $1 * (round of ((P.eitc_earned_income_amount_2_or_more_children / $1)
+                        * P.eitc_credit_percentage_3_or_more_children))
+      = P.eitc_max_credit_3_or_more_children
+  consequence fulfilled
+  assertion ok
+```
+
+## Phase-in: income at the end of the phase-in gives the maximum
+
+```catala
+#[test]
+declaration scope TestNoChildrenAtPhaseInEnd:
+  r scope Ret
+
+scope TestNoChildrenAtPhaseInEnd:
+  # Default return: single, no child, $8,260 earned, AGI $8,260.
+  assertion r.earned_income_credit = $632
+  assertion r.eitc_qualified
+  # Known-bad outputs: neither the rounded rate times income, $631.89, nor
+  # anything above the maximum credit.
+  assertion r.earned_income_credit != $631
+  assertion r.earned_income_credit <= P.eitc_max_credit_0_children
+
+#[test]
+declaration scope TestOneChildAtPhaseInEnd:
+  r scope Ret
+
+scope TestOneChildAtPhaseInEnd:
+  definition r.employer_income_subtotal equals $12,390
+  definition r.agi equals $12,390
+  definition r.num_eitc_qualifying_children equals 1
+  # The row 12,350 to 12,400 reaches the maximum: the middle 12,375 gives
+  # $4,207.50 alone, but 12,399 gives $4,215.66 >= $4,213 (the "+24" case).
+  assertion r.earned_income_credit = $4,213
+  assertion r.earned_income_credit != $4,208
+
+#[test]
+declaration scope TestOneChildJustBelowPhaseInRow:
+  r scope Ret
+
+scope TestOneChildJustBelowPhaseInRow:
+  definition r.employer_income_subtotal equals $12,349
+  definition r.agi equals $12,349
+  definition r.num_eitc_qualifying_children equals 1
+  # Row 12,300 to 12,350: middle 12,325 gives 0.34 * 12,325 = $4,190.50, and
+  # 12,349 * 0.34 = $4,198.66 < $4,213, so the row stays below the maximum.
+  # EIC Table: $4,191 (rounded half up).
+  assertion r.earned_income_credit = $4,191
+
+#[test]
+declaration scope TestTwoChildrenAtPhaseInEnd:
+  r scope Ret
+
+scope TestTwoChildrenAtPhaseInEnd:
+  definition r.employer_income_subtotal equals $17,400
+  definition r.agi equals $17,400
+  definition r.num_eitc_qualifying_children equals 2
+  assertion r.earned_income_credit = $6,960
+
+#[test]
+declaration scope TestThreeChildrenAtPhaseInEnd:
+  r scope Ret
+
+scope TestThreeChildrenAtPhaseInEnd:
+  definition r.employer_income_subtotal equals $17,400
+  definition r.agi equals $17,400
+  definition r.num_eitc_qualifying_children equals 3
+  assertion r.earned_income_credit = $7,830
+
+#[test]
+declaration scope TestFourChildrenSameAsThree:
+  r scope Ret
+
+scope TestFourChildrenSameAsThree:
+  definition r.employer_income_subtotal equals $17,400
+  definition r.agi equals $17,400
+  definition r.num_eitc_qualifying_children equals 4
+  # IRC 32(b)(1): "3 or more qualifying children"
+  assertion r.earned_income_credit = $7,830
+```
+
+## Phase-out: zero at each completed phaseout amount, small just below
+
+Rev. Proc. 2023-34 § 3.06(1) "Completed Phaseout Amount" and the footnotes of
+the 2024 EIC Table (pp 49 to 56): for example "at least $18,550 but less than
+$18,591 ... your credit is $2. If ... $18,591 or more ... you can't take the
+credit."
+
+```catala
+#[test]
+declaration scope TestCompletedPhaseoutSingle:
+  z0 scope Ret
+  z1 scope Ret
+  z2 scope Ret
+  z3 scope Ret
+  b0 scope Ret
+  b1 scope Ret
+  b2 scope Ret
+  b3 scope Ret
+
+scope TestCompletedPhaseoutSingle:
+  definition z0.employer_income_subtotal equals $18,591
+  definition z0.agi equals $18,591
+  definition z1.employer_income_subtotal equals $49,084
+  definition z1.agi equals $49,084
+  definition z1.num_eitc_qualifying_children equals 1
+  definition z2.employer_income_subtotal equals $55,768
+  definition z2.agi equals $55,768
+  definition z2.num_eitc_qualifying_children equals 2
+  definition z3.employer_income_subtotal equals $59,899
+  definition z3.agi equals $59,899
+  definition z3.num_eitc_qualifying_children equals 3
+  assertion z0.earned_income_credit = $0
+  assertion z1.earned_income_credit = $0
+  assertion z2.earned_income_credit = $0
+  assertion z3.earned_income_credit = $0
+  assertion not z0.maybe_eligible_for_eitc
+  assertion not z3.maybe_eligible_for_eitc
+  # One dollar less: the last row of the table prints the footnote values.
+  definition b0.employer_income_subtotal equals $18,590
+  definition b0.agi equals $18,590
+  definition b1.employer_income_subtotal equals $49,083
+  definition b1.agi equals $49,083
+  definition b1.num_eitc_qualifying_children equals 1
+  definition b2.employer_income_subtotal equals $55,767
+  definition b2.agi equals $55,767
+  definition b2.num_eitc_qualifying_children equals 2
+  definition b3.employer_income_subtotal equals $59,898
+  definition b3.agi equals $59,898
+  definition b3.num_eitc_qualifying_children equals 3
+  assertion b0.earned_income_credit = $2
+  assertion b1.earned_income_credit = $3
+  assertion b2.earned_income_credit = $2
+  assertion b3.earned_income_credit = $5
+
+#[test]
+declaration scope TestCompletedPhaseoutJoint:
+  z0 scope Ret
+  z1 scope Ret
+  z2 scope Ret
+  z3 scope Ret
+  b0 scope Ret
+  b1 scope Ret
+  b2 scope Ret
+  b3 scope Ret
+
+scope TestCompletedPhaseoutJoint:
+  definition z0.filing_status equals MarriedFilingJointly
+  definition z0.is_married equals true
+  definition z0.employer_income_subtotal equals $25,511
+  definition z0.agi equals $25,511
+  definition z1.filing_status equals MarriedFilingJointly
+  definition z1.is_married equals true
+  definition z1.employer_income_subtotal equals $56,004
+  definition z1.agi equals $56,004
+  definition z1.num_eitc_qualifying_children equals 1
+  definition z2.filing_status equals MarriedFilingJointly
+  definition z2.is_married equals true
+  definition z2.employer_income_subtotal equals $62,688
+  definition z2.agi equals $62,688
+  definition z2.num_eitc_qualifying_children equals 2
+  definition z3.filing_status equals MarriedFilingJointly
+  definition z3.is_married equals true
+  definition z3.employer_income_subtotal equals $66,819
+  definition z3.agi equals $66,819
+  definition z3.num_eitc_qualifying_children equals 3
+  assertion z0.earned_income_credit = $0
+  assertion z1.earned_income_credit = $0
+  assertion z2.earned_income_credit = $0
+  assertion z3.earned_income_credit = $0
+  definition b0.filing_status equals MarriedFilingJointly
+  definition b0.is_married equals true
+  definition b0.employer_income_subtotal equals $25,510
+  definition b0.agi equals $25,510
+  definition b1.filing_status equals MarriedFilingJointly
+  definition b1.is_married equals true
+  definition b1.employer_income_subtotal equals $56,003
+  definition b1.agi equals $56,003
+  definition b1.num_eitc_qualifying_children equals 1
+  definition b2.filing_status equals MarriedFilingJointly
+  definition b2.is_married equals true
+  definition b2.employer_income_subtotal equals $62,687
+  definition b2.agi equals $62,687
+  definition b2.num_eitc_qualifying_children equals 2
+  definition b3.filing_status equals MarriedFilingJointly
+  definition b3.is_married equals true
+  definition b3.employer_income_subtotal equals $66,818
+  definition b3.agi equals $66,818
+  definition b3.num_eitc_qualifying_children equals 3
+  assertion b0.earned_income_credit = $0
+  assertion b1.earned_income_credit = $0
+  assertion b2.earned_income_credit = $4
+  assertion b3.earned_income_credit = $2
+```
+
+## Single versus married filing jointly thresholds
+
+Rev. Proc. 2023-34 § 3.06(1): the joint threshold is higher ($17,250 against
+$10,330 with no child, $29,640 against $22,720 with children).
+
+```catala
+#[test]
+declaration scope TestJointVersusSingleNoChildren:
+  s scope Ret
+  j scope Ret
+
+scope TestJointVersusSingleNoChildren:
+  definition s.employer_income_subtotal equals $20,000
+  definition s.agi equals $20,000
+  definition j.filing_status equals MarriedFilingJointly
+  definition j.is_married equals true
+  definition j.employer_income_subtotal equals $20,000
+  definition j.agi equals $20,000
+  # Single: $20,000 is above the completed phaseout amount $18,591.
+  assertion s.earned_income_credit = $0
+  # Joint: 632 - 7.65% * (20,025 - 17,250) = 419.7, EIC Table $420.
+  assertion j.earned_income_credit = $420
+
+#[test]
+declaration scope TestJointVersusSingleOneChild:
+  s scope Ret
+  j scope Ret
+
+scope TestJointVersusSingleOneChild:
+  definition s.employer_income_subtotal equals $30,000
+  definition s.agi equals $30,000
+  definition s.num_eitc_qualifying_children equals 1
+  definition j.filing_status equals MarriedFilingJointly
+  definition j.is_married equals true
+  definition j.employer_income_subtotal equals $30,000
+  definition j.agi equals $30,000
+  definition j.num_eitc_qualifying_children equals 1
+  # Single: 4,213 - 15.98% * (30,025 - 22,720) = 3,045.6 -> but the row
+  # middle is capped by nothing; EIC Table (single, 1 child, 30,000-30,050): 3,046.
+  assertion s.earned_income_credit = $3,046
+  # Joint: 4,213 - 15.98% * (30,025 - 29,640) = 4,151.5 -> $4,151.
+  assertion j.earned_income_credit = $4,151
+  assertion j.earned_income_credit > s.earned_income_credit
+
+#[test]
+declaration scope TestAgiAboveEarnedIncome:
+  r scope Ret
+
+scope TestAgiAboveEarnedIncome:
+  # IRC 32(a)(2)(B): the phase-out uses the greater of AGI and earned income.
+  # One child, earned income $12,390 (the maximum $4,213 before the phase-out)
+  # and AGI $40,000 from unemployment pay: 4,213 - 15.98% * (40,025 - 22,720)
+  # = 1,447.6 -> $1,448. Looking up earned income alone would give $4,213.
+  definition r.employer_income_subtotal equals $12,390
+  definition r.agi equals $40,000
+  definition r.num_eitc_qualifying_children equals 1
+  assertion r.earned_income_credit = $1,448
+  assertion r.earned_income_credit != $4,213
+
+#[test]
+declaration scope TestLowEarnedIncomeHighAgi:
+  r scope Ret
+
+scope TestLowEarnedIncomeHighAgi:
+  # Earned income $5,000 (phase-in: 34% * 5,025 = 1,708.5 -> $1,709) and AGI
+  # $30,000. The AGI-based amount is 4,213 - 15.98% * (30,025 - 22,720) =
+  # 3,045.6, larger, so the smaller (earned income) amount is the credit.
+  definition r.employer_income_subtotal equals $5,000
+  definition r.agi equals $30,000
+  definition r.num_eitc_qualifying_children equals 1
+  assertion r.earned_income_credit = $1,709
+```
+
+## Investment income
+
+Rev. Proc. 2023-34 § 3.06(2): not allowed if investment income "exceeds
+$11,600".
+
+```catala
+#[test]
+declaration scope TestInvestmentIncomeAtLimit:
+  r scope Ret
+
+scope TestInvestmentIncomeAtLimit:
+  definition r.employer_income_subtotal equals $20,000
+  definition r.num_eitc_qualifying_children equals 1
+  definition r.interest_income equals $11,600
+  definition r.agi equals $31,600
+  assertion r.below_eitc_investment_income_limit
+  assertion r.earned_income_credit = $2,790
+
+#[test]
+declaration scope TestInvestmentIncomeOverLimit:
+  r scope Ret
+
+scope TestInvestmentIncomeOverLimit:
+  definition r.employer_income_subtotal equals $20,000
+  definition r.num_eitc_qualifying_children equals 1
+  definition r.interest_income equals $11,601
+  definition r.agi equals $31,601
+  assertion not r.below_eitc_investment_income_limit
+  assertion not r.eitc_qualified
+  assertion r.earned_income_credit = $0
+  assertion r.earned_income_credit != $2,790
+
+#[test]
+declaration scope TestInvestmentIncomeCountsEveryLine:
+  a scope Ret
+  b scope Ret
+  c scope Ret
+  d scope Ret
+
+scope TestInvestmentIncomeCountsEveryLine:
+  # Lines 2a, 2b, 3b and 7 (Pub 596 p 6 Worksheet 1) add up; a capital loss
+  # is not subtracted ("enter -0-").
+  definition a.employer_income_subtotal equals $20,000
+  definition a.num_eitc_qualifying_children equals 1
+  definition a.tax_exempt_interest equals $5,000
+  definition a.interest_income equals $3,000
+  definition a.ordinary_dividends equals $2,000
+  definition a.capital_gains_or_losses equals $1,601
+  definition a.agi equals $26,601
+  assertion not a.below_eitc_investment_income_limit
+  definition b.employer_income_subtotal equals $20,000
+  definition b.num_eitc_qualifying_children equals 1
+  definition b.tax_exempt_interest equals $5,000
+  definition b.interest_income equals $3,000
+  definition b.ordinary_dividends equals $2,000
+  definition b.capital_gains_or_losses equals $1,600
+  definition b.agi equals $26,600
+  assertion b.below_eitc_investment_income_limit
+  definition c.employer_income_subtotal equals $20,000
+  definition c.num_eitc_qualifying_children equals 1
+  definition c.interest_income equals $11,600
+  definition c.capital_gains_or_losses equals -$3,000
+  definition c.agi equals $28,600
+  assertion c.below_eitc_investment_income_limit
+  assertion c.eitc_qualified
+  # A capital loss of any size leaves the investment income unchanged.
+  definition d.employer_income_subtotal equals $20,000
+  definition d.num_eitc_qualifying_children equals 1
+  definition d.interest_income equals $11,601
+  definition d.capital_gains_or_losses equals -$3,000
+  definition d.agi equals $28,601
+  assertion not d.below_eitc_investment_income_limit
+```
+
+## Age test without a qualifying child
+
+IRC 32(c)(1)(A)(ii)(II): "has attained age 25 but not attained age 65".
+
+```catala
+#[test]
+declaration scope TestNoChildAge24:
+  r scope Ret
+
+scope TestNoChildAge24:
+  definition r.primary_filer_age25_or_older_for_eitc equals false
+  assertion not r.maybe_eligible_for_eitc
+  assertion r.earned_income_credit = $0
+  assertion r.earned_income_credit != $632
+
+#[test]
+declaration scope TestNoChildAge25AndAge65:
+  y scope Ret
+  o scope Ret
+  c scope Ret
+
+scope TestNoChildAge25AndAge65:
+  # Age 25: eligible. Age 65: not (the 65th birthday). A 24-year-old with a
+  # qualifying child is eligible (IRC 32(c)(1)(A)(i)).
+  assertion y.earned_income_credit = $632
+  definition o.primary_filer_age64_or_younger_for_eitc equals false
+  assertion o.earned_income_credit = $0
+  definition c.primary_filer_age25_or_older_for_eitc equals false
+  definition c.num_eitc_qualifying_children equals 1
+  definition c.employer_income_subtotal equals $12,390
+  definition c.agi equals $12,390
+  assertion c.earned_income_credit = $4,213
+
+#[test]
+declaration scope TestJointNoChildOneSpouseInAgeRange:
+  r scope Ret
+
+scope TestJointNoChildOneSpouseInAgeRange:
+  # IRC 32(c)(1)(A)(ii)(II): "either the individual or the individual's
+  # spouse". The primary filer is 24, the spouse 30.
+  definition r.filing_status equals MarriedFilingJointly
+  definition r.is_married equals true
+  definition r.primary_filer_age25_or_older_for_eitc equals false
+  assertion r.earned_income_credit = $632
+
+#[test]
+declaration scope TestNoChildDependent:
+  r scope Ret
+
+scope TestNoChildDependent:
+  # IRC 32(c)(1)(A)(ii)(III): not a dependent of another taxpayer.
+  definition r.treat_filers_as_dependents equals true
+  assertion r.earned_income_credit = $0
+```
+
+## Who may claim
+
+```catala
+#[test]
+declaration scope TestFilerLevelRequirements:
+  ssn scope Ret
+  cit scope Ret
+  mfjdep scope Ret
+
+scope TestFilerLevelRequirements:
+  # IRC 32(c)(1)(E), (m): a valid SSN; 32(c)(1)(D): resident or citizen.
+  definition ssn.filers_have_valid_ssns_for_eitc equals false
+  assertion ssn.earned_income_credit = $0
+  definition cit.filers_us_citizen_or_ra_all_year equals false
+  assertion cit.earned_income_credit = $0
+  # DF bans a joint return of two dependents.
+  definition mfjdep.filing_status equals MarriedFilingJointly
+  definition mfjdep.is_married equals true
+  definition mfjdep.is_mfj_dependent equals true
+  assertion mfjdep.earned_income_credit = $0
+
+#[test]
+declaration scope TestChildlessMarriedFilingSeparately:
+  r scope Ret
+
+scope TestChildlessMarriedFilingSeparately:
+  # IRC 32(d)(1): a married individual claims the credit only on a joint
+  # return. Pub 596: married filing separately without the separated-spouse
+  # rule gets nothing.
+  definition r.filing_status equals MarriedFilingSeparately
+  definition r.is_married equals true
+  definition r.treat_as_mfs equals true
+  assertion r.earned_income_credit = $0
+
+#[test]
+declaration scope TestSeparatedSpouseRule:
+  with_child scope Ret
+  no_child scope Ret
+  no_rule scope Ret
+
+scope TestSeparatedSpouseRule:
+  # IRC 32(d)(2)(B): a married filer who lived apart the last 6 months and
+  # lives with a qualifying child more than half the year is not treated as
+  # married and uses the single column: 4,213 at $12,390.
+  definition with_child.filing_status equals MarriedFilingSeparately
+  definition with_child.is_married equals true
+  definition with_child.treat_as_mfs equals true
+  definition with_child.special_rule_for_separated_spouses equals true
+  definition with_child.num_eitc_qualifying_children equals 1
+  definition with_child.employer_income_subtotal equals $12,390
+  definition with_child.agi equals $12,390
+  assertion with_child.earned_income_credit = $4,213
+  assertion with_child.receiving_eitc_while_separated_checkbox
+  # The rule requires a qualifying child.
+  definition no_child.filing_status equals MarriedFilingSeparately
+  definition no_child.is_married equals true
+  definition no_child.treat_as_mfs equals true
+  definition no_child.special_rule_for_separated_spouses equals true
+  assertion no_child.earned_income_credit = $0
+  # A child, but the spouses lived together.
+  definition no_rule.filing_status equals MarriedFilingSeparately
+  definition no_rule.is_married equals true
+  definition no_rule.treat_as_mfs equals true
+  definition no_rule.num_eitc_qualifying_children equals 1
+  definition no_rule.employer_income_subtotal equals $12,390
+  definition no_rule.agi equals $12,390
+  assertion no_rule.earned_income_credit = $0
+
+#[test]
+declaration scope TestChildWithoutValidSsn:
+  r scope Ret
+
+scope TestChildWithoutValidSsn:
+  # A qualifying child who has no valid SSN makes the filer eligible
+  # (IRC 32(c)(1)(A)(i)) but is not counted in the table (IRC 32(c)(3)(D)):
+  # the zero-child column applies. EIC Table, single, 0 children, $8,260: $632.
+  definition r.num_eitc_qualifying_children equals 1
+  definition r.num_eitc_qualifying_children_for_calculation equals 0
+  assertion r.eitc_qualified
+  assertion r.earned_income_credit = $632
+  assertion r.earned_income_credit != $4,213
+```
+
+## Qualifying child of another taxpayer
+
+IRC 32(c)(1)(B). Form 1040 instructions, EIC Step 3.
+
+```catala
+#[test]
+declaration scope TestQualifyingChildOfAnother:
+  not_qc scope Ret
+  must_file scope Ret
+  not_filing scope Ret
+  refund_only scope Ret
+  files_fully scope Ret
+
+scope TestQualifyingChildOfAnother:
+  assertion not_qc.eitc_qc_test
+  assertion not_qc.earned_income_credit = $632
+  # The filer is someone's qualifying child and that person must file: no credit.
+  definition must_file.eitc_qc_of_another equals true
+  definition must_file.eitc_qc_of_another_required_to_file equals true
+  assertion not must_file.eitc_qc_test
+  assertion must_file.earned_income_credit = $0
+  # Not required to file and does not file: the filer is not treated as a qc.
+  definition not_filing.eitc_qc_of_another equals true
+  assertion not_filing.eitc_qc_test
+  assertion not_filing.earned_income_credit = $632
+  # Not required to file, files only for a refund.
+  definition refund_only.eitc_qc_of_another equals true
+  definition refund_only.eitc_qc_of_another_is_filing equals true
+  definition refund_only.eitc_qc_of_another_is_filing_refund_only equals true
+  assertion refund_only.earned_income_credit = $632
+  # Not required to file, but files to claim more than a refund.
+  definition files_fully.eitc_qc_of_another equals true
+  definition files_fully.eitc_qc_of_another_is_filing equals true
+  assertion not files_fully.eitc_qc_test
+  assertion files_fully.earned_income_credit = $0
+```
+
+## Improper claims (IRC 32(k)) and Form 8862
+
+```catala
+#[test]
+declaration scope TestImproperClaims:
+  banned scope Ret
+  expired scope Ret
+  zero scope Ret
+  qc_only scope Ret
+  taken scope Ret
+
+scope TestImproperClaims:
+  # EITC disallowed and a two-year ban that has not run out: no credit.
+  definition banned.eitc_had_improper_claims equals true
+  definition banned.eitc_received_improper_claims_notice equals TwoYears
+  assertion not banned.eitc_notice_test
+  assertion banned.earned_income_credit = $0
+  # The ban has run out: the credit is allowed and Form 8862 is required.
+  definition expired.eitc_had_improper_claims equals true
+  definition expired.eitc_received_improper_claims_notice equals TwoYears
+  definition expired.eitc_improper_claims_notice_expired equals true
+  assertion expired.earned_income_credit = $632
+  assertion expired.eitc8862_required
+  # The notice carried no ban: allowed, Form 8862 required.
+  definition zero.eitc_had_improper_claims equals true
+  definition zero.eitc_received_improper_claims_notice equals ZeroYears
+  assertion zero.earned_income_credit = $632
+  assertion zero.eitc8862_required
+  # Disallowed only because of a qualifying child, and there is none now.
+  definition qc_only.eitc_had_improper_claims equals true
+  definition qc_only.eitc_improper_claims_due_to_qc equals true
+  assertion qc_only.earned_income_credit = $632
+  assertion not qc_only.eitc8862_required
+  # Claimed the credit again since the disallowal: nothing further is asked.
+  definition taken.eitc_had_improper_claims equals true
+  definition taken.eitc_improper_claim_taken_since_disallowal equals true
+  assertion taken.earned_income_credit = $632
+  assertion not taken.eitc8862_required
+
+#[test]
+declaration scope TestNoImproperClaimsNo8862:
+  r scope Ret
+
+scope TestNoImproperClaimsNo8862:
+  assertion r.earned_income_credit = $632
+  assertion not r.eitc8862_required
+```
+
+## Combat pay
+
+IRC 32(c)(2)(B)(vi); Pub. 596 pp 7 and 8.
+
+```catala
+#[test]
+declaration scope TestCombatPayRaisesCredit:
+  default scope Ret
+  elected scope Ret
+  declined scope Ret
+
+scope TestCombatPayRaisesCredit:
+  # Earned income $7,000 and $3,000 of nontaxable combat pay (not in AGI).
+  # Without it: 7.65% * 7,025 = 537.4 -> $537. With it, earned income $10,000
+  # reaches the $632 maximum (the phase-out starts at $10,330): $632.
+  definition default.employer_income_subtotal equals $7,000
+  definition default.agi equals $7,000
+  definition default.primary_filer_combat_pay equals $3,000
+  assertion default.amount_without = $537
+  assertion default.amount_primary = $632
+  assertion default.recommendation = UsePrimaryCombatPay
+  # No election made: DF uses the recommendation.
+  assertion default.earned_income_credit = $632
+  definition elected.employer_income_subtotal equals $7,000
+  definition elected.agi equals $7,000
+  definition elected.primary_filer_combat_pay equals $3,000
+  definition elected.combat_pay_election_made equals true
+  definition elected.combat_pay_election equals UsePrimaryCombatPay
+  assertion elected.earned_income_credit = $632
+  # The filer may decline: the no-combat-pay amount is used.
+  definition declined.employer_income_subtotal equals $7,000
+  definition declined.agi equals $7,000
+  definition declined.primary_filer_combat_pay equals $3,000
+  definition declined.combat_pay_election_made equals true
+  definition declined.combat_pay_election equals NoCombatPay
+  assertion declined.earned_income_credit = $537
+
+#[test]
+declaration scope TestCombatPayLowersCredit:
+  default scope Ret
+  forced scope Ret
+
+scope TestCombatPayLowersCredit:
+  # Earned income $10,000 and $5,000 of combat pay. Without it $632; with it,
+  # earned income $15,000 is in the phase-out: 632 - 7.65% * (15,025 - 10,330)
+  # = $273. The recommendation is not to elect.
+  definition default.employer_income_subtotal equals $10,000
+  definition default.agi equals $10,000
+  definition default.primary_filer_combat_pay equals $5,000
+  assertion default.amount_without = $632
+  assertion default.amount_primary = $273
+  assertion default.recommendation = NoCombatPay
+  assertion default.earned_income_credit = $632
+  # An election the filer made is honoured even if it lowers the credit.
+  definition forced.employer_income_subtotal equals $10,000
+  definition forced.agi equals $10,000
+  definition forced.primary_filer_combat_pay equals $5,000
+  definition forced.combat_pay_election_made equals true
+  definition forced.combat_pay_election equals UsePrimaryCombatPay
+  assertion forced.earned_income_credit = $273
+  assertion forced.earned_income_credit != $632
+
+#[test]
+declaration scope TestCombatPayBothSpouses:
+  none scope Ret
+  both scope Ret
+  only_primary scope Ret
+  only_spouse scope Ret
+
+scope TestCombatPayBothSpouses:
+  # Joint return with one child, earned income $10,000, $1,500 of combat pay
+  # each. Without combat pay: 34% * 10,025 = 3,408.5 -> $3,409. Primary's
+  # alone (11,500): 34% * 11,525 = 3,918.5 -> $3,919. Both (13,000): the
+  # maximum $4,213. The recommendation is both.
+  definition none.filing_status equals MarriedFilingJointly
+  definition none.is_married equals true
+  definition none.num_eitc_qualifying_children equals 1
+  definition none.employer_income_subtotal equals $10,000
+  definition none.agi equals $10,000
+  assertion none.earned_income_credit = $3,409
+  definition both.filing_status equals MarriedFilingJointly
+  definition both.is_married equals true
+  definition both.num_eitc_qualifying_children equals 1
+  definition both.employer_income_subtotal equals $10,000
+  definition both.agi equals $10,000
+  definition both.primary_filer_combat_pay equals $1,500
+  definition both.mfj_spouse_combat_pay equals $1,500
+  assertion both.amount_without = $3,409
+  assertion both.amount_primary = $3,919
+  assertion both.amount_secondary = $3,919
+  assertion both.amount_both = $4,213
+  assertion both.recommendation = UseBothCombatPay
+  assertion both.earned_income_credit = $4,213
+  # Only the primary filer's combat pay, elected.
+  definition only_primary.filing_status equals MarriedFilingJointly
+  definition only_primary.is_married equals true
+  definition only_primary.num_eitc_qualifying_children equals 1
+  definition only_primary.employer_income_subtotal equals $10,000
+  definition only_primary.agi equals $10,000
+  definition only_primary.primary_filer_combat_pay equals $1,500
+  definition only_primary.mfj_spouse_combat_pay equals $1,500
+  definition only_primary.combat_pay_election_made equals true
+  definition only_primary.combat_pay_election equals UsePrimaryNotSpouseCombatPay
+  assertion only_primary.earned_income_credit = $3,919
+  definition only_spouse.filing_status equals MarriedFilingJointly
+  definition only_spouse.is_married equals true
+  definition only_spouse.num_eitc_qualifying_children equals 1
+  definition only_spouse.employer_income_subtotal equals $10,000
+  definition only_spouse.agi equals $10,000
+  definition only_spouse.primary_filer_combat_pay equals $1,500
+  definition only_spouse.mfj_spouse_combat_pay equals $1,500
+  definition only_spouse.combat_pay_election_made equals true
+  definition only_spouse.combat_pay_election equals UseSpouseNotPrimaryCombatPay
+  assertion only_spouse.earned_income_credit = $3,919
+
+#[test]
+declaration scope TestCombatPayOnlySpouse:
+  r scope Ret
+
+scope TestCombatPayOnlySpouse:
+  # Only the spouse has combat pay: the recommendation is the spouse's.
+  definition r.filing_status equals MarriedFilingJointly
+  definition r.is_married equals true
+  definition r.num_eitc_qualifying_children equals 1
+  definition r.employer_income_subtotal equals $10,000
+  definition r.agi equals $10,000
+  definition r.mfj_spouse_combat_pay equals $2,390
+  assertion r.recommendation = UseSpouseCombatPay
+  # 10,000 + 2,390 = 12,390: the maximum.
+  assertion r.earned_income_credit = $4,213
+
+#[test]
+declaration scope TestCombatPayAloneIsNotEarnedIncome:
+  r scope Ret
+
+scope TestCombatPayAloneIsNotEarnedIncome:
+  # DF-BUG(17): earned income $0 and $5,000 of combat pay not elected. The
+  # credit is a percentage of earned income, so it is $0 (DF gives $2).
+  definition r.employer_income_subtotal equals $0
+  definition r.agi equals $0
+  definition r.primary_filer_combat_pay equals $5,000
+  definition r.combat_pay_election_made equals true
+  definition r.combat_pay_election equals NoCombatPay
+  assertion r.earned_income_credit = $0
+
+#[test]
+declaration scope TestSpouseCombatPayWithoutJointReturn:
+  r scope Ret
+
+scope TestSpouseCombatPayWithoutJointReturn:
+  # DF `/claimedSpouseCombatPayWithoutMFJ`: knockout.
+  definition r.combat_pay_election_made equals true
+  definition r.combat_pay_election equals UseSpouseCombatPay
+  assertion r.ko_claimed_spouse_combat_pay_without_mfj
+  assertion r.unsupported
+
+#[test]
+declaration scope TestNoKnockoutOnPlainReturn:
+  r scope Ret
+
+scope TestNoKnockoutOnPlainReturn:
+  assertion not r.unsupported
+```
+
+## Direct File's `Round`, half up
+
+A row middle whose credit ends in exactly .5 rounds up
+(`R.round_dollar` is half away from zero).
+
+```catala
+#[test]
+declaration scope TestRoundHalfUp:
+  r scope Ret
+
+scope TestRoundHalfUp:
+  # One child, $5,000: 0.34 * 5,025 = 1,708.5 exactly. EIC Table: $1,709.
+  definition r.employer_income_subtotal equals $5,000
+  definition r.agi equals $5,000
+  definition r.num_eitc_qualifying_children equals 1
+  assertion r.earned_income_credit = $1,709
+  assertion r.earned_income_credit != $1,708
+```
+
+## The table alone (`EitcTable`)
+
+```catala
+#[test]
+declaration scope TestTableRowMiddles:
+  output ok condition
+  internal t0 content E.EitcTable
+  internal t1 content E.EitcTable
+
+scope TestTableRowMiddles:
+  # The cents are dropped before the row is found; the row middle is bottom +
+  # $25, as DF `StepwiseMultiply(x, 50/50) + 25`.
+  definition t0 equals output of E.EitcTable with {
+    -- earned_income: $12,399.99 -- agi: $12,399.99 -- is_mfj: false
+    -- qualifying_children: 1 }
+  definition t1 equals output of E.EitcTable with {
+    -- earned_income: $12,400 -- agi: $12,400 -- is_mfj: false
+    -- qualifying_children: 1 }
+  assertion t0.rounded_earned_income = $12,375
+  assertion t1.rounded_earned_income = $12,425
+  assertion t0.rounded_agi = $12,375
+  assertion t0.row_reaches_max_credit
+  assertion t0.amount = $4,213
+  assertion t1.amount = $4,213
+  rule ok under condition t0.amount = t1.amount
+  consequence fulfilled
+
+#[test]
+declaration scope TestTableNoCredit:
+  output ok condition
+  internal zero content E.EitcTable
+  internal negative content E.EitcTable
+
+scope TestTableNoCredit:
+  definition zero equals output of E.EitcTable with {
+    -- earned_income: $0 -- agi: $0 -- is_mfj: false -- qualifying_children: 0 }
+  definition negative equals output of E.EitcTable with {
+    -- earned_income: -$100 -- agi: -$100 -- is_mfj: false
+    -- qualifying_children: 0 }
+  assertion zero.no_credit
+  assertion zero.amount = $0
+  assertion negative.amount = $0
+  rule ok under condition zero.no_credit
+  consequence fulfilled
+```
