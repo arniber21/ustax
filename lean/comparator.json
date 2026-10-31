@@ -1,0 +1,11 @@
+{
+  "challenge_module": "UsTax.Comparator.Challenge",
+  "solution_module": "UsTax.Money.Lemmas",
+  "theorem_names": [
+    "UsTax.Money.roundDollar_eq",
+    "UsTax.Money.roundDollar_mono",
+    "UsTax.Money.mulRate_le_self"
+  ],
+  "definition_names": [],
+  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
+}

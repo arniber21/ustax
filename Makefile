@@ -22,6 +22,13 @@ forensics:   ## run forensics extractor on lean/, writing forensics-out.json
 	@test -d .forensics-tool || git clone https://github.com/for-all-dev/forensics .forensics-tool
 	cd .forensics-tool/app && bun server.ts $(CURDIR)/lean --dump $(CURDIR)/forensics-out.json
 
+# lake build + lake check + lake comparator in a Linux container (see docs/comparator.md).
+# Needs Apple's `container` CLI with `container system start` done once. MODE=check|comparator|all.
+MODE ?= all
+.PHONY: comparator
+comparator:  ## kernel-replay lean/ and judge it against lean/comparator.json, sandboxed
+	./scripts/comparator.sh $(MODE)
+
 # Oracle: dump Direct File reference-engine values for its backend scenarios (see oracle/README.md).
 # Needs node >= 18 and a direct-file checkout: set DIRECT_FILE=<path to direct-file/direct-file>.
 .PHONY: oracle
