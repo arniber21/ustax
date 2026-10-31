@@ -1,0 +1,38 @@
+deploy/comparator/Containerfile
+  s_3031b504518be3::t_2b30015bbb87a3 35-40
+  s_3031b504518be3::t_4132cc5489bf1a 15
+  s_3031b504518be3::t_fbb8331cc6e21c 1-14,16-34,43-47
+  s_3031b504518be3::t_1df4f221cdb08f 41-42
+docs/comparator.md
+  s_3031b504518be3::t_5751e6a7ca57e7 154-211
+  s_3031b504518be3::t_5433068b4dc125 1-153
+lean/comparator.json
+  s_3031b504518be3::t_b47bba5bacb80e 1-11
+lean/README.md
+  s_3031b504518be3::t_0524b0158ad07c 22-25
+Makefile
+  s_3031b504518be3::t_bfe08178304f0c 25-31
+lean/UsTax/Comparator/Challenge.lean
+  s_3031b504518be3::t_18a2131b318958 1-33
+deploy/comparator/entrypoint.sh
+  s_3031b504518be3::t_54b9ddc7d72c9f 1-60
+scripts/comparator.sh
+  s_3031b504518be3::t_43e89a349c83cb 1-49,51-53
+  s_3031b504518be3::t_e483548b4fe404 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3683e859be8531a2ee8134e82d50d7d70eeb561e",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
