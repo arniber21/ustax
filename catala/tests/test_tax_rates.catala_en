@@ -1,0 +1,270 @@
+> Using Tax_rates as T
+> Using Types
+
+# Tests for the Tax_rates module (issue #10)
+
+Run with `clerk test`. Expected values were computed by an independent
+Python reference (exact `Decimal` arithmetic, midpoint rule of scope.md
+section 2.1, cumulative "$B plus R%" form, round half up) and, below $100,000,
+agree with the printed Tax Table (`test_tax_rates_table.catala_en`, 2,060 rows
+times 4 statuses) and with Direct File's engine values
+(`test_tax_rates_oracle.catala_en`).
+
+## Midpoint (Direct File `/roundedTaxableIncome`)
+
+```catala
+#[test]
+declaration scope TestRoundedTaxableIncome:
+  output ok condition
+
+scope TestRoundedTaxableIncome:
+  rule ok fulfilled
+  # at most zero
+  assertion (T.rounded_taxable_income_of of $0) = $0
+  assertion (T.rounded_taxable_income_of of -$100) = $0
+  # the three hard-coded midpoints under $25
+  assertion (T.rounded_taxable_income_of of $0.01) = $2.50
+  assertion (T.rounded_taxable_income_of of $4.99) = $2.50
+  assertion (T.rounded_taxable_income_of of $5) = $10
+  assertion (T.rounded_taxable_income_of of $14.99) = $10
+  assertion (T.rounded_taxable_income_of of $15) = $20
+  assertion (T.rounded_taxable_income_of of $24.99) = $20
+  # $25 rows up to $3,000: row [25, 50) has midpoint 37.50
+  assertion (T.rounded_taxable_income_of of $25) = $37.50
+  assertion (T.rounded_taxable_income_of of $49.99) = $37.50
+  assertion (T.rounded_taxable_income_of of $50) = $62.50
+  assertion (T.rounded_taxable_income_of of $2,975) = $2,987.50
+  # last $25 row and first $50 row
+  assertion (T.rounded_taxable_income_of of $2,999.99) = $2,987.50
+  assertion (T.rounded_taxable_income_of of $3,000) = $3,025
+  assertion (T.rounded_taxable_income_of of $3,049.99) = $3,025
+  # last $50 row, then the exact income
+  assertion (T.rounded_taxable_income_of of $99,999) = $99,975
+  assertion (T.rounded_taxable_income_of of $100,000) = $100,000
+  assertion (T.rounded_taxable_income_of of $123,456.78) = $123,456.78
+```
+
+## Line 16, single: the issue's named cases
+
+```catala
+#[test]
+declaration scope TestTentativeTaxSingleBoundaries:
+  output ok condition
+
+scope TestTentativeTaxSingleBoundaries:
+  rule ok fulfilled
+  # TI 0 gives 0; TI 4 is taxed as 2.50: 10% of 2.50 = 0.25, rounded to 0
+  assertion (T.tentative_tax_for of $0, Single) = $0
+  assertion (T.tentative_tax_for of $4, Single) = $0
+  assertion (T.tentative_tax_for of $5, Single) = $1
+  assertion (T.tentative_tax_for of $15, Single) = $2
+  # rows around 15,000: [14,950, 15,000) and [15,000, 15,050)
+  assertion (T.tentative_tax_for of $14,999, Single) = $1,565
+  assertion (T.tentative_tax_for of $15,000, Single) = $1,571
+  # $25 rows to $50 rows
+  assertion (T.tentative_tax_for of $2,999.99, Single) = $299
+  assertion (T.tentative_tax_for of $3,000, Single) = $303
+  # midpoint to exact income
+  assertion (T.tentative_tax_for of $99,999, Single) = $17,048
+  assertion (T.tentative_tax_for of $100,000, Single) = $17,053
+```
+
+## One income in each of the seven brackets, for each schedule
+
+The incomes are bracket midpoints (or $1,000 above the start of the top
+bracket); the last line of each block is a 37% income of $10,000,000.
+
+```catala
+#[test]
+declaration scope TestTentativeTaxMarriedJointly:
+  output ok condition
+
+scope TestTentativeTaxMarriedJointly:
+  rule ok fulfilled
+  assertion (T.tentative_tax_for of $11,600, MarriedFilingJointly) = $1,163
+  assertion (T.tentative_tax_for of $58,750, MarriedFilingJointly) = $6,589
+  assertion (T.tentative_tax_for of $147,675, MarriedFilingJointly) = $22,595
+  assertion (T.tentative_tax_for of $292,475, MarriedFilingJointly) = $56,279
+  assertion (T.tentative_tax_for of $435,675, MarriedFilingJointly) = $94,789
+  assertion (T.tentative_tax_for of $609,325, MarriedFilingJointly) = $154,013
+  assertion (T.tentative_tax_for of $732,200, MarriedFilingJointly) = $197,040
+  assertion (T.tentative_tax_for of $10,000,000, MarriedFilingJointly) = $3,626,126
+  # bracket tops: 34,337 = 10,852 + 22% * (201,050 - 94,300);
+  # 196,669.50 rounds half up to 196,670
+  assertion (T.tentative_tax_for of $201,050, MarriedFilingJointly) = $34,337
+  assertion (T.tentative_tax_for of $731,200, MarriedFilingJointly) = $196,670
+
+#[test]
+declaration scope TestTentativeTaxQualifyingSurvivingSpouse:
+  output ok condition
+
+scope TestTentativeTaxQualifyingSurvivingSpouse:
+  # QSS uses the MFJ schedule (1(a), 2(a); DF: isFilingStatusMFJ or QSS)
+  rule ok fulfilled
+  assertion (T.tentative_tax_for of $11,600, QualifyingSurvivingSpouse) = $1,163
+  assertion (T.tentative_tax_for of $147,675, QualifyingSurvivingSpouse) = $22,595
+  assertion (T.tentative_tax_for of $732,200, QualifyingSurvivingSpouse) = $197,040
+  assertion (T.schedule_for of QualifyingSurvivingSpouse)
+            = (T.schedule_for of MarriedFilingJointly)
+
+#[test]
+declaration scope TestTentativeTaxHeadOfHousehold:
+  output ok condition
+
+scope TestTentativeTaxHeadOfHousehold:
+  rule ok fulfilled
+  assertion (T.tentative_tax_for of $8,275, HeadOfHousehold) = $828
+  assertion (T.tentative_tax_for of $39,825, HeadOfHousehold) = $4,448
+  assertion (T.tentative_tax_for of $81,800, HeadOfHousehold) = $11,361
+  assertion (T.tentative_tax_for of $146,225, HeadOfHousehold) = $26,443
+  assertion (T.tentative_tax_for of $217,825, HeadOfHousehold) = $45,697
+  assertion (T.tentative_tax_for of $426,525, HeadOfHousehold) = $117,966
+  assertion (T.tentative_tax_for of $610,350, HeadOfHousehold) = $182,325
+  assertion (T.tentative_tax_for of $10,000,000, HeadOfHousehold) = $3,656,495
+  assertion (T.tentative_tax_for of $609,350, HeadOfHousehold) = $181,955
+
+#[test]
+declaration scope TestTentativeTaxSingle:
+  output ok condition
+
+scope TestTentativeTaxSingle:
+  rule ok fulfilled
+  assertion (T.tentative_tax_for of $5,800, Single) = $583
+  assertion (T.tentative_tax_for of $29,375, Single) = $3,293
+  assertion (T.tentative_tax_for of $73,837, Single) = $11,295
+  assertion (T.tentative_tax_for of $146,237, Single) = $28,139
+  assertion (T.tentative_tax_for of $217,837, Single) = $47,394
+  assertion (T.tentative_tax_for of $426,537, Single) = $119,663
+  assertion (T.tentative_tax_for of $610,350, Single) = $184,017
+  assertion (T.tentative_tax_for of $10,000,000, Single) = $3,658,188
+  assertion (T.tentative_tax_for of $609,350, Single) = $183,647
+
+#[test]
+declaration scope TestTentativeTaxMarriedSeparately:
+  output ok condition
+
+scope TestTentativeTaxMarriedSeparately:
+  rule ok fulfilled
+  assertion (T.tentative_tax_for of $5,800, MarriedFilingSeparately) = $583
+  assertion (T.tentative_tax_for of $29,375, MarriedFilingSeparately) = $3,293
+  assertion (T.tentative_tax_for of $73,837, MarriedFilingSeparately) = $11,295
+  assertion (T.tentative_tax_for of $146,237, MarriedFilingSeparately) = $28,139
+  assertion (T.tentative_tax_for of $217,837, MarriedFilingSeparately) = $47,394
+  # 35% bracket ends at 365,600 for MFS (609,350 for Single)
+  assertion (T.tentative_tax_for of $304,662, MarriedFilingSeparately) = $77,006
+  assertion (T.tentative_tax_for of $366,600, MarriedFilingSeparately) = $98,705
+  assertion (T.tentative_tax_for of $10,000,000, MarriedFilingSeparately) = $3,663,063
+  assertion (T.tentative_tax_for of $365,600, MarriedFilingSeparately) = $98,335
+  # same income, Single is still in the 35% bracket
+  assertion (T.tentative_tax_for of $366,600, Single) = $98,685
+```
+
+## The scope itself, end to end
+
+```catala
+#[test]
+declaration scope TestTentativeTaxScope:
+  output ok condition
+  internal run content T.TentativeTax
+
+scope TestTentativeTaxScope:
+  rule ok fulfilled
+  definition run equals
+    output of T.TentativeTax with {
+      -- taxable_income: $14,999 -- filing_status: Single
+    }
+  assertion run.rounded_taxable_income = $14,975
+  assertion run.tentative_tax_from_taxable_income = $1,565
+  assertion run.tentative_tax_cumulative_form = $1,565
+```
+
+## Rejecting bad outputs
+
+The spec must not accept these wrong answers.
+
+```catala
+#[test]
+declaration scope TestBadOutputsRejected:
+  output ok condition
+
+scope TestBadOutputsRejected:
+  rule ok fulfilled
+  # Without the midpoint, the exact tax on 14,999 would be 1,568, not the
+  # Tax Table's 1,565.
+  assertion (T.tentative_tax_for of $14,999, Single) != $1,568
+  # Copying the Rev. Proc. 2023-34 typo ("excess over $191,150") for Single
+  # at 200,000 would give 39,110.50 + 32% * 8,850 = 41,942.50 -> 41,943.
+  assertion (T.tentative_tax_for of $200,000, Single) = $41,687
+  assertion (T.tentative_tax_for of $200,000, Single) != $41,943
+  # MFJ income 100,000 is not taxed on the Single schedule
+  assertion (T.tentative_tax_for of $100,000, MarriedFilingJointly)
+            != (T.tentative_tax_for of $100,000, Single)
+  # A flat 10% would be wrong above the first bracket
+  assertion (T.tentative_tax_for of $50,000, Single) != $5,000
+```
+
+## The two forms agree; the bases chain
+
+For every bracket after the first, the table's base amount equals the base
+of the previous bracket plus its rate times its width, and the first bracket
+starts at $0 with base $0. The marginal form and the cumulative form give the
+same tax at every tested income, for all statuses.
+
+```catala
+#[test]
+declaration scope TestSchedulesChain:
+  output ok condition
+  internal all_tables content list of list of T.Bracket
+
+scope TestSchedulesChain:
+  rule ok fulfilled
+  definition all_tables equals [
+    T.schedule_mfj_qss; T.schedule_head_of_household;
+    T.schedule_single; T.schedule_married_separate ]
+  assertion
+    for all table among all_tables we have
+      (for all b among table we have
+         (b.lower = $0 and b.base = $0) or
+         (exists p among table such that
+            p.upper = b.lower and
+            b.base = p.base + (p.upper - p.lower) * p.rate))
+  # seven brackets, rates 10, 12, 22, 24, 32, 35, 37 in order
+  assertion
+    for all table among all_tables we have
+      (map each b among table to b.rate)
+      = [10%; 12%; 22%; 24%; 32%; 35%; 37%]
+  # the top bracket is open-ended
+  assertion
+    for all table among all_tables we have
+      (exists b among table such that b.upper = T.no_upper_bound)
+
+#[test]
+declaration scope TestFormsAgree:
+  output ok condition
+  internal incomes content list of money
+  internal statuses content list of Types.FilingStatus
+
+scope TestFormsAgree:
+  rule ok fulfilled
+  definition incomes equals [
+    $0; $4; $15; $25; $2,999.99; $3,000; $11,600; $11,650; $14,999; $23,200;
+    $23,250; $47,150; $63,100; $94,300; $99,999; $100,000; $100,525; $100,500;
+    $191,950; $201,050; $243,700; $243,725; $365,600; $383,900; $487,450;
+    $609,350; $731,200; $1,234,567.89; $10,000,000 ]
+  definition statuses equals [
+    Single; MarriedFilingJointly; MarriedFilingSeparately;
+    HeadOfHousehold; QualifyingSurvivingSpouse ]
+  assertion
+    for all s among statuses we have
+      (for all x among incomes we have
+        (T.tentative_tax_for of x, s) = (T.tentative_tax_cumulative_for of x, s))
+  # QSS and MFJ coincide
+  assertion
+    for all x among incomes we have
+      (T.tentative_tax_for of x, QualifyingSurvivingSpouse)
+      = (T.tentative_tax_for of x, MarriedFilingJointly)
+  # No taxable income, no tax, for every status
+  assertion
+    for all s among statuses we have
+      (T.tentative_tax_for of $0, s) = $0
+```

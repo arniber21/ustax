@@ -1,0 +1,251 @@
+> Module Tax_rates
+
+> Using Types
+> Using Rounding as R
+
+# Tax rate schedules and the Tax Table midpoint (Form 1040 line 16)
+
+Direct File module `taxCalculations.xml`, facts `/roundedTaxableIncome`
+(line 282) and `/tentativeTaxFromTaxableIncome` (line 424). Issue #10.
+
+Form 1040 line 16 reads: "Tax (see instructions). Check if any from: ..."
+(`sources/forms-instructions/f1040--2024.pdf` p 2). The 1040 instructions
+say to find the tax in the Tax Table (taxable income under $100,000) or with
+the Tax Computation Worksheet ($100,000 or more)
+(`sources/forms-instructions/i1040gi--2024.pdf` pp 64 to 76).
+
+Out of scope here (scope.md section 2.1, issue #10): the Qualified Dividends
+and Capital Gain Tax Worksheet, Schedule D Tax Worksheet, kiddie tax (Forms
+8814, 8615), Form 4972 and the Foreign Earned Income Tax Worksheet. Direct
+File does not compute them either.
+
+The rate schedules are declared in this module, not in `Params_2024`, so this
+issue touches only its own files. They can move to `Params_2024` without a
+change of meaning.
+
+## 26 U.S.C. § 1(j)(2): the 2024 rate tables
+
+Rev. Proc. 2023-34 § 3.01, `sources/revproc/rp-23-34.pdf` pp 5 to 7:
+"For taxable years beginning in 2024, the tax rate tables under § 1 are as
+follows". Table 1 is § 1(j)(2)(A) "Married Individuals Filing Joint Returns
+and Surviving Spouses" (p 5), Table 2 is § 1(j)(2)(B) "Heads of Households"
+(pp 5 to 6), Table 3 is § 1(j)(2)(C) "Unmarried Individuals (other than
+Surviving Spouses and Heads of Households)" (p 6), Table 4 is § 1(j)(2)(D)
+"Married Individuals Filing Separate Returns" (pp 6 to 7). Each row reads
+"Over $X but not over $Y: $B plus R% of the excess over $X".
+
+Source typo, not copied: in Tables 2, 3 and 4 the printed 32% row says "the
+excess over $191,150". The row header "Over $191,950" (same row) and the
+printed Tax Table show the bound is $191,950 (`sources/VERIFICATION.md`).
+
+Form: the marginal form of `sources/CATALA_PATTERNS.md` section 6. Each
+bracket has a lower bound, an upper bound and a rate; the tax is the sum of
+rate times the slice of income inside each bracket. The statutory cumulative
+base (the "$B" of the table) is stored too, only so that a test can check
+that the two forms agree and that the bases chain: base(n) = base(n-1) +
+rate(n-1) * (upper(n-1) - lower(n-1)).
+
+```catala-metadata
+## One row of a rate table: income from `lower` up to `upper` is taxed at
+## `rate`; `base` is the table's "$B plus ..." amount, i.e. the tax on
+## `lower`. The top bracket has no statutory upper bound; its `upper` is the
+## sentinel `no_upper_bound`.
+declaration structure Bracket:
+  data lower content money
+  data upper content money
+  data rate content decimal
+  data base content money
+
+## Sentinel upper bound of the top bracket ("Over $731,200" has no limit).
+## One trillion dollars; no taxable income reaches it.
+declaration no_upper_bound content money equals $1,000,000,000,000
+
+# Rev. Proc. 2023-34 Table 1, § 1(j)(2)(A), rp-23-34.pdf p 5. Direct File
+# /tentativeTaxFromTaxableIncome, MFJ and QSS branch (lines 438 to 656).
+## Married filing jointly and qualifying surviving spouse (§ 1(a), § 2(a)).
+declaration schedule_mfj_qss content list of Bracket equals [
+  Bracket { -- lower: $0       -- upper: $23,200   -- rate: 10% -- base: $0 };
+  Bracket { -- lower: $23,200  -- upper: $94,300   -- rate: 12% -- base: $2,320 };
+  Bracket { -- lower: $94,300  -- upper: $201,050  -- rate: 22% -- base: $10,852 };
+  Bracket { -- lower: $201,050 -- upper: $383,900  -- rate: 24% -- base: $34,337 };
+  Bracket { -- lower: $383,900 -- upper: $487,450  -- rate: 32% -- base: $78,221 };
+  Bracket { -- lower: $487,450 -- upper: $731,200  -- rate: 35% -- base: $111,357 };
+  Bracket { -- lower: $731,200 -- upper: no_upper_bound -- rate: 37% -- base: $196,669.50 }
+]
+
+# Rev. Proc. 2023-34 Table 2, § 1(j)(2)(B), rp-23-34.pdf pp 5 to 6 (the 32%
+# row prints "excess over $191,150", a typo for $191,950). Direct File lines
+# 658 to 872.
+## Head of household (§ 1(b), § 2(b)).
+declaration schedule_head_of_household content list of Bracket equals [
+  Bracket { -- lower: $0       -- upper: $16,550   -- rate: 10% -- base: $0 };
+  Bracket { -- lower: $16,550  -- upper: $63,100   -- rate: 12% -- base: $1,655 };
+  Bracket { -- lower: $63,100  -- upper: $100,500  -- rate: 22% -- base: $7,241 };
+  Bracket { -- lower: $100,500 -- upper: $191,950  -- rate: 24% -- base: $15,469 };
+  Bracket { -- lower: $191,950 -- upper: $243,700  -- rate: 32% -- base: $37,417 };
+  Bracket { -- lower: $243,700 -- upper: $609,350  -- rate: 35% -- base: $53,977 };
+  Bracket { -- lower: $609,350 -- upper: no_upper_bound -- rate: 37% -- base: $181,954.50 }
+]
+
+# Rev. Proc. 2023-34 Table 3, § 1(j)(2)(C), rp-23-34.pdf p 6 (same $191,150
+# typo in the 32% row). Direct File lines 874 to 1088.
+## Single: unmarried individuals who are not surviving spouses or heads of
+## households (§ 1(c)).
+declaration schedule_single content list of Bracket equals [
+  Bracket { -- lower: $0       -- upper: $11,600   -- rate: 10% -- base: $0 };
+  Bracket { -- lower: $11,600  -- upper: $47,150   -- rate: 12% -- base: $1,160 };
+  Bracket { -- lower: $47,150  -- upper: $100,525  -- rate: 22% -- base: $5,426 };
+  Bracket { -- lower: $100,525 -- upper: $191,950  -- rate: 24% -- base: $17,168.50 };
+  Bracket { -- lower: $191,950 -- upper: $243,725  -- rate: 32% -- base: $39,110.50 };
+  Bracket { -- lower: $243,725 -- upper: $609,350  -- rate: 35% -- base: $55,678.50 };
+  Bracket { -- lower: $609,350 -- upper: no_upper_bound -- rate: 37% -- base: $183,647.25 }
+]
+
+# Rev. Proc. 2023-34 Table 4, § 1(j)(2)(D), rp-23-34.pdf pp 6 to 7 (same
+# typo). Same as Single through $243,725; the 35% bracket ends at $365,600.
+# Direct File lines 1090 to 1300.
+## Married filing separately (§ 1(d)).
+declaration schedule_married_separate content list of Bracket equals [
+  Bracket { -- lower: $0       -- upper: $11,600   -- rate: 10% -- base: $0 };
+  Bracket { -- lower: $11,600  -- upper: $47,150   -- rate: 12% -- base: $1,160 };
+  Bracket { -- lower: $47,150  -- upper: $100,525  -- rate: 22% -- base: $5,426 };
+  Bracket { -- lower: $100,525 -- upper: $191,950  -- rate: 24% -- base: $17,168.50 };
+  Bracket { -- lower: $191,950 -- upper: $243,725  -- rate: 32% -- base: $39,110.50 };
+  Bracket { -- lower: $243,725 -- upper: $365,600  -- rate: 35% -- base: $55,678.50 };
+  Bracket { -- lower: $365,600 -- upper: no_upper_bound -- rate: 37% -- base: $98,334.75 }
+]
+
+## The rate table that applies to a filing status. Direct File selects the
+## schedule with `/isFilingStatusMFJ or /isFilingStatusQSS`,
+## `/isFilingStatusHOH`, `/isFilingStatusSingle` and `/isFilingStatusMFS`.
+declaration schedule_for content list of Bracket
+  depends on status content Types.FilingStatus
+  equals
+    match status with pattern
+    -- MarriedFilingJointly: schedule_mfj_qss
+    -- QualifyingSurvivingSpouse: schedule_mfj_qss
+    -- HeadOfHousehold: schedule_head_of_household
+    -- Single: schedule_single
+    -- MarriedFilingSeparately: schedule_married_separate
+
+## Tax on `income` by the marginal form: the sum, over the brackets of
+## `table`, of the rate times the part of `income` inside the bracket. Not
+## rounded to the dollar.
+declaration marginal_tax content money
+  depends on
+    table content list of Bracket,
+    income content money
+  equals
+    Money.sum of
+      (map each b among table to
+        (Money.positive of ((Money.min of income, b.upper) - b.lower)) * b.rate)
+
+## Tax on `income` by the table's cumulative form: "$B plus R% of the excess
+## over $X" for the row that contains `income` ("not over" bounds are
+## inclusive). Not rounded to the dollar. For `income` at or below zero it is 0.
+declaration cumulative_tax content money
+  depends on
+    table content list of Bracket,
+    income content money
+  equals
+    if income <= $0 then $0 else
+    Money.sum of
+      (map each b among
+        (list of b among table such that income > b.lower and income <= b.upper)
+        to (b.base + (income - b.lower) * b.rate))
+```
+
+## 1040 line 16, step one: the Tax Table midpoint (`/roundedTaxableIncome`)
+
+Direct File does not store the printed Tax Table. Its description of
+`/roundedTaxableIncome` reads: "Income less than $100,000 uses the tax tables
+from the Instructions for Form 1040. This fact selects the "midpoint" that
+corresponds to each entry in the tax tables, for use in calculating tenative
+tax." The Tax Table rows are 5 dollars wide up to $25 (three hard-coded
+midpoints), then $25 rows to $3,000 and $50 rows to $100,000
+(`i1040gi--2024.pdf` pp 64 to 65); from $100,000 the Tax Computation
+Worksheet uses the exact income (p 76). The tax of a row is the schedule
+applied to the row's midpoint and rounded.
+
+The cases in the XML, in order, are: taxable income at most 0 gives 0; under
+5 gives 2.50; under 15 gives 10; under 25 gives 20; under 3,000 gives
+`StepwiseMultiply(TI, 25/25) + 12.50`; under 100,000 gives
+`StepwiseMultiply(TI, 50/50) + 25`; otherwise TI itself.
+
+```catala-metadata
+## Direct File `/roundedTaxableIncome`: the value the rate schedule is applied
+## to. `R.stepwise_multiply` drops the cents and rounds down to the bottom of
+## the $25 or $50 row; the midpoint is then 12.50 or 25 above it.
+declaration rounded_taxable_income_of content money
+  depends on taxable_income content money
+  equals
+    if taxable_income <= $0 then $0
+    else if taxable_income < $5 then $2.50
+    else if taxable_income < $15 then $10
+    else if taxable_income < $25 then $20
+    else if taxable_income < $3,000 then
+      R.stepwise_multiply of taxable_income, 25, 25 + $12.50
+    else if taxable_income < $100,000 then
+      R.stepwise_multiply of taxable_income, 50, 50 + $25
+    else taxable_income
+```
+
+## 1040 line 16, step two: the rate schedule (`/tentativeTaxFromTaxableIncome`)
+
+Direct File applies the schedule of the filing status to `/roundedTaxableIncome`
+and rounds the result to the dollar (`Round` around the whole `Switch`).
+
+```catala-metadata
+## Line 16 as a function of taxable income and filing status: the marginal
+## tax on the Tax Table midpoint, rounded to the dollar (half up).
+declaration tentative_tax_for content money
+  depends on
+    taxable_income content money,
+    filing_status content Types.FilingStatus
+  equals
+    R.round_dollar of
+      (marginal_tax of
+        (schedule_for of filing_status),
+        (rounded_taxable_income_of of taxable_income))
+
+## The same by the cumulative "$B plus R% of the excess" form.
+declaration tentative_tax_cumulative_for content money
+  depends on
+    taxable_income content money,
+    filing_status content Types.FilingStatus
+  equals
+    R.round_dollar of
+      (cumulative_tax of
+        (schedule_for of filing_status),
+        (rounded_taxable_income_of of taxable_income))
+
+## Form 1040 line 16 for the supported cases: no capital gain worksheet, no
+## Schedule D, no kiddie tax.
+declaration scope TentativeTax:
+  ## Form 1040 line 15, taxable income (Direct File `/taxableIncome`).
+  input taxable_income content money
+  ## Direct File `/filingStatus`.
+  input filing_status content Types.FilingStatus
+  ## Direct File `/roundedTaxableIncome`.
+  output rounded_taxable_income content money
+  ## Direct File `/tentativeTaxFromTaxableIncome`: Form 1040 line 16.
+  output tentative_tax_from_taxable_income content money
+  ## Same value by the cumulative "$B plus R%" form of the rate tables; kept
+  ## so tests can check the two forms agree.
+  output tentative_tax_cumulative_form content money
+```
+
+```catala
+scope TentativeTax:
+  definition rounded_taxable_income equals
+    rounded_taxable_income_of of taxable_income
+
+  # Rounding: one `round` (half up) of the exact sum, as DF's `Round`.
+  # Per-slice products are rounded to the cent by Catala, DF rounds once
+  # after adding the base; the Tax Table test shows no difference (Q-R2).
+  definition tentative_tax_from_taxable_income equals
+    tentative_tax_for of taxable_income, filing_status
+
+  definition tentative_tax_cumulative_form equals
+    tentative_tax_cumulative_for of taxable_income, filing_status
+```
