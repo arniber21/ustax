@@ -12,6 +12,8 @@ difftest/mappings/hoh_qss_persons.mjs
 catala/tests/test_hoh_qss_persons.catala_en
   s_3031b504518be3::t_f1afae61db4871 162,210,254,476,557,577
   s_3031b504518be3::t_d5f823309be303 1-161,163-209,211-253,255-475,477-556,558-576,578-683
+Makefile
+  s_3031b504518be3::t_a85eab06e0b7f2 60-61
 ---
 {
   "schema_version": "authorship/3.0.0",
