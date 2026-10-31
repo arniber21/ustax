@@ -7,3 +7,4 @@ sources/reference-catala/
 .forensics-tool/
 forensics-out.json
 .claude/worktrees/
+api/node_modules/

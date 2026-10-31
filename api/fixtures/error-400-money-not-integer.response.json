@@ -1,0 +1,14 @@
+{
+  "api_version": 1,
+  "error": {
+    "code": "invalid_request",
+    "message": "The request body is invalid.",
+    "details": [
+      {
+        "path": "/w2s/0/wages",
+        "code": "not_integer",
+        "message": "money must be an integer number of cents"
+      }
+    ]
+  }
+}

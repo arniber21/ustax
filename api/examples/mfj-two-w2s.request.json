@@ -1,0 +1,15 @@
+{
+  "api_version": 1,
+  "tax_year": 2024,
+  "filing_status": "MarriedFilingJointly",
+  "w2s": [
+    {
+      "filer": "PrimaryFiler",
+      "wages": 4000000
+    },
+    {
+      "filer": "SecondaryFiler",
+      "wages": 3000000
+    }
+  ]
+}

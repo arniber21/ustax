@@ -35,6 +35,14 @@ comparator:  ## kernel-replay lean/ and judge it against lean/comparator.json, s
 oracle:    ## regenerate oracle/facts.csv from the Direct File scenarios
 	cd oracle && npm ci --ignore-scripts --no-audit --no-fund && node generate.mjs
 
+# API contract (see docs/api.md): validate api/examples and api/fixtures against api/schema.json.
+# Needs node >= 18; ajv is installed locally under api/ (pinned by api/package-lock.json).
+.PHONY: api-check api-reasons
+api-check: ## validate JSON examples and mock fixtures against api/schema.json
+	cd api && npm ci --ignore-scripts --no-audit --no-fund && node scripts/check.mjs
+api-reasons: ## regenerate api/knockout-reasons.json from the Catala KnockoutReason enum
+	node api/scripts/gen-reasons.mjs
+
 # Differential tests: Catala scope outputs vs oracle/facts.csv (see catala/DIFFTEST.md).
 # `make difftest SCOPE=smoke` (default) or SCOPE=all; extra flags via ARGS=--verbose.
 SCOPE ?= smoke

@@ -1,0 +1,157 @@
+{
+  "_comment": "Maps each key of the API `lines` object to its Form 1040 (2024) line, Catala Form1040 output and Direct File fact. Hand-maintained; make api-check verifies every key of the Lines schema is present.",
+  "lines": [
+    {
+      "key": "wages",
+      "form": "1040",
+      "line": "1a",
+      "label": "Wages (Form W-2 box 1)",
+      "catala_output": "Form_1040.Form1040.wages",
+      "df_fact": "/wages"
+    },
+    {
+      "key": "employer_income_subtotal",
+      "form": "1040",
+      "line": "1z",
+      "label": "Total of lines 1a to 1h",
+      "catala_output": "Form_1040.Form1040.employer_income_subtotal",
+      "df_fact": "/employerIncomeSubtotal"
+    },
+    {
+      "key": "interest_income",
+      "form": "1040",
+      "line": "2b",
+      "label": "Taxable interest",
+      "catala_output": "Form_1040.Form1040.interest_income",
+      "df_fact": "/interestIncome"
+    },
+    {
+      "key": "total_income",
+      "form": "1040",
+      "line": "9",
+      "label": "Total income",
+      "catala_output": "Form_1040.Form1040.total_income",
+      "df_fact": "/totalIncome"
+    },
+    {
+      "key": "adjustments_to_income",
+      "form": "1040",
+      "line": "10",
+      "label": "Adjustments to income (Schedule 1)",
+      "catala_output": "Form_1040.Form1040.adjustments_to_income",
+      "df_fact": "/adjustmentsToIncome"
+    },
+    {
+      "key": "agi",
+      "form": "1040",
+      "line": "11",
+      "label": "Adjusted gross income",
+      "catala_output": "Form_1040.Form1040.agi",
+      "df_fact": "/agi"
+    },
+    {
+      "key": "standard_or_itemized_deductions",
+      "form": "1040",
+      "line": "12",
+      "label": "Standard deduction",
+      "catala_output": "Form_1040.Form1040.standard_or_itemized_deductions",
+      "df_fact": "/standardOrItemizedDeductions"
+    },
+    {
+      "key": "total_deductions",
+      "form": "1040",
+      "line": "14",
+      "label": "Total deductions (lines 12 and 13)",
+      "catala_output": "Form_1040.Form1040.total_deductions",
+      "df_fact": "/totalDeductions"
+    },
+    {
+      "key": "taxable_income",
+      "form": "1040",
+      "line": "15",
+      "label": "Taxable income",
+      "catala_output": "Form_1040.Form1040.taxable_income",
+      "df_fact": "/taxableIncome"
+    },
+    {
+      "key": "tentative_tax_from_taxable_income",
+      "form": "1040",
+      "line": "16",
+      "label": "Tax (Tax Table or rate schedule)",
+      "catala_output": "Form_1040.Form1040.tentative_tax_from_taxable_income",
+      "df_fact": "/tentativeTaxFromTaxableIncome"
+    },
+    {
+      "key": "total_tentative_tax",
+      "form": "1040",
+      "line": "18",
+      "label": "Add lines 16 and 17",
+      "catala_output": "Form_1040.Form1040.total_tentative_tax",
+      "df_fact": "/totalTentativeTax"
+    },
+    {
+      "key": "non_refundable_credits",
+      "form": "1040",
+      "line": "21",
+      "label": "Total credits (lines 19 and 20)",
+      "catala_output": "Form_1040.Form1040.non_refundable_credits",
+      "df_fact": "/nonRefundableCredits"
+    },
+    {
+      "key": "tax_less_non_refundable_credits",
+      "form": "1040",
+      "line": "22",
+      "label": "Tax less credits",
+      "catala_output": "Form_1040.Form1040.tax_less_non_refundable_credits",
+      "df_fact": "/taxLessNonRefundableCredits"
+    },
+    {
+      "key": "total_tax",
+      "form": "1040",
+      "line": "24",
+      "label": "Total tax",
+      "catala_output": "Form_1040.Form1040.total_tax",
+      "df_fact": "/totalTax"
+    },
+    {
+      "key": "total_withholding",
+      "form": "1040",
+      "line": "25d",
+      "label": "Federal income tax withheld",
+      "catala_output": "Form_1040.Form1040.total_withholding",
+      "df_fact": "/totalWithholding"
+    },
+    {
+      "key": "total_other_payments_refundable_credits",
+      "form": "1040",
+      "line": "32",
+      "label": "Total other payments and refundable credits",
+      "catala_output": "Form_1040.Form1040.total_other_payments_refundable_credits",
+      "df_fact": "/totalOtherPaymentsRefundableCredits"
+    },
+    {
+      "key": "total_payments",
+      "form": "1040",
+      "line": "33",
+      "label": "Total payments",
+      "catala_output": "Form_1040.Form1040.total_payments",
+      "df_fact": "/totalPayments"
+    },
+    {
+      "key": "overpayment",
+      "form": "1040",
+      "line": "34",
+      "label": "Amount overpaid (refund)",
+      "catala_output": "Form_1040.Form1040.overpayment",
+      "df_fact": "/overpayment"
+    },
+    {
+      "key": "balance_due",
+      "form": "1040",
+      "line": "37",
+      "label": "Amount you owe",
+      "catala_output": "Form_1040.Form1040.balance_due",
+      "df_fact": "/balanceDue"
+    }
+  ]
+}

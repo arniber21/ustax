@@ -1,0 +1,205 @@
+{
+  "_comment": "Mock-server table for the frontend (#74). Paths are relative to api/. A mock matches method+path and, for POST /calculate, the request body (or the note/content_type for the error cases that have no valid request).",
+  "fixtures": [
+    {
+      "name": "balance-due-single-w2-50k",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 200,
+      "request": "examples/balance-due-single-w2-50k.request.json",
+      "response": "examples/balance-due-single-w2-50k.response.json"
+    },
+    {
+      "name": "hoh-w2-60k",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 200,
+      "request": "examples/hoh-w2-60k.request.json",
+      "response": "examples/hoh-w2-60k.response.json"
+    },
+    {
+      "name": "knocked-out-bond-interest",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 422,
+      "request": "examples/knocked-out-bond-interest.request.json",
+      "response": "examples/knocked-out-bond-interest.response.json"
+    },
+    {
+      "name": "mfj-two-w2s",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 200,
+      "request": "examples/mfj-two-w2s.request.json",
+      "response": "examples/mfj-two-w2s.response.json"
+    },
+    {
+      "name": "mfs-w2-40k",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 200,
+      "request": "examples/mfs-w2-40k.request.json",
+      "response": "examples/mfs-w2-40k.response.json"
+    },
+    {
+      "name": "qss-w2-80k",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 200,
+      "request": "examples/qss-w2-80k.request.json",
+      "response": "examples/qss-w2-80k.response.json"
+    },
+    {
+      "name": "refund-single-w2-50k",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 200,
+      "request": "examples/refund-single-w2-50k.request.json",
+      "response": "examples/refund-single-w2-50k.response.json"
+    },
+    {
+      "name": "single-w2-50k",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 200,
+      "request": "examples/single-w2-50k.request.json",
+      "response": "examples/single-w2-50k.response.json"
+    },
+    {
+      "name": "single-w2-and-interest",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 200,
+      "request": "examples/single-w2-and-interest.request.json",
+      "response": "examples/single-w2-and-interest.response.json"
+    },
+    {
+      "name": "error-400-invalid-json",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 400,
+      "response": "fixtures/error-400-invalid-json.response.json",
+      "note": "body is not JSON, e.g. {bad"
+    },
+    {
+      "name": "error-400-money-not-integer",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 400,
+      "request": "fixtures/error-400-money-not-integer.request.json",
+      "response": "fixtures/error-400-money-not-integer.response.json"
+    },
+    {
+      "name": "error-400-negative-wages",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 400,
+      "request": "fixtures/error-400-negative-wages.request.json",
+      "response": "fixtures/error-400-negative-wages.response.json"
+    },
+    {
+      "name": "error-400-secondary-filer-on-single",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 400,
+      "request": "fixtures/error-400-secondary-filer-on-single.request.json",
+      "response": "fixtures/error-400-secondary-filer-on-single.response.json",
+      "semantic_error": true,
+      "note": "schema-valid, rejected by the validator (#51)"
+    },
+    {
+      "name": "error-400-unknown-field",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 400,
+      "request": "fixtures/error-400-unknown-field.request.json",
+      "response": "fixtures/error-400-unknown-field.response.json"
+    },
+    {
+      "name": "error-400-unsupported-tax-year",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 400,
+      "request": "fixtures/error-400-unsupported-tax-year.request.json",
+      "response": "fixtures/error-400-unsupported-tax-year.response.json"
+    },
+    {
+      "name": "error-404-not-found",
+      "method": "GET",
+      "path": "/nope",
+      "status": 404,
+      "response": "fixtures/error-404-not-found.response.json"
+    },
+    {
+      "name": "error-405-method-not-allowed",
+      "method": "GET",
+      "path": "/calculate",
+      "status": 405,
+      "response": "fixtures/error-405-method-not-allowed.response.json"
+    },
+    {
+      "name": "error-413-payload-too-large",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 413,
+      "response": "fixtures/error-413-payload-too-large.response.json",
+      "note": "body larger than 262144 bytes"
+    },
+    {
+      "name": "error-415-unsupported-media-type",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 415,
+      "request": "examples/single-w2-50k.request.json",
+      "response": "fixtures/error-415-unsupported-media-type.response.json",
+      "content_type": "text/plain"
+    },
+    {
+      "name": "error-500-internal",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 500,
+      "request": "examples/single-w2-50k.request.json",
+      "response": "fixtures/error-500-internal.response.json",
+      "note": "server fault; cannot be reproduced from the request"
+    },
+    {
+      "name": "health",
+      "method": "GET",
+      "path": "/health",
+      "status": 200,
+      "response": "fixtures/health.response.json"
+    },
+    {
+      "name": "knocked-out-foreign-accounts",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 422,
+      "request": "fixtures/knocked-out-foreign-accounts.request.json",
+      "response": "fixtures/knocked-out-foreign-accounts.response.json"
+    },
+    {
+      "name": "knocked-out-multiple-reasons",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 422,
+      "request": "fixtures/knocked-out-multiple-reasons.request.json",
+      "response": "fixtures/knocked-out-multiple-reasons.response.json"
+    },
+    {
+      "name": "refund-below-standard-deduction",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 200,
+      "request": "fixtures/refund-below-standard-deduction.request.json",
+      "response": "fixtures/refund-below-standard-deduction.response.json"
+    },
+    {
+      "name": "version",
+      "method": "GET",
+      "path": "/version",
+      "status": 200,
+      "response": "fixtures/version.response.json"
+    }
+  ]
+}

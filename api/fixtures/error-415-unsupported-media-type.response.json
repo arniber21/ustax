@@ -1,0 +1,7 @@
+{
+  "api_version": 1,
+  "error": {
+    "code": "unsupported_media_type",
+    "message": "Content-Type must be application/json."
+  }
+}

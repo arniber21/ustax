@@ -1,0 +1,7 @@
+{
+  "api_version": 1,
+  "error": {
+    "code": "payload_too_large",
+    "message": "Request body exceeds 262144 bytes."
+  }
+}
