@@ -135,8 +135,20 @@ const PERSON_FACTS = [
   'isAStudentUnder24', 'disabilityStatusMayAffectBenefits', 'ageTest', 'residencyTest', 'jointReturn',
   'requiredToFile', 'filingOnlyForRefund', 'qcSupportTest', 'jointReturnTest', 'qualifyingChild',
   'couldBeQualifyingChildOfAnother', 'qcOfAnotherButNot', 'isQualifyingChildOfAnother',
+  // Issue #17: qualifying relative and eligible dependent.
+  'askAboutQCOfAnother', 'notQualifyingChildTest', 'qrRelationshipTest', 'memberOfHouseholdTest',
+  'relationshipMemberOfHouseholdTest', 'qrSupportTest', 'qualifyingRelativeMinusNotQcTest', 'qualifyingRelative',
+  'usResident', 'usNational', 'canadaMexicoResident', 'childIsAdopted', 'adoptedChildException',
+  'citizenOrUsResidentTest', 'citizenOrResidentTest', 'qcOrQr', 'eligibleDependentMinusFilerInformation',
+  'eligibleDependent', 'isClaimedDependent', 'isClaimedIfClaimable',
+  // dependentsBenefitSplit.xml (issue #18), read by eligibleDependentMinusFilerInformation.
+  'tpCanClaimSplitBenefitsHohEitcCdcc', 'disqualifiedDueToParentalCustody',
 ];
-const SCENARIO_FACTS = ['/flowIsKnockedOut', '/minimumFilerDateOfBirth', '/treatAsMFJ'];
+const SCENARIO_FACTS = [
+  '/flowIsKnockedOut', '/minimumFilerDateOfBirth', '/treatAsMFJ',
+  // Issue #17: filers.xml facts read by eligibleDependent and adoptedChildException.
+  '/treatFilersAsDependents', '/eitherFilerUSCitizenOrNational',
+];
 const known = new Set(wrapped.map((f) => f.path));
 for (const f of PERSON_FACTS) {
   if (!known.has(`/familyAndHousehold/*/${f}`)) throw new Error(`not in dictionary: /familyAndHousehold/*/${f}`);

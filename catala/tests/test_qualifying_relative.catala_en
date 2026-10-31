@@ -1,0 +1,635 @@
+# Tests for the Qualifying_relative module
+
+Run with `clerk test`. Each named scope is one concrete person, worked by
+hand from IRC 152(b), 152(d) and Pub. 501 (2024) pp 11, 18-19 as quoted in
+`catala/qualifying_relative.catala_en`. Every scope sets satisfiable inputs
+(a real person a real filer could enter) and asserts the expected result and
+the rejection of the wrong one. The oracle comparison is
+`make difftest-persons` (per-person Direct File values, `oracle/persons.csv`).
+
+> Using Qualifying_child as Q
+> Using Qualifying_relative as R
+
+## Helper: a household member with default answers
+
+The default is the filer's parent, born 1950-04-02 (74), a U.S. citizen with
+an SSN, who lived with the filer for less than six months, had $3,000 of
+gross income, did not provide over half of their own support, was supported
+over half by the filer, is unmarried, and is nobody's qualifying child. The
+filer (`oldest_filer_dob`) was born 1985-06-15, is a U.S. citizen, and cannot
+be claimed by anyone. A test overrides only what it tests.
+
+```catala
+declaration scope MkMember:
+  context relationship content Q.Relationship
+  context date_of_birth content date
+  context full_time_student content boolean
+  context residency_duration content Q.ResidencyDuration
+  context own_support content boolean
+  context married content boolean
+  context writable_joint_return content boolean
+  context could_be_qc_of_another content boolean
+  context potential_claimer_must_file content boolean
+  context potential_claimer_did_file content boolean
+  context gross_income content money
+  context qr_support content boolean
+  context tin_type content R.TinType
+  context citizen content boolean
+  context us_resident content boolean
+  context us_national content boolean
+  context canada_mexico_resident content boolean
+  context tp_claims content boolean
+  output member content R.Member
+
+scope MkMember:
+  definition relationship equals Q.Relationship.Parent
+  definition date_of_birth equals |1950-04-02|
+  definition full_time_student equals false
+  definition residency_duration equals Q.ResidencyDuration.LessThanSixMonths
+  definition own_support equals false
+  definition married equals false
+  definition writable_joint_return equals false
+  definition could_be_qc_of_another equals false
+  definition potential_claimer_must_file equals false
+  definition potential_claimer_did_file equals false
+  definition gross_income equals $3,000
+  definition qr_support equals true
+  definition tin_type equals R.TinType.Ssn
+  definition citizen equals true
+  definition us_resident equals false
+  definition us_national equals false
+  definition canada_mexico_resident equals false
+  definition tp_claims equals true
+  definition member equals R.Member {
+    -- person: Q.Person {
+         -- relationship: relationship
+         -- date_of_birth: date_of_birth
+         -- full_time_student: full_time_student
+         -- permanent_total_disability: false
+         -- residency_duration: residency_duration
+         -- own_support: own_support
+         -- married: married
+         -- writable_joint_return: writable_joint_return
+         -- writable_required_to_file: false
+         -- writable_filing_only_for_refund: false
+         -- writable_could_be_qualifying_child_of_another: could_be_qc_of_another
+         -- writable_potential_claimer_must_file: potential_claimer_must_file
+         -- writable_potential_claimer_did_file: potential_claimer_did_file
+         -- writable_potential_claimer_filed_only_for_refund: false }
+    -- answers: R.DependentAnswers {
+         -- gross_income: gross_income
+         -- writable_qr_support_test: qr_support
+         -- tin_type: tin_type
+         -- is_us_citizen_full_year: citizen
+         -- writable_us_resident: us_resident
+         -- writable_us_national: us_national
+         -- writable_canada_mexico_resident: canada_mexico_resident
+         -- tp_claims: tp_claims
+         -- tp_can_claim_split_benefits_hoh_eitc_cdcc: false
+         -- disqualified_due_to_parental_custody: false }
+  }
+```
+
+## The cases of issue #17
+
+### Parent with gross income $5,049, supported over half: qualifying relative
+
+IRC 152(d)(2)(C): a parent need not live with the filer. $5,049 is less than
+$5,050 (Rev. Proc. 2023-34 §3.24).
+
+```catala
+#[test]
+declaration scope TestParentIncome5049:
+  m scope MkMember
+  internal d content R.DependentTest
+
+scope TestParentIncome5049:
+  definition m.gross_income equals $5,049
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion not d.qualifying_child
+  assertion d.qr_relationship_test
+  assertion not d.member_of_household_test
+  assertion d.relationship_member_of_household_test
+  assertion d.gross_income_test
+  assertion d.qr_support_test
+  assertion d.not_qualifying_child_test
+  assertion d.qualifying_relative
+  assertion d.qc_or_qr
+  assertion d.citizen_or_resident_test
+  assertion d.eligible_dependent
+  assertion d.is_claimed_dependent
+  assertion d.is_claimed_if_claimable
+```
+
+### The same parent with gross income $5,050: not a qualifying relative
+
+"less than the exemption amount" (152(d)(1)(B)): exactly $5,050 fails.
+Known-bad output rejected: every other test passes.
+
+```catala
+#[test]
+declaration scope TestParentIncome5050:
+  m scope MkMember
+  internal d content R.DependentTest
+
+scope TestParentIncome5050:
+  definition m.gross_income equals $5,050
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion not d.gross_income_test
+  assertion d.relationship_member_of_household_test and d.qr_support_test
+    and d.not_qualifying_child_test
+  assertion not d.qualifying_relative
+  assertion not d.eligible_dependent
+  assertion not d.is_claimed_dependent
+  # Not claimable, so "claimed if claimable" holds
+  assertion d.is_claimed_if_claimable
+```
+
+### Non-relative who lived with the filer all year: qualifying relative
+
+IRC 152(d)(2)(H); Pub 501 p 18, "Example 1—return not required": an
+unrelated friend who lived with you all year.
+
+```catala
+#[test]
+declaration scope TestNonRelativeAllYear:
+  m scope MkMember
+  internal d content R.DependentTest
+
+scope TestNonRelativeAllYear:
+  definition m.relationship equals Q.Relationship.NoneOfTheAbove
+  definition m.date_of_birth equals |1990-09-09|
+  definition m.residency_duration equals Q.ResidencyDuration.AllYear
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion not d.qr_relationship_test
+  assertion d.member_of_household_test
+  assertion d.relationship_member_of_household_test
+  assertion d.qualifying_relative
+  assertion d.eligible_dependent
+```
+
+### Non-relative who lived with the filer 8 months: not a qualifying relative
+
+8 months is `SixToElevenMonths`, not "all year". Known-bad output rejected.
+
+```catala
+#[test]
+declaration scope TestNonRelativeEightMonths:
+  m scope MkMember
+  internal d content R.DependentTest
+
+scope TestNonRelativeEightMonths:
+  definition m.relationship equals Q.Relationship.NoneOfTheAbove
+  definition m.date_of_birth equals |1990-09-09|
+  definition m.residency_duration equals Q.ResidencyDuration.SixToElevenMonths
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion not d.member_of_household_test
+  assertion not d.relationship_member_of_household_test
+  assertion d.gross_income_test and d.qr_support_test
+  assertion not d.qualifying_relative
+  assertion not d.eligible_dependent
+```
+
+### A person who is the qualifying child of another taxpayer: not a qualifying relative
+
+Pub 501 p 18, Not a Qualifying Child Test, Example 4 then Example 2: a
+13-year-old grandchild who lived with the filer 5 months is not the filer's
+qualifying child (residency), and lives the rest of the year with a parent
+who must file and claims the child. The grandchild is that parent's
+qualifying child, so not the filer's qualifying relative.
+
+```catala
+#[test]
+declaration scope TestQualifyingChildOfAnother:
+  m scope MkMember
+  internal d content R.DependentTest
+
+scope TestQualifyingChildOfAnother:
+  definition m.relationship equals Q.Relationship.GrandChildOrOtherDescendantOfChild
+  definition m.date_of_birth equals |2011-05-05|
+  definition m.residency_duration equals Q.ResidencyDuration.LessThanSixMonths
+  definition m.gross_income equals $0
+  definition m.could_be_qc_of_another equals true
+  definition m.potential_claimer_must_file equals true
+  definition m.potential_claimer_did_file equals true
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion not d.qualifying_child
+  assertion d.qualifying_relative_minus_not_qc_test
+  assertion d.is_qualifying_child_of_another
+  assertion not d.not_qualifying_child_test
+  assertion not d.qualifying_relative
+  assertion not d.eligible_dependent
+```
+
+### The other taxpayer is not required to file and does not file
+
+Pub 501 p 18, "Child of person not required to file a return": the same
+grandchild, but the parent need not file and does not: the grandchild is not
+anyone else's qualifying child and is the filer's qualifying relative.
+
+```catala
+#[test]
+declaration scope TestQualifyingChildOfNonFiler:
+  m scope MkMember
+  internal d content R.DependentTest
+
+scope TestQualifyingChildOfNonFiler:
+  definition m.relationship equals Q.Relationship.GrandChildOrOtherDescendantOfChild
+  definition m.date_of_birth equals |2011-05-05|
+  definition m.residency_duration equals Q.ResidencyDuration.LessThanSixMonths
+  definition m.gross_income equals $0
+  definition m.could_be_qc_of_another equals true
+  definition m.potential_claimer_must_file equals false
+  definition m.potential_claimer_did_file equals false
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion not d.is_qualifying_child_of_another
+  assertion d.not_qualifying_child_test
+  assertion d.qualifying_relative
+  assertion d.eligible_dependent
+```
+
+### No TIN: not an eligible dependent
+
+A 10-year-old child who is the filer's qualifying child but has no SSN, ITIN
+or ATIN (Pub 501 pp 22-23). Known-bad output rejected: the same child with an
+ATIN is eligible.
+
+```catala
+#[test]
+declaration scope TestNoTin:
+  m scope MkMember
+  m2 scope MkMember
+  internal d content R.DependentTest
+  internal d2 content R.DependentTest
+
+scope TestNoTin:
+  definition m.relationship equals Q.Relationship.BiologicalChild
+  definition m.date_of_birth equals |2014-01-20|
+  definition m.residency_duration equals Q.ResidencyDuration.AllYear
+  definition m.tin_type equals R.TinType.NoTin
+  definition m2.relationship equals Q.Relationship.BiologicalChild
+  definition m2.date_of_birth equals |2014-01-20|
+  definition m2.residency_duration equals Q.ResidencyDuration.AllYear
+  definition m2.tin_type equals R.TinType.Atin
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  definition d2 equals
+    output of R.DependentTest with {
+      -- member: m2.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion d.qualifying_child
+  assertion d.qc_or_qr
+  assertion not d.eligible_dependent_minus_filer_information
+  assertion not d.eligible_dependent
+  assertion not d.is_claimed_dependent
+  assertion d2.eligible_dependent
+  assertion d2.is_claimed_dependent
+```
+
+### Adopted child who is not a citizen, resident or national
+
+IRC 152(b)(3)(B); Pub 501 p 11, Exception for adopted child. A 6-year-old
+adopted child who is a citizen and resident of another country (not Canada
+or Mexico), lived with the filer all year; the filer is a U.S. citizen. The
+exception applies. Known-bad outputs rejected: if the filer is not a citizen
+or national, or the child lived with the filer only 8 months, it does not.
+
+```catala
+#[test]
+declaration scope TestAdoptedChildException:
+  m scope MkMember
+  m_part scope MkMember
+  internal d content R.DependentTest
+  internal d_noncitizen_filer content R.DependentTest
+  internal d_part_year content R.DependentTest
+
+scope TestAdoptedChildException:
+  definition m.relationship equals Q.Relationship.AdoptedChild
+  definition m.date_of_birth equals |2018-02-14|
+  definition m.residency_duration equals Q.ResidencyDuration.AllYear
+  definition m.citizen equals false
+  definition m.tin_type equals R.TinType.Atin
+  definition m_part.relationship equals Q.Relationship.AdoptedChild
+  definition m_part.date_of_birth equals |2018-02-14|
+  definition m_part.residency_duration equals Q.ResidencyDuration.SixToElevenMonths
+  definition m_part.citizen equals false
+  definition m_part.tin_type equals R.TinType.Atin
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  definition d_noncitizen_filer equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: false }
+  definition d_part_year equals
+    output of R.DependentTest with {
+      -- member: m_part.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion d.qualifying_child
+  assertion d.child_is_adopted
+  assertion not d.us_resident and not d.us_national
+    and not d.canada_mexico_resident
+  assertion d.adopted_child_exception
+  assertion d.citizen_or_resident_test
+  assertion d.citizen_or_us_resident_test
+  assertion d.eligible_dependent
+  assertion not d_noncitizen_filer.adopted_child_exception
+  assertion not d_noncitizen_filer.citizen_or_resident_test
+  assertion not d_noncitizen_filer.eligible_dependent
+  # 8 months: still a qualifying child (over half the year), but the
+  # exception needs the whole year
+  assertion d_part_year.qualifying_child
+  assertion not d_part_year.adopted_child_exception
+  assertion not d_part_year.eligible_dependent
+```
+
+## Further cases
+
+### Child living in Mexico (Pub 501 p 18, Child in Canada or Mexico)
+
+A 6-year-old child, not a U.S. citizen, living in Mexico with the filer's
+parent who is not a taxpayer: not a qualifying child (residency), but a
+qualifying relative, and passes the citizen or resident test as a resident
+of Mexico. Not `citizen_or_us_resident_test` (the CTC/ODC test).
+
+```catala
+#[test]
+declaration scope TestChildInMexico:
+  m scope MkMember
+  internal d content R.DependentTest
+
+scope TestChildInMexico:
+  definition m.relationship equals Q.Relationship.BiologicalChild
+  definition m.date_of_birth equals |2018-07-01|
+  definition m.gross_income equals $0
+  definition m.citizen equals false
+  definition m.canada_mexico_resident equals true
+  definition m.tin_type equals R.TinType.Itin
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion not d.qualifying_child
+  assertion d.qualifying_relative
+  assertion d.canada_mexico_resident
+  assertion not d.citizen_or_us_resident_test
+  assertion d.citizen_or_resident_test
+  assertion d.eligible_dependent
+```
+
+### A filer who can be claimed as a dependent claims no one (IRC 152(b)(1))
+
+```catala
+#[test]
+declaration scope TestFilerIsDependent:
+  m scope MkMember
+  internal d content R.DependentTest
+
+scope TestFilerIsDependent:
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: true
+      -- either_filer_us_citizen_or_national: true }
+  assertion d.qualifying_relative
+  assertion d.eligible_dependent_minus_filer_information
+  assertion not d.eligible_dependent
+  assertion not d.is_claimed_dependent
+  assertion d.is_claimed_if_claimable
+```
+
+### Married parent filing jointly (IRC 152(b)(2))
+
+The parent files a joint return with their spouse (not only for a refund):
+still a qualifying relative, but not a dependent.
+
+```catala
+#[test]
+declaration scope TestMarriedParentJointReturn:
+  m scope MkMember
+  internal d content R.DependentTest
+
+scope TestMarriedParentJointReturn:
+  definition m.married equals true
+  definition m.writable_joint_return equals true
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion d.qualifying_relative
+  assertion not d.qc.joint_return_test
+  assertion not d.eligible_dependent
+```
+
+### Eligible but not claimed
+
+```catala
+#[test]
+declaration scope TestEligibleNotClaimed:
+  m scope MkMember
+  internal d content R.DependentTest
+
+scope TestEligibleNotClaimed:
+  definition m.tp_claims equals false
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion d.eligible_dependent
+  assertion not d.is_claimed_dependent
+  assertion not d.is_claimed_if_claimable
+```
+
+### DF-BUG(17-a): the filer's own qualifying child is not a qualifying relative
+
+Pub 501 p 18, Not a Qualifying Child Test, Example 1: a 22-year-old student
+child who lives with the filer and meets all the qualifying child tests "isn't
+your qualifying relative", even with gross income under $5,050 and over half
+support from the filer. DF says qualifying relative; we say no. The child is
+a dependent either way.
+
+```catala
+#[test]
+declaration scope TestOwnQualifyingChildNotQualifyingRelative:
+  m scope MkMember
+  internal d content R.DependentTest
+
+scope TestOwnQualifyingChildNotQualifyingRelative:
+  definition m.relationship equals Q.Relationship.BiologicalChild
+  definition m.date_of_birth equals |2002-04-11|
+  definition m.full_time_student equals true
+  definition m.residency_duration equals Q.ResidencyDuration.AllYear
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion d.qualifying_child
+  assertion d.not_qualifying_child_test
+  assertion d.qualifying_relative_minus_not_qc_test
+  assertion not d.qualifying_relative
+  assertion d.qc_or_qr
+  assertion d.eligible_dependent
+```
+
+### DF-BUG(17-b): an older sibling who is a parent's qualifying child
+
+The filer, born 2004-03-01, is 20. Their sibling, born 2003-01-10, is 21, a
+full-time student, and lived with the filer 8 months; the sibling had $2,000
+of gross income and the filer paid over half their support. The sibling fails
+the age test for the filer (not younger, IRC 152(c)(3)(A)), so DF never asks
+whether the sibling is someone else's qualifying child. The sibling is the
+qualifying child of their parent, who must file: under 152(d)(1)(D) the
+sibling is not the filer's qualifying relative. DF says qualifying relative.
+
+```catala
+#[test]
+declaration scope TestOlderSiblingQualifyingChildOfParent:
+  m scope MkMember
+  internal d content R.DependentTest
+
+scope TestOlderSiblingQualifyingChildOfParent:
+  definition m.relationship equals Q.Relationship.Sibling
+  definition m.date_of_birth equals |2003-01-10|
+  definition m.full_time_student equals true
+  definition m.residency_duration equals Q.ResidencyDuration.SixToElevenMonths
+  definition m.gross_income equals $2,000
+  definition m.could_be_qc_of_another equals true
+  definition m.potential_claimer_must_file equals true
+  definition m.potential_claimer_did_file equals true
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |2004-03-01|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion not d.qc.age_test
+  assertion not d.qualifying_child
+  assertion not d.ask_about_qc_of_another
+  # DF's value: the gated answer is ignored
+  assertion not d.is_qualifying_child_of_another
+  # The statute: the answer counts
+  assertion not d.not_qualifying_child_test
+  assertion d.qualifying_relative_minus_not_qc_test
+  assertion not d.qualifying_relative
+  assertion not d.eligible_dependent
+```
+
+### The household
+
+Three members: the parent of the first case (claimed), a non-relative who
+lived 8 months (not eligible), and a child with no TIN (not eligible).
+
+```catala
+#[test]
+declaration scope TestHousehold:
+  parent scope MkMember
+  lodger scope MkMember
+  child scope MkMember
+  internal h content R.Dependents
+
+scope TestHousehold:
+  definition lodger.relationship equals Q.Relationship.NoneOfTheAbove
+  definition lodger.date_of_birth equals |1990-09-09|
+  definition lodger.residency_duration equals Q.ResidencyDuration.SixToElevenMonths
+  definition child.relationship equals Q.Relationship.BiologicalChild
+  definition child.date_of_birth equals |2014-01-20|
+  definition child.residency_duration equals Q.ResidencyDuration.AllYear
+  definition child.tin_type equals R.TinType.NoTin
+  definition h equals
+    output of R.Dependents with {
+      -- members: [parent.member; lodger.member; child.member]
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion number of h.results = 3
+  assertion h.claimed_dependents_count = 1
+```
+
+### DF-BUG(17-b), the other side: a "yes" the statute rules out is ignored
+
+A 9-year-old child who lived with the filer all year but provided over half
+of their own support. They fail the support test of IRC 152(c)(1)(D), so they
+are nobody's qualifying child, whatever the answer to "Is the dependent the
+qualifying child of any other taxpayer?" (here yes, with a claimer who must
+file, as in the oracle scenario `single-50k`). DF agrees (it never reads the
+answer behind its gate).
+
+```catala
+#[test]
+declaration scope TestOwnSupportChildCannotBeAnyonesQualifyingChild:
+  m scope MkMember
+  internal d content R.DependentTest
+
+scope TestOwnSupportChildCannotBeAnyonesQualifyingChild:
+  definition m.relationship equals Q.Relationship.BiologicalChild
+  definition m.date_of_birth equals |2015-09-09|
+  definition m.residency_duration equals Q.ResidencyDuration.AllYear
+  definition m.own_support equals true
+  definition m.could_be_qc_of_another equals true
+  definition m.potential_claimer_must_file equals true
+  definition d equals
+    output of R.DependentTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion not d.qc.qc_support_test
+  assertion not d.could_be_qualifying_child_of_some_taxpayer
+  assertion d.not_qualifying_child_test
+  # Fails the qualifying relative support test too: not a dependent
+  assertion not d.qr_support_test
+  assertion not d.qualifying_relative
+  assertion not d.eligible_dependent
+```
