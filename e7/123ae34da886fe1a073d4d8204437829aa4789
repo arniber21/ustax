@@ -1,0 +1,24 @@
+catala/elderly_and_disabled.catala_en
+  s_3031b504518be3::t_48131609c91a65 30,387,405
+difftest/mappings/elderly_and_disabled.mjs
+  s_3031b504518be3::t_cd52dea3479c35 15-17
+  s_3031b504518be3::t_48131609c91a65 11,71
+  s_3031b504518be3::t_648aefe39ac286 72-73,77-83
+  s_3031b504518be3::t_43d7140ca1c0df 125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e7123ae34da886fe1a073d4d8204437829aa4789",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
