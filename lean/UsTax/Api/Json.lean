@@ -39,7 +39,7 @@ inductive J where
   | arr (xs : List J)
   /-- An object, members in source order, keys unique. -/
   | obj (kvs : List (String × J))
-  deriving Repr, Inhabited
+  deriving Inhabited
 
 namespace J
 
