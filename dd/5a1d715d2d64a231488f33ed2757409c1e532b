@@ -1,0 +1,24 @@
+catala/tests/test_estimated_payments.catala_en
+  s_3031b504518be3::t_bd469882b0c1f4 11,13,16-19,27,29,32-35,43,45,48-51,58,60-61,64-71,83,85-88,91-106
+  s_3031b504518be3::t_5d899570a65826 1-10,12,14-15,20-26,28,30-31,36-42,44,46-47,52-57,59,62-63,72-82,84,89-90,107-116
+catala/estimated_payments.catala_en
+  s_3031b504518be3::t_678666758b6dd4 1-129
+difftest/mappings/estimated_payments.mjs
+  s_3031b504518be3::t_1550c5af685c1a 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd5a1d715d2d64a231488f33ed2757409c1e532b",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
