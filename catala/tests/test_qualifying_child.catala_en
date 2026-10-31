@@ -1,0 +1,657 @@
+# Tests for the Qualifying_child module
+
+Run with `clerk test`. Each named scope is one concrete person, worked by
+hand from IRC 152(c) and Pub. 501 (2024) pp 11-18 as quoted in
+`catala/qualifying_child.catala_en`. Every scope sets satisfiable inputs (a
+real person a real filer could enter) and asserts both the expected result
+and the rejection of the wrong one. The oracle comparison is
+`make difftest-persons` (per-person Direct File values, `oracle/persons.csv`).
+
+> Using Qualifying_child as Q
+
+## Helper: a person with default answers
+
+The default is a biological child born 2010-03-01 (14 at the end of 2024),
+who lived with the filer all year, did not provide over half of their own
+support, is unmarried, not a student, not disabled, and is nobody else's
+qualifying child. The filer (`oldest_filer_dob`) was born 1985-06-15. A test
+overrides only what it tests.
+
+```catala
+declaration scope MkPerson:
+  context relationship content Q.Relationship
+  context date_of_birth content date
+  context full_time_student content boolean
+  context permanent_total_disability content boolean
+  context residency_duration content Q.ResidencyDuration
+  context own_support content boolean
+  context married content boolean
+  context writable_joint_return content boolean
+  context writable_required_to_file content boolean
+  context writable_filing_only_for_refund content boolean
+  context could_be_qc_of_another content boolean
+  context potential_claimer_must_file content boolean
+  context potential_claimer_did_file content boolean
+  context potential_claimer_filed_only_for_refund content boolean
+  output person content Q.Person
+
+scope MkPerson:
+  definition relationship equals Q.Relationship.BiologicalChild
+  definition date_of_birth equals |2010-03-01|
+  definition full_time_student equals false
+  definition permanent_total_disability equals false
+  definition residency_duration equals Q.ResidencyDuration.AllYear
+  definition own_support equals false
+  definition married equals false
+  definition writable_joint_return equals false
+  definition writable_required_to_file equals false
+  definition writable_filing_only_for_refund equals false
+  definition could_be_qc_of_another equals false
+  definition potential_claimer_must_file equals false
+  definition potential_claimer_did_file equals false
+  definition potential_claimer_filed_only_for_refund equals false
+  definition person equals Q.Person {
+    -- relationship: relationship
+    -- date_of_birth: date_of_birth
+    -- full_time_student: full_time_student
+    -- permanent_total_disability: permanent_total_disability
+    -- residency_duration: residency_duration
+    -- own_support: own_support
+    -- married: married
+    -- writable_joint_return: writable_joint_return
+    -- writable_required_to_file: writable_required_to_file
+    -- writable_filing_only_for_refund: writable_filing_only_for_refund
+    -- writable_could_be_qualifying_child_of_another: could_be_qc_of_another
+    -- writable_potential_claimer_must_file: potential_claimer_must_file
+    -- writable_potential_claimer_did_file: potential_claimer_did_file
+    -- writable_potential_claimer_filed_only_for_refund:
+         potential_claimer_filed_only_for_refund
+  }
+```
+
+## The cases of issue #16
+
+```catala
+#[test]
+declaration scope TestEighteenYearOldChild:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestEighteenYearOldChild:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  # Born 2006-08-20: 18 at the end of 2024, under 19 (152(c)(3)(A)(i)).
+  definition c_p.date_of_birth equals |2006-08-20|
+  assertion c.age = 18
+  assertion c.age_test
+  assertion c.qc_relationship_test
+  assertion c.residency_test
+  assertion c.qc_support_test
+  assertion c.joint_return_test
+  assertion c.qualifying_child
+  assertion not c.ko_qualifying_child_tie_breaker
+
+#[test]
+declaration scope TestNineteenYearOldNonStudent:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestNineteenYearOldNonStudent:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  # Born 2005-12-10: turned 19 on December 10, 2024 (Pub 501 p 12 example).
+  definition c_p.date_of_birth equals |2005-12-10|
+  assertion c.age = 19
+  assertion not c.age_test
+  # Known-bad output rejected: every other test passes, the age test alone
+  # makes the person not a qualifying child.
+  assertion c.qc_relationship_test and c.residency_test
+    and c.qc_support_test and c.joint_return_test
+  assertion not c.qualifying_child
+
+#[test]
+declaration scope TestTwentyTwoYearOldStudent:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestTwentyTwoYearOldStudent:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition c_p.date_of_birth equals |2002-04-11|
+  definition c_p.full_time_student equals true
+  assertion c.age = 22
+  assertion c.student_status_may_affect_benefits
+  assertion c.is_a_student_under24
+  assertion c.age_test
+  assertion c.qualifying_child
+
+#[test]
+declaration scope TestTwentyTwoYearOldNonStudent:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestTwentyTwoYearOldNonStudent:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  # Same person, not a student: the known-bad "QC" is rejected.
+  definition c_p.date_of_birth equals |2002-04-11|
+  assertion not c.is_a_student_under24
+  assertion not c.qualifying_child
+
+#[test]
+declaration scope TestTwentyFourYearOldStudent:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestTwentyFourYearOldStudent:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  # Born 2000-02-01: 24 at the end of 2024, so not "a student who has not
+  # attained the age of 24" (152(c)(3)(A)(ii)).
+  definition c_p.date_of_birth equals |2000-02-01|
+  definition c_p.full_time_student equals true
+  assertion c.age = 24
+  assertion not c.student_status_may_affect_benefits
+  assertion not c.is_a_student_under24
+  assertion not c.age_test
+  assertion not c.qualifying_child
+
+#[test]
+declaration scope TestDisabledAdultChild:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestDisabledAdultChild:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |1959-05-05| }
+  # A permanently and totally disabled child aged 40 of a filer aged 65:
+  # 152(c)(3)(B), "regardless of age" (Pub 501 p 12).
+  definition c_p.date_of_birth equals |1984-01-20|
+  definition c_p.permanent_total_disability equals true
+  assertion c.age = 40
+  assertion c.disability_status_may_affect_benefits
+  assertion c.age_test
+  assertion c.qualifying_child
+
+#[test]
+declaration scope TestAdultChildNotDisabled:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestAdultChildNotDisabled:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |1959-05-05| }
+  definition c_p.date_of_birth equals |1984-01-20|
+  assertion not c.age_test
+  assertion not c.qualifying_child
+
+#[test]
+declaration scope TestChildOlderThanFiler:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestChildOlderThanFiler:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |2008-05-01| }
+  # A 17-year-old sibling of a 16-year-old filer: under 19 but not younger
+  # than the filer (152(c)(3)(A)).
+  definition c_p.relationship equals Q.Relationship.Sibling
+  definition c_p.date_of_birth equals |2007-03-01|
+  assertion c.age = 17
+  assertion not c.younger_than_oldest_filer
+  assertion not c.age_test
+  assertion not c.qualifying_child
+
+#[test]
+declaration scope TestMarriedJointRefundOnly:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestMarriedJointRefundOnly:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  # Pub 501 p 15, Example 2: an 18-year-old married child files a joint
+  # return only to get a refund of withheld tax and is not required to file.
+  definition c_p.date_of_birth equals |2006-02-02|
+  definition c_p.married equals true
+  definition c_p.writable_joint_return equals true
+  definition c_p.writable_required_to_file equals false
+  definition c_p.writable_filing_only_for_refund equals true
+  assertion c.joint_return
+  assertion c.filing_only_for_refund
+  assertion c.joint_return_test
+  assertion c.qualifying_child
+```
+
+## Joint return test: the cases that fail
+
+```catala
+#[test]
+declaration scope TestMarriedJointNotRefundOnly:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestMarriedJointNotRefundOnly:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  # Pub 501 p 15, Example 1: the couple files jointly, not only for a refund.
+  definition c_p.date_of_birth equals |2006-02-02|
+  definition c_p.married equals true
+  definition c_p.writable_joint_return equals true
+  assertion not c.joint_return_test
+  assertion not c.qualifying_child
+
+#[test]
+declaration scope TestMarriedJointRequiredToFile:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestMarriedJointRequiredToFile:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  # Required to file: the refund-only exception cannot apply, even if the
+  # refund-only box is (inconsistently) answered yes.
+  definition c_p.date_of_birth equals |2006-02-02|
+  definition c_p.married equals true
+  definition c_p.writable_joint_return equals true
+  definition c_p.writable_required_to_file equals true
+  definition c_p.writable_filing_only_for_refund equals true
+  assertion c.required_to_file
+  assertion not c.filing_only_for_refund
+  assertion not c.joint_return_test
+  assertion not c.qualifying_child
+
+#[test]
+declaration scope TestMarriedSeparate:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestMarriedSeparate:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  # Married but not filing jointly: passes the joint return test.
+  definition c_p.date_of_birth equals |2006-02-02|
+  definition c_p.married equals true
+  assertion c.joint_return_test
+  assertion c.qualifying_child
+
+#[test]
+declaration scope TestJointAnswersIgnoredIfUnmarried:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestJointAnswersIgnoredIfUnmarried:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  # DF ANDs every joint-return fact with `married`.
+  definition c_p.writable_joint_return equals true
+  definition c_p.writable_required_to_file equals true
+  assertion not c.joint_return
+  assertion not c.required_to_file
+  assertion c.qualifying_child
+```
+
+## Relationship, residency and support
+
+```catala
+#[test]
+declaration scope TestRelationships:
+  child_p scope MkPerson
+  internal child content Q.QualifyingChildTest
+  step_p scope MkPerson
+  internal step content Q.QualifyingChildTest
+  foster_p scope MkPerson
+  internal foster content Q.QualifyingChildTest
+  grand_p scope MkPerson
+  internal grand content Q.QualifyingChildTest
+  niece_p scope MkPerson
+  internal niece content Q.QualifyingChildTest
+  half_sibling_child_p scope MkPerson
+  internal half_sibling_child content Q.QualifyingChildTest
+  in_law_p scope MkPerson
+  internal in_law content Q.QualifyingChildTest
+  sibling_in_law_p scope MkPerson
+  internal sibling_in_law content Q.QualifyingChildTest
+  parent_p scope MkPerson
+  internal parent content Q.QualifyingChildTest
+  aunt_p scope MkPerson
+  internal aunt content Q.QualifyingChildTest
+  unrelated_p scope MkPerson
+  internal unrelated content Q.QualifyingChildTest
+
+scope TestRelationships:
+  definition child equals
+    output of Q.QualifyingChildTest with {
+      -- person: child_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition step equals
+    output of Q.QualifyingChildTest with {
+      -- person: step_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition foster equals
+    output of Q.QualifyingChildTest with {
+      -- person: foster_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition grand equals
+    output of Q.QualifyingChildTest with {
+      -- person: grand_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition niece equals
+    output of Q.QualifyingChildTest with {
+      -- person: niece_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition half_sibling_child equals
+    output of Q.QualifyingChildTest with {
+      -- person: half_sibling_child_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition in_law equals
+    output of Q.QualifyingChildTest with {
+      -- person: in_law_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition sibling_in_law equals
+    output of Q.QualifyingChildTest with {
+      -- person: sibling_in_law_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition parent equals
+    output of Q.QualifyingChildTest with {
+      -- person: parent_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition aunt equals
+    output of Q.QualifyingChildTest with {
+      -- person: aunt_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition unrelated equals
+    output of Q.QualifyingChildTest with {
+      -- person: unrelated_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition step_p.relationship equals Q.Relationship.StepChild
+  definition foster_p.relationship equals Q.Relationship.FosterChild
+  definition grand_p.relationship equals Q.Relationship.GrandChildOrOtherDescendantOfChild
+  definition niece_p.relationship equals Q.Relationship.ChildOfSibling
+  definition half_sibling_child_p.relationship equals Q.Relationship.ChildOfHalfSibling
+  definition in_law_p.relationship equals Q.Relationship.ChildInLaw
+  definition sibling_in_law_p.relationship equals Q.Relationship.SiblingInLaw
+  definition parent_p.relationship equals Q.Relationship.Parent
+  definition aunt_p.relationship equals Q.Relationship.SiblingOfParent
+  definition unrelated_p.relationship equals Q.Relationship.NoneOfTheAbove
+  # 152(c)(2)(A), (B), 152(f)(1), (4)
+  assertion child.qualifying_child
+  assertion step.qualifying_child
+  assertion foster.qualifying_child
+  assertion grand.qualifying_child
+  assertion niece.qualifying_child
+  assertion half_sibling_child.qualifying_child
+  # In-laws, ancestors, a parent's sibling and unrelated persons are not in
+  # 152(c)(2), whatever their age and residency.
+  assertion not in_law.qc_relationship_test
+  assertion not in_law.qualifying_child
+  assertion not sibling_in_law.qualifying_child
+  assertion not parent.qualifying_child
+  assertion not aunt.qualifying_child
+  assertion not unrelated.qualifying_child
+
+#[test]
+declaration scope TestResidency:
+  six_to_eleven_p scope MkPerson
+  internal six_to_eleven content Q.QualifyingChildTest
+  less_than_six_p scope MkPerson
+  internal less_than_six content Q.QualifyingChildTest
+
+scope TestResidency:
+  definition six_to_eleven equals
+    output of Q.QualifyingChildTest with {
+      -- person: six_to_eleven_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition less_than_six equals
+    output of Q.QualifyingChildTest with {
+      -- person: less_than_six_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition six_to_eleven_p.residency_duration equals Q.ResidencyDuration.SixToElevenMonths
+  definition less_than_six_p.residency_duration equals Q.ResidencyDuration.LessThanSixMonths
+  assertion six_to_eleven.residency_test
+  assertion six_to_eleven.qualifying_child
+  assertion not less_than_six.residency_test
+  assertion not less_than_six.qualifying_child
+
+#[test]
+declaration scope TestOwnSupport:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestOwnSupport:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition c_p.own_support equals true
+  assertion not c.qc_support_test
+  assertion not c.qualifying_child
+```
+
+## Age test details
+
+```catala
+#[test]
+declaration scope TestPub501YoungerThanSpouse:
+  ex1_p scope MkPerson
+  internal ex1 content Q.QualifyingChildTest
+  ex2_p scope MkPerson
+  internal ex2 content Q.QualifyingChildTest
+
+scope TestPub501YoungerThanSpouse:
+  definition ex1 equals
+    output of Q.QualifyingChildTest with {
+      -- person: ex1_p.person
+      -- minimum_filer_date_of_birth: |2003-01-10| }
+  definition ex2 equals
+    output of Q.QualifyingChildTest with {
+      -- person: ex2_p.person
+      -- minimum_filer_date_of_birth: |1999-01-10| }
+  # Pub 501 p 13, Examples 1 and 2: a 23-year-old unmarried student sibling
+  # of a couple filing jointly. Example 1: both spouses are 21, so the
+  # oldest filer is 21 and the sibling is not younger. Example 2: the spouse
+  # is 25; /minimumFilerDateOfBirth is the 25-year-old's date of birth.
+  definition ex1_p.relationship equals Q.Relationship.Sibling
+  definition ex1_p.date_of_birth equals |2001-07-01|
+  definition ex1_p.full_time_student equals true
+  definition ex2_p.relationship equals Q.Relationship.Sibling
+  definition ex2_p.date_of_birth equals |2001-07-01|
+  definition ex2_p.full_time_student equals true
+  assertion ex1.age = 23
+  assertion not ex1.qualifying_child
+  assertion ex2.qualifying_child
+
+#[test]
+declaration scope TestAgeAtFirstHalfOfYear:
+  july_2_p scope MkPerson
+  internal july_2 content Q.QualifyingChildTest
+  july_3_p scope MkPerson
+  internal july_3 content Q.QualifyingChildTest
+
+scope TestAgeAtFirstHalfOfYear:
+  definition july_2 equals
+    output of Q.QualifyingChildTest with {
+      -- person: july_2_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition july_3 equals
+    output of Q.QualifyingChildTest with {
+      -- person: july_3_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  # DF /ageAtFirstHalfOfYear: the age on July 2.
+  definition july_2_p.date_of_birth equals |2006-07-02|
+  definition july_3_p.date_of_birth equals |2006-07-03|
+  assertion july_2.age_at_first_half_of_year = 18
+  assertion july_2.disability_status_may_affect_benefits
+  assertion july_3.age_at_first_half_of_year = 17
+  assertion not july_3.disability_status_may_affect_benefits
+  # Both are 18 at the end of the year and pass the age test anyway.
+  assertion july_3.age = 18
+  assertion july_3.qualifying_child
+
+#[test]
+declaration scope TestDisabledTwinOfFiler:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestDisabledTwinOfFiler:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |2007-03-01| }
+  # DF-BUG(16-a): a disabled 17-year-old sibling born the same day as the
+  # 17-year-old filer. DF's gate is false (neither older nor younger), so DF
+  # fails the age test; 152(c)(3)(B) treats the age requirements as met.
+  definition c_p.relationship equals Q.Relationship.Sibling
+  definition c_p.date_of_birth equals |2007-03-01|
+  definition c_p.permanent_total_disability equals true
+  assertion not c.disability_status_may_affect_benefits
+  assertion c.age_test
+  assertion c.qualifying_child
+
+#[test]
+declaration scope TestStudentEighteenNotAsked:
+  c_p scope MkPerson
+  internal c content Q.QualifyingChildTest
+
+scope TestStudentEighteenNotAsked:
+  definition c equals
+    output of Q.QualifyingChildTest with {
+      -- person: c_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  # An 18-year-old student passes under 152(c)(3)(A)(i); DF does not ask the
+  # student question under 19, which changes nothing.
+  definition c_p.date_of_birth equals |2006-01-15|
+  definition c_p.full_time_student equals true
+  assertion not c.student_status_may_affect_benefits
+  assertion c.age_test
+```
+
+## Tie-breaker knockout (IRC 152(c)(4), DF-BUG-3)
+
+```catala
+#[test]
+declaration scope TestTieBreakerKnockout:
+  must_file_p scope MkPerson
+  internal must_file content Q.QualifyingChildTest
+  files_for_tax_p scope MkPerson
+  internal files_for_tax content Q.QualifyingChildTest
+  refund_only_p scope MkPerson
+  internal refund_only content Q.QualifyingChildTest
+  not_filing_p scope MkPerson
+  internal not_filing content Q.QualifyingChildTest
+  not_my_qc_p scope MkPerson
+  internal not_my_qc content Q.QualifyingChildTest
+
+scope TestTieBreakerKnockout:
+  definition must_file equals
+    output of Q.QualifyingChildTest with {
+      -- person: must_file_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition files_for_tax equals
+    output of Q.QualifyingChildTest with {
+      -- person: files_for_tax_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition refund_only equals
+    output of Q.QualifyingChildTest with {
+      -- person: refund_only_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition not_filing equals
+    output of Q.QualifyingChildTest with {
+      -- person: not_filing_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  definition not_my_qc equals
+    output of Q.QualifyingChildTest with {
+      -- person: not_my_qc_p.person
+      -- minimum_filer_date_of_birth: |1985-06-15| }
+  # The other taxpayer must file: a real competing claimant.
+  definition must_file_p.could_be_qc_of_another equals true
+  definition must_file_p.potential_claimer_must_file equals true
+  # Not required to file, but files a return not only for a refund.
+  definition files_for_tax_p.could_be_qc_of_another equals true
+  definition files_for_tax_p.potential_claimer_did_file equals true
+  # Pub 501 p 18: not required to file and files only for a refund.
+  definition refund_only_p.could_be_qc_of_another equals true
+  definition refund_only_p.potential_claimer_did_file equals true
+  definition refund_only_p.potential_claimer_filed_only_for_refund equals true
+  # Pub 501 p 18: not required to file and does not file.
+  definition not_filing_p.could_be_qc_of_another equals true
+  # Not the filer's qualifying child: no tie to break here.
+  definition not_my_qc_p.could_be_qc_of_another equals true
+  definition not_my_qc_p.potential_claimer_must_file equals true
+  definition not_my_qc_p.residency_duration equals Q.ResidencyDuration.LessThanSixMonths
+
+  assertion must_file.qualifying_child
+  assertion must_file.ko_qualifying_child_tie_breaker
+  assertion files_for_tax.ko_qualifying_child_tie_breaker
+  assertion refund_only.qc_of_another_but_not
+  assertion not refund_only.ko_qualifying_child_tie_breaker
+  assertion not_filing.qc_of_another_but_not
+  assertion not not_filing.ko_qualifying_child_tie_breaker
+  assertion not not_my_qc.qualifying_child
+  assertion not not_my_qc.ko_qualifying_child_tie_breaker
+```
+
+## The household
+
+```catala
+#[test]
+declaration scope TestHousehold:
+  kid scope MkPerson
+  student scope MkPerson
+  adult scope MkPerson
+  parent scope MkPerson
+  h scope Q.QualifyingChildren
+  tie scope MkPerson
+  h_tie scope Q.QualifyingChildren
+  h_empty scope Q.QualifyingChildren
+
+scope TestHousehold:
+  definition student.date_of_birth equals |2003-09-09|
+  definition student.full_time_student equals true
+  definition adult.date_of_birth equals |1995-09-09|
+  definition parent.relationship equals Q.Relationship.Parent
+  definition parent.date_of_birth equals |1955-01-01|
+  definition h.persons equals [kid.person; student.person; adult.person; parent.person]
+  definition h.minimum_filer_date_of_birth equals |1980-01-01|
+  definition tie.could_be_qc_of_another equals true
+  definition tie.potential_claimer_must_file equals true
+  definition h_tie.persons equals [kid.person; tie.person]
+  definition h_tie.minimum_filer_date_of_birth equals |1980-01-01|
+  definition h_empty.persons equals []
+  definition h_empty.minimum_filer_date_of_birth equals |1980-01-01|
+
+  assertion number of h.results = 4
+  assertion h.qualifying_child_count = 2
+  assertion not h.unsupported
+  assertion h_tie.qualifying_child_count = 2
+  assertion h_tie.ko_qualifying_child_tie_breaker
+  assertion h_tie.unsupported
+  assertion h_empty.qualifying_child_count = 0
+  assertion not h_empty.unsupported
+```
