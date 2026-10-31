@@ -1,0 +1,498 @@
+# Tests for the Hsa module
+
+Run with `clerk test`. Named scopes with the concrete cases of issue #35,
+worked out by hand from Form 8889 (2024) and its instructions
+(`sources/forms-instructions/f8889--2024.pdf`, `i8889--2024.pdf`) and Rev.
+Proc. 2023-23 ($4,150 self-only, $8,300 family, $1,000 catch-up). The oracle
+comparison is `make difftest SCOPE=hsa`.
+
+> Using Types
+> Using Hsa as H
+
+## Helper: a return with defaults
+
+By default: a single filer aged 40 with a self-only HDHP for the whole year,
+no Medicare, no other coverage, no W-2 HSA contributions, no dependents, and
+$0 of contributions of his own (`p_ty`, `p_ty1`). `p_made` says the filer
+answers that he made contributions of his own. The spouse has the same
+defaults and is only read on a joint return. Each test overrides the contexts
+it needs.
+
+```catala
+declaration scope Case:
+  context is_mfj content boolean
+  context is_married content boolean
+  context p_age55 content boolean
+  context s_age55 content boolean
+  context p_claimed content boolean
+  context p_w2 content money
+  context s_w2 content money
+  context p_made content boolean
+  context s_made content boolean
+  context p_ty content money
+  context p_ty1 content money
+  context s_ty content money
+  context s_ty1 content money
+  context p_type content H.TypeOfHdhp
+  context s_type content H.TypeOfHdhp
+  context p_medicare content H.MedicareEnrollment
+  context has_msa content boolean
+  context non_w2_activity content boolean
+  context p_activity content boolean
+  context s_activity content boolean
+  context dists content list of H.HsaDistribution
+  f scope H.Hsa
+  output deduction content money
+  output ko_over_limit condition
+  output ko_dependent condition
+  output ko_medicare condition
+  output ko_msa condition
+  output ko_unqualified condition
+  output unsupported condition
+  output p_form content H.Form8889
+  output s_form content H.Form8889
+  output p_excess condition
+  output p_exceeded_amount content money
+
+scope Case:
+  definition is_mfj equals false
+  definition is_married equals false
+  definition p_age55 equals false
+  definition s_age55 equals false
+  definition p_claimed equals false
+  definition p_w2 equals $0
+  definition s_w2 equals $0
+  definition p_made equals true
+  definition s_made equals true
+  definition p_ty equals $0
+  definition p_ty1 equals $0
+  definition s_ty equals $0
+  definition s_ty1 equals $0
+  definition p_type equals H.TypeOfHdhp.SelfOnly
+  definition s_type equals H.TypeOfHdhp.SelfOnly
+  definition p_medicare equals H.MedicareEnrollment.MedicareNoneOfYear
+  definition has_msa equals false
+  definition non_w2_activity equals true
+  definition p_activity equals true
+  definition s_activity equals true
+  definition dists equals []
+
+  definition f.is_filing_status_mfj equals is_mfj
+  definition f.is_married equals is_married
+  definition f.is_single equals not is_married
+  definition f.primary_filer_age55_or_older equals p_age55
+  definition f.secondary_filer_age55_or_older equals s_age55
+  definition f.primary_filer_can_be_claimed equals p_claimed
+  definition f.secondary_filer_can_be_claimed equals false
+  definition f.primary_filer_total_hsa_contributions_from_w2s equals p_w2
+  definition f.secondary_filer_total_hsa_contributions_from_w2s equals s_w2
+  definition f.has_primary_filer_hsa_contributions_from_w2s equals p_w2 > $0
+  definition f.has_secondary_filer_hsa_contributions_from_w2s equals s_w2 > $0
+  definition f.knockout_has_no_payments_or_credits equals false
+  definition f.paid_estimated_taxes_or_from_last_year equals false
+  definition f.tax_exempt_interest equals $0
+  definition f.pensions_and_annuities equals $0
+  definition f.social_security_benefits equals $0
+  definition f.primary_filer equals H.HsaFilerAnswers {
+    -- writable_primary_filer_has_made_contributions_to_hsa: p_made
+    -- writable_secondary_filer_has_made_contributions_to_hsa: false
+    -- enrolled_in_medicare: p_medicare
+    -- hsa_hdhp_coverage_status: H.HdhpCoverageStatus.HdhpAllYear
+    -- type_of_hdhp: p_type
+    -- had_other_coverage_ineligible_for_hsa:
+         H.OtherCoverageIneligible.OtherCoverageNoneOfYear
+    -- writable_mfs_line6_check: false
+    -- writable_change_in_marital_status_during_tax_year:
+         H.MaritalStatusChange.WasNotMarriedNorDivorcedThisYear
+    -- writable_marital_change_affect_contribution_limit_bool: false
+    -- has_made_qualified_hsa_funding_distribution: false
+    -- writable_hsa_nonemployer_contributions_tax_year: p_ty
+    -- writable_hsa_nonemployer_contributions_tax_year_plus_one: p_ty1
+  }
+  definition f.secondary_filer equals H.HsaFilerAnswers {
+    -- writable_primary_filer_has_made_contributions_to_hsa: false
+    -- writable_secondary_filer_has_made_contributions_to_hsa: s_made
+    -- enrolled_in_medicare: H.MedicareEnrollment.MedicareNoneOfYear
+    -- hsa_hdhp_coverage_status: H.HdhpCoverageStatus.HdhpAllYear
+    -- type_of_hdhp: s_type
+    -- had_other_coverage_ineligible_for_hsa:
+         H.OtherCoverageIneligible.OtherCoverageNoneOfYear
+    -- writable_mfs_line6_check: false
+    -- writable_change_in_marital_status_during_tax_year:
+         H.MaritalStatusChange.WasNotMarriedNorDivorcedThisYear
+    -- writable_marital_change_affect_contribution_limit_bool: false
+    -- has_made_qualified_hsa_funding_distribution: false
+    -- writable_hsa_nonemployer_contributions_tax_year: s_ty
+    -- writable_hsa_nonemployer_contributions_tax_year_plus_one: s_ty1
+  }
+  definition f.some_filer_had_non_w2_hsa_activity equals non_w2_activity
+  definition f.writable_primary_filer_had_non_w2_hsa_activity equals p_activity
+  definition f.writable_secondary_filer_had_non_w2_hsa_activity equals s_activity
+  definition f.has_hsa_medical_savings_account_type equals has_msa
+  definition f.writable_has_hsa_excess_contributions_previous_year equals false
+  definition f.writable_has_hsa_withdrawn_excess_contributions_yes_no equals false
+  definition f.some_filers_made_testing_period_contribution equals false
+  definition f.some_filers_have_testing_period_additional_income equals false
+  definition f.hsa_distributions equals dists
+
+  definition deduction equals f.hsa_total_deductible_amount
+  rule ko_over_limit under condition f.ko_hsa_contributions_over_limit
+  consequence fulfilled
+  rule ko_dependent under condition f.ko_filer_is_dependent_and_contributes_to_hsa
+  consequence fulfilled
+  rule ko_medicare under condition
+    f.ko_hsa_coverage_changing or f.ko_enrolled_in_medicare_all_year
+  consequence fulfilled
+  rule ko_msa under condition f.ko_hsa_medical_savings_account_type
+  consequence fulfilled
+  rule ko_unqualified under condition f.ko_hsa_unqualified_distributions
+  consequence fulfilled
+  rule unsupported under condition f.unsupported
+  consequence fulfilled
+  definition p_form equals f.form_8889 of Types.FilerRole.PrimaryFiler
+  definition s_form equals f.form_8889 of Types.FilerRole.SecondaryFiler
+  rule p_excess under condition
+    f.has_excess_hsa_contributions of Types.FilerRole.PrimaryFiler
+  consequence fulfilled
+  definition p_exceeded_amount equals
+    f.hsa_contribution_limit_exceeded_amount of Types.FilerRole.PrimaryFiler
+```
+
+## Self-only coverage, full year, $4,000 of personal contributions
+
+No employer contribution: the limit is $4,150 (line 3, line 8, line 12) and
+the deduction is the smaller of line 2 and line 12, $4,000. No excess.
+
+```catala
+#[test]
+declaration scope TestSelfOnly4000:
+  c scope Case
+
+scope TestSelfOnly4000:
+  definition c.p_ty equals $4,000
+  assertion c.deduction = $4,000
+  assertion c.p_form.line_1_self_only
+  assertion not c.p_form.line_1_family
+  assertion c.p_form.line_2 = $4,000
+  assertion c.p_form.line_3 = $4,150
+  assertion c.p_form.line_5 = $4,150
+  assertion c.p_form.line_6 = $4,150
+  assertion c.p_form.line_7 = $0
+  assertion c.p_form.line_8 = $4,150
+  assertion c.p_form.line_9 = $0
+  assertion c.p_form.line_11 = $0
+  assertion c.p_form.line_12 = $4,150
+  assertion c.p_form.line_13 = $4,000
+  assertion c.p_form.line_16 = $0
+  assertion not c.p_excess
+  assertion not c.ko_over_limit
+  assertion not c.unsupported
+  # The spouse is not on the return.
+  assertion c.s_form.line_13 = $0
+  # The spec rejects wrong outputs.
+  assertion not (c.deduction = $4,150)
+  assertion not (c.deduction = $3,999)
+```
+
+Contributions for the year made by April 15 of the next year count on
+line 2 (instructions line 2, `i8889--2024.pdf` p 4): $3,000 made in the year
+and $1,000 made for the year in 2025 give $4,000.
+
+```catala
+#[test]
+declaration scope TestContributionsMadeNextYear:
+  c scope Case
+
+scope TestContributionsMadeNextYear:
+  definition c.p_ty equals $3,000
+  definition c.p_ty1 equals $1,000
+  assertion c.deduction = $4,000
+  assertion c.p_form.line_2 = $4,000
+```
+
+## $5,000 of personal contributions: limited to $4,150, excess flagged
+
+Line 13 is capped at line 12, $4,150. The $850 above the limit is an excess
+contribution (`has_excess_hsa_contributions`), which DF does not support
+(`ko_hsa_contributions_over_limit`, so `unsupported`).
+
+```catala
+#[test]
+declaration scope TestSelfOnly5000:
+  c scope Case
+
+scope TestSelfOnly5000:
+  definition c.p_ty equals $5,000
+  assertion c.deduction = $4,150
+  assertion c.p_form.line_13 = $4,150
+  assertion c.p_excess
+  assertion c.p_exceeded_amount = $850
+  assertion c.ko_over_limit
+  assertion c.unsupported
+  # The bad output (the whole $5,000) is rejected.
+  assertion not (c.deduction = $5,000)
+```
+
+## Age 55 or older, self-only: $5,150
+
+Instructions line 3 (`i8889--2024.pdf` p 5): unmarried and 55 or older, add
+$1,000 to line 3. Line 7 stays $0.
+
+```catala
+#[test]
+declaration scope TestAge55SelfOnly:
+  c scope Case
+
+scope TestAge55SelfOnly:
+  definition c.p_age55 equals true
+  definition c.p_ty equals $5,150
+  assertion c.p_form.line_3 = $5,150
+  assertion c.p_form.line_7 = $0
+  assertion c.p_form.line_8 = $5,150
+  assertion c.deduction = $5,150
+  assertion not c.unsupported
+```
+
+## Family coverage: $8,300
+
+```catala
+#[test]
+declaration scope TestFamily:
+  c scope Case
+
+scope TestFamily:
+  definition c.p_type equals H.TypeOfHdhp.Family
+  definition c.p_ty equals $8,300
+  assertion c.p_form.line_1_family
+  assertion c.p_form.line_3 = $8,300
+  assertion c.p_form.line_8 = $8,300
+  assertion c.deduction = $8,300
+  assertion not c.unsupported
+```
+
+## Employer $3,000 plus personal $4,000 on self-only: $1,150 left
+
+Line 9 is the W-2 box 12 code W amount, $3,000; line 12 is
+$4,150 - $3,000 = $1,150 and so is the deduction. The total contributed,
+$7,000, is above the $4,150 limit by $2,850.
+
+```catala
+#[test]
+declaration scope TestEmployerAndPersonal:
+  c scope Case
+
+scope TestEmployerAndPersonal:
+  definition c.p_w2 equals $3,000
+  definition c.p_ty equals $4,000
+  assertion c.p_form.line_9 = $3,000
+  assertion c.p_form.line_11 = $3,000
+  assertion c.p_form.line_12 = $1,150
+  assertion c.p_form.line_13 = $1,150
+  assertion c.deduction = $1,150
+  assertion c.p_excess
+  assertion c.p_exceeded_amount = $2,850
+  assertion c.ko_over_limit
+```
+
+Employer contributions alone make the filer file Form 8889 but give no
+deduction; they stay under the limit, so nothing is knocked out.
+
+```catala
+#[test]
+declaration scope TestEmployerOnly:
+  c scope Case
+
+scope TestEmployerOnly:
+  definition c.p_w2 equals $3,000
+  definition c.non_w2_activity equals false
+  assertion c.deduction = $0
+  assertion c.p_form.line_9 = $3,000
+  assertion c.p_form.line_12 = $1,150
+  assertion not c.unsupported
+```
+
+## Joint return
+
+Both spouses 55 or older, married, both with family coverage, separate HSAs,
+$5,000 each. Line 5 is $8,300 for each; the spouses divide it equally, $4,150
+each (line 6); each adds $1,000 on line 7 (line 8 is $5,150); each deducts
+$5,000.
+
+```catala
+#[test]
+declaration scope TestMfjSeparateHsasFamily:
+  c scope Case
+
+scope TestMfjSeparateHsasFamily:
+  definition c.is_mfj equals true
+  definition c.is_married equals true
+  definition c.p_age55 equals true
+  definition c.s_age55 equals true
+  definition c.p_type equals H.TypeOfHdhp.Family
+  definition c.s_type equals H.TypeOfHdhp.Family
+  definition c.p_ty equals $5,000
+  definition c.s_ty equals $5,000
+  assertion c.p_form.line_5 = $8,300
+  assertion c.p_form.line_6 = $4,150
+  assertion c.p_form.line_7 = $1,000
+  assertion c.p_form.line_8 = $5,150
+  assertion c.s_form.line_6 = $4,150
+  assertion c.s_form.line_8 = $5,150
+  assertion c.deduction = $10,000
+  assertion not c.unsupported
+```
+
+DF-BUG(7) candidate: the primary spouse put $6,000 and the secondary $1,000
+into separate HSAs, both under 55 with family coverage. The law divides the
+$8,300 equally unless the spouses agree on another division
+(IRC 223(b)(5)(B)(ii)), so each has $4,150: the deductions are $4,150 and
+$1,000. DF assumes an agreement and would give $6,000 and $1,000
+(and $7,000 in total).
+
+```catala
+#[test]
+declaration scope TestMfjEqualDivision:
+  c scope Case
+
+scope TestMfjEqualDivision:
+  definition c.is_mfj equals true
+  definition c.is_married equals true
+  definition c.p_type equals H.TypeOfHdhp.Family
+  definition c.s_type equals H.TypeOfHdhp.Family
+  definition c.p_ty equals $6,000
+  definition c.s_ty equals $1,000
+  assertion c.p_form.line_6 = $4,150
+  assertion c.p_form.line_13 = $4,150
+  assertion c.s_form.line_13 = $1,000
+  assertion c.deduction = $5,150
+  assertion c.p_excess
+  assertion c.ko_over_limit
+  assertion c.unsupported
+```
+
+Only one spouse has an HSA, with family coverage: no division, the whole
+$8,300 is the limit. The spouse's answers are not read.
+
+```catala
+#[test]
+declaration scope TestMfjOneHsa:
+  c scope Case
+
+scope TestMfjOneHsa:
+  definition c.is_mfj equals true
+  definition c.is_married equals true
+  definition c.p_type equals H.TypeOfHdhp.Family
+  definition c.p_ty equals $8,300
+  definition c.s_made equals false
+  definition c.s_activity equals false
+  assertion c.p_form.line_6 = $8,300
+  assertion c.deduction = $8,300
+  assertion c.s_form.line_13 = $0
+  assertion not c.unsupported
+```
+
+## Knockouts
+
+Medicare for the whole year (IRC 223(b)(7)), a dependent filer
+(IRC 223(b)(6)), a medical savings account.
+
+```catala
+#[test]
+declaration scope TestKnockouts:
+  a scope Case
+  b scope Case
+  d scope Case
+  e scope Case
+
+scope TestKnockouts:
+  definition a.p_ty equals $1,000
+  definition a.p_medicare equals H.MedicareEnrollment.MedicareAllYear
+  assertion a.ko_medicare
+  assertion a.unsupported
+  definition b.p_ty equals $1,000
+  definition b.p_claimed equals true
+  assertion b.ko_dependent
+  assertion b.unsupported
+  definition d.p_ty equals $1,000
+  definition d.has_msa equals true
+  assertion d.ko_msa
+  assertion d.unsupported
+  definition e.p_ty equals $1,000
+  assertion not e.ko_medicare
+  assertion not e.ko_dependent
+  assertion not e.ko_msa
+  assertion not e.unsupported
+```
+
+## No HSA activity
+
+The filer answers that there are no contributions of his own and no W-2
+amount: no Form 8889, deduction $0.
+
+```catala
+#[test]
+declaration scope TestNoActivity:
+  c scope Case
+
+scope TestNoActivity:
+  definition c.non_w2_activity equals false
+  assertion c.deduction = $0
+  assertion c.p_form.line_3 = $0
+  assertion not c.unsupported
+```
+
+## Distributions (Part II)
+
+A $900 distribution, all spent on qualified medical expenses: lines 14a, 14c,
+15 are $900 and line 16 is $0 (the case in the Direct File scenario
+`hsa-ats-1`). A $1,000 distribution with $900 of expenses is above the
+expenses and is knocked out.
+
+```catala
+#[test]
+declaration scope TestDistributions:
+  a scope Case
+  b scope Case
+
+scope TestDistributions:
+  definition a.p_ty equals $690
+  definition a.p_ty1 equals $80
+  definition a.p_w2 equals $260
+  definition a.dists equals [
+    H.HsaDistribution {
+      -- filer: Types.FilerRole.PrimaryFiler
+      -- writable_distributions_rollover_bool: false
+      -- writable_distributions_rollover_amount: $0
+      -- writable_gross_distribution: $900
+      -- has_withdrawn_excess_contributions: false
+      -- writable_withdrawn_excess_contributions_amount: $0
+      -- writable_earnings_on_excess_contributions: $0
+      -- hsa_distribution_code: H.HsaDistributionCode.NormalDistribution
+      -- writable_fmv_on_date_of_death: $0
+      -- writable_qualified_med_expenses: $900
+    }]
+  assertion a.deduction = $770
+  assertion a.p_form.line_14a = $900
+  assertion a.p_form.line_14b = $0
+  assertion a.p_form.line_14c = $900
+  assertion a.p_form.line_15 = $900
+  assertion a.p_form.line_16 = $0
+  assertion not a.ko_unqualified
+  assertion not a.unsupported
+  definition b.p_ty equals $690
+  definition b.dists equals [
+    H.HsaDistribution {
+      -- filer: Types.FilerRole.PrimaryFiler
+      -- writable_distributions_rollover_bool: false
+      -- writable_distributions_rollover_amount: $0
+      -- writable_gross_distribution: $1,000
+      -- has_withdrawn_excess_contributions: false
+      -- writable_withdrawn_excess_contributions_amount: $0
+      -- writable_earnings_on_excess_contributions: $0
+      -- hsa_distribution_code: H.HsaDistributionCode.NormalDistribution
+      -- writable_fmv_on_date_of_death: $0
+      -- writable_qualified_med_expenses: $900
+    }]
+  assertion b.ko_unqualified
+  assertion b.unsupported
+```
