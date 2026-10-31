@@ -1,0 +1,52 @@
+web/tsconfig.json
+  s_3031b504518be3::t_cec376c5e836c7 1-17
+web/eslint.config.js
+  s_3031b504518be3::t_cec376c5e836c7 1-8
+web/src/api/mock.ts
+  s_3031b504518be3::t_ef4c73e5d5c277 1-97
+web/scripts/gen-api-types.mjs
+  s_3031b504518be3::t_a660a6212ab63a 1-38
+web/package.json
+  s_3031b504518be3::t_a3e73d7587f71c 1-33
+web/src/api/client.ts
+  s_3031b504518be3::t_683a9e5d1ebdd3 1-84
+web/src/api/index.ts
+  s_3031b504518be3::t_1a4b9a2dac3767 1-6
+web/vite.config.ts
+  s_3031b504518be3::t_cec376c5e836c7 1-9
+web/src/api/money.ts
+  s_3031b504518be3::t_e4b5a42de9c2f0 1-65
+web/src/vite-env.d.ts
+  s_3031b504518be3::t_cec376c5e836c7 1-8
+.gitignore
+  s_3031b504518be3::t_f3541bd2111cd9 11-12
+  s_3031b504518be3::t_4e140aaea2cb04 13-14
+web/src/api/money.test.ts
+  s_3031b504518be3::t_5abff6a77c7338 1-71
+web/src/api/validate.ts
+  s_3031b504518be3::t_0492ba98de5698 1-34
+web/src/api/README.md
+  s_3031b504518be3::t_6d2d90b812dce6 1-9
+web/src/api/client.test.ts
+  s_3031b504518be3::t_dec62ee74ce34c 1-162
+web/package-lock.json
+  s_3031b504518be3::t_44a92b6261457b 1-2700
+web/src/api/types.gen.ts
+  s_3031b504518be3::t_1cad6be667ec55 1-404
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a051ca5d078eb270c4fb6c6dc4ba1664b1f9791",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
