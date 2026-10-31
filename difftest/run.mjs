@@ -37,8 +37,9 @@ for (const name of names) {
   const mapping = (await import(pathToFileURL(join(mapDir, `${name}.mjs`)))).default;
   const outDir = join(root, '_build/difftest', name);
   mkdirSync(outDir, { recursive: true });
-  const c = { scenarios: 0, knockedOut: [], outOfScope: [], pass: 0, fail: 0, error: 0, unchecked: 0, scenFail: [], scenPass: 0, scenNoChecks: 0 };
+  const c = { scenarios: 0, knockedOut: [], outOfScope: [], pass: 0, fail: 0, error: 0, unchecked: 0, diverge: 0, scenFail: [], scenPass: 0, scenNoChecks: 0 };
   const failures = [];
+  const knownDiv = [];
 
   for (const [scenario, facts] of oracle) {
     if (only && scenario !== only) continue;
@@ -76,6 +77,10 @@ for (const name of names) {
     const results = compareOutputs(mapping, facts, out);
     let bad = false, good = 0;
     for (const x of results) {
+      // A mismatch listed in the mapping's `knownDivergence` ({scenario, path, bug, note}) is the formalization
+      // following the law where Direct File does not (CONVENTIONS section 8). Reported separately, never as pass.
+      const kd = x.status === 'fail' && (mapping.knownDivergence || []).find((d) => d.scenario === scenario && d.path === x.path);
+      if (kd) { x.status = 'diverge'; knownDiv.push(`${scenario} ${x.path} expected(DF)=${x.expected} actual(law)=${x.actual} [${kd.bug}]`); }
       c[x.status]++;
       if (x.status === 'pass') good++;
       else if (x.status === 'fail' || x.status === 'error') { bad = true; failures.push({ scenario, ...x }); }
@@ -91,6 +96,7 @@ for (const name of names) {
       console.log(`     reproduce: clerk run -s ${mapping.scope} --input=${join(root, '_build/difftest', name, f.scenario + '.input.json')} ${mapping.file}`);
     }
   }
+  for (const d of knownDiv) console.log(`KNOWN DIVERGENCE ${d}`);
   const list = (a) => (a.length ? ` [${a.join(', ')}]` : '');
   console.log(`oracle scenarios total:      ${oracle.size}`);
   console.log(`skipped, knocked out:        ${c.knockedOut.length}${list(c.knockedOut)}`);
@@ -100,7 +106,7 @@ for (const name of names) {
     console.log(`scenarios all-pass:          ${c.scenPass}`);
     console.log(`scenarios with failures:     ${c.scenFail.length}`);
     console.log(`scenarios with no checks:    ${c.scenNoChecks} (every mapped oracle row Incomplete/Placeholder)`);
-    console.log(`fact checks: pass=${c.pass} fail=${c.fail} error=${c.error} unchecked(oracle not Complete)=${c.unchecked}`);
+    console.log(`fact checks: pass=${c.pass} fail=${c.fail} error=${c.error} unchecked(oracle not Complete)=${c.unchecked} knownDivergence=${c.diverge}`);
     const bad = c.fail + c.error;
     console.log(`RESULT ${name}: ${bad === 0 ? 'OK' : 'FAILED'} ${c.pass}/${c.pass + bad} fact checks passed in ${c.scenPass}/${c.scenarios} scenarios`);
     if (bad > 0 && !mapping.reportOnly) exitCode = 1;

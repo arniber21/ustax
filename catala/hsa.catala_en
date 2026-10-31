@@ -1,0 +1,1459 @@
+> Module Hsa
+
+> Using Types
+> Using Params_2024 as P
+> Using Rounding as R
+
+# Health savings accounts: Form 8889 lines 1 to 16 and the Schedule 1 deduction
+
+Direct File module `hsa.xml` ("DF" below,
+`../direct-file/direct-file/backend/src/main/resources/tax/hsa.xml`, 4,064
+lines). Issue #35, scope.md section 3.6. Law: 26 U.S.C. § 223
+(`sources/statute/irc-223.html`), Rev. Proc. 2023-23 section 3.04
+(`sources/revproc/rp-23-23.pdf` p 2), Form 8889 (2024)
+(`sources/forms-instructions/f8889--2024.pdf` p 1) and its instructions
+(`sources/forms-instructions/i8889--2024.pdf`). Tests are in
+`catala/tests/test_hsa.catala_en`; the oracle comparison is
+`difftest/mappings/hsa.mjs`.
+
+## What this module computes, and what it leaves out
+
+- Form 8889 Part I lines 1 to 13 and Part II lines 14a to 16, for the primary
+  filer and, on a joint return, the secondary filer (a separate form each).
+  Output `hsa_total_deductible_amount` (DF `/hsaTotalDeductibleAmount`) is the
+  sum of the two line 13 amounts and feeds Schedule 1 line 13 and Form 1040
+  line 10 (`Form1040.hsa_total_deductible_amount`).
+- Part III (last-month rule, line 18 to 21), Archer MSA (line 4), qualified
+  HSA funding distributions (line 10) and the additional 20% tax (line 17) are
+  not computed. Line 4 and line 10 are `$0` and each case that would make them
+  non-zero is a knockout (`ko_hsa_medical_savings_account_type`,
+  `ko_made_qualified_hsa_funding_distribution`,
+  `ko_hsa_testing_period_additional_income_yes`).
+- Every DF knockout fact of `hsa.xml` is a `ko_` condition (CONVENTIONS
+  section 6). `unsupported` lists the 19 that `flow.xml` lines 77 to 95 feed
+  into `/flowIsKnockedOut`, plus two block-submission validations of
+  `hsa.xml` (a distribution of a filer who reported no HSA activity, and a
+  distribution of the secondary filer on a return that is not joint).
+  Issue #36 aggregates `unsupported` into the return.
+- The inputs are complete (CONVENTIONS section 3). DF's `hasCompleted...` and
+  `...SectionIsComplete` facts only track questionnaire progress and are not
+  modelled; in particular the over-limit knockout
+  (`causesHsaContributionsOverLimitKnockout`) is gated in DF on the
+  contributions section being complete, which is always true here.
+- Wiring (done by the orchestrator, not here): `Filers` supplies
+  `is_filing_status_mfj`, `is_married`, `is_single`, the two ages (55 or
+  older) and `can_be_claimed`; `FormW2s` supplies
+  `primary_filer_total_hsa_contributions_from_w2s`,
+  `secondary_filer_total_hsa_contributions_from_w2s` and the two `has_...`
+  conditions; `Form1040` supplies `ko_knockout_has_no_payments_or_credits`,
+  `paid_estimated_taxes_or_from_last_year`, tax exempt interest, line 5a and
+  line 6a. The output feeds `Form1040.hsa_total_deductible_amount`.
+
+Facts DF keeps per filer (`/filers/*`) are variables here that take a
+`Types.FilerRole` (`depends on role`); `primary_filer` and `secondary_filer`
+hold the writable answers of the two `/filers` entries.
+
+## Declarations
+
+```catala-metadata
+## Medicare enrollment during the tax year. DF: hsa.xml
+## /enrolledInMedicareOptions.
+declaration enumeration MedicareEnrollment:
+  -- MedicareAllYear
+  -- MedicarePartOfYear
+  -- MedicareNoneOfYear
+
+## HDHP coverage during the tax year. DF: hsa.xml /hsaHdhpCoverageStatusOptions.
+declaration enumeration HdhpCoverageStatus:
+  -- HdhpAllYear
+  -- HdhpPartOfYear
+  -- HdhpNoneOfYear
+
+## Type of HDHP coverage. DF: hsa.xml /typeOfHdhpOptions.
+declaration enumeration TypeOfHdhp:
+  -- SelfOnly
+  -- Family
+  -- BothSelfAndFamily
+
+## Other health coverage that disqualifies from HSA contributions. DF: hsa.xml
+## /hadOtherCoverageIneligibleForHSAOptions.
+declaration enumeration OtherCoverageIneligible:
+  -- OtherCoverageWholeYear
+  -- OtherCoveragePartOfYear
+  -- OtherCoverageNoneOfYear
+
+## Change in marital status during the tax year. DF: hsa.xml
+## /changeInMaritalStatusDuringTaxYearOptions.
+declaration enumeration MaritalStatusChange:
+  -- WasMarriedOrDivorcedThisYear
+  -- WasNotMarriedNorDivorcedThisYear
+
+## Form 1099-SA box 3. DF: hsa.xml /hsaDistributionCodeOptions.
+declaration enumeration HsaDistributionCode:
+  -- NormalDistribution
+  -- ExcessContributions
+  -- Disability
+  -- DeathOtherThanCode6
+  -- ProhibitedTransaction
+  -- DeathDistributionAfterYear
+
+## The writable HSA answers DF keeps per filer (collection `/filers`). An
+## answer the questionnaire does not ask for a filer (for example the
+## coverage answers of a filer without contributions) still has a value; DF
+## reads it only where the rules below read it.
+declaration structure HsaFilerAnswers:
+  # DF: /filers/*/writablePrimaryFilerHasMadeContributionsToHsa
+  data writable_primary_filer_has_made_contributions_to_hsa content boolean
+  # DF: /filers/*/writableSecondaryFilerHasMadeContributionsToHsa
+  data writable_secondary_filer_has_made_contributions_to_hsa content boolean
+  # DF: /filers/*/enrolledInMedicare
+  data enrolled_in_medicare content MedicareEnrollment
+  # DF: /filers/*/hsaHdhpCoverageStatus
+  data hsa_hdhp_coverage_status content HdhpCoverageStatus
+  # DF: /filers/*/typeOfHdhp
+  data type_of_hdhp content TypeOfHdhp
+  # DF: /filers/*/hadOtherCoverageIneligibleForHSA
+  data had_other_coverage_ineligible_for_hsa content OtherCoverageIneligible
+  # DF: /filers/*/writableMfsLine6Check
+  data writable_mfs_line6_check content boolean
+  # DF: /filers/*/writableChangeInMaritalStatusDuringTaxYear
+  data writable_change_in_marital_status_during_tax_year
+    content MaritalStatusChange
+  # DF: /filers/*/writableMaritalChangeAffectContributionLimitBool
+  data writable_marital_change_affect_contribution_limit_bool content boolean
+  # DF: /filers/*/hasMadeQualifiedHsaFundingDistribution
+  data has_made_qualified_hsa_funding_distribution content boolean
+  # DF: /filers/*/writableHsaNonemployerContributionsTaxYear
+  data writable_hsa_nonemployer_contributions_tax_year content money
+  # DF: /filers/*/writableHsaNonemployerContributionsTaxYearPlusOne
+  # (contributions for the tax year made by the unextended due date, Form 8889
+  # instructions line 2)
+  data writable_hsa_nonemployer_contributions_tax_year_plus_one content money
+
+## One Form 1099-SA. DF: collection `/hsaDistributions`.
+declaration structure HsaDistribution:
+  # DF: /hsaDistributions/*/filer
+  data filer content Types.FilerRole
+  # DF: /hsaDistributions/*/writableDistributionsRolloverBool
+  data writable_distributions_rollover_bool content boolean
+  # DF: /hsaDistributions/*/writableDistributionsRolloverAmount
+  data writable_distributions_rollover_amount content money
+  # DF: /hsaDistributions/*/writableGrossDistribution (1099-SA box 1)
+  data writable_gross_distribution content money
+  # DF: /hsaDistributions/*/hasWithdrawnExcessContributions
+  data has_withdrawn_excess_contributions content boolean
+  # DF: /hsaDistributions/*/writableWithdrawnExcessContributionsAmount
+  data writable_withdrawn_excess_contributions_amount content money
+  # DF: /hsaDistributions/*/writableEarningsOnExcessContributions (box 2)
+  data writable_earnings_on_excess_contributions content money
+  # DF: /hsaDistributions/*/hsaDistributionCode (box 3)
+  data hsa_distribution_code content HsaDistributionCode
+  # DF: /hsaDistributions/*/writableFmvOnDateOfDeath (box 4)
+  data writable_fmv_on_date_of_death content money
+  # DF: /hsaDistributions/*/writableQualifiedMedExpenses
+  data writable_qualified_med_expenses content money
+
+## The derived facts of one 1099-SA.
+declaration scope HsaDistributionItem:
+  input distribution content HsaDistribution
+  # DF: /hsaDistributions/*/distributionsRolloverAmount
+  output distributions_rollover_amount content money
+  # DF: /hsaDistributions/*/withdrawnExcessContributionsAmount
+  output withdrawn_excess_contributions_amount content money
+  # DF: /hsaDistributions/*/modifiedDistribution
+  output modified_distribution content money
+  output filer content Types.FilerRole
+  # DF: /hsaDistributions/*/writableGrossDistribution
+  output gross_distribution content money
+  # DF: /hsaDistributions/*/writableQualifiedMedExpenses
+  output qualified_med_expenses content money
+  # DF: /hsaDistributions/*/causesEarningsOnExcessContributionsKO (box 2 > $0)
+  output has_earnings_on_excess_contributions condition
+  # DF: /filers/*/hsaDistributionNotNormalKnockout (box 3 is not code 1)
+  output code_is_not_normal condition
+  # DF: /hsaDistributions/*/causesFmvKnockout (box 4 > $0)
+  output has_fmv_on_date_of_death condition
+  # DF: /hsaDistributions/*/causesUnqualifiedDistributionsKnockout
+  output has_unqualified_distribution condition
+
+## The lines of one Form 8889 (Parts I and II) that the module computes.
+declaration structure Form8889:
+  # Line 1 check boxes
+  data line_1_family content boolean
+  data line_1_self_only content boolean
+  # Line 2
+  data line_2 content money
+  # Line 3
+  data line_3 content money
+  # Line 5 (line 4, Archer MSA, is $0)
+  data line_5 content money
+  data line_6 content money
+  data line_7 content money
+  data line_8 content money
+  data line_9 content money
+  data line_11 content money
+  data line_12 content money
+  data line_13 content money
+  data line_14a content money
+  data line_14b content money
+  data line_14c content money
+  data line_15 content money
+  data line_16 content money
+
+declaration scope Hsa:
+  # ---- Inputs from other modules (see the wiring note above)
+  # DF: filingStatus.xml /isFilingStatusMFJ
+  input is_filing_status_mfj condition
+  # DF: filers.xml /isMarried
+  input is_married condition
+  # DF: filers.xml /isSingle
+  input is_single condition
+  # DF: filers.xml /filers/*/age55OrOlder
+  input primary_filer_age55_or_older condition
+  input secondary_filer_age55_or_older condition
+  # DF: filers.xml /filers/*/canBeClaimed
+  input primary_filer_can_be_claimed condition
+  input secondary_filer_can_be_claimed condition
+  # DF: formW2s.xml /primaryFilerTotalHsaContributionsFromW2s, W-2 box 12 W
+  input primary_filer_total_hsa_contributions_from_w2s content money
+  input secondary_filer_total_hsa_contributions_from_w2s content money
+  # DF: formW2s.xml /hasPrimaryFilerHsaContributionsFromW2s
+  input has_primary_filer_hsa_contributions_from_w2s condition
+  input has_secondary_filer_hsa_contributions_from_w2s condition
+  # DF: taxCalculations.xml /knockoutHasNoPaymentsOrCredits
+  input knockout_has_no_payments_or_credits condition
+  # DF: estimatedPayments.xml /paidEstimatedTaxesOrFromLastYear
+  input paid_estimated_taxes_or_from_last_year condition
+  # DF: interest.xml /taxExemptInterest
+  input tax_exempt_interest content money
+  # DF: income.xml /pensionsAndAnnuities (Form 1040 line 5a)
+  input pensions_and_annuities content money
+  # DF: socialSecurity.xml /socialSecurityBenefits (Form 1040 line 6a)
+  input social_security_benefits content money
+
+  # ---- Writable facts of hsa.xml
+  input primary_filer content HsaFilerAnswers
+  input secondary_filer content HsaFilerAnswers
+  # DF: /someFilerHadNonW2HsaActivity
+  input some_filer_had_non_w2_hsa_activity content boolean
+  # DF: /writablePrimaryFilerHadNonW2HsaActivity
+  input writable_primary_filer_had_non_w2_hsa_activity content boolean
+  # DF: /writableSecondaryFilerHadNonW2HsaActivity
+  input writable_secondary_filer_had_non_w2_hsa_activity content boolean
+  # DF: /hasHsaMedicalSavingsAccountType
+  input has_hsa_medical_savings_account_type content boolean
+  # DF: /writableHasHsaExcessContributionsPreviousYear
+  input writable_has_hsa_excess_contributions_previous_year content boolean
+  # DF: /writableHasHsaWithdrawnExcessContributionsYesNo
+  input writable_has_hsa_withdrawn_excess_contributions_yes_no content boolean
+  # DF: /someFilersMadeTestingPeriodContribution
+  input some_filers_made_testing_period_contribution content boolean
+  # DF: /someFilersHaveTestingPeriodAdditionalIncome
+  input some_filers_have_testing_period_additional_income content boolean
+  # DF: /hsaDistributions
+  input hsa_distributions content list of HsaDistribution
+
+  # ---- Helpers
+  internal answers content HsaFilerAnswers depends on role content Types.FilerRole
+  internal is_primary content boolean depends on role content Types.FilerRole
+  internal is_secondary content boolean depends on role content Types.FilerRole
+  internal age55_or_older content boolean depends on role content Types.FilerRole
+  internal can_be_claimed content boolean depends on role content Types.FilerRole
+  internal items content list of HsaDistributionItem
+
+  # ---- Intro screens: who may have HSA activity
+  # DF: /flowShowHsaYesNo
+  internal flow_show_hsa_yes_no content boolean
+  # DF: /someFilerHadNonEmployerHsaActivity
+  internal some_filer_had_non_employer_hsa_activity content boolean
+  # DF: /flowShowHsaPrimaryYesNo
+  internal flow_show_hsa_primary_yes_no content boolean
+  # DF: /primaryFilerHadNonW2HsaActivity
+  internal primary_filer_had_non_w2_hsa_activity content boolean
+  # DF: /flowShowHsaSecondaryYesNo
+  internal flow_show_hsa_secondary_yes_no content boolean
+  # DF: /secondaryFilerHadNonW2HsaActivity
+  internal secondary_filer_had_non_w2_hsa_activity content boolean
+  # DF: /filers/*/mayHaveHsaContributionsNotConsideringKos
+  internal may_have_hsa_contributions_not_considering_kos content boolean
+    depends on role content Types.FilerRole
+  # DF: /someFilerHasSomeHsaActivityNotConsideringKos
+  internal some_filer_has_some_hsa_activity_not_considering_kos content boolean
+  # DF: /hasHsaMedicalSavingsAccountTypeDerived
+  internal has_hsa_medical_savings_account_type_derived content boolean
+  # DF: /flowToExcessContributionsPreviousYear
+  internal flow_to_excess_contributions_previous_year content boolean
+  # DF: /hasHsaExcessContributionsPreviousYear
+  internal has_hsa_excess_contributions_previous_year content boolean
+  # DF: /flowToHsaExcessContributions
+  internal flow_to_hsa_excess_contributions content boolean
+  # DF: /hasHsaWithdrawnExcessContributionsYesNo
+  internal has_hsa_withdrawn_excess_contributions_yes_no content boolean
+  # DF: /filers/*/mayHaveHsaContributions
+  internal may_have_hsa_contributions content boolean
+    depends on role content Types.FilerRole
+
+  # ---- Who made contributions (and so files a Form 8889 Part I)
+  # DF: /filers/*/primaryFilerMayHaveOnlyNonW2Contributions
+  internal primary_filer_may_have_only_non_w2_contributions content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/primaryFilerHasNonW2ContributionsInTy
+  internal primary_filer_has_non_w2_contributions_in_ty content boolean
+    depends on role content Types.FilerRole
+  # DF: /flowSecondaryFilerHasNoHsaContributionsOnW2andMFJ
+  internal flow_secondary_filer_has_no_hsa_contributions_on_w2_and_mfj
+    content boolean
+  # DF: /filers/*/secondaryFilerMayHaveOnlyNonW2Contributions
+  internal secondary_filer_may_have_only_non_w2_contributions content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/secondaryFilerHasNonW2ContributionsInTy
+  internal secondary_filer_has_non_w2_contributions_in_ty content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/flowSkipToHsaTestingPeriodContributionCheck
+  internal flow_skip_to_hsa_testing_period_contribution_check content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/primaryFilerHasMadeContributionsToHsa
+  internal primary_filer_has_made_contributions_to_hsa content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/secondaryFilerHasMadeContributionsToHsa
+  internal secondary_filer_has_made_contributions_to_hsa content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hasMadeContributionsToHsa
+  output has_made_contributions_to_hsa content boolean
+    depends on role content Types.FilerRole
+
+  # ---- Coverage and eligibility
+  # DF: /filers/*/enrolledInMedicarePartOfYearKnockout
+  internal enrolled_in_medicare_part_of_year_knockout content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/enrolledInMedicareAllYearKnockout
+  internal enrolled_in_medicare_all_year_knockout content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaHdhpCoverageStatusDerived is complete
+  internal hsa_hdhp_coverage_status_asked content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hasHdhpCoverageAllYear
+  internal has_hdhp_coverage_all_year content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/notEnrolledInHdhpKnockout
+  internal not_enrolled_in_hdhp_knockout content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaHdhpCoverageStatusKnockout
+  internal hsa_hdhp_coverage_status_knockout content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/flowShouldAskForHsaHdhpCoverageType
+  internal flow_should_ask_for_hsa_hdhp_coverage_type content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/typeOfHdhpKnockout
+  internal type_of_hdhp_knockout content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hasSelfOnlyHdhp
+  internal has_self_only_hdhp content boolean depends on role content Types.FilerRole
+  # DF: /filers/*/hasFamilyHdhp
+  internal has_family_hdhp content boolean depends on role content Types.FilerRole
+  # DF: /filers/*/flowShouldAskHadCoverageIneligibleForHSAContributions
+  internal flow_should_ask_had_coverage_ineligible_for_hsa_contributions
+    content boolean depends on role content Types.FilerRole
+  # DF: /filers/*/causesOtherCoveragePartOfYearKnockOut
+  internal causes_other_coverage_part_of_year_knock_out content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/causesOtherCoverageWholeYearKnockOut
+  internal causes_other_coverage_whole_year_knock_out content boolean
+    depends on role content Types.FilerRole
+  # DF: /hsaMarriedFilersHaveFamilyCoverage
+  internal hsa_married_filers_have_family_coverage content boolean
+  # DF: /filers/*/isCoveredByFamilyHdhp
+  internal is_covered_by_family_hdhp content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/isCoveredBySelfOnlyHdhp
+  internal is_covered_by_self_only_hdhp content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/wasEligibleToMakeHsaContributionsAllYear
+  internal was_eligible_to_make_hsa_contributions_all_year content boolean
+    depends on role content Types.FilerRole
+  # DF: /bothFilersHaveHsa
+  internal both_filers_have_hsa content boolean
+
+  # ---- Form 8889 Part I
+  # DF: /filers/*/hsaNonemployerContributionsTotal
+  output hsa_nonemployer_contributions_total content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaContributionsW2sTotal
+  internal hsa_contributions_w2s_total content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaFundingDistributionsTotal
+  internal hsa_funding_distributions_total content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaEmployerContributionsAndFundingDistributionTotal
+  output hsa_employer_contributions_and_funding_distribution_total content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaContributionsTotal
+  output hsa_contributions_total content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaBaseContributionLimit
+  internal hsa_base_contribution_limit content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaInitialContributionLimit (Form 8889 line 3)
+  output hsa_initial_contribution_limit content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaContributionLimitLessMsaContributions (line 5)
+  output hsa_contribution_limit_less_msa_contributions content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hasMetFamilyContributionLimitRule
+  internal has_met_family_contribution_limit_rule content boolean
+    depends on role content Types.FilerRole
+  # DF: /hsaPrimaryFilerAllocatedContributionLimit and its secondary twin
+  internal hsa_allocated_contribution_limit content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaContributionLimitLessAddition (line 6)
+  output hsa_contribution_limit_less_addition content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/additionToHsaContributionLimit (line 7)
+  output addition_to_hsa_contribution_limit content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaTotalContributionLimit (line 8)
+  output hsa_total_contribution_limit content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaContributionLimitLessLine11 (line 12)
+  output hsa_contribution_limit_less_line11 content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaTotalDeductibleAmount (line 13)
+  output filer_hsa_total_deductible_amount content money
+    depends on role content Types.FilerRole
+  # DF: /hsaTotalDeductibleAmount (Schedule 1 line 13, Form 1040 line 10)
+  output hsa_total_deductible_amount content money
+  # DF: /filers/*/hasExcessHsaContributions
+  output has_excess_hsa_contributions content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaContributionLimitExceeded
+  internal hsa_contribution_limit_exceeded content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaContributionLimitExceededAmount
+  output hsa_contribution_limit_exceeded_amount content money
+    depends on role content Types.FilerRole
+
+  # ---- Form 8889 Part II
+  # DF: /filers/*/hasHsaCanHaveDistribution
+  internal has_hsa_can_have_distribution content boolean
+    depends on role content Types.FilerRole
+  # DF: /someFilerCanHaveDistribution
+  internal some_filer_can_have_distribution content boolean
+  # DF: /primaryFilerHsaDistributions, /secondaryFilerHsaDistributions
+  internal filer_items content list of HsaDistributionItem
+    depends on role content Types.FilerRole
+  # DF: /filers/*/totalHsaDistributions (line 14a)
+  output total_hsa_distributions content money depends on role content Types.FilerRole
+  # DF: /filers/*/hsaRolloverTotal
+  internal hsa_rollover_total content money depends on role content Types.FilerRole
+  # DF: /filers/*/hsaTotalExcessContributionsWithdrawnInTime
+  internal hsa_total_excess_contributions_withdrawn_in_time content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaRolloversAndTimelyWithdrawals (line 14b)
+  output hsa_rollovers_and_timely_withdrawals content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaNetDistributionAmount
+  internal hsa_net_distribution_amount content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaCalculatedDistributionAmount (line 14c)
+  output hsa_calculated_distribution_amount content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaQualifiedMedExpenses (line 15)
+  output hsa_qualified_med_expenses content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hsaCalculatedTaxableHsaDistributionTotal (line 16)
+  output hsa_calculated_taxable_hsa_distribution_total content money
+    depends on role content Types.FilerRole
+  # DF: /filers/*/hasHsaDistributions
+  output has_hsa_distributions content boolean
+    depends on role content Types.FilerRole
+
+  # ---- Testing period and marital status helpers
+  # DF: /filers/*/hasToShowTestingPeriodCheck
+  internal has_to_show_testing_period_check content boolean
+    depends on role content Types.FilerRole
+  # DF: /filers/*/causesMaritalChangeAffectsContributionLimitKnockout
+  internal causes_marital_change_affects_contribution_limit_knockout
+    content boolean depends on role content Types.FilerRole
+
+  # ---- Who files Form 8889
+  # DF: /numberOfFilersRequiredToFileForm8889
+  output number_of_filers_required_to_file_form_8889 content integer
+  # DF: /requiresForm8889
+  output requires_form_8889 condition
+  # The lines of each filer's form
+  output form_8889 content Form8889 depends on role content Types.FilerRole
+
+  # ---- Knockouts (one `ko_` per DF knockout fact)
+  # DF: /flowKnockoutFilerIsDependentAndContributesToHsa
+  output ko_filer_is_dependent_and_contributes_to_hsa condition
+  # DF: /flowKnockoutHsaExcessContributions
+  output ko_hsa_excess_contributions condition
+  # DF: /flowKnockoutHsaMedicalSavingsAccountType
+  output ko_hsa_medical_savings_account_type condition
+  # DF: /flowKnockoutMFSLine6Check
+  output ko_mfs_line6_check condition
+  # DF: /flowKnockoutEarningsOnExcessContributions
+  output ko_earnings_on_excess_contributions condition
+  # DF: /flowKnockoutHsaDistributionCode
+  output ko_hsa_distribution_code condition
+  # DF: /flowKnockoutHsaUnqualifiedDistributions
+  output ko_hsa_unqualified_distributions condition
+  # DF: /flowKnockoutHsaDistributionFMV
+  output ko_hsa_distribution_fmv condition
+  # DF: /flowHsaContributionsOverLimitKnockout
+  output ko_hsa_contributions_over_limit condition
+  # DF: /flowKnockoutOtherCoveragePartOfYear
+  output ko_other_coverage_part_of_year condition
+  # DF: /flowKnockoutOtherCoverageWholeYear
+  output ko_other_coverage_whole_year condition
+  # DF: /flowKnockoutMaritalChangeAffectsContributionLimit
+  output ko_marital_change_affects_contribution_limit condition
+  # DF: /flowKnockoutMadeQualifiedHsaFundingDistribution
+  output ko_made_qualified_hsa_funding_distribution condition
+  # DF: /flowKnockoutHsaTestingPeriodAdditionalIncomeYes
+  output ko_hsa_testing_period_additional_income_yes condition
+  # DF: /knockoutNoPaymentsHsaDistribution
+  output ko_no_payments_hsa_distribution condition
+  # DF: /flowKnockoutNotEnrolledInHdhp
+  output ko_not_enrolled_in_hdhp condition
+  # DF: /flowKnockoutEnrolledInMedicareAllYear
+  output ko_enrolled_in_medicare_all_year condition
+  # DF: /flowKnockoutHsaCoverageChanging
+  output ko_hsa_coverage_changing condition
+  # DF: /flowKnockoutHsaSelfAndFamilyCoverage
+  output ko_hsa_self_and_family_coverage condition
+  # DF: /flowKnockoutHdhpCoverageNotAllYear
+  output ko_hdhp_coverage_not_all_year condition
+  # DF: /flowKnockoutHsaCoverage
+  output ko_hsa_coverage condition
+  # DF: /flowKnockoutContributionSummaryNoneAllowed
+  output ko_contribution_summary_none_allowed condition
+  # DF: /flowKnockoutHdhpCoverageStatusNotNeeded
+  output ko_hdhp_coverage_status_not_needed condition
+  # DF: /hasHsaDistributionsWithoutActivity (BlockSubmissionOnTrue)
+  output ko_has_hsa_distributions_without_activity condition
+  # DF: /hsaDistributions/secondaryFilerUsedWithoutMFJ (BlockSubmissionOnTrue)
+  output ko_hsa_distributions_secondary_filer_used_without_mfj condition
+  output unsupported condition
+```
+
+## Setup
+
+```catala
+scope HsaDistributionItem:
+  definition filer equals distribution.filer
+  # DF: hsa.xml /hsaDistributions/*/distributionsRolloverAmount
+  definition distributions_rollover_amount equals
+    if distribution.writable_distributions_rollover_bool
+    then distribution.writable_distributions_rollover_amount
+    else $0
+  # DF: hsa.xml /hsaDistributions/*/withdrawnExcessContributionsAmount
+  definition withdrawn_excess_contributions_amount equals
+    if distribution.has_withdrawn_excess_contributions
+    then distribution.writable_withdrawn_excess_contributions_amount
+    else $0
+  # DF: hsa.xml /hsaDistributions/*/modifiedDistribution
+  definition modified_distribution equals
+    distribution.writable_gross_distribution
+    - (distributions_rollover_amount + withdrawn_excess_contributions_amount)
+  definition gross_distribution equals distribution.writable_gross_distribution
+  definition qualified_med_expenses equals
+    distribution.writable_qualified_med_expenses
+  rule has_earnings_on_excess_contributions under condition
+    distribution.writable_earnings_on_excess_contributions > $0
+  consequence fulfilled
+  rule code_is_not_normal under condition
+    distribution.hsa_distribution_code != NormalDistribution
+  consequence fulfilled
+  rule has_fmv_on_date_of_death under condition
+    distribution.writable_fmv_on_date_of_death > $0
+  consequence fulfilled
+  # The modified distribution above the qualified medical expenses.
+  rule has_unqualified_distribution under condition
+    modified_distribution > distribution.writable_qualified_med_expenses
+  consequence fulfilled
+
+scope Hsa:
+  definition is_primary of role equals role = Types.FilerRole.PrimaryFiler
+  definition is_secondary of role equals not (is_primary of role)
+  definition answers of role equals
+    if is_primary of role then primary_filer else secondary_filer
+  definition age55_or_older of role equals
+    if is_primary of role then primary_filer_age55_or_older
+    else secondary_filer_age55_or_older
+  definition can_be_claimed of role equals
+    if is_primary of role then primary_filer_can_be_claimed
+    else secondary_filer_can_be_claimed
+  definition items equals
+    map each d among hsa_distributions to
+      (output of HsaDistributionItem with { -- distribution: d })
+```
+
+## 26 U.S.C. § 223: who has HSA activity
+
+The questionnaire asks about contributions that are not on a W-2 and decides
+which filers get a Form 8889. Form 8889 instructions, "Who Must File"
+(`i8889--2024.pdf` p 3): "You must file Form 8889 if any of the following
+applies. You (or someone on your behalf, including your employer) made
+contributions for 2024 to your HSA. You received HSA distributions in 2024.
+You must include certain amounts in income because you failed to be an
+eligible individual during the testing period."
+
+DF writes a screen flow as facts. Where DF's `Switch` has no default (the
+answer is only asked under a condition, and is otherwise incomplete), the
+answer counts as false here (CONVENTIONS section 3).
+
+```catala
+scope Hsa:
+  # DF: hsa.xml /flowShowHsaYesNo
+  definition flow_show_hsa_yes_no equals
+    not has_primary_filer_hsa_contributions_from_w2s
+    or (is_filing_status_mfj and not has_secondary_filer_hsa_contributions_from_w2s)
+  # DF: hsa.xml /someFilerHadNonEmployerHsaActivity
+  definition some_filer_had_non_employer_hsa_activity equals
+    flow_show_hsa_yes_no and some_filer_had_non_w2_hsa_activity
+  # DF: hsa.xml /flowShowHsaPrimaryYesNo
+  definition flow_show_hsa_primary_yes_no equals
+    some_filer_had_non_employer_hsa_activity
+    and not has_primary_filer_hsa_contributions_from_w2s
+  # DF: hsa.xml /primaryFilerHadNonW2HsaActivity
+  definition primary_filer_had_non_w2_hsa_activity equals
+    flow_show_hsa_primary_yes_no
+    and writable_primary_filer_had_non_w2_hsa_activity
+  # DF: hsa.xml /flowShowHsaSecondaryYesNo
+  definition flow_show_hsa_secondary_yes_no equals
+    is_filing_status_mfj and flow_show_hsa_yes_no
+    and some_filer_had_non_employer_hsa_activity
+    and not has_secondary_filer_hsa_contributions_from_w2s
+  # DF: hsa.xml /secondaryFilerHadNonW2HsaActivity
+  definition secondary_filer_had_non_w2_hsa_activity equals
+    flow_show_hsa_secondary_yes_no
+    and writable_secondary_filer_had_non_w2_hsa_activity
+
+  # DF: hsa.xml /filers/*/mayHaveHsaContributionsNotConsideringKos
+  definition may_have_hsa_contributions_not_considering_kos of role equals
+    (is_filing_status_mfj and is_secondary of role
+     and (has_secondary_filer_hsa_contributions_from_w2s
+          or (secondary_filer_had_non_w2_hsa_activity
+              and some_filer_had_non_employer_hsa_activity)))
+    or (is_primary of role
+        and (has_primary_filer_hsa_contributions_from_w2s
+             or (primary_filer_had_non_w2_hsa_activity
+                 and some_filer_had_non_employer_hsa_activity)))
+  # DF: hsa.xml /someFilerHasSomeHsaActivityNotConsideringKos
+  definition some_filer_has_some_hsa_activity_not_considering_kos equals
+    (may_have_hsa_contributions_not_considering_kos of Types.FilerRole.PrimaryFiler)
+    or (may_have_hsa_contributions_not_considering_kos of Types.FilerRole.SecondaryFiler)
+```
+
+### Medical savings account and excess contributions from earlier years
+
+Form 8889 instructions p 4: "Before you begin: Complete Form 8853, Archer MSAs
+and Long-Term Care Insurance Contracts, if required" (`f8889--2024.pdf` p 1).
+The Archer MSA (line 4) and prior-year excess contributions (instructions
+"Prior Year Excess Contributions", `i8889--2024.pdf` p 8) are not supported.
+
+```catala
+scope Hsa:
+  # DF: hsa.xml /hasHsaMedicalSavingsAccountTypeDerived
+  definition has_hsa_medical_savings_account_type_derived equals
+    some_filer_has_some_hsa_activity_not_considering_kos
+    and has_hsa_medical_savings_account_type
+  # DF: hsa.xml /flowToExcessContributionsPreviousYear
+  definition flow_to_excess_contributions_previous_year equals
+    some_filer_has_some_hsa_activity_not_considering_kos
+    and not has_hsa_medical_savings_account_type
+  # DF: hsa.xml /hasHsaExcessContributionsPreviousYear
+  definition has_hsa_excess_contributions_previous_year equals
+    flow_to_excess_contributions_previous_year
+    and writable_has_hsa_excess_contributions_previous_year
+  # DF: hsa.xml /flowToHsaExcessContributions (/skipToHsaExcessContributions
+  # is complete only on this branch)
+  definition flow_to_hsa_excess_contributions equals
+    flow_to_excess_contributions_previous_year
+    and not writable_has_hsa_excess_contributions_previous_year
+  # DF: hsa.xml /hasHsaWithdrawnExcessContributionsYesNo
+  definition has_hsa_withdrawn_excess_contributions_yes_no equals
+    flow_to_hsa_excess_contributions
+    and writable_has_hsa_withdrawn_excess_contributions_yes_no
+
+  # DF: hsa.xml /flowKnockoutHsaExcessContributions
+  rule ko_hsa_excess_contributions under condition
+    has_hsa_excess_contributions_previous_year
+    or has_hsa_withdrawn_excess_contributions_yes_no
+  consequence fulfilled
+  # DF: hsa.xml /flowKnockoutHsaMedicalSavingsAccountType
+  rule ko_hsa_medical_savings_account_type under condition
+    (not flow_to_excess_contributions_previous_year)
+    and (not flow_to_hsa_excess_contributions)
+    and has_hsa_medical_savings_account_type_derived
+  consequence fulfilled
+
+  # DF: hsa.xml /filers/*/mayHaveHsaContributions
+  definition may_have_hsa_contributions of role equals
+    (may_have_hsa_contributions_not_considering_kos of role)
+    and not ko_hsa_excess_contributions
+    and not ko_hsa_medical_savings_account_type
+```
+
+### Contributions made: who has a Part I
+
+```catala
+scope Hsa:
+  # DF: hsa.xml /filers/*/primaryFilerMayHaveOnlyNonW2Contributions
+  definition primary_filer_may_have_only_non_w2_contributions of role equals
+    (may_have_hsa_contributions of role)
+    and not has_primary_filer_hsa_contributions_from_w2s
+    and is_primary of role
+  # DF: hsa.xml /filers/*/primaryFilerHasNonW2ContributionsInTy
+  definition primary_filer_has_non_w2_contributions_in_ty of role equals
+    (primary_filer_may_have_only_non_w2_contributions of role)
+    and (answers of role).writable_primary_filer_has_made_contributions_to_hsa
+  # DF: hsa.xml /flowSecondaryFilerHasNoHsaContributionsOnW2andMFJ
+  definition flow_secondary_filer_has_no_hsa_contributions_on_w2_and_mfj equals
+    (may_have_hsa_contributions of Types.FilerRole.SecondaryFiler)
+    and not has_secondary_filer_hsa_contributions_from_w2s
+    and is_filing_status_mfj
+  # DF: hsa.xml /filers/*/secondaryFilerMayHaveOnlyNonW2Contributions
+  definition secondary_filer_may_have_only_non_w2_contributions of role equals
+    flow_secondary_filer_has_no_hsa_contributions_on_w2_and_mfj
+    and is_secondary of role
+  # DF: hsa.xml /filers/*/secondaryFilerHasNonW2ContributionsInTy
+  definition secondary_filer_has_non_w2_contributions_in_ty of role equals
+    (secondary_filer_may_have_only_non_w2_contributions of role)
+    and (answers of role).writable_secondary_filer_has_made_contributions_to_hsa
+  # DF: hsa.xml /filers/*/flowSkipToHsaTestingPeriodContributionCheck
+  definition flow_skip_to_hsa_testing_period_contribution_check of role equals
+    ((primary_filer_may_have_only_non_w2_contributions of role)
+     and not (primary_filer_has_non_w2_contributions_in_ty of role))
+    or ((secondary_filer_may_have_only_non_w2_contributions of role)
+        and not (secondary_filer_has_non_w2_contributions_in_ty of role))
+  # DF: hsa.xml /filers/*/primaryFilerHasMadeContributionsToHsa
+  definition primary_filer_has_made_contributions_to_hsa of role equals
+    (may_have_hsa_contributions of role)
+    and not (flow_skip_to_hsa_testing_period_contribution_check of role)
+    and (has_primary_filer_hsa_contributions_from_w2s
+         or (primary_filer_has_non_w2_contributions_in_ty of role))
+  # DF: hsa.xml /filers/*/secondaryFilerHasMadeContributionsToHsa
+  definition secondary_filer_has_made_contributions_to_hsa of role equals
+    (may_have_hsa_contributions of role)
+    and not (flow_skip_to_hsa_testing_period_contribution_check of role)
+    and (has_secondary_filer_hsa_contributions_from_w2s
+         or (secondary_filer_has_non_w2_contributions_in_ty of role))
+  # DF: hsa.xml /filers/*/hasMadeContributionsToHsa
+  definition has_made_contributions_to_hsa of role equals
+    ((is_primary of role) and (primary_filer_has_made_contributions_to_hsa of role))
+    or ((is_secondary of role)
+        and (secondary_filer_has_made_contributions_to_hsa of role))
+  # DF: hsa.xml /bothFilersHaveHsa
+  definition both_filers_have_hsa equals
+    (has_made_contributions_to_hsa of Types.FilerRole.PrimaryFiler)
+    and (has_made_contributions_to_hsa of Types.FilerRole.SecondaryFiler)
+
+  # IRC 223(b)(6): "No deduction shall be allowed under this section to any
+  # individual with respect to whom a deduction under section 151 is allowable
+  # to another taxpayer". DF: hsa.xml
+  # /flowKnockoutFilerIsDependentAndContributesToHsa
+  rule ko_filer_is_dependent_and_contributes_to_hsa under condition
+    ((has_made_contributions_to_hsa of Types.FilerRole.PrimaryFiler)
+     and (can_be_claimed of Types.FilerRole.PrimaryFiler))
+    or ((has_made_contributions_to_hsa of Types.FilerRole.SecondaryFiler)
+        and (can_be_claimed of Types.FilerRole.SecondaryFiler))
+  consequence fulfilled
+```
+
+## 26 U.S.C. § 223(b): eligibility, coverage and the limits
+
+### (7) Medicare eligible individuals
+
+"The limitation under this subsection for any month with respect to an
+individual shall be zero for the first month such individual is entitled to
+benefits under title XVIII of the Social Security Act and for each month
+thereafter." A filer on Medicare for part of the year needs the month-by-month
+limit, which is not supported; a filer on Medicare all year has no limit.
+
+```catala
+scope Hsa:
+  # DF: hsa.xml /filers/*/enrolledInMedicarePartOfYearKnockout
+  definition enrolled_in_medicare_part_of_year_knockout of role equals
+    (has_made_contributions_to_hsa of role)
+    and (answers of role).enrolled_in_medicare = MedicarePartOfYear
+  # DF: hsa.xml /filers/*/enrolledInMedicareAllYearKnockout
+  definition enrolled_in_medicare_all_year_knockout of role equals
+    (has_made_contributions_to_hsa of role)
+    and (answers of role).enrolled_in_medicare = MedicareAllYear
+  # DF: hsa.xml /flowKnockoutHsaCoverageChanging (Medicare changing)
+  rule ko_hsa_coverage_changing under condition
+    (enrolled_in_medicare_part_of_year_knockout of Types.FilerRole.PrimaryFiler)
+    or (enrolled_in_medicare_part_of_year_knockout of Types.FilerRole.SecondaryFiler)
+  consequence fulfilled
+  # DF: hsa.xml /flowKnockoutEnrolledInMedicareAllYear
+  rule ko_enrolled_in_medicare_all_year under condition
+    (enrolled_in_medicare_all_year_knockout of Types.FilerRole.PrimaryFiler)
+    or (enrolled_in_medicare_all_year_knockout of Types.FilerRole.SecondaryFiler)
+  consequence fulfilled
+  # DF: hsa.xml /flowKnockoutHdhpCoverageStatusNotNeeded
+  rule ko_hdhp_coverage_status_not_needed under condition
+    ko_hsa_coverage_changing or ko_enrolled_in_medicare_all_year
+  consequence fulfilled
+```
+
+### (c)(1) Eligible individual: high deductible health plan coverage
+
+"The term "eligible individual" means, with respect to any month, any
+individual if such individual is covered under a high deductible health plan
+as of the 1st day of such month, and such individual is not, while covered
+under a high deductible health plan, covered under any health plan which is
+not a high deductible health plan, and which provides coverage for any benefit
+which is covered under the high deductible health plan."
+
+DF supports only a filer who was an eligible individual in every month (the
+full-year limit of paragraph (2)); every other coverage answer is a knockout.
+
+```catala
+scope Hsa:
+  # DF: hsa.xml /filers/*/hsaHdhpCoverageStatusDerived is complete
+  definition hsa_hdhp_coverage_status_asked of role equals
+    (has_made_contributions_to_hsa of role)
+    and not ko_hdhp_coverage_status_not_needed
+  # DF: hsa.xml /filers/*/hasHdhpCoverageAllYear
+  definition has_hdhp_coverage_all_year of role equals
+    (hsa_hdhp_coverage_status_asked of role)
+    and (answers of role).hsa_hdhp_coverage_status = HdhpAllYear
+  # DF: hsa.xml /filers/*/notEnrolledInHdhpKnockout
+  definition not_enrolled_in_hdhp_knockout of role equals
+    (hsa_hdhp_coverage_status_asked of role)
+    and (answers of role).hsa_hdhp_coverage_status = HdhpNoneOfYear
+  # DF: hsa.xml /filers/*/hsaHdhpCoverageStatusKnockout
+  definition hsa_hdhp_coverage_status_knockout of role equals
+    (hsa_hdhp_coverage_status_asked of role)
+    and (answers of role).hsa_hdhp_coverage_status = HdhpPartOfYear
+  # DF: hsa.xml /flowKnockoutNotEnrolledInHdhp
+  rule ko_not_enrolled_in_hdhp under condition
+    (not_enrolled_in_hdhp_knockout of Types.FilerRole.PrimaryFiler)
+    or (not_enrolled_in_hdhp_knockout of Types.FilerRole.SecondaryFiler)
+  consequence fulfilled
+  # DF: hsa.xml /flowKnockoutHdhpCoverageNotAllYear
+  rule ko_hdhp_coverage_not_all_year under condition
+    (hsa_hdhp_coverage_status_knockout of Types.FilerRole.PrimaryFiler)
+    or (hsa_hdhp_coverage_status_knockout of Types.FilerRole.SecondaryFiler)
+  consequence fulfilled
+
+  # DF: hsa.xml /filers/*/flowShouldAskForHsaHdhpCoverageType
+  definition flow_should_ask_for_hsa_hdhp_coverage_type of role equals
+    not ko_hsa_coverage_changing and not ko_not_enrolled_in_hdhp
+    and (has_hdhp_coverage_all_year of role)
+  # DF: hsa.xml /filers/*/typeOfHdhpKnockout
+  definition type_of_hdhp_knockout of role equals
+    (flow_should_ask_for_hsa_hdhp_coverage_type of role)
+    and (answers of role).type_of_hdhp = BothSelfAndFamily
+  # DF: hsa.xml /filers/*/hasSelfOnlyHdhp
+  definition has_self_only_hdhp of role equals
+    (flow_should_ask_for_hsa_hdhp_coverage_type of role)
+    and (answers of role).type_of_hdhp = SelfOnly
+  # DF: hsa.xml /filers/*/hasFamilyHdhp
+  definition has_family_hdhp of role equals
+    (flow_should_ask_for_hsa_hdhp_coverage_type of role)
+    and (answers of role).type_of_hdhp = Family
+  # DF: hsa.xml /flowKnockoutHsaSelfAndFamilyCoverage
+  rule ko_hsa_self_and_family_coverage under condition
+    (type_of_hdhp_knockout of Types.FilerRole.PrimaryFiler)
+    or (type_of_hdhp_knockout of Types.FilerRole.SecondaryFiler)
+  consequence fulfilled
+
+  # DF: hsa.xml /filers/*/flowShouldAskHadCoverageIneligibleForHSAContributions
+  definition flow_should_ask_had_coverage_ineligible_for_hsa_contributions
+    of role equals
+    (flow_should_ask_for_hsa_hdhp_coverage_type of role)
+    and ((has_self_only_hdhp of role) or (has_family_hdhp of role))
+  # DF: hsa.xml /filers/*/causesOtherCoveragePartOfYearKnockOut
+  definition causes_other_coverage_part_of_year_knock_out of role equals
+    (flow_should_ask_had_coverage_ineligible_for_hsa_contributions of role)
+    and (answers of role).had_other_coverage_ineligible_for_hsa
+        = OtherCoveragePartOfYear
+  # DF: hsa.xml /filers/*/causesOtherCoverageWholeYearKnockOut
+  definition causes_other_coverage_whole_year_knock_out of role equals
+    (flow_should_ask_had_coverage_ineligible_for_hsa_contributions of role)
+    and (answers of role).had_other_coverage_ineligible_for_hsa
+        = OtherCoverageWholeYear
+  # DF: hsa.xml /flowKnockoutOtherCoveragePartOfYear
+  rule ko_other_coverage_part_of_year under condition
+    (causes_other_coverage_part_of_year_knock_out of Types.FilerRole.PrimaryFiler)
+    or (causes_other_coverage_part_of_year_knock_out of Types.FilerRole.SecondaryFiler)
+  consequence fulfilled
+  # DF: hsa.xml /flowKnockoutOtherCoverageWholeYear
+  rule ko_other_coverage_whole_year under condition
+    (causes_other_coverage_whole_year_knock_out of Types.FilerRole.PrimaryFiler)
+    or (causes_other_coverage_whole_year_knock_out of Types.FilerRole.SecondaryFiler)
+  consequence fulfilled
+
+  # DF: hsa.xml /flowKnockoutHsaCoverage
+  rule ko_hsa_coverage under condition
+    ko_hsa_coverage_changing or ko_hsa_self_and_family_coverage
+    or ko_hdhp_coverage_not_all_year or ko_other_coverage_part_of_year
+  consequence fulfilled
+  # DF: hsa.xml /flowKnockoutContributionSummaryNoneAllowed
+  rule ko_contribution_summary_none_allowed under condition
+    ko_enrolled_in_medicare_all_year or ko_not_enrolled_in_hdhp
+    or ko_other_coverage_whole_year
+  consequence fulfilled
+```
+
+### (5) Special rule for married individuals
+
+"In the case of individuals who are married to each other, if either spouse
+has family coverage both spouses shall be treated as having only such family
+coverage". Form 8889 instructions, line 1 (`i8889--2024.pdf` p 4): "If you and
+your spouse are considered covered by a family HDHP, you are considered
+covered by a family HDHP regardless of whether you file jointly or
+separately."
+
+DF applies the rule only to a joint return on which the answers of both
+spouses are known. For a married filer who is not filing jointly and has
+family coverage, the instructions' line 6 steps depend on the spouse's HSA,
+which DF does not ask; it knocks the filer out (`ko_mfs_line6_check`).
+
+```catala
+scope Hsa:
+  # DF: hsa.xml /hsaMarriedFilersHaveFamilyCoverage
+  definition hsa_married_filers_have_family_coverage equals
+    (flow_should_ask_for_hsa_hdhp_coverage_type of Types.FilerRole.PrimaryFiler)
+    and (flow_should_ask_for_hsa_hdhp_coverage_type of Types.FilerRole.SecondaryFiler)
+    and is_filing_status_mfj
+    and ((has_family_hdhp of Types.FilerRole.PrimaryFiler)
+         or (has_family_hdhp of Types.FilerRole.SecondaryFiler))
+  # DF: hsa.xml /filers/*/isCoveredByFamilyHdhp
+  definition is_covered_by_family_hdhp of role equals
+    hsa_married_filers_have_family_coverage or (has_family_hdhp of role)
+  # DF: hsa.xml /filers/*/isCoveredBySelfOnlyHdhp
+  definition is_covered_by_self_only_hdhp of role equals
+    not (is_covered_by_family_hdhp of role) and (has_self_only_hdhp of role)
+
+  # DF: hsa.xml /filers/*/wasEligibleToMakeHsaContributionsAllYear
+  # ("Rule of last year does not apply"). DF's
+  # /filers/*/hadCoverageDisqualifyingHsaContributions is the constant false
+  # and is omitted. IRC 223(b)(6) (dependents) and (b)(7) (Medicare) enter here.
+  definition was_eligible_to_make_hsa_contributions_all_year of role equals
+    (has_hdhp_coverage_all_year of role)
+    and (has_made_contributions_to_hsa of role)
+    and (answers of role).enrolled_in_medicare = MedicareNoneOfYear
+    and not (can_be_claimed of role)
+
+  # DF: hsa.xml /filers/*/flowShowHsaMfsLine6Check, /filers/*/mfsLine6Check
+  # and /flowKnockoutMFSLine6Check (the primary filer's answer)
+  rule ko_mfs_line6_check under condition
+    is_married and not is_filing_status_mfj
+    and (flow_should_ask_for_hsa_hdhp_coverage_type of Types.FilerRole.PrimaryFiler)
+    and (has_family_hdhp of Types.FilerRole.PrimaryFiler)
+    and primary_filer.writable_mfs_line6_check
+  consequence fulfilled
+
+  # DF: hsa.xml /filers/*/checkForChangeInMaritalStatusDuringTaxYear,
+  # /filers/*/flowShouldAskForChangeInMaritalStatusDuringTaxYear,
+  # /filers/*/changeInMaritalStatusDuringTaxYear,
+  # /filers/*/causesMaritalChangeAffectsContributionLimitKnockout and
+  # /flowKnockoutMaritalChangeAffectsContributionLimit
+  definition causes_marital_change_affects_contribution_limit_knockout
+    of role equals
+    (has_made_contributions_to_hsa of role)
+    and not is_single
+    and (if flow_should_ask_had_coverage_ineligible_for_hsa_contributions of role
+         then (answers of role).had_other_coverage_ineligible_for_hsa
+              = OtherCoverageNoneOfYear
+         else true)
+    and (answers of role).writable_change_in_marital_status_during_tax_year
+        = WasMarriedOrDivorcedThisYear
+    and (answers of role).writable_marital_change_affect_contribution_limit_bool
+  rule ko_marital_change_affects_contribution_limit under condition
+    (causes_marital_change_affects_contribution_limit_knockout
+       of Types.FilerRole.PrimaryFiler)
+    or (causes_marital_change_affects_contribution_limit_knockout
+          of Types.FilerRole.SecondaryFiler)
+  consequence fulfilled
+
+  # Form 8889 line 10, qualified HSA funding distributions, is not supported.
+  # DF: hsa.xml /filers/*/hasMadeQualifiedHsaFundingDistributionDerived and
+  # /flowKnockoutMadeQualifiedHsaFundingDistribution
+  rule ko_made_qualified_hsa_funding_distribution under condition
+    ((has_made_contributions_to_hsa of Types.FilerRole.PrimaryFiler)
+     and primary_filer.has_made_qualified_hsa_funding_distribution)
+    or ((has_made_contributions_to_hsa of Types.FilerRole.SecondaryFiler)
+        and secondary_filer.has_made_qualified_hsa_funding_distribution)
+  consequence fulfilled
+```
+
+### (b)(8) Last-month rule and the testing period
+
+"If, at any time during the testing period, the individual is not an eligible
+individual, then gross income of the individual for the taxable year in which
+occurs the first month in the testing period for which such individual is not
+an eligible individual is increased ..." Form 8889 Part III is not supported:
+a filer who answers that the last-month rule added income is knocked out.
+
+```catala
+scope Hsa:
+  # DF: hsa.xml /filers/*/hasToShowTestingPeriodCheck
+  definition has_to_show_testing_period_check of role equals
+    ((is_primary of role or (is_secondary of role and is_filing_status_mfj))
+     and (flow_skip_to_hsa_testing_period_contribution_check of role))
+    or ((is_primary of role or (is_secondary of role and is_filing_status_mfj))
+        and flow_show_hsa_yes_no and some_filer_had_non_employer_hsa_activity
+        and not (may_have_hsa_contributions of role))
+  # DF: hsa.xml /flowKnockoutHsaTestingPeriodAdditionalIncomeYes
+  rule ko_hsa_testing_period_additional_income_yes under condition
+    ((has_to_show_testing_period_check of Types.FilerRole.PrimaryFiler)
+     or (has_to_show_testing_period_check of Types.FilerRole.SecondaryFiler))
+    and some_filers_made_testing_period_contribution
+    and some_filers_have_testing_period_additional_income
+  consequence fulfilled
+```
+
+## 26 U.S.C. § 223(b): the limit (Form 8889 lines 2 to 13)
+
+### Line 2: contributions you made
+
+Form 8889, line 2: "HSA contributions you made for 2024 (or those made on
+your behalf), including those made by the unextended due date of your tax
+return that were for 2024. Do not include employer contributions,
+contributions through a cafeteria plan, or rollovers." The two inputs are the
+contributions made in the year and those made for the year by April 15, 2025
+(`i8889--2024.pdf` p 4, line 2).
+
+```catala
+scope Hsa:
+  # DF: hsa.xml /filers/*/hsaNonemployerContributionsTotal.
+  # DF-BUG(4): DF rounds each of the two writable amounts to the dollar and
+  # then adds them. The Form 1040 instructions (i1040gi--2024.pdf p 23) say to
+  # "include cents when adding the amounts and round off only the total", so
+  # the sum is rounded once. Differs only when the two amounts carry cents.
+  definition hsa_nonemployer_contributions_total of role equals
+    if has_made_contributions_to_hsa of role
+    then R.round_dollar of
+      ((answers of role).writable_hsa_nonemployer_contributions_tax_year
+       + (answers of role).writable_hsa_nonemployer_contributions_tax_year_plus_one)
+    else $0
+```
+
+### Line 3: the annual limitation
+
+"(2) Monthly limitation. The monthly limitation for any month is 1/12 of (A)
+in the case of an eligible individual who has self-only coverage under a high
+deductible health plan as of the first day of such month, $2,250. (B) in the
+case of an eligible individual who has family coverage under a high deductible
+health plan as of the first day of such month, $4,500." These dollar amounts
+are indexed (26 U.S.C. § 223(g)); Rev. Proc. 2023-23 section 3.04 gives, for
+calendar year 2024, "$4,150" for self-only coverage and "$8,300" for family
+coverage (`rp-23-23.pdf` p 2; `P.hsa_limit_self_only`, `P.hsa_limit_family`).
+A filer eligible in all twelve months with one kind of coverage has twelve
+equal months, so the limit is the annual figure.
+
+"(3) Additional contributions for individuals 55 or older. (A) In general. In
+the case of an individual who has attained age 55 before the close of the
+taxable year, the applicable limitation under subparagraphs (A) and (B) of
+paragraph (2) shall be increased by the additional contribution amount." The
+additional contribution amount is $1,000 (`P.hsa_catch_up_55`).
+
+Form 8889 instructions, line 3 (`i8889--2024.pdf` p 5): "If, at the end of
+2024, you were age 55 or older and unmarried or married with self-only HDHP
+coverage for the entire year, you can increase the amount determined in (3) or
+(4) by $1,000 (the additional contribution amount)." and "Note. If you are
+married and had family coverage at any time during the year, the additional
+contribution amount is figured on line 7 and is not included on line 3."
+DF follows this split between lines 3 and 7; the total on line 8 is the same.
+
+```catala
+scope Hsa:
+  # DF: hsa.xml /filers/*/hsaBaseContributionLimit. DF's comment: partial-year
+  # coverage would not have a $0 limit, "but we rely on KOs to ensure that
+  # anyone reaching this calculation does have $0 limit".
+  definition hsa_base_contribution_limit of role equals
+    if (was_eligible_to_make_hsa_contributions_all_year of role)
+       and (has_self_only_hdhp of role)
+       and not hsa_married_filers_have_family_coverage
+    then P.hsa_limit_self_only
+    else if (was_eligible_to_make_hsa_contributions_all_year of role)
+            and (is_covered_by_family_hdhp of role)
+    then P.hsa_limit_family
+    else $0
+  # Form 8889 line 3. DF: hsa.xml /filers/*/hsaInitialContributionLimit
+  definition hsa_initial_contribution_limit of role equals
+    if has_made_contributions_to_hsa of role
+    then R.round_dollar of
+      (if ((was_eligible_to_make_hsa_contributions_all_year of role)
+           and (age55_or_older of role)
+           and (((is_covered_by_family_hdhp of role)
+                 or (is_covered_by_self_only_hdhp of role))
+                and not is_married))
+          or ((was_eligible_to_make_hsa_contributions_all_year of role)
+              and (age55_or_older of role)
+              and (is_covered_by_self_only_hdhp of role) and is_married)
+       then (hsa_base_contribution_limit of role) + P.hsa_catch_up_55
+       else hsa_base_contribution_limit of role)
+    else $0
+  # Form 8889 line 4 is the Archer MSA amount, $0 here (ko_hsa_medical_savings_account_type).
+  # Form 8889 line 5. DF: hsa.xml /filers/*/hsaContributionLimitLessMsaContributions
+  definition hsa_contribution_limit_less_msa_contributions of role equals
+    if has_made_contributions_to_hsa of role
+    then hsa_initial_contribution_limit of role
+    else $0
+```
+
+### Line 6: spouses with separate HSAs and family coverage
+
+"(5) Special rule for married individuals. In the case of individuals who are
+married to each other, if either spouse has family coverage ... the limitation
+under paragraph (1) (after the application of subparagraph (A) and without
+regard to any additional contribution amount under paragraph (3)) shall be
+reduced by the aggregate amount paid to Archer MSAs of such spouses for the
+taxable year, and after such reduction, shall be divided equally between them
+unless they agree on a different division."
+
+Form 8889 instructions, line 6 (`i8889--2024.pdf` p 7): "If you are treated as
+having family coverage for each month, divide the amount on line 5 equally
+between you and your spouse, unless you both agree on a different allocation
+(such as allocating nothing to one spouse). Enter your allocable share on
+line 6."
+
+DF-BUG(12) candidate: Direct File never asks whether the spouses agree on a
+division. `hsa.xml` /hsaPrimaryFilerAllocatedContributionLimit and
+/hsaSecondaryFilerAllocatedContributionLimit (lines 2689 to 2786) assume an
+agreement that gives the primary filer what the primary filer contributed
+(contributions on lines 2 and 11 less line 7, capped at line 5) and the
+secondary filer the rest. Without an agreement the law divides equally, so
+this module divides equally. Where DF's allocation gives a larger deduction,
+the difference shows as a `knownDivergence`.
+
+```catala
+scope Hsa:
+  # DF: hsa.xml /filers/*/hasMetFamilyContributionLimitRule
+  definition has_met_family_contribution_limit_rule of role equals
+    hsa_married_filers_have_family_coverage and both_filers_have_hsa
+    and (has_hdhp_coverage_all_year of role)
+  # IRC 223(b)(5)(B)(ii), Form 8889 instructions line 6 (p 7): equal division.
+  # DF-BUG(12) candidate: see above.
+  definition hsa_allocated_contribution_limit of role equals
+    (hsa_contribution_limit_less_msa_contributions of role) * 50%
+  # Form 8889 line 6. DF: hsa.xml /filers/*/hsaContributionLimitLessAddition
+  definition hsa_contribution_limit_less_addition of role equals
+    if has_made_contributions_to_hsa of role
+    then R.round_dollar of
+      (if has_met_family_contribution_limit_rule of role
+       then hsa_allocated_contribution_limit of role
+       else hsa_contribution_limit_less_msa_contributions of role)
+    else $0
+```
+
+### Line 7: additional contribution amount
+
+Form 8889 line 7: "If you were age 55 or older at the end of 2024, married,
+and you or your spouse had family coverage under an HDHP at any time during
+2024, enter your additional contribution amount." Instructions p 7: "If items
+(1) and (2) apply to all months during 2024, enter $1,000 on line 7."
+
+```catala
+scope Hsa:
+  # Form 8889 line 7. DF: hsa.xml /filers/*/additionToHsaContributionLimit
+  definition addition_to_hsa_contribution_limit of role equals
+    if has_made_contributions_to_hsa of role
+    then R.round_dollar of
+      (if (was_eligible_to_make_hsa_contributions_all_year of role)
+          and age55_or_older of role
+          and (is_covered_by_family_hdhp of role) and is_married
+       then P.hsa_catch_up_55
+       else $0)
+    else $0
+```
+
+### Lines 8 to 13: the total limit and the deduction
+
+Form 8889, "8 Add lines 6 and 7", "9 Employer contributions made to your HSAs for
+2024", "10 Qualified HSA funding distributions", "11 Add lines 9 and 10", "12
+Subtract line 11 from line 8. If zero or less, enter -0-", "13 HSA deduction".
+Instructions line 9 (`i8889--2024.pdf` p 7): employer contributions "should be
+shown on Form W-2, box 12, code W". Instructions line 13 (p 8): "Generally,
+enter the smaller of line 2 or line 12 on line 13 and on Schedule 1 (Form
+1040), Part II, line 13." Instructions p 5: "Combine the amounts on line 13
+of both Forms 8889 and enter this amount on Schedule 1 (Form 1040), line 13."
+
+```catala
+scope Hsa:
+  # Line 9. DF: hsa.xml /filers/*/hsaContributionsW2sTotal
+  definition hsa_contributions_w2s_total of role equals
+    R.round_dollar of
+      (if is_filing_status_mfj and is_secondary of role
+       then secondary_filer_total_hsa_contributions_from_w2s
+       else primary_filer_total_hsa_contributions_from_w2s)
+  # Line 10. DF: hsa.xml /filers/*/hsaFundingDistributionsTotal is always $0:
+  # funding distributions are not supported (ko_made_qualified_hsa_funding_distribution).
+  definition hsa_funding_distributions_total of role equals $0
+  # Line 11. DF: hsa.xml /filers/*/hsaEmployerContributionsAndFundingDistributionTotal
+  definition hsa_employer_contributions_and_funding_distribution_total of role equals
+    R.round_dollar of
+      ((hsa_contributions_w2s_total of role)
+       + (hsa_funding_distributions_total of role))
+  # DF: hsa.xml /filers/*/hsaContributionsTotal
+  definition hsa_contributions_total of role equals
+    R.round_dollar of
+      ((hsa_employer_contributions_and_funding_distribution_total of role)
+       + (hsa_nonemployer_contributions_total of role))
+  # Line 8. DF: hsa.xml /filers/*/hsaTotalContributionLimit
+  definition hsa_total_contribution_limit of role equals
+    if has_made_contributions_to_hsa of role
+    then R.round_dollar of
+      ((hsa_contribution_limit_less_addition of role)
+       + (addition_to_hsa_contribution_limit of role))
+    else $0
+  # Line 12. DF: hsa.xml /filers/*/hsaContributionLimitLessLine11
+  definition hsa_contribution_limit_less_line11 of role equals
+    if has_made_contributions_to_hsa of role
+    then Money.positive of
+      ((hsa_total_contribution_limit of role)
+       - (hsa_employer_contributions_and_funding_distribution_total of role))
+    else $0
+  # Line 13. DF: hsa.xml /filers/*/hsaTotalDeductibleAmount
+  definition filer_hsa_total_deductible_amount of role equals
+    if has_made_contributions_to_hsa of role
+    then Money.min of
+      (hsa_nonemployer_contributions_total of role),
+      (hsa_contribution_limit_less_line11 of role)
+    else $0
+  # Schedule 1 line 13 / Form 1040 line 10. DF: hsa.xml /hsaTotalDeductibleAmount
+  # (a Switch with no default when neither filer has contributions; the
+  # Form 1040 reads it as $0 then, form_1040.catala_en line 374).
+  definition hsa_total_deductible_amount equals
+    filer_hsa_total_deductible_amount of Types.FilerRole.PrimaryFiler
+    + filer_hsa_total_deductible_amount of Types.FilerRole.SecondaryFiler
+
+  # Excess contributions, Form 8889 instructions line 13 (p 8): "if the amount
+  # on line 2 is more than the amount on line 13, you or someone on your behalf
+  # (or your employer) contributed more to your HSA than is allowable".
+  # DF: hsa.xml /filers/*/hasExcessHsaContributions
+  definition has_excess_hsa_contributions of role equals
+    (hsa_nonemployer_contributions_total of role)
+    > (filer_hsa_total_deductible_amount of role)
+  # DF: hsa.xml /filers/*/hsaContributionLimitExceeded (line 2 + line 11 > line 8)
+  definition hsa_contribution_limit_exceeded of role equals
+    (has_made_contributions_to_hsa of role)
+    and (hsa_contributions_total of role) > (hsa_total_contribution_limit of role)
+  # DF: hsa.xml /filers/*/hsaContributionLimitExceededAmount
+  definition hsa_contribution_limit_exceeded_amount of role equals
+    (hsa_contributions_total of role) - (hsa_total_contribution_limit of role)
+  # Excess contributions are taxed (IRC 4973) and need Form 5329; not supported.
+  # DF: hsa.xml /flowHsaContributionsOverLimitKnockout
+  rule ko_hsa_contributions_over_limit under condition
+    (hsa_contribution_limit_exceeded of Types.FilerRole.PrimaryFiler)
+    or (hsa_contribution_limit_exceeded of Types.FilerRole.SecondaryFiler)
+  consequence fulfilled
+```
+
+## Form 8889 Part II: distributions
+
+Form 8889 instructions, line 14a (`i8889--2024.pdf` p 8): "Enter the total
+distributions you received in 2024 from all HSAs ... These amounts should be
+shown on Form 1099-SA, box 1." Line 14b: "any distributions you received in
+2024 that qualified as a rollover contribution to another HSA ... Also include
+any excess contributions (and the earnings on those excess contributions)
+included on line 14a that were withdrawn by the due date". Form 8889 line 14c
+"Subtract line 14b from line 14a", line 15 "Qualified medical expenses paid
+using HSA distributions", line 16 "Taxable HSA distributions. Subtract line 15
+from line 14c. If zero or less, enter -0-."
+
+DF models only distributions that are fully spent on qualified medical
+expenses, so line 16 is `$0`; any 1099-SA with a larger modified distribution
+is a knockout (`ko_hsa_unqualified_distributions`). The distribution code must
+be 1 (`NormalDistribution`), and box 2 earnings and box 4 value on the date of
+death must be zero. Those DF per-filer facts read the whole `/hsaDistributions`
+collection and are gated by `/someFilerCanHaveDistribution`; they are
+reproduced as "some distribution has the condition".
+
+```catala
+scope Hsa:
+  # DF: hsa.xml /filers/*/hasHsaCanHaveDistribution
+  definition has_hsa_can_have_distribution of role equals
+    may_have_hsa_contributions of role
+  # DF: hsa.xml /someFilerCanHaveDistribution
+  definition some_filer_can_have_distribution equals
+    (has_hsa_can_have_distribution of Types.FilerRole.PrimaryFiler)
+    or (has_hsa_can_have_distribution of Types.FilerRole.SecondaryFiler)
+  # DF: hsa.xml /primaryFilerHsaDistributions and /secondaryFilerHsaDistributions
+  definition filer_items of role equals
+    list of x among items such that
+      (has_hsa_can_have_distribution of role) and x.filer = role
+  # Line 14a. DF: hsa.xml /filers/*/totalHsaDistributions. DF sums the
+  # writable gross distributions; the secondary filer's only on a joint return.
+  definition total_hsa_distributions of role equals
+    if is_filing_status_mfj or is_primary of role
+    then R.round_dollar of
+      (Money.sum of
+        (map each x among filer_items of role to x.gross_distribution))
+    else $0
+  # DF: hsa.xml /filers/*/hsaRolloverTotal
+  definition hsa_rollover_total of role equals
+    if is_filing_status_mfj or is_primary of role
+    then R.round_dollar of
+      (Money.sum of
+        (map each x among filer_items of role to x.distributions_rollover_amount))
+    else $0
+  # DF: hsa.xml /filers/*/hsaTotalExcessContributionsWithdrawnInTime
+  definition hsa_total_excess_contributions_withdrawn_in_time of role equals
+    if is_filing_status_mfj or is_primary of role
+    then R.round_dollar of
+      (Money.sum of
+        (map each x among filer_items of role to
+          x.withdrawn_excess_contributions_amount))
+    else $0
+  # Line 14b. DF: hsa.xml /filers/*/hsaRolloversAndTimelyWithdrawals
+  definition hsa_rollovers_and_timely_withdrawals of role equals
+    (hsa_total_excess_contributions_withdrawn_in_time of role)
+    + (hsa_rollover_total of role)
+  # DF: hsa.xml /filers/*/hsaNetDistributionAmount (undefined, shown as $0,
+  # when line 14a and line 14b are both $0)
+  definition hsa_net_distribution_amount of role equals
+    if (total_hsa_distributions of role)
+       + (hsa_rollovers_and_timely_withdrawals of role) > $0
+    then Money.positive of
+      ((total_hsa_distributions of role)
+       - (hsa_rollovers_and_timely_withdrawals of role))
+    else $0
+  # Line 14c. DF: hsa.xml /filers/*/hsaCalculatedDistributionAmount (left blank,
+  # shown as $0, when the net amount and line 14a are both $0)
+  definition hsa_calculated_distribution_amount of role equals
+    hsa_net_distribution_amount of role
+  # Line 15. DF: hsa.xml /filers/*/hsaQualifiedMedExpenses
+  definition hsa_qualified_med_expenses of role equals
+    if is_filing_status_mfj or is_primary of role
+    then R.round_dollar of
+      (Money.sum of
+        (map each x among filer_items of role to x.qualified_med_expenses))
+    else $0
+  # Line 16. DF: hsa.xml /filers/*/taxableHsaDistributionTotal and
+  # /filers/*/hsaCalculatedTaxableHsaDistributionTotal are the constant $0
+  # (DF's comment: it "relies on hsa-ko-unqualified-distributions knocking out
+  # distributions where writableGrossDistribution does not equal
+  # writableQualifiedMedExpenses"). Form 8889 line 16 is line 14c less line 15,
+  # not below zero; ko_hsa_unqualified_distributions guarantees that is $0.
+  definition hsa_calculated_taxable_hsa_distribution_total of role equals $0
+  # DF: hsa.xml /filers/*/hasHsaDistributions
+  definition has_hsa_distributions of role equals
+    (has_hsa_can_have_distribution of role)
+    and (total_hsa_distributions of role) > $0
+
+  # DF: hsa.xml /flowKnockoutEarningsOnExcessContributions
+  rule ko_earnings_on_excess_contributions under condition
+    some_filer_can_have_distribution
+    and exists x among items such that x.has_earnings_on_excess_contributions
+  consequence fulfilled
+  # DF: hsa.xml /flowKnockoutHsaDistributionCode (via
+  # /flowKnockoutHsaDistributionsNotNormal)
+  rule ko_hsa_distribution_code under condition
+    some_filer_can_have_distribution
+    and exists x among items such that x.code_is_not_normal
+  consequence fulfilled
+  # DF: hsa.xml /flowKnockoutHsaUnqualifiedDistributions
+  rule ko_hsa_unqualified_distributions under condition
+    some_filer_can_have_distribution
+    and exists x among items such that x.has_unqualified_distribution
+  consequence fulfilled
+  # DF: hsa.xml /flowKnockoutHsaDistributionFMV
+  rule ko_hsa_distribution_fmv under condition
+    some_filer_can_have_distribution
+    and exists x among items such that x.has_fmv_on_date_of_death
+  consequence fulfilled
+  # DF: hsa.xml /hsaDistributions/secondaryFilerUsedWithoutMFJ
+  rule ko_hsa_distributions_secondary_filer_used_without_mfj under condition
+    some_filer_can_have_distribution and not is_filing_status_mfj
+    and exists x among items such that x.filer = Types.FilerRole.SecondaryFiler
+  consequence fulfilled
+  # DF: hsa.xml /hsaDistributions/*/hasDistributionsWithoutHsaActivity
+  rule ko_has_hsa_distributions_without_activity under condition
+    some_filer_can_have_distribution
+    and not ko_hsa_distributions_secondary_filer_used_without_mfj
+    and exists x among items such that
+      not (has_hsa_can_have_distribution of x.filer)
+  consequence fulfilled
+
+  # DF: hsa.xml /knockoutNoPaymentsHsaDistribution: no taxable income and no
+  # credits or payments, but HSA distributions.
+  rule ko_no_payments_hsa_distribution under condition
+    not paid_estimated_taxes_or_from_last_year
+    and knockout_has_no_payments_or_credits
+    and tax_exempt_interest = $0 and pensions_and_annuities = $0
+    and social_security_benefits = $0
+    and ((has_hsa_distributions of Types.FilerRole.PrimaryFiler)
+         or (has_hsa_distributions of Types.FilerRole.SecondaryFiler))
+  consequence fulfilled
+```
+
+## Who files Form 8889, and the lines of each form
+
+```catala
+scope Hsa:
+  # DF: hsa.xml /numberOfFilersRequiredToFileForm8889
+  definition number_of_filers_required_to_file_form_8889 equals
+    (if (has_made_contributions_to_hsa of Types.FilerRole.PrimaryFiler)
+        or (has_hsa_distributions of Types.FilerRole.PrimaryFiler)
+     then 1 else 0)
+    + (if (has_made_contributions_to_hsa of Types.FilerRole.SecondaryFiler)
+          or (has_hsa_distributions of Types.FilerRole.SecondaryFiler)
+       then 1 else 0)
+  # DF: hsa.xml /requiresForm8889
+  rule requires_form_8889 under condition
+    number_of_filers_required_to_file_form_8889 > 0
+  consequence fulfilled
+
+  definition form_8889 of role equals
+    Form8889 {
+      -- line_1_family: (has_made_contributions_to_hsa of role)
+                        and (is_covered_by_family_hdhp of role)
+      -- line_1_self_only: (has_made_contributions_to_hsa of role)
+                           and (is_covered_by_self_only_hdhp of role)
+      -- line_2: hsa_nonemployer_contributions_total of role
+      -- line_3: hsa_initial_contribution_limit of role
+      -- line_5: hsa_contribution_limit_less_msa_contributions of role
+      -- line_6: hsa_contribution_limit_less_addition of role
+      -- line_7: addition_to_hsa_contribution_limit of role
+      -- line_8: hsa_total_contribution_limit of role
+      -- line_9: hsa_contributions_w2s_total of role
+      -- line_11: hsa_employer_contributions_and_funding_distribution_total of role
+      -- line_12: hsa_contribution_limit_less_line11 of role
+      -- line_13: filer_hsa_total_deductible_amount of role
+      -- line_14a: total_hsa_distributions of role
+      -- line_14b: hsa_rollovers_and_timely_withdrawals of role
+      -- line_14c: hsa_calculated_distribution_amount of role
+      -- line_15: hsa_qualified_med_expenses of role
+      -- line_16: hsa_calculated_taxable_hsa_distribution_total of role
+    }
+```
+
+## Unsupported
+
+The 19 DF facts that `flow.xml` (lines 77 to 95) feeds into
+`/flowIsKnockedOut`, in that file's order, and the two block-submission
+validations of `hsa.xml`.
+
+```catala
+scope Hsa:
+  rule unsupported under condition
+    ko_no_payments_hsa_distribution
+    or ko_hsa_medical_savings_account_type
+    or ko_hsa_distribution_code
+    or ko_other_coverage_part_of_year
+    or ko_other_coverage_whole_year
+    or ko_earnings_on_excess_contributions
+    or ko_hsa_testing_period_additional_income_yes
+    or ko_hsa_unqualified_distributions
+    or ko_hsa_distribution_fmv
+    or ko_marital_change_affects_contribution_limit
+    or ko_mfs_line6_check
+    or ko_hsa_contributions_over_limit
+    or ko_hsa_excess_contributions
+    or ko_contribution_summary_none_allowed
+    or ko_hdhp_coverage_status_not_needed
+    or ko_not_enrolled_in_hdhp
+    or ko_made_qualified_hsa_funding_distribution
+    or ko_hsa_coverage
+    or ko_filer_is_dependent_and_contributes_to_hsa
+    or ko_has_hsa_distributions_without_activity
+    or ko_hsa_distributions_secondary_filer_used_without_mfj
+  consequence fulfilled
+```
