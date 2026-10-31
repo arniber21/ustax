@@ -1,0 +1,42 @@
+difftest/run.mjs
+  s_3031b504518be3::t_02e8a131bc8ddd 112
+  s_3031b504518be3::t_2adc7024b78cdd 78-84
+  s_3031b504518be3::t_a4213696ce1b6b 40,42
+  s_3031b504518be3::t_53f9ffa2917e5e 102
+difftest/mappings/elderly_and_disabled.mjs
+  s_3031b504518be3::t_2ccd0a841677de 34
+  s_3031b504518be3::t_3fb17d48ebe4a2 1-33,35-117
+catala/elderly_and_disabled.catala_en
+  s_3031b504518be3::t_523c2e491611d5 114-121
+  s_3031b504518be3::t_d3180f24fddbe4 254-255
+  s_3031b504518be3::t_ce886131fbffa6 197-199,202
+  s_3031b504518be3::t_e2f1f7680aaef9 60-61
+  s_3031b504518be3::t_3be3c7b142333c 568
+  s_3031b504518be3::t_256823046d42cc 1-59,62-113,122-196,200-201,203-253,256-505,514-516,540-567,569-583
+  s_3031b504518be3::t_0138c1038c1589 506-513,517-539
+catala/tests/test_elderly_and_disabled.catala_en
+  s_3031b504518be3::t_ecda2e6059be64 1-160,163-514,539-558,560-592,594-656,658-712,714-716,729-954
+  s_3031b504518be3::t_a385c0887d8596 593
+  s_3031b504518be3::t_1f5d1c9e10825d 657
+  s_3031b504518be3::t_11b58fe843f24a 559
+  s_3031b504518be3::t_d18cb1e37b1045 161-162,515-538,713,717-728
+catala/params_2024.catala_en
+  s_3031b504518be3::t_6013205565aa15 203-205,238
+  s_3031b504518be3::t_146ebfaeb00fa3 202,206-237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36d695de0cbf8989aa28860451224f7e6090277d",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
