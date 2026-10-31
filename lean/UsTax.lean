@@ -4,3 +4,7 @@ import UsTax.Money
 import UsTax.Money.Lemmas
 import UsTax.Money.Props
 import UsTax.Money.Regression
+import UsTax.Defaults
+import UsTax.Lists
+import UsTax.Date
+import UsTax.HelpersProps
