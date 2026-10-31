@@ -1,0 +1,20 @@
+# Differential-test smoke scope: Form 1040 line 1a (wages)
+
+This module exists to exercise the differential test runner (`difftest/`, see `catala/DIFFTEST.md`).
+It models only Direct File's `/wages` fact (`formW2s.xml`): the sum, over all W-2s, of Box 1
+(`/formW2s/*/wages`, which is `/formW2s/*/writableWages` when answered and $0 otherwise).
+No tax law is encoded beyond "line 1a is the sum of the W-2 Box 1 amounts"
+(Form 1040 instructions TY2024, line 1a).
+
+```catala
+declaration scope SmokeWages:
+  input w2_box1_wages content list of money
+  output line_1a content money
+
+scope SmokeWages:
+  # Direct File rounds each W-2's Box 1 to whole dollars before summing (`<Round>` in
+  # /formW2s/*/wages, formW2s.xml:1149), which the differential runner found when the first
+  # version of this scope summed unrounded amounts.
+  definition line_1a equals
+    round of (sum money of (map each w among w2_box1_wages to round of w))
+```
