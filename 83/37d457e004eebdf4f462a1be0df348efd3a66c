@@ -1,0 +1,19 @@
+docs/direct-file-bugs.md
+  s_4b29c7d29d3740::t_3d672e4cb3c3a3 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8337d457e004eebdf4f462a1be0df348efd3a66c",
+  "prompts": {},
+  "sessions": {
+    "s_4b29c7d29d3740": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a85dda0db3ce4e237",
+        "model": "unknown"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
