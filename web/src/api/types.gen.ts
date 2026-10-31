@@ -319,6 +319,12 @@ supported: true
 reasons: []
 outcome: Outcome
 lines: Lines
+/**
+ * Optional (schema 1.1.0). Present only when something in the request was accepted but did not affect the result. Absent means every part of the request was used.
+ * 
+ * @minItems 1
+ */
+warnings?: [Warning, ...(Warning)[]]
 }
 /**
  * Form 1040 line items, one key per scalar output of the Catala Form1040 scope (catala/form_1040.catala_en, 'The scalar output list'). All Money, whole dollars as cents, never negative. Key to form line: api/line-catalog.json. New keys may appear in later minor versions; clients must ignore keys they do not know.
@@ -344,6 +350,17 @@ total_payments: Money
 overpayment: Money
 balance_due: Money
 [k: string]: Money
+}
+/**
+ * A non-fatal note on a 200 response. code is stable: section_not_used = a request section is valid but its Lean module is not wired into the calculator yet, so its values are ignored. New codes are additive.
+ */
+export interface Warning {
+code: string
+/**
+ * RFC 6901 pointer to the part of the request concerned.
+ */
+path: string
+message: string
 }
 /**
  * 422 response: at least one knockout fired, so no return is computed (no lines).

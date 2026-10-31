@@ -48,7 +48,8 @@ def ErrorCode.name : ErrorCode → String
 def ErrorCode.status : ErrorCode → Nat
   | .invalidJson | .invalidRequest | .unknownField | .unsupportedApiVersion
   | .unsupportedTaxYear => 400
-  | .notFound | .methodNotAllowed => 404
+  | .notFound => 404
+  | .methodNotAllowed => 405
   | .payloadTooLarge => 413
   | .unsupportedMediaType => 415
   | .internalError => 500

@@ -14,7 +14,7 @@
       "filer": "PrimaryFiler",
       "has_1099": true,
       "interest_income": 100000,
-      "government_bond_interest": 50000
+      "private_activity_bond_interest": 50000
     }
   ]
 }

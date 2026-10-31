@@ -1,7 +1,7 @@
 # JSON API contract (issue #49)
 
 Contract version: `api_version` 1, schema file `api/schema.json` (JSON Schema draft 2020-12,
-`schema_version` 1.0.0), tax year 2024. Consumers: the Lean server (#51 validation, #52 endpoint),
+`schema_version` 1.1.0), tax year 2024. Consumers: the Lean server (#51 validation, #52 endpoint),
 the React frontend (#72 to #82). Plain HTTP; TLS is terminated by a proxy (`docs/lean-http-server.md`).
 
 Files:
@@ -147,6 +147,16 @@ server-side change only, no schema change.
   are added as new keys. Clients ignore keys they do not know; `line-catalog.json` says how to label them.
   A future optional `details` object may carry the "how we got this number" breakdown.
 
+### Warnings (schema 1.1.0, proposed in the server slice, #52)
+
+`CalculateSuccess` may carry an optional `warnings` array: `{code, path, message}` per request part that
+validated but is not yet read by the calculator (`code` `section_not_used`; `path` is an RFC 6901
+pointer such as `/form_1099g`). It is omitted when empty, so a request that uses only wired sections gets
+exactly the body shown above. Reason: the "Coverage" table above promises that unwired sections have "no
+effect on `lines`"; without this field a client could not tell a $0 effect from an ignored one. The
+frontend should show the warning next to the result. It is additive (a minor bump); the field disappears
+as the sections are wired.
+
 ## Response 422: `CalculateUnsupported`
 
 At least one knockout fired, so no return is computed (CONVENTIONS section 6; Direct File's
@@ -236,7 +246,7 @@ The numbers in the five filing-status examples were checked against `Form1040` i
 Table midpoints): Single $50,000 gives tax $4,019 (`TestSingle50k`), joint $70,000 gives $4,435
 (`TestMfjTwoW2s`); the separate, head of household and surviving spouse cases ($2,819, $4,244,
 $5,635) were run through the same scope. The unsupported examples show the response shape; their
-exact reason lists will be confirmed by the integration test of #52 once `Calculator` exists.
+exact reason lists are confirmed by `make test-server` (`scripts/server_integration.mjs`). That test found that box 3 (`government_bond_interest`) does not fire `FlowKnockoutHasBonds` (only boxes 9 to 13 do, `catala/interest.catala_en`), so `knocked-out-bond-interest.request.json` now uses box 9 (`private_activity_bond_interest`).
 
 ## Examples (curl)
 

@@ -21,3 +21,8 @@ name = "UsTax"
 [[lean_exe]]
 name = "ustax"
 root = "Main"
+
+# HTTP server (ServerMain.lean): `lake build ustax-server`, then `.lake/build/bin/ustax-server`.
+[[lean_exe]]
+name = "ustax-server"
+root = "ServerMain"
