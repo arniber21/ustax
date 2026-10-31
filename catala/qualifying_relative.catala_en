@@ -1,0 +1,742 @@
+> Module Qualifying_relative
+
+> Using Params_2024 as P
+> Using Qualifying_child as Q
+
+# Qualifying relative and eligible dependent: IRC 152(d), 152(b), one person at a time
+
+Direct File ("DF" below) facts `/familyAndHousehold/*/qualifyingRelative`,
+`/familyAndHousehold/*/eligibleDependent`, `/familyAndHousehold/*/isClaimedDependent`,
+`/familyAndHousehold/*/isClaimedIfClaimable` and their sub-tests in
+`familyAndHousehold.xml` (lines 2406-2448, 2549-3040, 3423-3439) and
+`/familyAndHousehold/*/qrRelationshipTest` in `dependentsRelationship.xml`
+(lines 1110-1260), under `../direct-file/direct-file/backend/src/main/resources/tax/`.
+Issue #17, scope.md section 5.2. Tests:
+`catala/tests/test_qualifying_relative.catala_en`. Oracle comparison:
+`difftest/mappings/qualifying_relative.mjs` against the per-person oracle
+`oracle/persons.csv` (`make difftest-persons`).
+
+The file is named after the topic, as `qualifying_child.catala_en` (#16) is,
+not after the DF XML files (CONVENTIONS section 9 lists
+`family_and_household.catala_en` and `dependents_relationship.catala_en` for
+#16 and #17 together; #16 set the per-topic precedent and this module follows it).
+
+Like `Qualifying_child`, this module works on one member of the DF collection
+`/familyAndHousehold` at a time (scope `DependentTest`) and maps that scope over
+the household (scope `Dependents`). It calls `Qualifying_child.QualifyingChildTest`
+for the same person: a qualifying relative must not be a qualifying child, a
+dependent is either, and the joint return test is shared.
+
+Facts read from outside the person, all inputs here:
+
+- `/minimumFilerDateOfBirth` (`Filers.minimum_filer_date_of_birth`, #15), for
+  the qualifying child test;
+- `/treatFilersAsDependents` (`Filers.treat_filers_as_dependents`, #15),
+  IRC 152(b)(1);
+- `/eitherFilerUSCitizenOrNational` (`Filers.either_filer_us_citizen_or_national`,
+  #15), IRC 152(b)(3)(B)(ii);
+- per person, `dependentsBenefitSplit.xml` `/familyAndHousehold/*/tpCanClaimSplitBenefitsHohEitcCdcc`
+  and `/familyAndHousehold/*/disqualifiedDueToParentalCustody` (IRC 152(e),
+  issue #18, not yet written). They are fields of `DependentAnswers` until #18
+  provides them. TODO(#18): take them from the benefit-split scope.
+
+The inputs are complete (CONVENTIONS section 3). Where DF's question gates
+disagree with the statute, the statute wins (CONVENTIONS section 8,
+`# DF-BUG(n):` comments; two cases below, `DF-BUG(15)` and `DF-BUG(16)`).
+
+Not here, on purpose: the children of divorced or separated parents and
+multiple support agreements (IRC 152(e), 152(d)(3), issue #18 and the
+`writableQrSupportTest` answer), HoH and QSS qualifying persons (#19, #20),
+the credit-specific person tests (#26-#28). This module feeds those modules
+and Form 1040 "Dependents" (the list of claimed dependents); it feeds no Form
+1040 dollar line directly.
+
+## Declarations
+
+```catala-metadata
+## DF: constants.xml /tinTypeOptions (lines 786-797), same order. The type of
+## the person's taxpayer identification number; `NoTin` is DF `none` (renamed:
+## `None` reads as an optional value).
+declaration enumeration TinType:
+  -- Ssn
+  -- Itin
+  -- Atin
+  -- NoTin
+
+## The `Writable` answers DF keeps per household member that the qualifying
+## relative and dependent tests read, beyond those of `Qualifying_child.Person`.
+declaration structure DependentAnswers:
+  # The person's gross income for 2024 (IRC 152(d)(1)(B)). DF asks the yes/no
+  # question /familyAndHousehold/*/grossIncomeTest ("Was <name>'s gross income
+  # less than $5,050?"); here the amount is the input and the comparison is a
+  # rule. The difftest mapping turns DF's answer into $0 (yes) or the limit (no).
+  data gross_income content money
+  # DF: /familyAndHousehold/*/writableQrSupportTest ("you provided more than
+  # half their support")
+  data writable_qr_support_test content boolean
+  # DF: /familyAndHousehold/*/tinType
+  data tin_type content TinType
+  # DF: /familyAndHousehold/*/isUsCitizenFullYear (UI: "a U.S. citizen at any
+  # time in 2024?")
+  data is_us_citizen_full_year content boolean
+  # DF: /familyAndHousehold/*/writableUsResident
+  data writable_us_resident content boolean
+  # DF: /familyAndHousehold/*/writableUsNational
+  data writable_us_national content boolean
+  # DF: /familyAndHousehold/*/writableCanadaMexicoResident
+  data writable_canada_mexico_resident content boolean
+  # DF: /familyAndHousehold/*/tpClaims ("Whether the taxpayer wants to claim
+  # the dependent")
+  data tp_claims content boolean
+  # DF: dependentsBenefitSplit.xml /familyAndHousehold/*/tpCanClaimSplitBenefitsHohEitcCdcc
+  # (derived there, issue #18; an input until #18 lands)
+  data tp_can_claim_split_benefits_hoh_eitc_cdcc content boolean
+  # DF: dependentsBenefitSplit.xml /familyAndHousehold/*/disqualifiedDueToParentalCustody
+  # (derived there, issue #18; an input until #18 lands)
+  data disqualified_due_to_parental_custody content boolean
+
+## One member of DF /familyAndHousehold: the qualifying-child answers and the
+## dependent answers.
+declaration structure Member:
+  data person content Q.Person
+  data answers content DependentAnswers
+```
+
+## The scope for one person
+
+```catala-metadata
+declaration scope DependentTest:
+  # One member of DF /familyAndHousehold
+  input member content Member
+  # DF: filers.xml /minimumFilerDateOfBirth (Filers.minimum_filer_date_of_birth)
+  input minimum_filer_date_of_birth content date
+  # DF: filers.xml /treatFilersAsDependents (Filers.treat_filers_as_dependents)
+  input treat_filers_as_dependents content boolean
+  # DF: filers.xml /eitherFilerUSCitizenOrNational
+  # (Filers.either_filer_us_citizen_or_national)
+  input either_filer_us_citizen_or_national content boolean
+
+  # The qualifying child tests for the same person (issue #16)
+  output qc content Q.QualifyingChildTest
+
+  # DF: /familyAndHousehold/*/qualifyingChild (copied from `qc`)
+  output qualifying_child condition
+  # DF: /familyAndHousehold/*/askAboutQCOfAnother (DF's question gate; kept
+  # for comparison, not used by the rules below: DF-BUG(16))
+  output ask_about_qc_of_another condition
+  # DF: /familyAndHousehold/*/isQualifyingChildOfAnother (DF's value, with the
+  # gate; kept for comparison and for the HoH/EITC modules)
+  output is_qualifying_child_of_another condition
+  # The person passes the parts of IRC 152(c) that do not depend on the
+  # taxpayer (no DF fact; DF-BUG(16))
+  output could_be_qualifying_child_of_some_taxpayer condition
+  # DF: /familyAndHousehold/*/notQualifyingChildTest
+  output not_qualifying_child_test condition
+  # DF: dependentsRelationship.xml /familyAndHousehold/*/qrRelationshipTest
+  output qr_relationship_test condition
+  # DF: /familyAndHousehold/*/memberOfHouseholdTest
+  output member_of_household_test condition
+  # DF: /familyAndHousehold/*/relationshipMemberOfHouseholdTest
+  output relationship_member_of_household_test condition
+  # DF: /familyAndHousehold/*/grossIncomeTest (a Writable in DF; see
+  # DependentAnswers.gross_income)
+  output gross_income_test condition
+  # DF: /familyAndHousehold/*/qrSupportTest
+  output qr_support_test condition
+  # DF: /familyAndHousehold/*/qualifyingRelativeMinusNotQcTest
+  output qualifying_relative_minus_not_qc_test condition
+  # DF: /familyAndHousehold/*/qualifyingRelative
+  output qualifying_relative condition
+
+  # DF: /familyAndHousehold/*/usResident
+  output us_resident condition
+  # DF: /familyAndHousehold/*/usNational
+  output us_national condition
+  # DF: /familyAndHousehold/*/canadaMexicoResident
+  output canada_mexico_resident condition
+  # DF: /familyAndHousehold/*/childIsAdopted
+  output child_is_adopted condition
+  # DF: /familyAndHousehold/*/adoptedChildException
+  output adopted_child_exception condition
+  # DF: /familyAndHousehold/*/citizenOrUsResidentTest (CTC/ODC, issue #27)
+  output citizen_or_us_resident_test condition
+  # DF: /familyAndHousehold/*/citizenOrResidentTest
+  output citizen_or_resident_test condition
+
+  # DF: /familyAndHousehold/*/qcOrQr
+  output qc_or_qr condition
+  # DF: /familyAndHousehold/*/eligibleDependentMinusFilerInformation
+  output eligible_dependent_minus_filer_information condition
+  # DF: /familyAndHousehold/*/eligibleDependent
+  output eligible_dependent condition
+  # DF: /familyAndHousehold/*/isClaimedDependent
+  output is_claimed_dependent condition
+  # DF: /familyAndHousehold/*/isClaimedIfClaimable
+  output is_claimed_if_claimable condition
+```
+
+```catala
+scope DependentTest:
+  definition qc equals
+    output of Q.QualifyingChildTest with {
+      -- person: member.person
+      -- minimum_filer_date_of_birth: minimum_filer_date_of_birth }
+
+  # IRC 152(c). DF: /familyAndHousehold/*/qualifyingChild
+  rule qualifying_child under condition qc.qualifying_child
+  consequence fulfilled
+```
+
+## 26 U.S.C. § 152(a) Dependent
+
+IRC 152(a) (`sources/statute/irc-152.html`): "For purposes of this subtitle,
+the term "dependent" means— (1) a qualifying child, or (2) a qualifying
+relative." Pub. 501 (2024), `sources/pubs/p501--2024.pdf` p 11: "The term
+"dependent" means: • A qualifying child, or • A qualifying relative." DF
+`/familyAndHousehold/*/qcOrQr` (`familyAndHousehold.xml` line 3004).
+
+```catala
+scope DependentTest:
+  # IRC 152(a); Pub 501 p 11. DF: /familyAndHousehold/*/qcOrQr
+  rule qc_or_qr under condition qualifying_child or qualifying_relative
+  consequence fulfilled
+```
+
+## 26 U.S.C. § 152(d) Qualifying relative
+
+### (1) In general
+
+IRC 152(d)(1): "The term "qualifying relative" means, with respect to any
+taxpayer for any taxable year, an individual— (A) who bears a relationship to
+the taxpayer described in paragraph (2), (B) whose gross income for the
+calendar year in which such taxable year begins is less than the exemption
+amount (as defined in section 151(d)), (C) with respect to whom the taxpayer
+provides over one-half of the individual's support for the calendar year in
+which such taxable year begins, and (D) who is not a qualifying child of such
+taxpayer or of any other taxpayer for any taxable year beginning in the
+calendar year in which such taxable year begins."
+
+Pub. 501 p 18, Qualifying Relative: "Four tests must be met for a person to be
+your qualifying relative. The four tests are: 1. Not a qualifying child test,
+2. Member of household or relationship test, 3. Gross income test, and 4.
+Support test." "Unlike a qualifying child, a qualifying relative can be any
+age. There is no age test for a qualifying relative."
+
+DF `/familyAndHousehold/*/qualifyingRelative` (line 2750) is the `All` of
+`notQualifyingChildTest` and `qualifyingRelativeMinusNotQcTest` (line 2763, the
+other three tests).
+
+**The person must not be the filer's own qualifying child.** 152(d)(1)(D)
+says "not a qualifying child of such taxpayer or of any other taxpayer"; Pub.
+501 p 18: "A child isn't your qualifying relative if the child is your
+qualifying child or the qualifying child of any other taxpayer. Example 1.
+Your 22-year-old child, who is a student, lives with you and meets all the
+tests to be your qualifying child. This child isn't your qualifying relative."
+DF's `notQualifyingChildTest` only tests "of any other taxpayer", so DF
+calls a qualifying child of the filer who also passes the other three tests a
+qualifying relative. That changes no dependent (`qcOrQr` is true either way)
+but the HoH rules read `qualifyingRelative` directly (`hohQualifyingPerson`,
+lines 3390 and 3404). We follow the statute: `DF-BUG(15)`. The oracle shows
+it on two persons (a 4-year-old child in `hoh-cdcc-combat-pay` and
+`hoh-cdcc-multiple-careproviders`: DF `qualifyingRelative` true, here false).
+Those children pass DF's qualifying child branch of `hohQualifyingPerson` as
+well, so the filing status does not change; issue #19 should confirm that the
+qualifying relative branch never admits one of the filer's qualifying
+children that the qualifying child branch rejects.
+
+```catala
+scope DependentTest:
+  # DF: /familyAndHousehold/*/qualifyingRelativeMinusNotQcTest
+  rule qualifying_relative_minus_not_qc_test under condition
+    relationship_member_of_household_test and gross_income_test
+    and qr_support_test
+  consequence fulfilled
+
+  # DF-BUG(15): DF's /qualifyingRelative omits "not a qualifying child of
+  # such taxpayer" (IRC 152(d)(1)(D); Pub 501 p 18, Example 1). We add it.
+  # Status: candidate. Oracle: 2 persons differ on this fact (text above).
+  # IRC 152(d)(1); Pub 501 p 18. DF: /familyAndHousehold/*/qualifyingRelative
+  rule qualifying_relative under condition
+    not qualifying_child
+    and not_qualifying_child_test
+    and qualifying_relative_minus_not_qc_test
+  consequence fulfilled
+```
+
+### (1)(D) Not the qualifying child of any other taxpayer
+
+Pub. 501 p 18, Not a Qualifying Child Test, "Example 2. Your 2-year-old
+child lives with your parents and meets all the tests to be their qualifying
+child. This child isn't your qualifying relative." And: "Child of person not
+required to file a return. A child isn't the qualifying child of any other
+taxpayer and so may qualify as your qualifying relative if the child's parent
+(or other person for whom the child is defined as a qualifying child) isn't
+required to file an income tax return and either: • Doesn't file an income
+tax return, or • Files a return only to get a refund of income tax withheld
+or estimated tax paid."
+
+DF asks "Is the dependent the qualifying child of any other taxpayer?"
+(`writableCouldBeQualifyingChildOfAnother`, line 2450) and the three
+questions about that taxpayer's filing (lines 2483-2547), combined in
+`qcOfAnotherButNot` (line 2549) exactly as Pub. 501 says. The
+`Qualifying_child` module computes the result as
+`other_taxpayer_can_claim_as_qualifying_child`: the answer is yes, and the
+other taxpayer is not the non-filer / refund-only case.
+
+**The question gate.** DF asks the question only when `askAboutQCOfAnother`
+(line 2418): the person passes DF's `ageTest` and either the other three
+qualifying relative tests or the qualifying child tests, and is not in a
+benefit split. When the question is not asked DF takes the answer as no
+(`couldntBeQCOfAnother`, line 2406), with the comment "If the person doesn't
+meet the age test, they couldn't be anyone's QC". That is not so: DF's
+`ageTest` includes "younger than the taxpayer claiming such individual"
+(IRC 152(c)(3)(A)), measured against *this* filer. A 21-year-old full-time
+student who lives with a 20-year-old sibling fails the age test for the
+sibling, but can be the qualifying child of a parent, and is then not the
+sibling's qualifying relative (152(d)(1)(D)). The other half of the gate
+(ask only if the other three qualifying relative tests or the qualifying
+child tests pass) is harmless for `qualifyingRelative`, which fails anyway,
+but `notQualifyingChildTest` is also read alone by the QSS rule
+(`qssQualifyingPerson`, line 3488, with `qrSupportTest`), and IRC 2(a)(1)(B)
+determines that dependent "without regard to subsections (b)(1), (b)(2), and
+(d)(1)(B)", the gross income test among them. A person who fails only the
+gross income test is never asked, and DF then counts them as nobody else's
+qualifying child.
+
+What we do instead: use the answer, but only for a person who can be anyone's
+qualifying child at all, i.e. who passes the parts of IRC 152(c) that do not
+depend on who the taxpayer is: the support test (152(c)(1)(D)), the joint
+return test (152(c)(1)(E)), and the age limits without "younger than the
+taxpayer" (152(c)(3): under 19, or a student under 24, or permanently and
+totally disabled). A "yes" for anybody else contradicts the statute and is
+ignored. This is `DF-BUG(16)`. The DF valueThe DF value
+`isQualifyingChildOfAnother` (line 2565) is still computed, as the output
+`is_qualifying_child_of_another`, because the HoH and EITC rules (issues #19,
+#26) read it.
+
+```catala
+scope DependentTest:
+  # DF: /familyAndHousehold/*/askAboutQCOfAnother (complete inputs, so the
+  # IsComplete test is true)
+  rule ask_about_qc_of_another under condition
+    qc.age_test
+    and (qualifying_relative_minus_not_qc_test or qualifying_child)
+    and not member.answers.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/isQualifyingChildOfAnother. couldBeQualifying
+  # ChildOfAnother is the answer behind the gate.
+  rule is_qualifying_child_of_another under condition
+    ask_about_qc_of_another
+    and member.person.writable_could_be_qualifying_child_of_another
+    and (qualifying_child or not qc.qc_of_another_but_not)
+  consequence fulfilled
+
+  # DF-BUG(16): DF reads the "qualifying child of another taxpayer" answer
+  # only behind askAboutQCOfAnother, which requires the person to pass the age
+  # test for this filer ("younger than the taxpayer", IRC 152(c)(3)(A)) and
+  # the other qualifying relative or qualifying child tests. The other
+  # taxpayer's age test is not this filer's, and the QSS rule reads this fact
+  # without the gross income test (IRC 2(a)(1)(B)). IRC 152(d)(1)(D); Pub 501
+  # p 18. Status: candidate. We use the answer for every person who can be
+  # anyone's qualifying child.
+  # IRC 152(d)(1)(D); Pub 501 p 18. DF: /familyAndHousehold/*/notQualifyingChildTest
+  rule not_qualifying_child_test under condition
+    not (could_be_qualifying_child_of_some_taxpayer
+         and qc.other_taxpayer_can_claim_as_qualifying_child)
+  consequence fulfilled
+
+  # IRC 152(c)(1)(D), (E), (3) without "younger than the taxpayer"; no DF fact
+  # (DF-BUG(16), text above)
+  rule could_be_qualifying_child_of_some_taxpayer under condition
+    qc.qc_support_test
+    and qc.joint_return_test
+    and (qc.age < Q.qc_age_limit
+         or (member.person.full_time_student and qc.age < Q.qc_student_age_limit)
+         or member.person.permanent_total_disability)
+  consequence fulfilled
+```
+
+### (1)(A) and (2) Relationship or member of household
+
+IRC 152(d)(2): "an individual bears a relationship to the taxpayer described
+in this paragraph if the individual is any of the following with respect to
+the taxpayer: (A) A child or a descendant of a child. (B) A brother, sister,
+stepbrother, or stepsister. (C) The father or mother, or an ancestor of
+either. (D) A stepfather or stepmother. (E) A son or daughter of a brother or
+sister of the taxpayer. (F) A brother or sister of the father or mother of
+the taxpayer. (G) A son-in-law, daughter-in-law, father-in-law,
+mother-in-law, brother-in-law, or sister-in-law. (H) An individual (other
+than an individual who at any time during the taxable year was the spouse,
+determined without regard to section 7703, of the taxpayer) who, for the
+taxable year of the taxpayer, has the same principal place of abode as the
+taxpayer and is a member of the taxpayer's household."
+
+IRC 152(f)(1)(A): "The term "child" means an individual who is— (i) a son,
+daughter, stepson, or stepdaughter of the taxpayer, or (ii) an eligible
+foster child of the taxpayer." 152(f)(1)(B): "a legally adopted individual of
+the taxpayer, or an individual who is lawfully placed with the taxpayer for
+legal adoption by the taxpayer, shall be treated as a child of such
+individual by blood." 152(f)(4): "The terms "brother" and "sister" include a
+brother or sister by the half blood."
+
+Pub. 501 pp 18-19, Relatives who don't have to live with you: "• Your child,
+stepchild, or foster child, or a descendant of any of them (for example, your
+grandchild). (A legally adopted child is considered your child.) • Your
+brother, sister, half brother, half sister, stepbrother, or stepsister. •
+Your father, mother, grandparent, or other direct ancestor, but not foster
+parent. • Your stepfather or stepmother. • A son or daughter of your brother
+or sister. • A son or daughter of your half brother or half sister. • A
+brother or sister of your father or mother. • Your son-in-law,
+daughter-in-law, father-in-law, mother-in-law, brother-in-law, or
+sister-in-law." Pub. 501 p 19: "Joint return. If you file a joint return,
+the person can be related to either you or your spouse." "Cousin. Your cousin
+must live with you all year as a member of your household to meet this test."
+
+DF `qrRelationshipTest` (`dependentsRelationship.xml` line 1110) lists the 19
+options below: (A) the five child options, (B) `sibling`, `halfSibling`,
+`stepSibling`, (C) `parent`, `grandParent`, `otherAncestorOfParent`, (D)
+`stepParent`, (E) `childOfSibling`, `childOfHalfSibling`, (F)
+`siblingOfParent`, (G) `childInLaw`, `parentInLaw`, `siblingInLaw`,
+`siblingsSpouse` (a brother-in-law or sister-in-law by the sibling's
+marriage). Correctly absent: `fosterParent` ("but not foster parent"), the
+child of a step-sibling and further descendants of siblings (152(d)(2)(E)
+names only a "son or daughter of a brother or sister"), and
+`noneOfTheAbove`. Those pass only under (H).
+
+(H) is DF `memberOfHouseholdTest` (line 2635): the person lived with the
+filer `allYear`. Pub. 501 p 19 counts as living with you the temporary
+absences, a person who died during the year or was born during the year and
+lived with you for the rest of it, and an adopted or foster child placed
+during the year; DF folds those into the `allYear` answer. The spouse
+exclusion of (H) and the local-law rule of 152(f)(3) have no DF question; the
+filer's spouse is never a member of `/familyAndHousehold`.
+
+```catala
+scope DependentTest:
+  # IRC 152(d)(2)(A)-(G), 152(f)(1), 152(f)(4); Pub 501 pp 18-19.
+  # DF: dependentsRelationship.xml /familyAndHousehold/*/qrRelationshipTest
+  rule qr_relationship_test under condition
+    match member.person.relationship with pattern
+    -- Q.Relationship.BiologicalChild: true
+    -- Q.Relationship.AdoptedChild: true
+    -- Q.Relationship.StepChild: true
+    -- Q.Relationship.FosterChild: true
+    -- Q.Relationship.GrandChildOrOtherDescendantOfChild: true
+    -- Q.Relationship.Sibling: true
+    -- Q.Relationship.HalfSibling: true
+    -- Q.Relationship.StepSibling: true
+    -- Q.Relationship.Parent: true
+    -- Q.Relationship.GrandParent: true
+    -- Q.Relationship.OtherAncestorOfParent: true
+    -- Q.Relationship.StepParent: true
+    -- Q.Relationship.ChildOfSibling: true
+    -- Q.Relationship.ChildOfHalfSibling: true
+    -- Q.Relationship.SiblingOfParent: true
+    -- Q.Relationship.ChildInLaw: true
+    -- Q.Relationship.ParentInLaw: true
+    -- Q.Relationship.SiblingInLaw: true
+    -- Q.Relationship.SiblingsSpouse: true
+    -- anything: false
+  consequence fulfilled
+
+  # IRC 152(d)(2)(H); Pub 501 p 19. DF: /familyAndHousehold/*/memberOfHouseholdTest
+  rule member_of_household_test under condition
+    member.person.residency_duration = Q.ResidencyDuration.AllYear
+  consequence fulfilled
+
+  # IRC 152(d)(1)(A), (2); Pub 501 p 18.
+  # DF: /familyAndHousehold/*/relationshipMemberOfHouseholdTest
+  rule relationship_member_of_household_test under condition
+    qr_relationship_test or member_of_household_test
+  consequence fulfilled
+```
+
+### (1)(B) Gross income
+
+IRC 152(d)(1)(B): "whose gross income for the calendar year in which such
+taxable year begins is less than the exemption amount (as defined in section
+151(d))". IRC 151(d)(5)(A) makes the exemption amount zero for 2018 through
+2025, but 151(d)(5)(B): "the reduction of the exemption amount to zero under
+subparagraph (A) shall not be taken into account in determining whether a
+deduction is allowed or allowable, or whether a taxpayer is entitled to a
+deduction, under this section." Rev. Proc. 2023-34 §3.24
+(`sources/revproc/rp-23-34.pdf` p 14): "For taxable years beginning in 2024,
+the exemption amount referenced in § 152(d)(1)(B) is $5,050." Pub. 501 p 19,
+Gross Income Test: "To meet this test, a person's gross income for the year
+must be less than $5,050."
+
+DF `/grossIncomeLimit` (line 2664) is $5,050; its description cites "Rev Proc
+.24", which is §3.24 of Rev. Proc. 2023-34 (`sources/VERIFICATION.md`), not
+Rev. Proc. 2024-40 (whose figure, $5,200, is for 2025). The constant is
+`Params_2024.qualifying_relative_gross_income_limit`. DF's
+`grossIncomeTest` is the filer's yes/no answer to "Was <name>'s gross income
+less than $5,050?"; here the amount is the input and "less than" is the rule,
+so $5,049 passes and $5,050 fails. The sheltered-workshop exclusion of
+152(d)(4) is part of figuring the amount, as in DF.
+
+```catala
+scope DependentTest:
+  # IRC 152(d)(1)(B), 151(d)(5)(B); Rev. Proc. 2023-34 §3.24, rp-23-34.pdf p 14;
+  # Pub 501 p 19. DF: /familyAndHousehold/*/grossIncomeTest, /grossIncomeLimit
+  rule gross_income_test under condition
+    member.answers.gross_income < P.qualifying_relative_gross_income_limit
+  consequence fulfilled
+```
+
+### (1)(C) Support
+
+IRC 152(d)(1)(C): "with respect to whom the taxpayer provides over one-half of
+the individual's support for the calendar year in which such taxable year
+begins". Pub. 501 p 19, Support Test (To Be a Qualifying Relative): "To meet
+this test, you must generally provide more than half of a person's total
+support during the calendar year."
+
+DF `/familyAndHousehold/*/qrSupportTest` (line 2718): false if the person
+provided over half of their own support (`ownSupport`, also asked for the
+qualifying child support test), else the answer `writableQrSupportTest`. A
+person who pays over half of their own support cannot receive over half from
+the filer, so the first case is the statute too. Multiple support agreements
+(152(d)(3)) and the divorced-parents rule (152(e)) are part of answering
+`writableQrSupportTest` (issue #18 for 152(e)).
+
+```catala
+scope DependentTest:
+  # IRC 152(d)(1)(C); Pub 501 p 19. DF: /familyAndHousehold/*/qrSupportTest
+  rule qr_support_test under condition
+    not member.person.own_support and member.answers.writable_qr_support_test
+  consequence fulfilled
+```
+
+## 26 U.S.C. § 152(b) Exceptions
+
+Pub. 501 p 11, Exceptions: "Even if you have a qualifying child or qualifying
+relative, you can claim that person as a dependent only if these three tests
+are met. 1. Dependent taxpayer test. 2. Joint return test. 3. Citizen or
+resident test."
+
+### (1) Dependents ineligible
+
+IRC 152(b)(1): "If an individual is a dependent of a taxpayer for any taxable
+year of such taxpayer beginning in a calendar year, such individual shall be
+treated as having no dependents for any taxable year of such individual
+beginning in such calendar year." Pub. 501 p 11, Dependent Taxpayer Test: "If
+you can be claimed as a dependent by another taxpayer, you can't claim anyone
+else as a dependent." "Exception. ... if the person who can claim you (or
+your spouse if filing a joint return) as a dependent files a return only to
+claim a refund of income tax withheld or estimated tax paid." DF
+`/treatFilersAsDependents` (`filers.xml` line 1441, computed by `Filers`)
+holds that test, refund exception included.
+
+### (2) Married dependents
+
+IRC 152(b)(2): "An individual shall not be treated as a dependent of a
+taxpayer under subsection (a) if such individual has made a joint return with
+the individual's spouse under section 6013 for the taxable year beginning in
+the calendar year in which the taxable year of the taxpayer begins." Pub. 501
+p 11, Joint Return Test: "You generally can't claim a married person as a
+dependent if that person files a joint return." "Exception. You can claim a
+person as a dependent who files a joint return if that person and that
+person's spouse file the joint return only to claim a refund of income tax
+withheld or estimated tax paid." DF reuses the qualifying child's
+`jointReturnTest` (computed by `Qualifying_child`, which has this exception).
+
+### (3) Citizens or nationals of other countries
+
+IRC 152(b)(3)(A): "The term "dependent" does not include an individual who is
+not a citizen or national of the United States unless such individual is a
+resident of the United States or a country contiguous to the United States."
+Treas. Reg. § 1.152-2(a)(1) (`sources/regs/cfr-1.152-2.xml`): "a citizen or
+resident of the United States ... Canada, or Mexico, or ... a national of the
+United States, at some time during the calendar year". Pub. 501 p 11,
+Citizen or Resident Test: "You generally can't claim a person as a dependent
+unless that person is a U.S. citizen, a U.S. resident alien, a U.S. national,
+or a resident of Canada or Mexico."
+
+DF asks in order: citizen at any time in 2024 (`isUsCitizenFullYear`, whose
+UI text is "a U.S. citizen at any time in 2024?"), if not then U.S. resident,
+if not then U.S. national, if not then resident of Canada or Mexico; each
+derived fact is the answer ANDed with "not" of the earlier ones (lines
+2812-2865).
+
+IRC 152(b)(3)(B): "Subparagraph (A) shall not exclude any child of a taxpayer
+(within the meaning of subsection (f)(1)(B)) from the definition of
+"dependent" if— (i) for the taxable year of the taxpayer, the child has the
+same principal place of abode as the taxpayer and is a member of the
+taxpayer's household, and (ii) the taxpayer is a citizen or national of the
+United States." Treas. Reg. § 1.152-2(a)(2)(i): "his legally adopted child
+who lives with him, as a member of his household, for the entire taxable
+year". Pub. 501 p 11, Exception for adopted child: "If you are a U.S. citizen
+or U.S. national who has legally adopted a child who isn't a U.S. citizen,
+U.S. resident alien, or U.S. national, this test is met if the child lived
+with you as a member of your household all year." DF
+`adoptedChildException` (line 2908): relationship `adoptedChild`, either
+filer a citizen or national (on a joint return, either spouse is "the
+taxpayer"), and residency `allYear`.
+
+DF `citizenOrUsResidentTest` (line 2943) is the same test without the Canada
+and Mexico residents; the CTC and ODC read it (issue #27).
+
+```catala
+scope DependentTest:
+  # DF: /familyAndHousehold/*/usResident
+  rule us_resident under condition
+    not member.answers.is_us_citizen_full_year
+    and member.answers.writable_us_resident
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/usNational
+  rule us_national under condition
+    not member.answers.is_us_citizen_full_year
+    and not us_resident
+    and member.answers.writable_us_national
+  consequence fulfilled
+
+  # IRC 152(b)(3)(A) "a country contiguous to the United States"; Pub 501 p 11.
+  # DF: /familyAndHousehold/*/canadaMexicoResident
+  rule canada_mexico_resident under condition
+    not member.answers.is_us_citizen_full_year
+    and not us_resident
+    and not us_national
+    and member.answers.writable_canada_mexico_resident
+  consequence fulfilled
+
+  # IRC 152(f)(1)(B). DF: /familyAndHousehold/*/childIsAdopted
+  rule child_is_adopted under condition
+    member.person.relationship = Q.Relationship.AdoptedChild
+  consequence fulfilled
+
+  # IRC 152(b)(3)(B); Treas. Reg. 1.152-2(a)(2)(i); Pub 501 p 11.
+  # DF: /familyAndHousehold/*/adoptedChildException
+  rule adopted_child_exception under condition
+    child_is_adopted
+    and either_filer_us_citizen_or_national
+    and member.person.residency_duration = Q.ResidencyDuration.AllYear
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/citizenOrUsResidentTest
+  rule citizen_or_us_resident_test under condition
+    member.answers.is_us_citizen_full_year
+    or us_resident
+    or us_national
+    or adopted_child_exception
+  consequence fulfilled
+
+  # IRC 152(b)(3); Pub 501 p 11. DF: /familyAndHousehold/*/citizenOrResidentTest
+  rule citizen_or_resident_test under condition
+    citizen_or_us_resident_test
+    or canada_mexico_resident
+    or adopted_child_exception
+  consequence fulfilled
+```
+
+## Eligible to be claimed as a dependent
+
+DF `/familyAndHousehold/*/eligibleDependentMinusFilerInformation` (line 2959)
+is the `All` of: qualifying child or qualifying relative, not disqualified by
+the divorced-parents rules (`disqualifiedDueToParentalCustody`, IRC 152(e);
+issue #18), not the custodial side of a benefit split
+(`tpCanClaimSplitBenefitsHohEitcCdcc`: the filer released the claim to the
+other parent with Form 8332, IRC 152(e)(2); issue #18), the citizen or
+resident test, the joint return test, and a TIN.
+
+**The TIN.** IRC 152 does not ask for a TIN, but a dependent is claimed by
+listing them on the return: Pub. 501 p 22, "You must show the SSN of any
+dependent you list in the Dependents section of your Form 1040 or 1040-SR."
+Pub. 501 p 23: "Alien or adoptee with no SSN. If your dependent doesn't have
+and can't get an SSN, you must show the ITIN or adoption taxpayer
+identification number (ATIN) instead of an SSN." See also IRC 151(e): "No
+exemption shall be allowed under this section with respect to any individual
+unless the TIN of such individual is included on the return claiming the
+exemption." So a person with no SSN, ITIN or ATIN (`tinType` = `none`) is
+not eligible to be claimed on this return. (A child born and died in 2024
+with no SSN, which Pub. 501 p 23 allows with a birth certificate, is a DF
+knockout, `/knockoutPersonBornAndDiedInTaxYearWithoutTin`, not modelled here.)
+
+DF `/familyAndHousehold/*/eligibleDependent` (line 2987) adds IRC 152(b)(1):
+not `/treatFilersAsDependents`. DF's description says it "does not account
+for qualifying child tiebreakers"; `Qualifying_child` knocks those returns out
+(DF-BUG-3).
+
+```catala
+scope DependentTest:
+  # IRC 152(a), 152(b)(2), 152(b)(3), 152(e); Pub 501 pp 11, 22-23.
+  # DF: /familyAndHousehold/*/eligibleDependentMinusFilerInformation
+  rule eligible_dependent_minus_filer_information under condition
+    qc_or_qr
+    and not member.answers.disqualified_due_to_parental_custody
+    and not member.answers.tp_can_claim_split_benefits_hoh_eitc_cdcc
+    and citizen_or_resident_test
+    and qc.joint_return_test
+    and member.answers.tin_type != NoTin
+  consequence fulfilled
+
+  # IRC 152(b)(1); Pub 501 p 11. DF: /familyAndHousehold/*/eligibleDependent
+  rule eligible_dependent under condition
+    not treat_filers_as_dependents
+    and eligible_dependent_minus_filer_information
+  consequence fulfilled
+```
+
+## Claimed dependents
+
+A dependent counts on the return only if the filer claims them. DF
+`/familyAndHousehold/*/isClaimedDependent` (line 3016): the filer answered
+yes to claiming the person (`tpClaims`) and the person is eligible. DF
+`/familyAndHousehold/*/isClaimedIfClaimable` (line 3423): the person is
+claimed, or cannot be claimed. DF requires this of a qualifying person for
+HoH, QSS, EITC and CDCC (its decision record "Must claim dependent on
+return"); those modules (#19, #20, #26, #28) read it.
+
+```catala
+scope DependentTest:
+  # DF: /familyAndHousehold/*/isClaimedDependent
+  rule is_claimed_dependent under condition
+    member.answers.tp_claims and eligible_dependent
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/isClaimedIfClaimable
+  rule is_claimed_if_claimable under condition
+    is_claimed_dependent or not eligible_dependent
+  consequence fulfilled
+```
+
+## The household: every person
+
+The scope `Dependents` applies `DependentTest` to each member of
+`/familyAndHousehold`, in order, and counts the claimed dependents (DF
+`/claimedDependentsCount`, `familyAndHousehold.xml` line 4720, the size of
+`/claimedDependentsCollection`, line 4318).
+
+```catala-metadata
+declaration scope Dependents:
+  # DF: /familyAndHousehold
+  input members content list of Member
+  # DF: filers.xml /minimumFilerDateOfBirth
+  input minimum_filer_date_of_birth content date
+  # DF: filers.xml /treatFilersAsDependents
+  input treat_filers_as_dependents content boolean
+  # DF: filers.xml /eitherFilerUSCitizenOrNational
+  input either_filer_us_citizen_or_national content boolean
+
+  # DF: /familyAndHousehold/*/... (one result per member, same order)
+  output results content list of DependentTest
+  # DF: /claimedDependentsCount
+  output claimed_dependents_count content integer
+```
+
+```catala
+scope Dependents:
+  definition results equals
+    map each m among members to
+      (output of DependentTest with {
+         -- member: m
+         -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
+         -- treat_filers_as_dependents: treat_filers_as_dependents
+         -- either_filer_us_citizen_or_national:
+              either_filer_us_citizen_or_national })
+
+  # DF: /claimedDependentsCount
+  definition claimed_dependents_count equals
+    number of (list of r among results such that r.is_claimed_dependent)
+```
