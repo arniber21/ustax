@@ -1,0 +1,19 @@
+catala/qualifying_child.catala_en
+  s_87ca40c27efd9a::t_f26d168ba26d7a 406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e339bc2e33493b727c34afe7d23e311627f308dc",
+  "prompts": {},
+  "sessions": {
+    "s_87ca40c27efd9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a1b4e6be6be819194",
+        "model": "unknown"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
