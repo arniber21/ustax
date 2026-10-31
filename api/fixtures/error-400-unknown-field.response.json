@@ -1,0 +1,14 @@
+{
+  "api_version": 1,
+  "error": {
+    "code": "unknown_field",
+    "message": "The request body is invalid.",
+    "details": [
+      {
+        "path": "/w3s",
+        "code": "unknown_field",
+        "message": "unknown property"
+      }
+    ]
+  }
+}

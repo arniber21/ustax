@@ -1,0 +1,7 @@
+{
+  "api_version": 1,
+  "error": {
+    "code": "invalid_json",
+    "message": "offset 1: expected \""
+  }
+}

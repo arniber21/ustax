@@ -1,0 +1,20 @@
+{
+  "api_version": 1,
+  "tax_year": 2024,
+  "filing_status": "Single",
+  "w2s": [
+    {
+      "filer": "PrimaryFiler",
+      "wages": 5000000,
+      "federal_withholding": 500000
+    }
+  ],
+  "interest_reports": [
+    {
+      "filer": "PrimaryFiler",
+      "has_1099": true,
+      "interest_income": 100000,
+      "government_bond_interest": 50000
+    }
+  ]
+}

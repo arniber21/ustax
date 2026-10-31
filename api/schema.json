@@ -1,0 +1,404 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ustax.invalid/api/schema.json",
+  "title": "ustax calculator API, contract version 1",
+  "description": "JSON contract between the frontend and the Lean calculator. POST /calculate takes #/$defs/CalculateRequest and answers 200 with #/$defs/CalculateSuccess, 422 with #/$defs/CalculateUnsupported, or 400/404/405/413/415/500 with #/$defs/ErrorResponse. GET /health answers #/$defs/HealthResponse, GET /version answers #/$defs/VersionResponse. Human-readable version: docs/api.md. Every money value is an integer number of cents.",
+  "oneOf": [
+    { "$ref": "#/$defs/CalculateRequest" },
+    { "$ref": "#/$defs/CalculateSuccess" },
+    { "$ref": "#/$defs/CalculateUnsupported" },
+    { "$ref": "#/$defs/ErrorResponse" },
+    { "$ref": "#/$defs/HealthResponse" },
+    { "$ref": "#/$defs/VersionResponse" }
+  ],
+  "$defs": {
+    "Money": {
+      "description": "Signed integer number of cents (Lean `Money`, Catala `money`). JSON integer literal only: no decimal point, no exponent, no string. |value| <= 10^13 (a hundred billion dollars), far below 2^53, so JavaScript numbers hold it exactly.",
+      "type": "integer",
+      "minimum": -10000000000000,
+      "maximum": 10000000000000,
+      "examples": [0, 5000000, -12345]
+    },
+    "NonNegMoney": {
+      "description": "Money that cannot be negative (a form box that is never negative).",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000000000000
+    },
+    "ApiVersion": {
+      "description": "Major version of this contract. Breaking changes bump it; additive changes (new optional request fields, new response lines, new reason codes) do not.",
+      "const": 1
+    },
+    "FilingStatus": {
+      "description": "Catala `Types.FilingStatus`, constructor names unchanged.",
+      "enum": ["Single", "MarriedFilingJointly", "MarriedFilingSeparately", "HeadOfHousehold", "QualifyingSurvivingSpouse"]
+    },
+    "FilerRole": {
+      "description": "Catala `Types.FilerRole`. Whose form this is. SecondaryFiler is allowed only when filing_status is MarriedFilingJointly.",
+      "enum": ["PrimaryFiler", "SecondaryFiler"]
+    },
+    "CombatPayElection": {
+      "description": "Catala `Form_w2s.CombatPayElection`.",
+      "enum": ["NoCombatPay", "UsePrimaryCombatPay", "UseSpouseCombatPay", "UseBothCombatPay", "UsePrimaryNotSpouseCombatPay", "UseSpouseNotPrimaryCombatPay"]
+    },
+    "FilerFlags": {
+      "description": "Per-filer answers the standard deduction needs (Catala Form1040 inputs primary_filer_*, secondary_filer_*).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "is_blind": { "type": "boolean", "default": false },
+        "age65_or_older": { "type": "boolean", "default": false },
+        "can_be_claimed_as_dependent": { "type": "boolean", "default": false }
+      }
+    },
+    "Filers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary": { "$ref": "#/$defs/FilerFlags" },
+        "secondary": { "$ref": "#/$defs/FilerFlags" }
+      }
+    },
+    "FilingDetails": {
+      "description": "Filing-status answers (Catala Form1040 inputs). Omitted keys default to false; treat_as_mfs defaults to filing_status = MarriedFilingSeparately. These move into the calculator when the filers module (#15) is wired.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "treat_as_mfs": { "type": "boolean" },
+        "is_widowed_in_tax_year": { "type": "boolean", "default": false },
+        "mfj_deceased_spouse_reached_age65": { "type": "boolean", "default": false },
+        "mfs_spouse_65_or_older": { "type": "boolean", "default": false },
+        "mfs_spouse_provides_no_benefits": { "type": "boolean", "default": false },
+        "treat_filers_as_dependents": { "type": "boolean", "default": false },
+        "has_foreign_accounts_or_trusts": { "type": "boolean", "default": false },
+        "combat_pay_election": { "$ref": "#/$defs/CombatPayElection", "default": "NoCombatPay" }
+      }
+    },
+    "W2Box12": {
+      "description": "Form W-2 box 12, keyed by code letter. Absent code = $0. Catala FormW2 fields by code: A uncollected_oasdi_tax_on_tips, B uncollected_medicare_tax_on_tips, C taxable_life_insurance_over_50k, D deferrals_401k, E deferrals_403b, F sarsep_deferrals, G deferrals_457b, H deferrals_501c18, J nontaxable_sick_pay, K golden_parachute_excise_tax, L expense_reimbursements, M uncollected_oasdi_tax_on_life_insurance_over_50k, N uncollected_medicare_tax_on_life_insurance_over_50k, P armed_forces_moving_expenses, Q writable_combat_pay, R archer_msa_contributions, S simple_contributions, T adoption_benefits, V nso_income, W employer_hsa_contributions, Y deferrals_409a, Z nqdc_deferrals, AA roth401k_contributions, BB roth403b_contributions, DD health_coverage_cost, EE roth457b_contributions, FF qsehra_benefits, GG income_83i, HH deferrals_83i, II non_taxable_medicaid_waiver_payments.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "A": { "$ref": "#/$defs/NonNegMoney" }, "B": { "$ref": "#/$defs/NonNegMoney" },
+        "C": { "$ref": "#/$defs/NonNegMoney" }, "D": { "$ref": "#/$defs/NonNegMoney" },
+        "E": { "$ref": "#/$defs/NonNegMoney" }, "F": { "$ref": "#/$defs/NonNegMoney" },
+        "G": { "$ref": "#/$defs/NonNegMoney" }, "H": { "$ref": "#/$defs/NonNegMoney" },
+        "J": { "$ref": "#/$defs/NonNegMoney" }, "K": { "$ref": "#/$defs/NonNegMoney" },
+        "L": { "$ref": "#/$defs/NonNegMoney" }, "M": { "$ref": "#/$defs/NonNegMoney" },
+        "N": { "$ref": "#/$defs/NonNegMoney" }, "P": { "$ref": "#/$defs/NonNegMoney" },
+        "Q": { "$ref": "#/$defs/NonNegMoney" }, "R": { "$ref": "#/$defs/NonNegMoney" },
+        "S": { "$ref": "#/$defs/NonNegMoney" }, "T": { "$ref": "#/$defs/NonNegMoney" },
+        "V": { "$ref": "#/$defs/NonNegMoney" }, "W": { "$ref": "#/$defs/NonNegMoney" },
+        "Y": { "$ref": "#/$defs/NonNegMoney" }, "Z": { "$ref": "#/$defs/NonNegMoney" },
+        "AA": { "$ref": "#/$defs/NonNegMoney" }, "BB": { "$ref": "#/$defs/NonNegMoney" },
+        "DD": { "$ref": "#/$defs/NonNegMoney" }, "EE": { "$ref": "#/$defs/NonNegMoney" },
+        "FF": { "$ref": "#/$defs/NonNegMoney" }, "GG": { "$ref": "#/$defs/NonNegMoney" },
+        "HH": { "$ref": "#/$defs/NonNegMoney" }, "II": { "$ref": "#/$defs/NonNegMoney" }
+      }
+    },
+    "FormW2": {
+      "description": "One Form W-2 (Catala Form_w2s.FormW2). Omitted money box = $0, omitted boolean = false.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filer", "wages"],
+      "properties": {
+        "filer": { "$ref": "#/$defs/FilerRole" },
+        "wages": { "$ref": "#/$defs/NonNegMoney", "description": "Box 1 (writable_wages)" },
+        "federal_withholding": { "$ref": "#/$defs/NonNegMoney", "description": "Box 2 (writable_federal_withholding)" },
+        "oasdi_wages": { "$ref": "#/$defs/NonNegMoney", "description": "Box 3 (writable_oasdi_wages)" },
+        "oasdi_withholding": { "$ref": "#/$defs/NonNegMoney", "description": "Box 4 (writable_oasdi_withholding)" },
+        "medicare_wages": { "$ref": "#/$defs/NonNegMoney", "description": "Box 5 (writable_medicare_wages)" },
+        "medicare_withholding": { "$ref": "#/$defs/NonNegMoney", "description": "Box 6 (writable_medicare_withholding)" },
+        "allocated_tips": { "$ref": "#/$defs/NonNegMoney", "description": "Box 8 (writable_allocated_tips)" },
+        "dependent_care_benefits": { "$ref": "#/$defs/NonNegMoney", "description": "Box 10 (writable_dependent_care_benefits)" },
+        "non_qualified_plans": { "$ref": "#/$defs/NonNegMoney", "description": "Box 11 (writable_non_qualified_plans)" },
+        "box12": { "$ref": "#/$defs/W2Box12" },
+        "statutory_employee": { "type": "boolean", "description": "Box 13 (statutory_employee)" },
+        "third_party_sick_pay": { "type": "boolean", "description": "Box 13 (third_party_sick_pay)" },
+        "plan_457b_is_governmental": { "type": "boolean", "description": "Answer asked only when box 12 code G is present" }
+      }
+    },
+    "Form1099Int": {
+      "description": "One interest report (Catala Interest.InterestReport). With has_1099 false only no_1099_amount is read. Catala fields: interest_income = writable_1099_amount (box 1), early_withdrawal_penalty = writable_early_withdrawl_penalty_amount (box 2), government_bond_interest = writable_interest_on_government_bonds (box 3), federal_tax_withheld = writable_tax_withheld (box 4), foreign_tax_paid (box 6), tax_exempt_interest (box 8), private_activity_bond_interest = writable_specified_private_activity_bond_interest (box 9), market_discount (box 10), bond_premium (box 11), bond_premium_treasury = writable_bond_premium_on_treasury_obligations (box 12), bond_premium_tax_exempt = writable_bond_premium_on_tax_exempt_bond (box 13), state_is_different = state_is_different_state (box 15), state_tax_withheld (box 17), facta_filing_required.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filer", "has_1099"],
+      "properties": {
+        "filer": { "$ref": "#/$defs/FilerRole" },
+        "has_1099": { "type": "boolean" },
+        "no_1099_amount": { "$ref": "#/$defs/NonNegMoney" },
+        "interest_income": { "$ref": "#/$defs/NonNegMoney" },
+        "early_withdrawal_penalty": { "$ref": "#/$defs/NonNegMoney" },
+        "government_bond_interest": { "$ref": "#/$defs/NonNegMoney" },
+        "federal_tax_withheld": { "$ref": "#/$defs/NonNegMoney" },
+        "foreign_tax_paid": { "$ref": "#/$defs/NonNegMoney" },
+        "tax_exempt_interest": { "$ref": "#/$defs/NonNegMoney" },
+        "private_activity_bond_interest": { "$ref": "#/$defs/NonNegMoney" },
+        "market_discount": { "$ref": "#/$defs/NonNegMoney" },
+        "bond_premium": { "$ref": "#/$defs/NonNegMoney" },
+        "bond_premium_treasury": { "$ref": "#/$defs/NonNegMoney" },
+        "bond_premium_tax_exempt": { "$ref": "#/$defs/NonNegMoney" },
+        "state_is_different": { "type": "boolean" },
+        "state_tax_withheld": { "$ref": "#/$defs/NonNegMoney" },
+        "facta_filing_required": { "type": "boolean" }
+      }
+    },
+    "Form1099G": {
+      "description": "One Form 1099-G (Catala Unemployment.Form1099G). unemployment_compensation = amount (box 1); repaid_this_year_for_this_year = writable_amount_paid_back_for_benefits_in_tax_year; repaid_this_year_for_earlier_year = writable_amount_paid_back_for_benefits_before_tax_year; federal_tax_withheld = writable_federal_tax_withheld (box 4); state_is_different = state_is_different_state.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filer", "unemployment_compensation"],
+      "properties": {
+        "filer": { "$ref": "#/$defs/FilerRole" },
+        "unemployment_compensation": { "$ref": "#/$defs/NonNegMoney" },
+        "repaid_this_year_for_this_year": { "$ref": "#/$defs/NonNegMoney" },
+        "repaid_this_year_for_earlier_year": { "$ref": "#/$defs/NonNegMoney" },
+        "federal_tax_withheld": { "$ref": "#/$defs/NonNegMoney" },
+        "state_is_different": { "type": "boolean" }
+      }
+    },
+    "Form1099Misc": {
+      "description": "One Form 1099-MISC (Catala Form1099_misc.Form1099Misc). other_income = writable_other_income (box 3); federal_withholding = writable_federal_withholding (box 4).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filer", "is_alaska_pfd", "other_income"],
+      "properties": {
+        "filer": { "$ref": "#/$defs/FilerRole" },
+        "is_alaska_pfd": { "type": "boolean" },
+        "other_income": { "$ref": "#/$defs/NonNegMoney" },
+        "federal_withholding": { "$ref": "#/$defs/NonNegMoney" }
+      }
+    },
+    "Form1099RCodeChar": {
+      "description": "One character of box 7 (Catala CodeChar; OtherCode stands for every other character).",
+      "enum": ["2", "4", "7", "B", "G", "H", "Other"]
+    },
+    "Form1099R": {
+      "description": "One Form 1099-R (Catala Form1099_rs.Form1099R). Money and booleans map 1:1 to the Catala fields minus the writable_/writeable_ prefix (gross_distribution, taxable_amount, capital_gain, federal_withholding, net_appreciation, other_dollar, amount_allocable_to_irr, state_tax_withheld, is_indirect_rollover, is_distribution_from_military_retirement_plan, qualified_disaster_distribution, public_safety_officer, public_safety_officer_premiums); the remaining names are the Catala names.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filer", "distribution_code", "gross_distribution", "taxable_amount"],
+      "properties": {
+        "filer": { "$ref": "#/$defs/FilerRole" },
+        "distribution_code": { "type": "array", "maxItems": 4, "items": { "$ref": "#/$defs/Form1099RCodeChar" } },
+        "gross_distribution": { "$ref": "#/$defs/NonNegMoney" },
+        "taxable_amount": { "$ref": "#/$defs/NonNegMoney" },
+        "taxable_amount_blank": { "type": "boolean" },
+        "taxable_amount_not_determined": { "type": "boolean" },
+        "total_distribution": { "type": "boolean" },
+        "capital_gain": { "$ref": "#/$defs/NonNegMoney" },
+        "federal_withholding": { "$ref": "#/$defs/NonNegMoney" },
+        "net_appreciation": { "$ref": "#/$defs/NonNegMoney" },
+        "ira_sep_simple": { "type": "boolean" },
+        "other_dollar": { "$ref": "#/$defs/NonNegMoney" },
+        "other_percentage_nonzero": { "type": "boolean" },
+        "percentage_total_distribution_nonzero": { "type": "boolean" },
+        "amount_allocable_to_irr": { "$ref": "#/$defs/NonNegMoney" },
+        "facta_filing_requirement": { "type": "boolean" },
+        "state_tax_withheld": { "$ref": "#/$defs/NonNegMoney" },
+        "payer_state_is_different": { "type": "boolean" },
+        "has_death_benefit_payment_date": { "type": "boolean" },
+        "is_indirect_rollover": { "type": "boolean" },
+        "is_distribution_from_military_retirement_plan": { "type": "boolean" },
+        "qualified_disaster_distribution": { "type": "boolean" },
+        "public_safety_officer": { "type": "boolean" },
+        "public_safety_officer_premiums": { "type": "boolean" },
+        "recipient_date_of_birth": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "ISO date YYYY-MM-DD" }
+      }
+    },
+    "SocialSecurity": {
+      "description": "Social Security benefits (Catala Social_security). net_benefits has one entry per Form SSA-1099 / RRB-1099: box 5 (net benefits), may be negative.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["net_benefits"],
+      "properties": {
+        "net_benefits": { "type": "array", "maxItems": 4, "items": { "$ref": "#/$defs/Money" } },
+        "lived_apart_all_year": { "type": "boolean", "default": false }
+      }
+    },
+    "EducatorExpenses": {
+      "description": "Catala Educator_adjustment inputs (was_k12_educators, primary/secondary_educator_expenses_writable).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["was_k12_educators"],
+      "properties": {
+        "was_k12_educators": { "enum": ["TpDid", "SpouseDid", "BothDid", "Neither"] },
+        "primary_expenses": { "$ref": "#/$defs/NonNegMoney" },
+        "secondary_expenses": { "$ref": "#/$defs/NonNegMoney" }
+      }
+    },
+    "StudentLoanInterest": {
+      "description": "Catala Student_loan_adjustment inputs (had_student_loan_interest_payments, student_loans_qualify, student_loan_interest_amount).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["had_payments"],
+      "properties": {
+        "had_payments": { "type": "boolean" },
+        "loans_qualify": { "type": "boolean" },
+        "interest_amount": { "$ref": "#/$defs/NonNegMoney" }
+      }
+    },
+    "Adjustments": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "educator_expenses": { "$ref": "#/$defs/EducatorExpenses" },
+        "student_loan_interest": { "$ref": "#/$defs/StudentLoanInterest" }
+      }
+    },
+    "EstimatedPayments": {
+      "description": "Catala Estimated_payments inputs. amount = estimated_tax_payment_writable.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["paid_estimated_taxes_or_from_last_year"],
+      "properties": {
+        "paid_estimated_taxes_or_from_last_year": { "type": "boolean" },
+        "amount": { "$ref": "#/$defs/NonNegMoney" },
+        "paid_under_different_name": { "type": "boolean" },
+        "paid_with_former_spouse": { "enum": ["SpouseDid", "BothDid", "TpDid", "Neither"] }
+      }
+    },
+    "CalculateRequest": {
+      "description": "POST /calculate body. Inputs are the writable facts the Catala Form1040 scope reads; sections are added in later minor versions (see docs/api.md, coverage table). Unknown properties are rejected with 400 unknown_field.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["api_version", "tax_year", "filing_status"],
+      "properties": {
+        "api_version": { "$ref": "#/$defs/ApiVersion" },
+        "tax_year": { "const": 2024 },
+        "filing_status": { "$ref": "#/$defs/FilingStatus" },
+        "filers": { "$ref": "#/$defs/Filers" },
+        "filing_details": { "$ref": "#/$defs/FilingDetails" },
+        "w2s": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/FormW2" } },
+        "interest_reports": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/Form1099Int" } },
+        "form_1099g": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/Form1099G" } },
+        "form_1099misc": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/Form1099Misc" } },
+        "form_1099r": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/Form1099R" } },
+        "social_security": { "$ref": "#/$defs/SocialSecurity" },
+        "adjustments": { "$ref": "#/$defs/Adjustments" },
+        "estimated_payments": { "$ref": "#/$defs/EstimatedPayments" }
+      }
+    },
+    "Lines": {
+      "description": "Form 1040 line items, one key per scalar output of the Catala Form1040 scope (catala/form_1040.catala_en, 'The scalar output list'). All Money, whole dollars as cents, never negative. Key to form line: api/line-catalog.json. New keys may appear in later minor versions; clients must ignore keys they do not know.",
+      "type": "object",
+      "required": ["wages", "employer_income_subtotal", "interest_income", "total_income", "adjustments_to_income", "agi", "standard_or_itemized_deductions", "total_deductions", "taxable_income", "tentative_tax_from_taxable_income", "total_tentative_tax", "non_refundable_credits", "tax_less_non_refundable_credits", "total_tax", "total_withholding", "total_other_payments_refundable_credits", "total_payments", "overpayment", "balance_due"],
+      "additionalProperties": { "$ref": "#/$defs/Money" },
+      "properties": {
+        "wages": { "$ref": "#/$defs/Money" },
+        "employer_income_subtotal": { "$ref": "#/$defs/Money" },
+        "interest_income": { "$ref": "#/$defs/Money" },
+        "total_income": { "$ref": "#/$defs/Money" },
+        "adjustments_to_income": { "$ref": "#/$defs/Money" },
+        "agi": { "$ref": "#/$defs/Money" },
+        "standard_or_itemized_deductions": { "$ref": "#/$defs/Money" },
+        "total_deductions": { "$ref": "#/$defs/Money" },
+        "taxable_income": { "$ref": "#/$defs/Money" },
+        "tentative_tax_from_taxable_income": { "$ref": "#/$defs/Money" },
+        "total_tentative_tax": { "$ref": "#/$defs/Money" },
+        "non_refundable_credits": { "$ref": "#/$defs/Money" },
+        "tax_less_non_refundable_credits": { "$ref": "#/$defs/Money" },
+        "total_tax": { "$ref": "#/$defs/Money" },
+        "total_withholding": { "$ref": "#/$defs/Money" },
+        "total_other_payments_refundable_credits": { "$ref": "#/$defs/Money" },
+        "total_payments": { "$ref": "#/$defs/Money" },
+        "overpayment": { "$ref": "#/$defs/Money" },
+        "balance_due": { "$ref": "#/$defs/Money" }
+      }
+    },
+    "Outcome": {
+      "description": "Derived from lines: refund when overpayment > 0, balance_due when balance_due > 0, even otherwise. At most one of overpayment and balance_due is non-zero.",
+      "enum": ["refund", "balance_due", "even"]
+    },
+    "CalculateSuccess": {
+      "description": "200 response: the return is supported.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["api_version", "tax_year", "supported", "reasons", "outcome", "lines"],
+      "properties": {
+        "api_version": { "$ref": "#/$defs/ApiVersion" },
+        "tax_year": { "const": 2024 },
+        "supported": { "const": true },
+        "reasons": { "type": "array", "maxItems": 0 },
+        "outcome": { "$ref": "#/$defs/Outcome" },
+        "lines": { "$ref": "#/$defs/Lines" }
+      }
+    },
+    "ReasonCategory": {
+      "description": "Grouping for frontend copy (#80), derived from the Direct File module that owns the knockout. The authoritative list is api/knockout-reasons.json.",
+      "enum": ["credits", "estimated_payments", "filers", "health_coverage", "household", "hsa", "income", "interest", "process", "retirement", "social_security", "state", "unemployment", "w2"]
+    },
+    "UnsupportedReason": {
+      "description": "One knockout that fired. code is the Catala KnockoutReason constructor name (catala/knockouts_income.catala_en); the list of codes is api/knockout-reasons.json, generated from that enum. New codes are additive: clients must show a generic message for a code they do not know.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "category", "message"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "category": { "$ref": "#/$defs/ReasonCategory" },
+        "message": { "type": "string", "minLength": 1, "description": "English fallback text; the frontend owns the final copy." }
+      }
+    },
+    "CalculateUnsupported": {
+      "description": "422 response: at least one knockout fired, so no return is computed (no lines).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["api_version", "tax_year", "supported", "reasons"],
+      "properties": {
+        "api_version": { "$ref": "#/$defs/ApiVersion" },
+        "tax_year": { "const": 2024 },
+        "supported": { "const": false },
+        "reasons": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/UnsupportedReason" } }
+      }
+    },
+    "ErrorCode": {
+      "enum": ["invalid_json", "invalid_request", "unknown_field", "unsupported_api_version", "unsupported_tax_year", "not_found", "method_not_allowed", "payload_too_large", "unsupported_media_type", "internal_error"]
+    },
+    "FieldError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "code", "message"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^(/[^/]*)*$", "description": "RFC 6901 JSON Pointer into the request body; empty string = the whole body." },
+        "code": { "enum": ["required", "type", "enum", "range", "not_integer", "unknown_field", "duplicate_person", "filer_not_allowed", "too_many_items", "invalid_date"] },
+        "message": { "type": "string" }
+      }
+    },
+    "ErrorResponse": {
+      "description": "Every non-200, non-422 response. HTTP status: 400 invalid_json/invalid_request/unknown_field/unsupported_api_version/unsupported_tax_year, 404 not_found, 405 method_not_allowed, 413 payload_too_large (body > 256 KiB), 415 unsupported_media_type, 500 internal_error. details is present for 400 only.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["api_version", "error"],
+      "properties": {
+        "api_version": { "$ref": "#/$defs/ApiVersion" },
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "$ref": "#/$defs/ErrorCode" },
+            "message": { "type": "string" },
+            "details": { "type": "array", "items": { "$ref": "#/$defs/FieldError" } }
+          }
+        }
+      }
+    },
+    "HealthResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": { "status": { "const": "ok" } }
+    },
+    "VersionResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["api_version", "schema_version", "tax_year", "calculator_version"],
+      "properties": {
+        "api_version": { "$ref": "#/$defs/ApiVersion" },
+        "schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "description": "Semver of this schema file: patch = docs only, minor = additive, major = breaking (equals api_version)." },
+        "tax_year": { "const": 2024 },
+        "calculator_version": { "type": "string", "description": "Git commit of the calculator build" }
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "api_version": 1,
+  "tax_year": 2024,
+  "filing_status": "MarriedFilingSeparately",
+  "w2s": [
+    {
+      "filer": "PrimaryFiler",
+      "wages": 4000000,
+      "federal_withholding": 300000
+    }
+  ]
+}
