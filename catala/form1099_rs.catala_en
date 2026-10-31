@@ -1,0 +1,863 @@
+> Module Form1099_rs
+> Using Types
+> Using Rounding as R
+
+# Form 1099-R: pensions and annuities (Form 1040 lines 5a, 5b and 25b)
+
+Catala module for Direct File `form1099Rs.xml` (issue #22, `scope.md`
+section 3.4). It classifies every Form 1099-R the filer typed in, and computes
+what the rest of the return reads from them:
+
+- Form 1040 line 5a, "Pensions and annuities" (DF `income.xml`
+  `/pensionsAndAnnuities`) and line 5b, "Taxable amount" (DF `income.xml`
+  `/taxablePensionsAndAnnuities`);
+- the 1099-R part of line 25b (DF `form1099Rs.xml`
+  `/form1099RsFederalIncomeTaxWithheld`, one term of `/form1099Withholding`);
+- the per-filer gross distributions of Form 8880 line 4 (DF
+  `/primaryFiler1099RsReportedOnSaversCredit`,
+  `/secondaryFiler1099RsReportedOnSaversCredit`);
+- the knockout conditions that send 1099-R shapes Direct File does not
+  support out of scope (conventions section 6).
+
+Conventions: `catala/CONVENTIONS.md`. Inputs are complete (section 3): an empty
+box is an explicit `$0`. A DF `Round` is `R.round_dollar` and is applied
+exactly where the XML applies it.
+
+Oracle: `oracle/facts.csv` rows `/pensionsAndAnnuities` (5a),
+`/taxablePensionsAndAnnuitiesDisplay` (5b), `/form1099Withholding` (25b, in
+scenarios with no other 1099), compared by `make difftest SCOPE=form1099_rs`
+(mapping `difftest/mappings/form1099_rs.mjs`).
+
+Wiring (done by the orchestrator, not here): `Form1099Rs.line_5b` feeds the
+`taxable_pensions_and_annuities` plug-in slot of `Form1040` (line 5b);
+`Form1099Rs.form_1099r_federal_income_tax_withheld` is one term of the
+`other_1099_withholding` slot (line 25b); `Form1099Rs.line_5a` feeds line 5a /
+Schedule R; the two `..._savers_gross_distributions` outputs feed Form 8880
+line 4; `Form1099Rs.unsupported` is one term of the return's `unsupported`.
+
+## Facts skipped
+
+Not modelled (conventions section 2, last rows): payer name, TIN, address and
+phone; recipient address choices; account number; box 11 first year of
+designated Roth contributions; box 9b employee contributions and box 5; state
+and local boxes 16 to 20 other than the two withholding amounts used by the
+box 15 knockout; `nonstandardOrCorrectedChoice` and its MeF helpers;
+`hasSeenLastAvailableScreen`, `isComplete`, `form1099RsIsComplete`,
+`hasCompleted1099RSection`, the 1099-R feature flag facts
+(`/is1099RFeatureFlagEnabled`, `/hasSome1099rFormsBeforeSectionEnabled`,
+`/has1099rFormsAndFeatureIsNotEnabled`, which is `False`).
+
+Validation-only facts that block submission but are not in `flow.xml`'s
+`/flowIsKnockedOut` are not modelled either: `/hasMoreTaxThanDistributionsOn1099Rs`
+and `/form1099Rs/secondaryFilerUsedWithoutMFJ` (the filers and filing status
+modules own the second one).
+
+## Shapes
+
+### The distribution code (box 7)
+
+Box 7 holds one or two characters. Direct File's regex accepts any of
+`A-H J-N P-U W 1-9` (digits and letters, never `0`, `I`, `O`, `V`, `X`, `Y`,
+`Z`) and forbids repeating the same character. Only six characters change
+what this module does, so the type below keeps those six and folds every other
+accepted character into `OtherCode`. Lower case is the same as upper case
+(DF applies `ToUpper` and `Trim` first); the caller does that.
+
+```catala-metadata
+## One character of the box 7 distribution code.
+declaration enumeration CodeChar:
+  -- Code2
+  -- Code4
+  -- Code7
+  -- CodeB
+  -- CodeG
+  -- CodeH
+  -- OtherCode
+```
+
+### One Form 1099-R
+
+```catala-metadata
+## One Form 1099-R as the filer typed it.
+## DF: the `/form1099Rs` collection.
+declaration structure Form1099R:
+  # DF: /form1099Rs/*/filer
+  data filer content Types.FilerRole
+  # Box 7, as the characters typed, in order, no whitespace.
+  # DF: /form1099Rs/*/writableDistributionCode
+  data distribution_code content list of CodeChar
+  # Box 1. DF: /form1099Rs/*/writableGrossDistribution
+  data writable_gross_distribution content money
+  # Box 2a. DF: /form1099Rs/*/writableTaxableAmount
+  data writable_taxable_amount content money
+  # True when box 2a is empty and "taxable amount not determined" is not
+  # checked. With complete inputs this is only ever true as a deliberate test
+  # of the knockout. DF: the blank test inside
+  # /form1099Rs/*/causesRetirementTaxableAmountNotDeterminedNotCheckedTaxableAmountBlankKO
+  data taxable_amount_blank content boolean
+  # Box 2b first checkbox. DF: /form1099Rs/*/writableTaxableAmountNotDetermined
+  data taxable_amount_not_determined content boolean
+  # Box 2b second checkbox. DF: /form1099Rs/*/writableTotalDistribution
+  data total_distribution content boolean
+  # Box 3. DF: /form1099Rs/*/writableCapitalGain
+  data writable_capital_gain content money
+  # Box 4. DF: /form1099Rs/*/writableFederalWithholding
+  data writable_federal_withholding content money
+  # Box 6. DF: /form1099Rs/*/writableNetAppreciation
+  data writable_net_appreciation content money
+  # Box 7 IRA/SEP/SIMPLE checkbox. DF: /form1099Rs/*/iraSepSimple
+  data ira_sep_simple content boolean
+  # Box 8 dollar amount. DF: /form1099Rs/*/writableOtherDollar
+  data writable_other_dollar content money
+  # Box 8 percentage is not zero: DF keeps the text typed and tests that it
+  # holds some character other than `0` and `.`. The caller computes it.
+  # DF: /form1099Rs/*/writableOtherPercentage
+  data other_percentage_nonzero content boolean
+  # Box 9a percentage is not zero, same convention.
+  # DF: /form1099Rs/*/writablePercentageTotalDistribution
+  data percentage_total_distribution_nonzero content boolean
+  # Box 10. DF: /form1099Rs/*/writableAmountAllocableToIRR
+  data writable_amount_allocable_to_irr content money
+  # Box 12. DF: /form1099Rs/*/factaFilingRequirement
+  data facta_filing_requirement content boolean
+  # Box 14 and the local tax box. DF: /form1099Rs/*/writableStateTaxWithheld
+  data writable_state_tax_withheld content money
+  # Box 15 answered "another state". DF: /form1099Rs/*/writablePayerState
+  # equal to `differentState`
+  data payer_state_is_different content boolean
+  # A date of payment of a reportable death benefit is entered.
+  # DF: /form1099Rs/*/writableDateOfPayment is complete
+  data has_death_benefit_payment_date content boolean
+  # User answers to the box 7 follow-up screens.
+  # DF: /form1099Rs/*/writableIsIndirectRollover
+  data writable_is_indirect_rollover content boolean
+  # DF: /form1099Rs/*/writableIsDistributionFromMilitaryRetirementPlan
+  data writable_is_distribution_from_military_retirement_plan content boolean
+  # DF: /form1099Rs/*/writableQualifiedDisasterDistribution
+  data writable_qualified_disaster_distribution content boolean
+  # DF: /form1099Rs/*/writeablePublicSafetyOfficer
+  data writeable_public_safety_officer content boolean
+  # DF: /form1099Rs/*/writeablePublicSafetyOfficerPremiums
+  data writeable_public_safety_officer_premiums content boolean
+  # Date of birth of the recipient. DF: /form1099Rs/*/filer/dateOfBirth,
+  # read by /form1099Rs/*/dateOfBirthBefore1936
+  data recipient_date_of_birth content date
+```
+
+### Constants of this module
+
+```catala-metadata
+# DF: constants.xml /totalDistributionTaxableStartYear is the day 1936-01-02
+# ("The date before which a TP cannot claim a total distribution on 1099-R in
+# current scope"). The 1040 instructions (i1040gi--2024.pdf p 28, Lump-Sum
+# Distributions) give the special treatment of a lump-sum distribution to a
+# recipient "born before January 2, 1936".
+declaration total_distribution_start_date content date equals |1936-01-02|
+```
+
+## The supported distribution codes
+
+The 1040 instructions (`sources/forms-instructions/i1040gi--2024.pdf` p 27)
+say a "Form 1099-R" shows the pension and annuity payments in "box 1", and
+that "Rollovers and lump-sum distributions are explained later". The meaning of
+each box 7 code is in the Instructions for Forms 1099-R and 5498, which are not
+in `sources/` (see the question in the PR). The codes this module accepts,
+with the 2024 meaning from those instructions:
+
+- `7` normal distribution;
+- `2` early distribution, exception applies;
+- `G` direct rollover of a distribution to a qualified plan, a section 403(b)
+  plan, a governmental section 457(b) plan, or an IRA;
+- `H` direct rollover of a designated Roth account distribution to a Roth IRA;
+- the combinations `2B`, `7B` (with `B`, designated Roth account distribution),
+  `BG`, `4G`, `4H` (`4`, death, with a direct rollover). The order of the two
+  characters does not matter.
+
+Any other box 7 content is unsupported: a different code (`1` early
+distribution, `3` disability, `D`, `M`, ...), a supported code combined with
+an unsupported one (`7D`, `7M`, `2D`), a repeated code, three or more
+characters, or an empty box.
+
+DF-BUG(1): Direct File first strips the typed code with
+`StripChars(ToUpper(Trim(code)), "247BGH")` (`form1099Rs.xml` line 1251,
+`constants.xml` line 915) and only then tests the whitelist
+(`/form1099Rs/*/hasUnsupportedDistributionCode`, line 276). A code such as
+`7D` is stripped to `7` and accepted although `7D` (normal distribution,
+plus a different meaning for `D`) is not `7`. Here the whole code is tested
+and `7D` is a knockout. No oracle scenario uses such a code, so there is no
+known divergence in `oracle/facts.csv`.
+
+```catala-metadata
+## One 1099-R and everything the return reads from it.
+declaration scope Form1099RItem:
+  input form content Form1099R
+
+  # Echo of `form.filer`, so a list of results can be filtered by filer.
+  output filer content Types.FilerRole
+  # DF: /form1099Rs/*/grossDistribution (box 1, rounded)
+  output gross_distribution content money
+  # DF: /form1099Rs/*/taxableAmount (box 2a, rounded)
+  output taxable_amount content money
+  # DF: /form1099Rs/*/federalWithholding (box 4, rounded)
+  output federal_withholding content money
+
+  internal code_length content integer
+  internal has_2 condition
+  internal has_4 condition
+  internal has_7 condition
+  internal has_b condition
+  internal has_g condition
+  internal has_h condition
+
+  # Exactly one of the supported codes of the previous section.
+  # DF: negation of /form1099Rs/*/hasUnsupportedDistributionCode
+  output has_supported_distribution_code condition
+  # DF: /form1099Rs/*/hasPensionRollover and /form1099Rs/*/isDirectRollover
+  # (both: the code contains G or H)
+  output is_direct_rollover condition
+  # DF: /form1099Rs/*/notIraSepSimple
+  output not_ira_sep_simple condition
+  # DF: /form1099Rs/*/flowAskAboutIndirectRollover (the code contains 2 or 7
+  # once only supported codes remain)
+  output flow_ask_about_indirect_rollover condition
+  # DF: /form1099Rs/*/indicatedHasIndirectRollover
+  output indicated_has_indirect_rollover condition
+  # DF: /form1099Rs/*/hasDistributionCodeIncludedInSaversCredit
+  output has_distribution_code_included_in_savers_credit condition
+
+  # DF: the Filter of /primaryFiler1099RsReportedOnSaversCredit:
+  # code included and not `writableIsDistributionFromMilitaryRetirementPlan`
+  output is_reported_on_savers_credit condition
+
+  # Classification
+  # DF: /form1099Rs/*/isTaxFreePensionRollover
+  output is_tax_free_pension_rollover condition
+  # DF: /form1099Rs/*/isTaxablePensionRollover
+  output is_taxable_pension_rollover condition
+  # DF: /form1099Rs/*/isIndirectRollover
+  output is_indirect_rollover condition
+  # DF: /form1099Rs/*/isTaxableAmountNotDetermined
+  output is_taxable_amount_not_determined condition
+  # DF: /form1099Rs/*/isFullyOrPartlyTaxablePension
+  output is_fully_or_partly_taxable_pension condition
+  # DF: /form1099Rs/*/isFullyTaxable
+  output is_fully_taxable condition
+  # DF: /form1099Rs/*/isPartlyTaxablePension
+  output is_partly_taxable_pension condition
+
+  # Knockouts, one per DF knockout fact (per form)
+  # DF: /form1099Rs/*/hasUnsupportedDistributionCode
+  output ko_has_unsupported_distribution_code condition
+  # DF: /form1099Rs/*/iraSepSimple (counted by /knockoutIraSepSimple)
+  output ko_ira_sep_simple condition
+  # DF: /form1099Rs/*/isTaxablePensionRollover (/knockoutTaxablePensionRollover)
+  output ko_taxable_pension_rollover condition
+  # DF: /form1099Rs/*/isIndirectRollover (/knockoutIndirectRollover)
+  output ko_indirect_rollover condition
+  # DF: /form1099Rs/*/isTaxableAmountNotDetermined
+  # (/knockoutTaxableAmountNotDetermined)
+  output ko_taxable_amount_not_determined condition
+  # DF: /form1099Rs/*/causesRolloverKO (/flowKnockoutForRollover)
+  output ko_causes_rollover condition
+  # DF: /form1099Rs/*/causesPreTaxToPostTaxRolloverKO
+  output ko_causes_pre_tax_to_post_tax_rollover condition
+  # DF: /form1099Rs/*/taxableAmountNotDetermined
+  # (/flowKnockoutRetirementTaxableAmountNotDetermined)
+  output ko_retirement_taxable_amount_not_determined condition
+  # DF: /form1099Rs/*/causesRetirementTaxableAmountNotDeterminedNotCheckedTaxableAmountBlankKO
+  output ko_retirement_taxable_amount_blank condition
+  # DF: /form1099Rs/*/causesRetirementTotalDistributionKO
+  output ko_retirement_total_distribution condition
+  # DF: /form1099Rs/*/causesRetirementBox8ValueKO
+  output ko_box_8_value condition
+  # DF: /form1099Rs/*/causesRetirementBox8PercentageKO
+  output ko_box_8_percentage condition
+  # DF: /form1099Rs/*/causesRetirementBox9aPercentageKO
+  output ko_box_9a_percentage condition
+  # DF: /form1099Rs/*/causesRetirementCapitalGainKO
+  output ko_capital_gain condition
+  # DF: /form1099Rs/*/causesRetirementNetUnrealizedAppreciation
+  output ko_net_unrealized_appreciation condition
+  # DF: /form1099Rs/*/causesRetirementAmountAllocableToIRRKO
+  output ko_amount_allocable_to_irr condition
+  # DF: /form1099Rs/factaFilingRequirement (/flowKnockoutRetirementFactaFilingRequirement)
+  output ko_facta_filing_requirement condition
+  # DF: /form1099Rs/*/causesDeathBenefitPaymentKO
+  output ko_death_benefit_payment condition
+  # DF: /form1099Rs/*/qualifiedDisasterDistribution
+  # (/flowKnockoutRetirementQualifiedDisasterDistribution)
+  output ko_qualified_disaster_distribution condition
+  # DF: /form1099Rs/*/causesPSOPremiumsKnockout
+  # (/flowKnockoutRetirementPublicSafetyOfficer)
+  output ko_public_safety_officer_premiums condition
+  # DF: /form1099Rs/*/causesBox15Knockout (/flowKnockoutBox15)
+  output ko_box_15 condition
+  # Any of the above
+  output unsupported condition
+```
+
+### Box amounts
+
+DF rounds boxes 1, 2a and 4 on their own (`Round` around a `Switch` that
+falls back to `$0`; with complete inputs the `Switch` is the box itself).
+
+```catala
+scope Form1099RItem:
+  definition filer equals form.filer
+
+  # QUIRK(Q-R1): per-item rounding. DF: form1099Rs.xml
+  # /form1099Rs/*/grossDistribution. Decision: reproduce (conventions
+  # section 4 rule 2, issue #60).
+  definition gross_distribution equals
+    R.round_dollar of form.writable_gross_distribution
+  # DF: form1099Rs.xml /form1099Rs/*/taxableAmount
+  definition taxable_amount equals
+    R.round_dollar of form.writable_taxable_amount
+  # DF: form1099Rs.xml /form1099Rs/*/federalWithholding
+  definition federal_withholding equals
+    R.round_dollar of form.writable_federal_withholding
+```
+
+### The code, tested as a whole
+
+```catala
+scope Form1099RItem:
+  definition code_length equals
+    Integer.sum of (map each c among form.distribution_code to 1)
+  definition has_2 equals
+    exists c among form.distribution_code such that c = CodeChar.Code2
+  definition has_4 equals
+    exists c among form.distribution_code such that c = CodeChar.Code4
+  definition has_7 equals
+    exists c among form.distribution_code such that c = CodeChar.Code7
+  definition has_b equals
+    exists c among form.distribution_code such that c = CodeChar.CodeB
+  definition has_g equals
+    exists c among form.distribution_code such that c = CodeChar.CodeG
+  definition has_h equals
+    exists c among form.distribution_code such that c = CodeChar.CodeH
+
+  # DF-BUG(1): see the section "The supported distribution codes". DF's list
+  # is 2, 7, G, H, 2B, B2, 7B, B7, BG, GB, 4G, G4, 4H, H4; it is the same set,
+  # here as "one character" or "two distinct characters" so the order is free.
+  # A code with a character that is not one of the six (OtherCode) matches
+  # none of the cases, so `7D` is unsupported.
+  definition has_supported_distribution_code equals
+    (code_length = 1 and (has_2 or has_7 or has_g or has_h))
+    or (code_length = 2 and
+        ((has_2 and has_b) or (has_7 and has_b) or (has_b and has_g)
+         or (has_4 and has_g) or (has_4 and has_h)))
+
+  # DF: form1099Rs.xml /form1099Rs/*/isDirectRollover:
+  # `Length(StripChars(distributionCode, "GH")) > 0`.
+  definition is_direct_rollover equals has_g or has_h
+
+  # DF: form1099Rs.xml /form1099Rs/*/notIraSepSimple
+  definition not_ira_sep_simple equals not form.ira_sep_simple
+
+  # DF: form1099Rs.xml /form1099Rs/*/flowAskAboutIndirectRollover:
+  # `Length(StripChars(distributionCode, "1237")) > 0`. After the whole-code
+  # test only the characters 2 and 7 can make it true.
+  definition flow_ask_about_indirect_rollover equals has_2 or has_7
+
+  # DF: form1099Rs.xml /form1099Rs/*/indicatedHasIndirectRollover (a Switch
+  # with only the "ask" case; incomplete otherwise, read as false)
+  definition indicated_has_indirect_rollover equals
+    flow_ask_about_indirect_rollover and form.writable_is_indirect_rollover
+
+  # DF: form1099Rs.xml /form1099Rs/*/hasDistributionCodeIncludedInSaversCredit:
+  # the codes 2, 7, 2B, B2, 7B, B7. Form 8880 instructions line 4
+  # (f8880--2024.pdf p 2): "Don't include ... Distributions not taxable as the
+  # result of a rollover", so G and H forms are left out.
+  definition has_distribution_code_included_in_savers_credit equals
+    (code_length = 1 and (has_2 or has_7))
+    or (code_length = 2 and has_b and (has_2 or has_7))
+
+  # DF: saversCredits.xml filters on this and on the military answer.
+  definition is_reported_on_savers_credit equals
+    has_distribution_code_included_in_savers_credit
+    and not form.writable_is_distribution_from_military_retirement_plan
+```
+
+### Classification: rollover, fully taxable, partly taxable
+
+1040 instructions lines 5a and 5b (`sources/forms-instructions/i1040gi--2024.pdf`
+p 28): "If your pension or annuity is fully taxable, enter the total pension or
+annuity payments (from Form(s) 1099-R, box 1) on line 5b; don't make an entry
+on line 5a." and, for a partially taxable one, "Enter the total pension or
+annuity payments" on line 5a and the taxable part on line 5b.
+
+DF decides from box 7 and the amounts: a form without IRA/SEP/SIMPLE that has a
+direct rollover code and a taxable amount of `$0` is a tax-free pension
+rollover; the same with a taxable amount above `$0` is a taxable rollover
+(knockout). For the other supported codes the form is fully taxable when box 1
+equals box 2a and partly taxable otherwise.
+
+```catala
+scope Form1099RItem:
+  # DF: form1099Rs.xml /form1099Rs/*/isTaxFreePensionRollover
+  definition is_tax_free_pension_rollover equals
+    not_ira_sep_simple and is_direct_rollover and taxable_amount = $0
+  # DF: form1099Rs.xml /form1099Rs/*/isTaxablePensionRollover
+  definition is_taxable_pension_rollover equals
+    not_ira_sep_simple and is_direct_rollover and taxable_amount > $0
+  # DF: form1099Rs.xml /form1099Rs/*/isIndirectRollover
+  definition is_indirect_rollover equals
+    not_ira_sep_simple and not is_direct_rollover
+    and indicated_has_indirect_rollover
+  # DF: form1099Rs.xml /form1099Rs/*/isTaxableAmountNotDetermined
+  definition is_taxable_amount_not_determined equals
+    not_ira_sep_simple and not is_direct_rollover
+    and form.taxable_amount_not_determined
+  # DF: form1099Rs.xml /form1099Rs/*/isFullyOrPartlyTaxablePension
+  definition is_fully_or_partly_taxable_pension equals
+    not form.ira_sep_simple and not is_taxable_amount_not_determined
+    and not is_indirect_rollover
+    and has_distribution_code_included_in_savers_credit
+  # DF: form1099Rs.xml /form1099Rs/*/isFullyTaxable
+  definition is_fully_taxable equals
+    is_fully_or_partly_taxable_pension and gross_distribution = taxable_amount
+  # DF: form1099Rs.xml /form1099Rs/*/isPartlyTaxablePension
+  definition is_partly_taxable_pension equals
+    is_fully_or_partly_taxable_pension and gross_distribution != taxable_amount
+```
+
+### Knockouts of one form
+
+Each of these is one of the DF knockout facts of `flow.xml`
+(`/flowIsKnockedOut`), restricted to one form; the scope below ORs them over
+the forms. The facts for codes `1` and `3` (`/form1099Rs/*/flowQualifiedEarlyDistribution`,
+`hasDisabilityAndAnotherCode`) are dead code in DF: its stripped code can never
+be `1` or `3`. Here code `1`, `3` and any combination with them are not
+supported at all (`ko_has_unsupported_distribution_code`), which is the
+behaviour they were written for, so no separate conditions exist for them.
+
+```catala
+scope Form1099RItem:
+  rule ko_has_unsupported_distribution_code
+    under condition not has_supported_distribution_code
+    consequence fulfilled
+
+  rule ko_ira_sep_simple under condition form.ira_sep_simple
+    consequence fulfilled
+
+  rule ko_taxable_pension_rollover under condition is_taxable_pension_rollover
+    consequence fulfilled
+
+  rule ko_indirect_rollover under condition is_indirect_rollover
+    consequence fulfilled
+
+  rule ko_taxable_amount_not_determined
+    under condition is_taxable_amount_not_determined
+    consequence fulfilled
+
+  # DF: causesRolloverKO: indicated and answered "yes, indirect rollover".
+  rule ko_causes_rollover under condition indicated_has_indirect_rollover
+    consequence fulfilled
+
+  # DF: causesPreTaxToPostTaxRolloverKO: a pension rollover code with a
+  # taxable amount above $0 (not conditioned on IRA/SEP/SIMPLE).
+  rule ko_causes_pre_tax_to_post_tax_rollover
+    under condition is_direct_rollover and taxable_amount > $0
+    consequence fulfilled
+
+  rule ko_retirement_taxable_amount_not_determined
+    under condition form.taxable_amount_not_determined
+    consequence fulfilled
+
+  rule ko_retirement_taxable_amount_blank
+    under condition form.taxable_amount_blank
+      and not form.taxable_amount_not_determined
+    consequence fulfilled
+
+  # DF: dateOfBirthBefore1936 is `totalDistributionTaxableStartYear >
+  # filer/dateOfBirth`, i.e. born before 1936-01-02.
+  rule ko_retirement_total_distribution
+    under condition form.total_distribution
+      and form.recipient_date_of_birth < total_distribution_start_date
+    consequence fulfilled
+
+  # DF: roundedOtherDollar > 0
+  rule ko_box_8_value
+    under condition (R.round_dollar of form.writable_other_dollar) > $0
+    consequence fulfilled
+
+  # DF-BUG(7, proposed): DF tests "box 8 percentage is zero" on the typed text
+  # with `StripChars(text, "0.")`. The XML literal `<String>0.</String>` is
+  # read by the fast-xml-parser setting used by the Direct File client and by
+  # `oracle/generate.mjs` (no `parseTagValue: false`) as the number `0`, i.e.
+  # the string "0", so "0.00" loses its dots and looks nonzero: the percentage
+  # knockout fires for a box 8 of "0.00" (the four oracle scenarios
+  # `1099r-box-2b-total-distribution`, `ats-2-1099r`,
+  # `ats-2-1099r-blank-taxable`, `ats-2-1099r-nonzero-taxable`). A percentage
+  # of zero is zero: here it is a knockout only when nonzero (the input
+  # `other_percentage_nonzero`). Box 9a ("0") is not affected.
+  rule ko_box_8_percentage under condition form.other_percentage_nonzero
+    consequence fulfilled
+
+  rule ko_box_9a_percentage
+    under condition form.percentage_total_distribution_nonzero
+    consequence fulfilled
+
+  rule ko_capital_gain
+    under condition (R.round_dollar of form.writable_capital_gain) > $0
+    consequence fulfilled
+
+  rule ko_net_unrealized_appreciation
+    under condition (R.round_dollar of form.writable_net_appreciation) > $0
+    consequence fulfilled
+
+  rule ko_amount_allocable_to_irr
+    under condition
+      (R.round_dollar of form.writable_amount_allocable_to_irr) > $0
+    consequence fulfilled
+
+  rule ko_facta_filing_requirement under condition form.facta_filing_requirement
+    consequence fulfilled
+
+  rule ko_death_benefit_payment under condition form.has_death_benefit_payment_date
+    consequence fulfilled
+
+  # DF: qualifiedDisasterDistribution is the answer only when the
+  # indirect-rollover screen is asked.
+  rule ko_qualified_disaster_distribution
+    under condition flow_ask_about_indirect_rollover
+      and form.writable_qualified_disaster_distribution
+    consequence fulfilled
+
+  # DF: the public safety officer screen is asked when the code contains 2 or
+  # 7 and no B; the premiums screen when the answer is yes.
+  rule ko_public_safety_officer_premiums
+    under condition (has_2 or has_7) and not has_b
+      and form.writeable_public_safety_officer
+      and form.writeable_public_safety_officer_premiums
+    consequence fulfilled
+
+  # DF: causesBox15Knockout: "another state" and (state tax above $0 or no
+  # rollover code). The check is on the rounded Box 14.
+  rule ko_box_15
+    under condition form.payer_state_is_different
+      and ((R.round_dollar of form.writable_state_tax_withheld) > $0
+           or not is_direct_rollover)
+    consequence fulfilled
+
+  rule unsupported under condition
+    ko_has_unsupported_distribution_code or ko_ira_sep_simple
+    or ko_taxable_pension_rollover or ko_indirect_rollover
+    or ko_taxable_amount_not_determined or ko_causes_rollover
+    or ko_causes_pre_tax_to_post_tax_rollover
+    or ko_retirement_taxable_amount_not_determined
+    or ko_retirement_taxable_amount_blank or ko_retirement_total_distribution
+    or ko_box_8_value or ko_box_8_percentage or ko_box_9a_percentage
+    or ko_capital_gain or ko_net_unrealized_appreciation
+    or ko_amount_allocable_to_irr or ko_facta_filing_requirement
+    or ko_death_benefit_payment or ko_qualified_disaster_distribution
+    or ko_public_safety_officer_premiums or ko_box_15
+    consequence fulfilled
+```
+
+## The scope over all forms
+
+```catala-metadata
+## All Forms 1099-R of the return.
+declaration scope Form1099Rs:
+  ## DF: /form1099Rs
+  input forms content list of Form1099R
+
+  internal items content list of Form1099RItem
+  internal primary_items content list of Form1099RItem
+  internal secondary_items content list of Form1099RItem
+  internal tax_free_rollover_items content list of Form1099RItem
+  internal partly_taxable_items content list of Form1099RItem
+  internal fully_taxable_items content list of Form1099RItem
+
+  # DF: /taxFreePensionRollovers
+  output tax_free_pension_rollovers content money
+  # DF: /partlyTaxablePensions
+  output partly_taxable_pensions content money
+  # DF: /fullyTaxablePensions
+  output fully_taxable_pensions content money
+  # DF: /taxableAmountsOfPartiallyTaxablePensions
+  output taxable_amounts_of_partially_taxable_pensions content money
+
+  # Form 1040 line 5a. DF: income.xml /pensionsAndAnnuities
+  output line_5a content money
+  # Form 1040 line 5b. DF: income.xml /taxablePensionsAndAnnuities
+  output line_5b content money
+  # DF: income.xml /taxablePensionsAndAnnuitiesDisplay is blank (incomplete)
+  # exactly when this is true: line 5b is $0 and no form is a tax-free rollover.
+  output line_5b_is_blank condition
+  # DF: income.xml /taxablePensionsAndAnnuitiesLiteralCode is "ROLLOVER".
+  # DF: form1099Rs.xml /has1099RWithDirectRollover
+  output has_direct_rollover condition
+  # DF: income.xml /nonTaxablePensionsAndAnnuities (Schedule R)
+  output non_taxable_pensions_and_annuities content money
+
+  # Form 1040 line 25b, 1099-R part. DF: /form1099RsFederalIncomeTaxWithheld
+  output form_1099r_federal_income_tax_withheld content money
+
+  # Form 8880 line 4, per filer.
+  # DF: /primaryFiler1099RsReportedOnSaversCredit (sum of grossDistribution)
+  output primary_filer_savers_gross_distributions content money
+  # DF: /secondaryFiler1099RsReportedOnSaversCredit (sum of grossDistribution)
+  output secondary_filer_savers_gross_distributions content money
+
+  # Knockouts, one per DF knockout fact (conventions section 6)
+  # DF: /knockoutForForm1099RDistributionCode
+  output ko_knockout_for_form1099_r_distribution_code condition
+  # DF: /knockoutIraSepSimple
+  output ko_knockout_ira_sep_simple condition
+  # DF: /knockoutTaxablePensionRollover
+  output ko_knockout_taxable_pension_rollover condition
+  # DF: /knockoutIndirectRollover
+  output ko_knockout_indirect_rollover condition
+  # DF: /knockoutTaxableAmountNotDetermined
+  output ko_knockout_taxable_amount_not_determined condition
+  # DF: /flowKnockoutForRollover
+  output ko_flow_knockout_for_rollover condition
+  # DF: /flowKnockoutForPreTaxToPostTaxRollover
+  output ko_flow_knockout_for_pre_tax_to_post_tax_rollover condition
+  # DF: /flowKnockoutRetirementTaxableAmountNotDetermined
+  output ko_flow_knockout_retirement_taxable_amount_not_determined condition
+  # DF: /flowKnockoutRetirementTaxableAmountNotDeterminedNotCheckedTaxableAmountBlank
+  output ko_flow_knockout_retirement_taxable_amount_blank condition
+  # DF: /flowKnockoutRetirementTotalDistribution
+  output ko_flow_knockout_retirement_total_distribution condition
+  # DF: /knockoutForForm1099RBox8Value
+  output ko_knockout_for_form1099_r_box8_value condition
+  # DF: /knockoutForForm1099RBox8Percentage
+  output ko_knockout_for_form1099_r_box8_percentage condition
+  # DF: /knockoutForForm1099RBox9aPercentage
+  output ko_knockout_for_form1099_r_box9a_percentage condition
+  # DF: /flowKnockoutRetirementCapitalGain
+  output ko_flow_knockout_retirement_capital_gain condition
+  # DF: /flowKnockoutRetirementNetUnrealizedAppreciation
+  output ko_flow_knockout_retirement_net_unrealized_appreciation condition
+  # DF: /flowKnockoutRetirementAmountAllocableToIRR
+  output ko_flow_knockout_retirement_amount_allocable_to_irr condition
+  # DF: /flowKnockoutRetirementFactaFilingRequirement
+  output ko_flow_knockout_retirement_facta_filing_requirement condition
+  # DF: /flowKnockoutForDeathBenefitPaymentDate
+  output ko_flow_knockout_for_death_benefit_payment_date condition
+  # DF: /flowKnockoutRetirementQualifiedDisasterDistribution
+  output ko_flow_knockout_retirement_qualified_disaster_distribution condition
+  # DF: /flowKnockoutRetirementPublicSafetyOfficer
+  output ko_flow_knockout_retirement_public_safety_officer condition
+  # DF: /flowKnockoutBox15
+  output ko_flow_knockout_box15 condition
+  # Every knockout above
+  output unsupported condition
+```
+
+```catala
+scope Form1099Rs:
+  definition items equals
+    map each f among forms to (output of Form1099RItem with { -- form: f })
+  definition primary_items equals
+    list of x among items such that x.filer = Types.FilerRole.PrimaryFiler
+  definition secondary_items equals
+    list of x among items such that x.filer = Types.FilerRole.SecondaryFiler
+  definition tax_free_rollover_items equals
+    list of x among items such that x.is_tax_free_pension_rollover
+  definition partly_taxable_items equals
+    list of x among items such that x.is_partly_taxable_pension
+  definition fully_taxable_items equals
+    list of x among items such that x.is_fully_taxable
+```
+
+### Lines 5a and 5b
+
+Form 1040 line 5a is "Pensions and annuities" and line 5b "Taxable amount"
+(`sources/forms-instructions/f1040--2024.pdf` p 1). DF: line 5a is the gross
+distributions of the tax-free rollovers and of the partly taxable pensions;
+line 5b is the gross distributions of the fully taxable pensions plus the taxable
+amounts of the partly taxable ones. All terms are sums of whole dollars, so DF
+adds no extra `Round`.
+
+```catala
+scope Form1099Rs:
+  # DF: form1099Rs.xml /taxFreePensionRollovers
+  definition tax_free_pension_rollovers equals
+    Money.sum of (map each x among tax_free_rollover_items
+                  to x.gross_distribution)
+  # DF: form1099Rs.xml /partlyTaxablePensions
+  definition partly_taxable_pensions equals
+    Money.sum of (map each x among partly_taxable_items
+                  to x.gross_distribution)
+  # DF: form1099Rs.xml /fullyTaxablePensions
+  definition fully_taxable_pensions equals
+    Money.sum of (map each x among fully_taxable_items
+                  to x.gross_distribution)
+  # DF: form1099Rs.xml /taxableAmountsOfPartiallyTaxablePensions
+  definition taxable_amounts_of_partially_taxable_pensions equals
+    Money.sum of (map each x among partly_taxable_items to x.taxable_amount)
+
+  # QUIRK(Q1): DF's line 5a omits the fully taxable pensions
+  # (`income.xml` `/pensionsAndAnnuities` = `taxFreePensionRollovers` +
+  # `partlyTaxablePensions`). The 1040 instructions agree (i1040gi--2024.pdf
+  # p 28: "If your pension or annuity is fully taxable, enter the total pension
+  # or annuity payments (from Form(s) 1099-R, box 1) on line 5b; don't make an
+  # entry on line 5a."), so this is not a divergence: policy and oracle choose
+  # the same value. The partly taxable pension's gross goes on line 5a; the
+  # rollover gross goes on line 5a with "ROLLOVER" next to line 5b.
+  # DF: income.xml /pensionsAndAnnuities
+  definition line_5a equals
+    tax_free_pension_rollovers + partly_taxable_pensions
+  # DF: income.xml /taxablePensionsAndAnnuities
+  definition line_5b equals
+    fully_taxable_pensions + taxable_amounts_of_partially_taxable_pensions
+
+  # DF: income.xml /taxablePensionsAndAnnuitiesDisplay: 5b if above $0; else
+  # $0 if some form is a tax-free rollover; else left blank.
+  definition line_5b_is_blank equals
+    not (line_5b > $0) and not (exists x among items such that
+                                 x.is_tax_free_pension_rollover)
+  # DF: form1099Rs.xml /has1099RWithDirectRollover
+  definition has_direct_rollover equals
+    exists x among items such that x.is_direct_rollover
+  # DF: income.xml /nonTaxablePensionsAndAnnuities = line 5a - line 5b
+  definition non_taxable_pensions_and_annuities equals line_5a - line_5b
+```
+
+### Line 25b and Form 8880 line 4
+
+DF: `/form1099RsFederalIncomeTaxWithheld` is the sum of the per-form rounded box
+4 amounts (the `Switch` on `/form1099Rs` completeness falls back to `$0`; with
+complete inputs it is the sum). Form 1040 line 25b, "Form(s) 1099", is the sum
+of this and the withholding of the other 1099s (`taxCalculations.xml`
+`/form1099Withholding`, wired in `Form1040`).
+
+Form 8880 line 4 instructions (`sources/forms-instructions/f8880--2024.pdf`
+p 2): "Enter the total amount of distributions you, and your spouse if filing
+jointly, received after 2021 and before the due date of your 2024 return
+(including extensions) from any of the following types of plans." and "Don't
+include ... Distributions from a military retirement plan (other than the
+federal TSP)." DF's per-filer sums (`saversCredits.xml`
+`/primaryFilerSaversEligibleGrossDistributions`, which also asks whether the
+filer is eligible for the credit, left to #29) add up `grossDistribution` of
+the filer's forms with code 2, 7, 2B, B2, 7B or B7 that are not from a
+military retirement plan.
+
+```catala
+scope Form1099Rs:
+  # DF: form1099Rs.xml /form1099RsFederalIncomeTaxWithheld
+  definition form_1099r_federal_income_tax_withheld equals
+    Money.sum of (map each x among items to x.federal_withholding)
+
+  # DF: form1099Rs.xml /primaryFiler1099RsReportedOnSaversCredit
+  definition primary_filer_savers_gross_distributions equals
+    Money.sum of
+      (map each x among
+         (list of y among primary_items such that y.is_reported_on_savers_credit)
+       to x.gross_distribution)
+  # DF: form1099Rs.xml /secondaryFiler1099RsReportedOnSaversCredit
+  definition secondary_filer_savers_gross_distributions equals
+    Money.sum of
+      (map each x among
+         (list of y among secondary_items such that
+            y.is_reported_on_savers_credit)
+       to x.gross_distribution)
+```
+
+### Knockouts
+
+Conventions section 6: one `ko_` condition per DF knockout fact, and one
+`unsupported` that lists them all. The DF facts count the forms where the
+per-form condition holds, so each is an `exists`.
+
+```catala
+scope Form1099Rs:
+  rule ko_knockout_for_form1099_r_distribution_code
+    under condition exists x among items such that
+      x.ko_has_unsupported_distribution_code
+    consequence fulfilled
+  rule ko_knockout_ira_sep_simple
+    under condition exists x among items such that x.ko_ira_sep_simple
+    consequence fulfilled
+  rule ko_knockout_taxable_pension_rollover
+    under condition exists x among items such that x.ko_taxable_pension_rollover
+    consequence fulfilled
+  rule ko_knockout_indirect_rollover
+    under condition exists x among items such that x.ko_indirect_rollover
+    consequence fulfilled
+  rule ko_knockout_taxable_amount_not_determined
+    under condition exists x among items such that
+      x.ko_taxable_amount_not_determined
+    consequence fulfilled
+  rule ko_flow_knockout_for_rollover
+    under condition exists x among items such that x.ko_causes_rollover
+    consequence fulfilled
+  rule ko_flow_knockout_for_pre_tax_to_post_tax_rollover
+    under condition exists x among items such that
+      x.ko_causes_pre_tax_to_post_tax_rollover
+    consequence fulfilled
+  rule ko_flow_knockout_retirement_taxable_amount_not_determined
+    under condition exists x among items such that
+      x.ko_retirement_taxable_amount_not_determined
+    consequence fulfilled
+  rule ko_flow_knockout_retirement_taxable_amount_blank
+    under condition exists x among items such that
+      x.ko_retirement_taxable_amount_blank
+    consequence fulfilled
+  rule ko_flow_knockout_retirement_total_distribution
+    under condition exists x among items such that
+      x.ko_retirement_total_distribution
+    consequence fulfilled
+  rule ko_knockout_for_form1099_r_box8_value
+    under condition exists x among items such that x.ko_box_8_value
+    consequence fulfilled
+  rule ko_knockout_for_form1099_r_box8_percentage
+    under condition exists x among items such that x.ko_box_8_percentage
+    consequence fulfilled
+  rule ko_knockout_for_form1099_r_box9a_percentage
+    under condition exists x among items such that x.ko_box_9a_percentage
+    consequence fulfilled
+  rule ko_flow_knockout_retirement_capital_gain
+    under condition exists x among items such that x.ko_capital_gain
+    consequence fulfilled
+  rule ko_flow_knockout_retirement_net_unrealized_appreciation
+    under condition exists x among items such that
+      x.ko_net_unrealized_appreciation
+    consequence fulfilled
+  rule ko_flow_knockout_retirement_amount_allocable_to_irr
+    under condition exists x among items such that x.ko_amount_allocable_to_irr
+    consequence fulfilled
+  rule ko_flow_knockout_retirement_facta_filing_requirement
+    under condition exists x among items such that x.ko_facta_filing_requirement
+    consequence fulfilled
+  rule ko_flow_knockout_for_death_benefit_payment_date
+    under condition exists x among items such that x.ko_death_benefit_payment
+    consequence fulfilled
+  rule ko_flow_knockout_retirement_qualified_disaster_distribution
+    under condition exists x among items such that
+      x.ko_qualified_disaster_distribution
+    consequence fulfilled
+  rule ko_flow_knockout_retirement_public_safety_officer
+    under condition exists x among items such that
+      x.ko_public_safety_officer_premiums
+    consequence fulfilled
+  rule ko_flow_knockout_box15
+    under condition exists x among items such that x.ko_box_15
+    consequence fulfilled
+
+  rule unsupported under condition
+    ko_knockout_for_form1099_r_distribution_code or ko_knockout_ira_sep_simple
+    or ko_knockout_taxable_pension_rollover or ko_knockout_indirect_rollover
+    or ko_knockout_taxable_amount_not_determined or ko_flow_knockout_for_rollover
+    or ko_flow_knockout_for_pre_tax_to_post_tax_rollover
+    or ko_flow_knockout_retirement_taxable_amount_not_determined
+    or ko_flow_knockout_retirement_taxable_amount_blank
+    or ko_flow_knockout_retirement_total_distribution
+    or ko_knockout_for_form1099_r_box8_value
+    or ko_knockout_for_form1099_r_box8_percentage
+    or ko_knockout_for_form1099_r_box9a_percentage
+    or ko_flow_knockout_retirement_capital_gain
+    or ko_flow_knockout_retirement_net_unrealized_appreciation
+    or ko_flow_knockout_retirement_amount_allocable_to_irr
+    or ko_flow_knockout_retirement_facta_filing_requirement
+    or ko_flow_knockout_for_death_benefit_payment_date
+    or ko_flow_knockout_retirement_qualified_disaster_distribution
+    or ko_flow_knockout_retirement_public_safety_officer
+    or ko_flow_knockout_box15
+    consequence fulfilled
+```
