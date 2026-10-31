@@ -1,0 +1,365 @@
+# Tests for the Standard_deduction module
+
+Run with `clerk test`. Numbers are TY2024 (Rev. Proc. 2023-34 § 3.15) worked
+by hand. The oracle comparison against Direct File is in
+`oracle/check_standard_deduction.mjs`.
+
+> Using Types
+> Using Standard_deduction as S
+
+## Unit tests (issue #11)
+
+Every test fixes all inputs of `S.StandardDeduction` through a helper scope,
+so the inputs are satisfiable and the hypotheses are explicit.
+
+```catala
+#[test]
+declaration scope TestBase:
+  output ok condition
+  single_sd scope S.StandardDeduction
+  mfj_sd scope S.StandardDeduction
+  hoh_sd scope S.StandardDeduction
+  mfs_sd scope S.StandardDeduction
+  qss_sd scope S.StandardDeduction
+
+scope TestBase:
+  rule ok fulfilled
+  definition single_sd.filing_status equals Single
+  definition mfj_sd.filing_status equals MarriedFilingJointly
+  definition hoh_sd.filing_status equals HeadOfHousehold
+  definition mfs_sd.filing_status equals MarriedFilingSeparately
+  definition qss_sd.filing_status equals QualifyingSurvivingSpouse
+  definition single_sd.treat_as_mfs equals false
+  definition mfj_sd.treat_as_mfs equals false
+  definition hoh_sd.treat_as_mfs equals false
+  definition mfs_sd.treat_as_mfs equals true
+  definition qss_sd.treat_as_mfs equals false
+  definition single_sd.primary_filer_is_blind equals false
+  definition mfj_sd.primary_filer_is_blind equals false
+  definition hoh_sd.primary_filer_is_blind equals false
+  definition mfs_sd.primary_filer_is_blind equals false
+  definition qss_sd.primary_filer_is_blind equals false
+  definition single_sd.primary_filer_age65_or_older equals false
+  definition mfj_sd.primary_filer_age65_or_older equals false
+  definition hoh_sd.primary_filer_age65_or_older equals false
+  definition mfs_sd.primary_filer_age65_or_older equals false
+  definition qss_sd.primary_filer_age65_or_older equals false
+  definition single_sd.secondary_filer_is_blind equals false
+  definition mfj_sd.secondary_filer_is_blind equals false
+  definition hoh_sd.secondary_filer_is_blind equals false
+  definition mfs_sd.secondary_filer_is_blind equals false
+  definition qss_sd.secondary_filer_is_blind equals false
+  definition single_sd.secondary_filer_age65_or_older equals false
+  definition mfj_sd.secondary_filer_age65_or_older equals false
+  definition hoh_sd.secondary_filer_age65_or_older equals false
+  definition mfs_sd.secondary_filer_age65_or_older equals false
+  definition qss_sd.secondary_filer_age65_or_older equals false
+  definition single_sd.is_widowed_in_tax_year equals false
+  definition mfj_sd.is_widowed_in_tax_year equals false
+  definition hoh_sd.is_widowed_in_tax_year equals false
+  definition mfs_sd.is_widowed_in_tax_year equals false
+  definition qss_sd.is_widowed_in_tax_year equals false
+  definition single_sd.mfj_deceased_spouse_reached_age65 equals false
+  definition mfj_sd.mfj_deceased_spouse_reached_age65 equals false
+  definition hoh_sd.mfj_deceased_spouse_reached_age65 equals false
+  definition mfs_sd.mfj_deceased_spouse_reached_age65 equals false
+  definition qss_sd.mfj_deceased_spouse_reached_age65 equals false
+  definition single_sd.mfs_spouse_65_or_older equals false
+  definition mfj_sd.mfs_spouse_65_or_older equals false
+  definition hoh_sd.mfs_spouse_65_or_older equals false
+  definition mfs_sd.mfs_spouse_65_or_older equals false
+  definition qss_sd.mfs_spouse_65_or_older equals false
+  definition single_sd.mfs_spouse_provides_no_benefits equals false
+  definition mfj_sd.mfs_spouse_provides_no_benefits equals false
+  definition hoh_sd.mfs_spouse_provides_no_benefits equals false
+  definition mfs_sd.mfs_spouse_provides_no_benefits equals false
+  definition qss_sd.mfs_spouse_provides_no_benefits equals false
+  definition single_sd.treat_filers_as_dependents equals false
+  definition mfj_sd.treat_filers_as_dependents equals false
+  definition hoh_sd.treat_filers_as_dependents equals false
+  definition mfs_sd.treat_filers_as_dependents equals false
+  definition qss_sd.treat_filers_as_dependents equals false
+  definition single_sd.employer_income_subtotal equals $50,000
+  definition mfj_sd.employer_income_subtotal equals $50,000
+  definition hoh_sd.employer_income_subtotal equals $50,000
+  definition mfs_sd.employer_income_subtotal equals $50,000
+  definition qss_sd.employer_income_subtotal equals $50,000
+  assertion single_sd.standard_deduction = $14,600
+  assertion mfj_sd.standard_deduction = $29,200
+  assertion hoh_sd.standard_deduction = $21,900
+  assertion mfs_sd.standard_deduction = $14,600
+  assertion qss_sd.standard_deduction = $29,200
+```
+
+Single, age 65: $14,600 + $1,950 = $16,550. MFJ, both 65: $29,200 + 2 x $1,550
+= $32,300. Single and blind and 65: $14,600 + 2 x $1,950 = $18,500. MFJ with
+the spouse blind and both 65: $29,200 + 3 x $1,550 = $33,850.
+
+```catala
+#[test]
+declaration scope TestAdditional:
+  output ok condition
+  single65 scope S.StandardDeduction
+  mfj_both65 scope S.StandardDeduction
+  single_blind65 scope S.StandardDeduction
+  mfj_three scope S.StandardDeduction
+
+scope TestAdditional:
+  rule ok fulfilled
+  definition single65.filing_status equals Single
+  definition single65.treat_as_mfs equals false
+  definition single65.primary_filer_is_blind equals false
+  definition single65.primary_filer_age65_or_older equals true
+  definition single65.secondary_filer_is_blind equals false
+  definition single65.secondary_filer_age65_or_older equals false
+  definition single65.is_widowed_in_tax_year equals false
+  definition single65.mfj_deceased_spouse_reached_age65 equals false
+  definition single65.mfs_spouse_65_or_older equals false
+  definition single65.mfs_spouse_provides_no_benefits equals false
+  definition single65.treat_filers_as_dependents equals false
+  definition single65.employer_income_subtotal equals $0
+
+  definition mfj_both65.filing_status equals MarriedFilingJointly
+  definition mfj_both65.treat_as_mfs equals false
+  definition mfj_both65.primary_filer_is_blind equals false
+  definition mfj_both65.primary_filer_age65_or_older equals true
+  definition mfj_both65.secondary_filer_is_blind equals false
+  definition mfj_both65.secondary_filer_age65_or_older equals true
+  definition mfj_both65.is_widowed_in_tax_year equals false
+  definition mfj_both65.mfj_deceased_spouse_reached_age65 equals false
+  definition mfj_both65.mfs_spouse_65_or_older equals false
+  definition mfj_both65.mfs_spouse_provides_no_benefits equals false
+  definition mfj_both65.treat_filers_as_dependents equals false
+  definition mfj_both65.employer_income_subtotal equals $0
+
+  definition single_blind65.filing_status equals Single
+  definition single_blind65.treat_as_mfs equals false
+  definition single_blind65.primary_filer_is_blind equals true
+  definition single_blind65.primary_filer_age65_or_older equals true
+  definition single_blind65.secondary_filer_is_blind equals false
+  definition single_blind65.secondary_filer_age65_or_older equals false
+  definition single_blind65.is_widowed_in_tax_year equals false
+  definition single_blind65.mfj_deceased_spouse_reached_age65 equals false
+  definition single_blind65.mfs_spouse_65_or_older equals false
+  definition single_blind65.mfs_spouse_provides_no_benefits equals false
+  definition single_blind65.treat_filers_as_dependents equals false
+  definition single_blind65.employer_income_subtotal equals $0
+
+  definition mfj_three.filing_status equals MarriedFilingJointly
+  definition mfj_three.treat_as_mfs equals false
+  definition mfj_three.primary_filer_is_blind equals false
+  definition mfj_three.primary_filer_age65_or_older equals true
+  definition mfj_three.secondary_filer_is_blind equals true
+  definition mfj_three.secondary_filer_age65_or_older equals true
+  definition mfj_three.is_widowed_in_tax_year equals false
+  definition mfj_three.mfj_deceased_spouse_reached_age65 equals false
+  definition mfj_three.mfs_spouse_65_or_older equals false
+  definition mfj_three.mfs_spouse_provides_no_benefits equals false
+  definition mfj_three.treat_filers_as_dependents equals false
+  definition mfj_three.employer_income_subtotal equals $0
+
+  assertion single65.standard_deduction = $16,550
+  assertion mfj_both65.standard_deduction = $32,300
+  assertion mfj_both65.is_spouse_65_or_older
+  assertion single_blind65.standard_deduction = $18,500
+  assertion single_blind65.additional_standard_deduction_items = 2
+  assertion mfj_three.standard_deduction = $33,850
+  assertion mfj_three.additional_standard_deduction_items = 3
+```
+
+## Spouse items: MFS and the deceased MFJ spouse
+
+MFS with an eligible spouse who is 65: the spouse's item counts ($14,600 +
+$1,550 for the primary's age 65 + $1,550 for the spouse = $17,700; the
+multiplier for MFS is $1,550). MFS with a spouse who provides no benefits
+(files a return): the spouse's flag is ignored. MFJ widowed in the year: the
+deceased spouse's age at death decides, and `secondary_filer_age65_or_older`
+is ignored.
+
+```catala
+#[test]
+declaration scope TestSpouseRules:
+  output ok condition
+  mfs_eligible scope S.StandardDeduction
+  mfs_no_benefit scope S.StandardDeduction
+  mfj_deceased_65 scope S.StandardDeduction
+  mfj_deceased_not65 scope S.StandardDeduction
+
+scope TestSpouseRules:
+  rule ok fulfilled
+  definition mfs_eligible.filing_status equals MarriedFilingSeparately
+  definition mfs_eligible.treat_as_mfs equals true
+  definition mfs_eligible.primary_filer_is_blind equals false
+  definition mfs_eligible.primary_filer_age65_or_older equals true
+  definition mfs_eligible.secondary_filer_is_blind equals false
+  definition mfs_eligible.secondary_filer_age65_or_older equals false
+  definition mfs_eligible.is_widowed_in_tax_year equals false
+  definition mfs_eligible.mfj_deceased_spouse_reached_age65 equals false
+  definition mfs_eligible.mfs_spouse_65_or_older equals true
+  definition mfs_eligible.mfs_spouse_provides_no_benefits equals false
+  definition mfs_eligible.treat_filers_as_dependents equals false
+  definition mfs_eligible.employer_income_subtotal equals $0
+
+  definition mfs_no_benefit.filing_status equals MarriedFilingSeparately
+  definition mfs_no_benefit.treat_as_mfs equals true
+  definition mfs_no_benefit.primary_filer_is_blind equals false
+  definition mfs_no_benefit.primary_filer_age65_or_older equals true
+  definition mfs_no_benefit.secondary_filer_is_blind equals true
+  definition mfs_no_benefit.secondary_filer_age65_or_older equals false
+  definition mfs_no_benefit.is_widowed_in_tax_year equals false
+  definition mfs_no_benefit.mfj_deceased_spouse_reached_age65 equals false
+  definition mfs_no_benefit.mfs_spouse_65_or_older equals true
+  definition mfs_no_benefit.mfs_spouse_provides_no_benefits equals true
+  definition mfs_no_benefit.treat_filers_as_dependents equals false
+  definition mfs_no_benefit.employer_income_subtotal equals $0
+
+  definition mfj_deceased_65.filing_status equals MarriedFilingJointly
+  definition mfj_deceased_65.treat_as_mfs equals false
+  definition mfj_deceased_65.primary_filer_is_blind equals false
+  definition mfj_deceased_65.primary_filer_age65_or_older equals false
+  definition mfj_deceased_65.secondary_filer_is_blind equals false
+  definition mfj_deceased_65.secondary_filer_age65_or_older equals false
+  definition mfj_deceased_65.is_widowed_in_tax_year equals true
+  definition mfj_deceased_65.mfj_deceased_spouse_reached_age65 equals true
+  definition mfj_deceased_65.mfs_spouse_65_or_older equals false
+  definition mfj_deceased_65.mfs_spouse_provides_no_benefits equals false
+  definition mfj_deceased_65.treat_filers_as_dependents equals false
+  definition mfj_deceased_65.employer_income_subtotal equals $0
+
+  definition mfj_deceased_not65.filing_status equals MarriedFilingJointly
+  definition mfj_deceased_not65.treat_as_mfs equals false
+  definition mfj_deceased_not65.primary_filer_is_blind equals false
+  definition mfj_deceased_not65.primary_filer_age65_or_older equals false
+  definition mfj_deceased_not65.secondary_filer_is_blind equals false
+  definition mfj_deceased_not65.secondary_filer_age65_or_older equals true
+  definition mfj_deceased_not65.is_widowed_in_tax_year equals true
+  definition mfj_deceased_not65.mfj_deceased_spouse_reached_age65 equals false
+  definition mfj_deceased_not65.mfs_spouse_65_or_older equals false
+  definition mfj_deceased_not65.mfs_spouse_provides_no_benefits equals false
+  definition mfj_deceased_not65.treat_filers_as_dependents equals false
+  definition mfj_deceased_not65.employer_income_subtotal equals $0
+
+  assertion mfs_eligible.standard_deduction = $17,700
+  assertion mfs_no_benefit.standard_deduction = $16,150
+  assertion not mfs_no_benefit.is_spouse_65_or_older
+  assertion mfj_deceased_65.standard_deduction = $30,750
+  assertion mfj_deceased_not65.standard_deduction = $29,200
+```
+
+## Dependent filers
+
+Dependent with $5,000 earned: minimum = max($1,300, $5,450) = $5,450, below the
+normal $14,600, so $5,450. Dependent with $0 earned: $1,300. Dependent with
+$20,000 earned: minimum $20,450 exceeds the normal $14,600, so $14,600.
+Dependent single age 65 with $5,000 earned: $5,450 + $1,950 = $7,400.
+
+```catala
+#[test]
+declaration scope TestDependent:
+  output ok condition
+  earned5000 scope S.StandardDeduction
+  earned0 scope S.StandardDeduction
+  earned20000 scope S.StandardDeduction
+  aged5000 scope S.StandardDeduction
+
+scope TestDependent:
+  rule ok fulfilled
+  definition earned5000.filing_status equals Single
+  definition earned5000.treat_as_mfs equals false
+  definition earned5000.primary_filer_is_blind equals false
+  definition earned5000.primary_filer_age65_or_older equals false
+  definition earned5000.secondary_filer_is_blind equals false
+  definition earned5000.secondary_filer_age65_or_older equals false
+  definition earned5000.is_widowed_in_tax_year equals false
+  definition earned5000.mfj_deceased_spouse_reached_age65 equals false
+  definition earned5000.mfs_spouse_65_or_older equals false
+  definition earned5000.mfs_spouse_provides_no_benefits equals false
+  definition earned5000.treat_filers_as_dependents equals true
+  definition earned5000.employer_income_subtotal equals $5,000
+
+  definition earned0.filing_status equals Single
+  definition earned0.treat_as_mfs equals false
+  definition earned0.primary_filer_is_blind equals false
+  definition earned0.primary_filer_age65_or_older equals false
+  definition earned0.secondary_filer_is_blind equals false
+  definition earned0.secondary_filer_age65_or_older equals false
+  definition earned0.is_widowed_in_tax_year equals false
+  definition earned0.mfj_deceased_spouse_reached_age65 equals false
+  definition earned0.mfs_spouse_65_or_older equals false
+  definition earned0.mfs_spouse_provides_no_benefits equals false
+  definition earned0.treat_filers_as_dependents equals true
+  definition earned0.employer_income_subtotal equals $0
+
+  definition earned20000.filing_status equals Single
+  definition earned20000.treat_as_mfs equals false
+  definition earned20000.primary_filer_is_blind equals false
+  definition earned20000.primary_filer_age65_or_older equals false
+  definition earned20000.secondary_filer_is_blind equals false
+  definition earned20000.secondary_filer_age65_or_older equals false
+  definition earned20000.is_widowed_in_tax_year equals false
+  definition earned20000.mfj_deceased_spouse_reached_age65 equals false
+  definition earned20000.mfs_spouse_65_or_older equals false
+  definition earned20000.mfs_spouse_provides_no_benefits equals false
+  definition earned20000.treat_filers_as_dependents equals true
+  definition earned20000.employer_income_subtotal equals $20,000
+
+  definition aged5000.filing_status equals Single
+  definition aged5000.treat_as_mfs equals false
+  definition aged5000.primary_filer_is_blind equals false
+  definition aged5000.primary_filer_age65_or_older equals true
+  definition aged5000.secondary_filer_is_blind equals false
+  definition aged5000.secondary_filer_age65_or_older equals false
+  definition aged5000.is_widowed_in_tax_year equals false
+  definition aged5000.mfj_deceased_spouse_reached_age65 equals false
+  definition aged5000.mfs_spouse_65_or_older equals false
+  definition aged5000.mfs_spouse_provides_no_benefits equals false
+  definition aged5000.treat_filers_as_dependents equals true
+  definition aged5000.employer_income_subtotal equals $5,000
+
+  assertion earned5000.standard_deduction = $5,450
+  assertion earned0.standard_deduction = $1,300
+  assertion earned20000.standard_deduction = $14,600
+  assertion aged5000.standard_deduction = $7,400
+  # The spec rejects a known-bad output: a dependent with $5,000 earned does
+  # not get the full $14,600.
+  assertion earned5000.standard_deduction != $14,600
+```
+
+## Age 65 and the day before the birthday
+
+Born January 1, 1960: the day before is December 31, 1959, so the person is 65
+on December 31, 2024 (the 65th birthday counted on or before January 1, 2025).
+Born January 2, 1960: day before is January 1, 1960, so 64 on December 31,
+2024. A spouse born July 10, 1959 turns 65 on July 9, 2024 under this rule: death on
+July 9, 2024 counts, death on July 8, 2024 does not.
+
+```catala
+#[test]
+declaration scope TestAge:
+  output ok condition
+  jan1 scope S.Age65DayBeforeBirthday
+  jan2 scope S.Age65DayBeforeBirthday
+  dec31 scope S.Age65DayBeforeBirthday
+  died_on_day_before scope S.Age65DayBeforeBirthday
+  died_earlier scope S.Age65DayBeforeBirthday
+
+scope TestAge:
+  rule ok fulfilled
+  definition jan1.date_of_birth equals |1960-01-01|
+  definition jan1.as_of equals |2024-12-31|
+  definition jan2.date_of_birth equals |1960-01-02|
+  definition jan2.as_of equals |2024-12-31|
+  definition dec31.date_of_birth equals |1959-12-31|
+  definition dec31.as_of equals |2024-12-31|
+  definition died_on_day_before.date_of_birth equals |1959-07-10|
+  definition died_on_day_before.as_of equals |2024-07-09|
+  definition died_earlier.date_of_birth equals |1959-07-10|
+  definition died_earlier.as_of equals |2024-07-08|
+  assertion jan1.is_65_or_older
+  assertion jan1.age = 65
+  assertion not jan2.is_65_or_older
+  assertion jan2.age = 64
+  assertion dec31.is_65_or_older
+  assertion died_on_day_before.is_65_or_older
+  assertion not died_earlier.is_65_or_older
+```
