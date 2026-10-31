@@ -56,6 +56,7 @@ export function draftFromRequest(req: CalculateRequest): Draft {
     withheld: m(i.federal_tax_withheld),
     foreignTax: m(i.foreign_tax_paid),
     taxExempt: m(i.tax_exempt_interest),
+    privateActivityBond: m(i.private_activity_bond_interest),
   }));
   d.unemployment = (req.form_1099g ?? []).map((u) => ({
     id: newId(),

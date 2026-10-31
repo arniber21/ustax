@@ -101,6 +101,7 @@ export function buildRequest(d: Draft): CalculateRequest {
       put(o, 'federal_tax_withheld', i.withheld);
       put(o, 'foreign_tax_paid', i.foreignTax);
       put(o, 'tax_exempt_interest', i.taxExempt);
+      put(o, 'private_activity_bond_interest', i.privateActivityBond);
       return o;
     });
   }

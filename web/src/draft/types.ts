@@ -54,6 +54,7 @@ export interface InterestDraft {
   withheld: Cents; // box 4
   foreignTax: Cents; // box 6
   taxExempt: Cents; // box 8
+  privateActivityBond: Cents; // box 9
 }
 
 export interface UnemploymentDraft {
@@ -138,7 +139,7 @@ export const newW2 = (filer: Role = 'PrimaryFiler'): W2Draft => ({
 });
 export const newInterest = (filer: Role = 'PrimaryFiler'): InterestDraft => ({
   id: newId(), filer, interest: null, earlyWithdrawalPenalty: null, governmentBondInterest: null,
-  withheld: null, foreignTax: null, taxExempt: null,
+  withheld: null, foreignTax: null, taxExempt: null, privateActivityBond: null,
 });
 export const newUnemployment = (filer: Role = 'PrimaryFiler'): UnemploymentDraft => ({
   id: newId(), filer, amount: null, withheld: null,

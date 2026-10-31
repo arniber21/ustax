@@ -298,6 +298,7 @@ function InterestForm({ i, joint }: { i: InterestDraft; joint: boolean }) {
         <MoneyField label="Box 3: interest on U.S. savings bonds and Treasury obligations" path={`${p}.governmentBondInterest`} value={i.governmentBondInterest} onChange={(governmentBondInterest) => set({ governmentBondInterest })} />
         <MoneyField label="Box 6: foreign tax paid" path={`${p}.foreignTax`} value={i.foreignTax} onChange={(foreignTax) => set({ foreignTax })} />
         <MoneyField label="Box 8: tax-exempt interest" path={`${p}.taxExempt`} value={i.taxExempt} onChange={(taxExempt) => set({ taxExempt })} />
+        <MoneyField label="Box 9: specified private activity bond interest" path={`${p}.privateActivityBond`} value={i.privateActivityBond} onChange={(privateActivityBond) => set({ privateActivityBond })} />
       </details>
     </>
   );

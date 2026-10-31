@@ -51,7 +51,7 @@ export function validateStep(d: Draft, step: WizardStepId): StepErrors {
       required(`${p}.interest`, i.interest, 'Box 1 is the interest you were paid. Enter 0 if it is empty.');
       for (const [k, v] of [
         ['earlyWithdrawalPenalty', i.earlyWithdrawalPenalty], ['governmentBondInterest', i.governmentBondInterest],
-        ['withheld', i.withheld], ['foreignTax', i.foreignTax], ['taxExempt', i.taxExempt],
+        ['withheld', i.withheld], ['foreignTax', i.foreignTax], ['taxExempt', i.taxExempt], ['privateActivityBond', i.privateActivityBond],
       ] as const) big(`${p}.${k}`, v);
     }
     for (const u of d.unemployment) {
