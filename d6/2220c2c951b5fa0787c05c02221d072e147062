@@ -1,0 +1,44 @@
+catala/tests/test_eitc.catala_en
+  s_3031b504518be3::t_6ede6284c64d3c 13,958-960,982-984
+  s_3031b504518be3::t_0cf89aecd295bf 111,736,741,747
+  s_3031b504518be3::t_62075930c7e19b 1-12,14-110,112-735,737-740,742-746,748-957,961-981,985-997
+scripts/gen_eitc_golden_tests.py
+  s_3031b504518be3::t_b9ef801290aeba 1-93,99-178
+  s_3031b504518be3::t_65c1c3dd1474c0 94-98
+sources/forms-instructions/derived-eic-table-2024.csv
+  s_3031b504518be3::t_fe1b329f0f602f 1-1340
+catala/tests/test_eitc_table_golden.catala_en
+  s_3031b504518be3::t_65c1c3dd1474c0 1-4434
+scripts/derive_eic_table.py
+  s_3031b504518be3::t_fe1b329f0f602f 33,38
+  s_3031b504518be3::t_739229aad3294d 1-32,34-37,39-92
+catala/eitc.catala_en
+  s_3031b504518be3::t_eb66acad2877aa 136
+  s_3031b504518be3::t_00ec711d9ca0b3 1-69,72-135,137-569,571-1045
+  s_3031b504518be3::t_af0ddf6b5ea518 570
+  s_3031b504518be3::t_68a887e0fcd593 70-71
+catala/params_2024.catala_en
+  s_3031b504518be3::t_36a9e934875ac5 282
+  s_3031b504518be3::t_9c1e59e6b4d40f 202-281
+catala/tests/difftest_eitc.catala_en
+  s_3031b504518be3::t_69f46d57f8b542 1-160
+difftest/mappings/eitc.mjs
+  s_3031b504518be3::t_7f404697e5bf9a 52-56,59,61-62,65,72,75-76,130
+  s_3031b504518be3::t_b692985285cb29 1-51,57-58,60,63-64,66-71,73-74,77-129,131-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d62220c2c951b5fa0787c05c02221d072e147062",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
