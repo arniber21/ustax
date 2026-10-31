@@ -1,0 +1,437 @@
+> Module Interest
+
+> Using Types
+> Using Params_2024 as P
+> Using Rounding as R
+
+# Interest income (Form 1040 lines 2a and 2b, Schedule B Part I)
+
+Direct File module `interest.xml` (`../direct-file/direct-file/backend/src/main/resources/tax/interest.xml`,
+"DF" below), scope.md section 3.3, issue #13. Tests:
+`catala/tests/test_interest.catala_en` (named cases) and
+`catala/tests/oracle_interest.catala_en` (generated, one scope per Direct File
+scenario, compared with `oracle/facts.csv`).
+
+Inputs are complete (`catala/CONVENTIONS.md` section 3): every box of every
+interest report has a value, an empty box is `$0`. The top-level return scope
+(#14) passes `has_foreign_accounts_or_trusts`, `filing_status`, `agi` and
+`flow_has_seen_deductions` in; this module takes them as inputs until then.
+
+## Statute and form
+
+Interest is gross income (26 U.S.C. § 61(a)(4); § 61 is not among the files
+in `sources/statute/`, so the form is the cited source). Form 1040 for 2024, `sources/forms-instructions/f1040--2024.pdf` p 1:
+line 2a "Tax-exempt interest" and line 2b "Taxable interest".
+
+Schedule B (Form 1040) 2024, `sources/forms-instructions/f1040sb--2024.pdf`
+p 1, Part I line 4: "Subtract line 3 from line 2. Enter the result here and
+on Form 1040 or 1040-SR, line 2b". Note under line 4: "If line 4 is over
+$1,500, you must complete Part III." Part III: "You must complete this part if
+you (a) had over $1,500 of taxable interest or ordinary dividends; (b) had a
+foreign account; or (c) received a distribution from, or were a grantor of, or
+a transferor to, a foreign trust."
+
+Instructions for Schedule B, `sources/forms-instructions/i1040sb--2024.pdf`
+p 1, General Instructions: "Use Schedule B (Form 1040) if any of the following
+applies. You had over $1,500 of taxable interest or ordinary dividends. ... You
+had a financial interest in, or signature authority over, a financial account
+in a foreign country or you received a distribution from, or were a grantor
+of, or transferor to, a foreign trust." Line 1: "Don't report on line 1 any
+tax-exempt interest."
+
+Rounding: the Form 1040 instructions (`i1040gi--2024.pdf` p 23) say "If you
+have to add two or more amounts to figure the amount to enter on a line,
+include cents when adding the amounts and round off only the total." Schedule B
+line 1 lists one amount per payer, and line 4 is the sum of those listed
+amounts; DF rounds each listed amount first, see `interest_income` below.
+
+## One interest report (a Form 1099-INT, or interest without one)
+
+DF collection `/interestReports` with children `/interestReports/*/x`. The DF
+`Writable` children are fields of `InterestReport`; the `Derived` children are
+outputs of the scope `InterestReportFacts`. The DF child `1099Amount` starts
+with a digit, so it is `form_1099_amount` here.
+
+```catala-metadata
+## One entry of DF `/interestReports`: the boxes of a Form 1099-INT, or the
+## amount of interest reported without one (`has_1099` false).
+declaration structure InterestReport:
+  # DF: /interestReports/*/filer (CollectionItem of /filers)
+  data filer content Types.FilerRole
+  # DF: /interestReports/*/has1099
+  data has_1099 content boolean
+  # DF: /interestReports/*/no1099Amount (Writable, used when has_1099 is false)
+  data no_1099_amount content money
+  # DF: /interestReports/*/writable1099Amount, 1099-INT box 1
+  data writable_1099_amount content money
+  # DF: /interestReports/*/writableEarlyWithdrawlPenaltyAmount, box 2
+  data writable_early_withdrawl_penalty_amount content money
+  # DF: /interestReports/*/writableInterestOnGovernmentBonds, box 3
+  data writable_interest_on_government_bonds content money
+  # DF: /interestReports/*/writableTaxWithheld, box 4
+  data writable_tax_withheld content money
+  # DF: /interestReports/*/writableForeignTaxPaid, box 6
+  data writable_foreign_tax_paid content money
+  # DF: /interestReports/*/writableTaxExemptInterest, box 8
+  data writable_tax_exempt_interest content money
+  # DF: /interestReports/*/writableSpecifiedPrivateActivityBondInterest, box 9
+  data writable_specified_private_activity_bond_interest content money
+  # DF: /interestReports/*/writableMarketDiscount, box 10
+  data writable_market_discount content money
+  # DF: /interestReports/*/writableBondPremium, box 11
+  data writable_bond_premium content money
+  # DF: /interestReports/*/writableBondPremiumOnTreasuryObligations, box 12
+  data writable_bond_premium_on_treasury_obligations content money
+  # DF: /interestReports/*/writableBondPremiumOnTaxExemptBond, box 13
+  data writable_bond_premium_on_tax_exempt_bond content money
+  # DF: /interestReports/*/writableState, box 15: true when the filer chose
+  # `differentState` from /incomeFormStateOptions (`sameState` or no answer:
+  # false).
+  data state_is_different_state content boolean
+  # DF: /interestReports/*/writableStateTaxWithheld, box 17
+  data writable_state_tax_withheld content money
+  # DF: /interestReports/*/factaFilingRequired (1099-INT FATCA box checked)
+  data facta_filing_required content boolean
+```
+
+### Taxable interest of one report
+
+Box 1 plus box 3 when there is a Form 1099-INT, else the amount entered
+without one.
+
+```catala-metadata
+declaration scope InterestReportFacts:
+  input report content InterestReport
+  # DF: /interestReports/*/1099Amount
+  output form_1099_amount content money
+  # DF: /interestReports/*/interestOnGovernmentBonds
+  output interest_on_government_bonds content money
+  # DF: /interestReports/*/taxableInterest
+  output taxable_interest content money
+  # DF: /interestReports/*/roundedTaxableInterest
+  output rounded_taxable_interest content money
+  # DF: /interestReports/*/taxExemptInterest
+  output tax_exempt_interest content money
+  # DF: /interestReports/*/taxWithheld
+  output tax_withheld content money
+  # DF: /interestReports/*/foreignTaxPaid
+  output foreign_tax_paid content money
+  # DF: /interestReports/*/earlyWithdrawlPenaltyAmount
+  output early_withdrawl_penalty_amount content money
+  # Sum of boxes 9 to 13, the addend of DF /flowKnockoutHasBonds
+  output bond_boxes_9_to_13 content money
+  # DF: /interestReports/*/stateTaxWithheld
+  output state_tax_withheld content money
+  # DF: /interestReports/*/hasStateTaxWithheld
+  output has_state_tax_withheld condition
+  # DF: /interestReports/*/hasKnockoutWithholdingInDifferentState
+  output has_knockout_withholding_in_different_state condition
+  # Per-item part of DF /interestReports/hasRequiredFactaFilings
+  output has_required_facta_filing condition
+```
+
+```catala
+scope InterestReportFacts:
+  # DF: /interestReports/*/1099Amount (the DF default $0 for an unanswered
+  # box is the explicit $0 of a complete input).
+  definition form_1099_amount equals report.writable_1099_amount
+
+  # DF: /interestReports/*/interestOnGovernmentBonds: box 3 counts only when
+  # there is a Form 1099-INT.
+  definition interest_on_government_bonds equals
+    if report.has_1099 then report.writable_interest_on_government_bonds
+    else $0
+
+  # Schedule B line 1 amount for this payer.
+  # DF: /interestReports/*/taxableInterest
+  definition taxable_interest equals
+    if report.has_1099 then interest_on_government_bonds + form_1099_amount
+    else report.no_1099_amount
+
+  # Schedule B line 1 amount, to the whole dollar.
+  # DF: /interestReports/*/roundedTaxableInterest
+  definition rounded_taxable_interest equals R.round_dollar of taxable_interest
+
+  # Box 8; $0 without a Form 1099-INT.
+  # DF: /interestReports/*/taxExemptInterest
+  definition tax_exempt_interest equals
+    if report.has_1099 then report.writable_tax_exempt_interest else $0
+
+  # Box 4, rounded to the whole dollar; $0 without a Form 1099-INT. Feeds
+  # Form 1040 line 25b (taxCalculations.xml, fact at line 1428).
+  # DF: /interestReports/*/taxWithheld
+  definition tax_withheld equals
+    R.round_dollar of
+      (if report.has_1099 then report.writable_tax_withheld else $0)
+
+  # Box 6; $0 without a Form 1099-INT.
+  # DF: /interestReports/*/foreignTaxPaid
+  definition foreign_tax_paid equals
+    if report.has_1099 then report.writable_foreign_tax_paid else $0
+
+  # Box 2. DF does not gate it on has1099.
+  # DF: /interestReports/*/earlyWithdrawlPenaltyAmount
+  definition early_withdrawl_penalty_amount equals
+    report.writable_early_withdrawl_penalty_amount
+
+  definition bond_boxes_9_to_13 equals
+    report.writable_specified_private_activity_bond_interest
+    + report.writable_market_discount
+    + report.writable_bond_premium
+    + report.writable_bond_premium_on_treasury_obligations
+    + report.writable_bond_premium_on_tax_exempt_bond
+
+  # DF: /interestReports/*/stateTaxWithheld
+  definition state_tax_withheld equals report.writable_state_tax_withheld
+
+  # DF: /interestReports/*/hasStateTaxWithheld
+  rule has_state_tax_withheld under condition state_tax_withheld > $0
+    consequence fulfilled
+
+  # DF: /interestReports/*/hasKnockoutWithholdingInDifferentState
+  rule has_knockout_withholding_in_different_state
+    under condition report.state_is_different_state
+    consequence fulfilled
+
+  # The FATCA box counts only on a Form 1099-INT.
+  # DF: /interestReports/hasRequiredFactaFilings (per-report condition)
+  rule has_required_facta_filing
+    under condition report.facta_filing_required and report.has_1099
+    consequence fulfilled
+```
+
+## Form 1040 lines 2a and 2b, Schedule B requirement
+
+```catala-metadata
+declaration scope Interest:
+  # DF: /interestReports (Writable collection)
+  input interest_reports content list of InterestReport
+  # DF: income.xml /hasForeignAccountsOrTrusts: the filer had a financial
+  # interest in or signature authority over a foreign account, or was a
+  # grantor of or had transactions with a foreign trust.
+  # TODO(#14): derive from the three income.xml answers in the return scope.
+  input has_foreign_accounts_or_trusts content boolean
+  # Inputs of the NIIT-style knockouts only.
+  input filing_status content Types.FilingStatus
+  # DF: taxCalculations.xml /agi (Form 1040 line 11)
+  input agi content money
+  # DF: flow.xml /flowHasSeenDeductions. A UI hack: true once the filer has
+  # seen the last deduction screen. The return scope (#14) passes true.
+  input flow_has_seen_deductions content boolean
+
+  internal facts content list of InterestReportFacts
+
+  # DF: /requiresScheduleB (Form 1040 Schedule B filed)
+  output requires_schedule_b condition
+  # DF: /interestIncome (Form 1040 line 2b)
+  output interest_income content money
+  # DF: /taxExemptInterest (Form 1040 line 2a)
+  output tax_exempt_interest content money
+  # Form 1040 line 25b part from 1099-INT; DF sums
+  # /interestReports/*/taxWithheld in taxCalculations.xml.
+  output total_tax_withheld content money
+  # DF: /hasInterestIncome
+  output has_interest_income condition
+
+  # Knockouts (catala/CONVENTIONS.md section 6; scope.md section 9 item 3).
+  # DF: /flowKnockoutHasEarlyWithdrawlPenalty
+  output ko_flow_knockout_has_early_withdrawl_penalty condition
+  # DF: /flowKnockoutHasBonds
+  output ko_flow_knockout_has_bonds condition
+  # DF: /flowKnockoutHasForeignTaxPaid
+  output ko_flow_knockout_has_foreign_tax_paid condition
+  # DF: /flowKnockoutTaxExemptInterest
+  output ko_flow_knockout_tax_exempt_interest condition
+  # DF: /flowKnockoutStateTaxWithheld
+  output ko_flow_knockout_state_tax_withheld condition
+  # DF: /flowKnockoutWithholdingUnsupportedState
+  output ko_flow_knockout_withholding_unsupported_state condition
+  # DF: /interestReports/hasRequiredFactaFilings
+  output ko_has_required_facta_filings condition
+  # DF: /hasInterestIncomeAndAgiAboveThresholdForMfs
+  output ko_has_interest_income_and_agi_above_threshold_for_mfs condition
+  # DF: /hasInterestIncomeAndAgiAboveThresholdForMfjOrQss
+  output ko_has_interest_income_and_agi_above_threshold_for_mfj_or_qss condition
+  # DF: /hasInterestIncomeAndAgiAboveThresholdForSingleOrHoh
+  output ko_has_interest_income_and_agi_above_threshold_for_single_or_hoh condition
+  # All knockouts of this scope, listed once (flow.xml /flowIsKnockedOut
+  # lines 21-26 and 61-64).
+  output unsupported condition
+```
+
+### Line 2b: taxable interest
+
+Schedule B line 1 lists the interest of each payer and line 4 adds them, "over
+$1,500" requires Part III. The DF reference engine rounds each report to the
+dollar and adds the rounded amounts when Schedule B is required, and rounds
+the exact sum when it is not.
+
+```catala
+scope Interest:
+  definition facts equals
+    map each r among interest_reports to
+      (output of InterestReportFacts with { -- report: r })
+
+  # Schedule B, Part III: "You must complete this part if you (a) had over
+  # $1,500 of taxable interest or ordinary dividends; (b) had a foreign
+  # account; or (c) received a distribution from, or were a grantor of, or a
+  # transferor to, a foreign trust." Only the interest half of (a) is in
+  # scope: ordinary dividends are out of scope (scope.md section 1).
+  # The comparison uses the unrounded sum of taxable interest.
+  # DF: /requiresScheduleB (interest.xml)
+  rule requires_schedule_b
+    under condition
+      (Money.sum of (map each f among facts to f.taxable_interest))
+        > P.schedule_b_interest_threshold
+      or has_foreign_accounts_or_trusts
+    consequence fulfilled
+
+  # QUIRK(Q-R1): DF sums per-item rounded amounts only when Schedule B is
+  # required, and rounds the raw sum otherwise. The 1040 instructions (p 23)
+  # say to add with cents and round only the total. Decision: reproduce
+  # (CONVENTIONS.md section 8).
+  # DF: interest.xml /interestIncome
+  definition interest_income equals
+    R.round_dollar of
+      (if requires_schedule_b then
+        Money.sum of (map each f among facts to f.rounded_taxable_interest)
+       else
+        Money.sum of (map each f among facts to f.taxable_interest))
+
+  # DF: interest.xml /hasInterestIncome
+  rule has_interest_income under condition interest_income > $0
+    consequence fulfilled
+```
+
+### Line 2a: tax-exempt interest
+
+Form 1040 line 2a is the sum of box 8 of every Form 1099-INT, rounded once to
+the whole dollar. DF notes that it is "never used again outside of calculating
+EITC eligibility and SSB taxibility".
+
+```catala
+scope Interest:
+  # DF: interest.xml /taxExemptInterest
+  definition tax_exempt_interest equals
+    R.round_dollar of
+      (Money.sum of (map each f among facts to f.tax_exempt_interest))
+
+  # DF: taxCalculations.xml, sum of /interestReports/*/taxWithheld
+  definition total_tax_withheld equals
+    Money.sum of (map each f among facts to f.tax_withheld)
+```
+
+## Knockouts: 1099-INT boxes DF does not support
+
+scope.md section 9 item 3: "1099-INT: early-withdrawal penalty, bonds, foreign
+tax, tax-exempt interest, state withholding, FATCA". Each is a reason the
+filer must use other software; the amounts are still computed.
+
+```catala
+scope Interest:
+  # Box 2 over all reports is more than $0.
+  # DF: /flowKnockoutHasEarlyWithdrawlPenalty
+  rule ko_flow_knockout_has_early_withdrawl_penalty
+    under condition
+      (Money.sum of
+        (map each f among facts to f.early_withdrawl_penalty_amount)) > $0
+    consequence fulfilled
+
+  # Boxes 9 to 13 summed over all reports is more than $0.
+  # DF: /flowKnockoutHasBonds
+  rule ko_flow_knockout_has_bonds
+    under condition
+      (Money.sum of (map each f among facts to f.bond_boxes_9_to_13)) > $0
+    consequence fulfilled
+
+  # Some report has a box 6 amount different from $0 (DF: NotEqual, so a
+  # negative amount also counts).
+  # DF: /flowKnockoutHasForeignTaxPaid
+  rule ko_flow_knockout_has_foreign_tax_paid
+    under condition exists f among facts such that f.foreign_tax_paid != $0
+    consequence fulfilled
+
+  # Some report has a box 8 amount different from $0.
+  # DF: /flowKnockoutTaxExemptInterest
+  rule ko_flow_knockout_tax_exempt_interest
+    under condition exists f among facts such that f.tax_exempt_interest != $0
+    consequence fulfilled
+
+  # Some report has box 17 more than $0.
+  # DF: /flowKnockoutStateTaxWithheld
+  rule ko_flow_knockout_state_tax_withheld
+    under condition exists f among facts such that f.has_state_tax_withheld
+    consequence fulfilled
+
+  # Some report has box 15 state `differentState`.
+  # DF: /flowKnockoutWithholdingUnsupportedState
+  rule ko_flow_knockout_withholding_unsupported_state
+    under condition
+      exists f among facts such that f.has_knockout_withholding_in_different_state
+    consequence fulfilled
+
+  # Some Form 1099-INT has the FATCA filing requirement box checked.
+  # DF: /interestReports/hasRequiredFactaFilings
+  rule ko_has_required_facta_filings
+    under condition exists f among facts such that f.has_required_facta_filing
+    consequence fulfilled
+```
+
+### Net investment income tax thresholds
+
+26 U.S.C. § 1411(b) (`sources/statute/irc-1411.html`): "For purposes of this
+chapter, the term "threshold amount" means (1) in the case of a taxpayer
+making a joint return under section 6013 or a surviving spouse (as defined in
+section 2(a)), $250,000, (2) in the case of a married taxpayer (as defined in
+section 7703) filing a separate return, 1/2 of the dollar amount determined
+under paragraph (1), and (3) in any other case, $200,000." DF does not
+compute the tax: with interest income and an AGI above the threshold the
+filer is knocked out, but only after the filer has seen the deduction screens
+(final AGI). The `Params_2024` thresholds are the statute figures (`$250,000`,
+`$125,000`, `$200,000`).
+
+```catala
+scope Interest:
+  # DF: /hasInterestIncomeAndAgiAboveThresholdForMfs
+  rule ko_has_interest_income_and_agi_above_threshold_for_mfs
+    under condition
+      flow_has_seen_deductions
+      and filing_status = Types.FilingStatus.MarriedFilingSeparately
+      and interest_income > $0
+      and agi > P.niit_threshold_married_separate
+    consequence fulfilled
+
+  # DF: /hasInterestIncomeAndAgiAboveThresholdForMfjOrQss
+  rule ko_has_interest_income_and_agi_above_threshold_for_mfj_or_qss
+    under condition
+      flow_has_seen_deductions
+      and (filing_status = Types.FilingStatus.MarriedFilingJointly
+           or filing_status = Types.FilingStatus.QualifyingSurvivingSpouse)
+      and interest_income > $0
+      and agi > P.niit_threshold_joint_or_surviving_spouse
+    consequence fulfilled
+
+  # DF: /hasInterestIncomeAndAgiAboveThresholdForSingleOrHoh
+  rule ko_has_interest_income_and_agi_above_threshold_for_single_or_hoh
+    under condition
+      flow_has_seen_deductions
+      and (filing_status = Types.FilingStatus.Single
+           or filing_status = Types.FilingStatus.HeadOfHousehold)
+      and interest_income > $0
+      and agi > P.niit_threshold_other
+    consequence fulfilled
+
+  # DF: flow.xml /flowIsKnockedOut, the interest.xml members
+  rule unsupported under condition
+    ko_has_required_facta_filings
+    or ko_flow_knockout_has_early_withdrawl_penalty
+    or ko_flow_knockout_has_bonds
+    or ko_flow_knockout_has_foreign_tax_paid
+    or ko_flow_knockout_withholding_unsupported_state
+    or ko_flow_knockout_state_tax_withheld
+    or ko_has_interest_income_and_agi_above_threshold_for_mfs
+    or ko_has_interest_income_and_agi_above_threshold_for_mfj_or_qss
+    or ko_has_interest_income_and_agi_above_threshold_for_single_or_hoh
+    or ko_flow_knockout_tax_exempt_interest
+  consequence fulfilled
+```
