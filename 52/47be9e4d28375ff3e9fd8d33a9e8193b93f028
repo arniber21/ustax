@@ -1,0 +1,23 @@
+Makefile
+  s_3031b504518be3::t_f993486f5ad430 39-48
+docs/tls.md
+  s_3031b504518be3::t_939c8dede42b74 1-107
+deploy/Caddyfile
+  s_3031b504518be3::t_91f3ceb2783fd2 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5247be9e4d28375ff3e9fd8d33a9e8193b93f028",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
