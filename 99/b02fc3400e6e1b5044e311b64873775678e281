@@ -1,0 +1,60 @@
+lean/UsTax/Form1040Full.lean
+  s_3031b504518be3::t_a623f8bf92011c 1-204,207-221,226-233
+  s_3031b504518be3::t_9da5e8e518f91d 222-225
+  s_3031b504518be3::t_b0b323c669f492 205-206
+lean/UsTax/Unemployment.lean
+  s_3031b504518be3::t_19b2c987d7f238 1-175
+lean/UsTax/Income/Props.lean
+  s_3031b504518be3::t_f0e8ed9749bcfe 1-78,83-93
+  s_3031b504518be3::t_e9b5e846812a09 79-82
+lean/UsTax/Income/Lemmas.lean
+  s_3031b504518be3::t_3e577d66ebaef2 36-44,141-144,174-176
+  s_3031b504518be3::t_24c5672bb63c6c 1-35,45-103,105-110,112-121,125-140,202,231
+  s_3031b504518be3::t_f3509522d6fd9f 111,122-124
+  s_3031b504518be3::t_b2da38be9ecf33 104
+  s_3031b504518be3::t_d03966d4be16d9 145-173,178-181,187,189-201,203-230,232-240
+  s_3031b504518be3::t_4b2562bb6772f8 177,182-186,188
+lean/UsTax/EducatorAdjustment.lean
+  s_3031b504518be3::t_d3075803632ce0 1-95,99-120
+  s_3031b504518be3::t_f064a5caf065a9 96-98
+lean/README.md
+  s_3031b504518be3::t_bf3739029d397e 132-155
+  s_3031b504518be3::t_93c57c04a4a142 131
+lean/UsTax/StudentLoanAdjustment.lean
+  s_3031b504518be3::t_3e577d66ebaef2 53-57,118
+  s_3031b504518be3::t_7a7aaa57e946fa 1-52,58-117,119-196
+lean/UsTax/SocialSecurity.lean
+  s_3031b504518be3::t_155acc8532da81 1-32,54-117,119,121,123-202
+  s_3031b504518be3::t_d03966d4be16d9 33-53,118,120,122
+lean/UsTax/Form1099Rs.lean
+  s_3031b504518be3::t_95b2a8ef3c4d7d 1-538,540-545,547-550,552-554
+  s_3031b504518be3::t_015df9509a4627 539,546,551
+lean/UsTax/Cli.lean
+  s_3031b504518be3::t_0bfa0b8f526b64 8-14,417-646,655-662
+lean/UsTax/EstimatedPayments.lean
+  s_3031b504518be3::t_41f48dda192c9f 1-90,95-126
+  s_3031b504518be3::t_f064a5caf065a9 91-94
+lean/UsTax.lean
+  s_3031b504518be3::t_6f8885ad00e577 31-33
+  s_3031b504518be3::t_0bfa0b8f526b64 24-30
+lean/UsTax/Params2024.lean
+  s_3031b504518be3::t_7d46086bd23edd 52-74
+lean/UsTax/Form1099Misc.lean
+  s_3031b504518be3::t_6a806969c24cdb 1-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99b02fc3400e6e1b5044e311b64873775678e281",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
