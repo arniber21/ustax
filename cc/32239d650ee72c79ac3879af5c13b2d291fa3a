@@ -2,6 +2,7 @@ lean/lakefile.toml
   s_3031b504518be3::t_eb2ee2f6545c55 19-23
 catala/DIFFTEST.md
   s_3031b504518be3::t_8af342575bf164 79,89-97
+  s_3031b504518be3::t_3e052a199b8c9f 88
 lean/Main.lean
   s_3031b504518be3::t_2353fd2b01e30e 1-17,19-23,36,38-52
   s_3031b504518be3::t_631561f194d735 18,24-35,37
