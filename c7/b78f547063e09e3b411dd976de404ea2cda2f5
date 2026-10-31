@@ -1,0 +1,27 @@
+catala/qualifying_relative.catala_en
+  s_3031b504518be3::t_a68506c1e12b97 5,39-40,43-45,96-98,102,118-120,124-125,190-195,335,678-679,732-733,750-751
+  s_3031b504518be3::t_b570a12f79c43c 51-53
+catala/tests/test_dependents_benefit_split.catala_en
+  s_3031b504518be3::t_9e890c212a6ad9 197-198,222,225-228,231-232,237-239,242-243,245,252
+difftest/mappings/qualifying_relative.mjs
+  s_3031b504518be3::t_3272cc682e886c 14-17,19,54,58
+catala/tests/test_qualifying_relative.catala_en
+  s_3031b504518be3::t_93e669099b8653 19-20
+  s_3031b504518be3::t_799c3fc15fb5db 12,89-105,129-130,164-165,196-197,224-225,260-261,295-296,331-332,338-339,382-383,389-390,396-397,443-444,467-468,495-496,517-518,548-549,588-589,628-629,661-662
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c7b78f547063e09e3b411dd976de404ea2cda2f5",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
