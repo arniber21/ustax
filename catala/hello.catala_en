@@ -1,0 +1,13 @@
+# Scaffold: smoke test for the Catala toolchain
+
+This file only exists to check that `make install && make check` works.
+It is not tax law. Delete it once real modules exist.
+
+```catala
+declaration scope Smoke:
+  input gross content money
+  output doubled content money
+
+scope Smoke:
+  definition doubled equals gross * 2.0
+```
