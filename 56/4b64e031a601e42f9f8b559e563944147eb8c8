@@ -1,0 +1,24 @@
+catala/tests/test_social_security.catala_en
+  s_3031b504518be3::t_ac789df3910901 1-269
+difftest/mappings/social_security.mjs
+  s_3031b504518be3::t_37fe0bebf1c51d 1-8,12-24,26-37,40-50
+  s_3031b504518be3::t_705fc284e051e8 9-11,25,38-39
+catala/social_security.catala_en
+  s_3031b504518be3::t_ada89b62b1f963 1-287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "564b64e031a601e42f9f8b559e563944147eb8c8",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
