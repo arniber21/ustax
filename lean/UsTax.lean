@@ -22,3 +22,15 @@ import UsTax.Form1040
 import UsTax.Form1040.Props
 import UsTax.Form1040.Lemmas
 import UsTax.Cli
+import UsTax.Api.Json
+import UsTax.Api.Error
+import UsTax.Api.Types
+import UsTax.Api.Spec
+import UsTax.Api.Decode
+import UsTax.Api.Validate
+import UsTax.Api.Lemmas
+import UsTax.Api.Parse
+import UsTax.Api.Response
+import UsTax.Api.Bridge
+import UsTax.Api.Props
+import UsTax.Api.Tests
