@@ -24,7 +24,10 @@ const perturb = process.env.DIFFTEST_PERTURB === '1';
 
 const mapDir = join(root, 'difftest/mappings');
 const available = readdirSync(mapDir).filter((f) => f.endsWith('.mjs')).map((f) => f.slice(0, -4)).sort();
-const names = scopeArg === 'all' ? available : scopeArg.split(',');
+// A mapping with `reportOnly: true` is excluded from `--scope all` and never sets the exit code.
+const reportOnly = new Set();
+for (const n of available) if ((await import(pathToFileURL(join(mapDir, `${n}.mjs`)))).default.reportOnly) reportOnly.add(n);
+const names = scopeArg === 'all' ? available.filter((n) => !reportOnly.has(n)) : scopeArg.split(',');
 for (const n of names) if (!available.includes(n)) { console.error(`unknown scope '${n}'; available: ${available.join(', ')}`); process.exit(2); }
 
 const oracle = loadOracle(oracleFile);
@@ -100,7 +103,7 @@ for (const name of names) {
     console.log(`fact checks: pass=${c.pass} fail=${c.fail} error=${c.error} unchecked(oracle not Complete)=${c.unchecked}`);
     const bad = c.fail + c.error;
     console.log(`RESULT ${name}: ${bad === 0 ? 'OK' : 'FAILED'} ${c.pass}/${c.pass + bad} fact checks passed in ${c.scenPass}/${c.scenarios} scenarios`);
-    if (bad > 0) exitCode = 1;
+    if (bad > 0 && !mapping.reportOnly) exitCode = 1;
   }
 }
 process.exit(exitCode);

@@ -1,0 +1,579 @@
+> Module Form_1040
+
+> Using Types
+> Using Rounding as R
+> Using Form_w2s as W
+> Using Interest as I
+> Using Standard_deduction as S
+> Using Tax_rates as T
+
+# Form 1040: from income to refund or balance due (lines 1 to 37)
+
+The top-level return scope `Form1040` (issue #14). It chains Form 1040 lines
+1a to 37 for the income types that are already modelled (W-2 wages and
+withholding, `catala/form_w2s.catala_en`; taxable interest,
+`catala/interest.catala_en`; the standard deduction,
+`catala/standard_deduction.catala_en`; the tax rate schedules and the Tax
+Table midpoint, `catala/tax_rates.catala_en`) and offers typed plug-in slots
+for everything that later modules supply.
+
+Direct File (DF) sources, all under
+`../direct-file/direct-file/backend/src/main/resources/tax/`:
+
+- `taxCalculations.xml`: `/adjustmentsToIncome`, `/agi`, `/taxableIncome`,
+  `/qualifiedBusinessIncomeDeduction`, `/totalDeductions`,
+  `/standardOrItemizedDeductions`, `/tentativeTaxFromTaxableIncome`,
+  `/totalTentativeTax`, `/nonRefundableCredits`, `/taxLessNonRefundableCredits`,
+  `/line21OfSchedule2`, `/totalTax`, `/form1099Withholding`,
+  `/otherFormWithholding`, `/totalWithholding`, `/americanOpportunityCredit`,
+  `/totalOtherPaymentsRefundableCredits`, `/totalPayments`, `/overpayment`,
+  `/balanceDue`, `/knockoutHasNoPaymentsOrCredits`.
+- `income.xml`: `/employerIncomeSubtotal`, `/totalIncome`, `/otherIncome`,
+  `/schedule1TotalOtherIncome`, and the lines hard-wired to `$0`
+  (`/ordinaryDividends`, `/taxableIraDistributions`, `/capitalGainsOrLosses`,
+  household wages, unreported tips, Medicaid waiver payments, adoption
+  benefits, Form 8919 wages, other earned income).
+
+Form text is quoted from `sources/forms-instructions/f1040--2024.pdf`
+(page 1 for lines 1a to 15, page 2 for lines 16 to 38).
+
+Oracle comparison: `make difftest SCOPE=form_1040` (mapping
+`difftest/mappings/form_1040.mjs`), see `catala/DIFFTEST.md`.
+
+## The plug-in slots
+
+Every line that a module not yet written will compute is a `context`
+variable with the default `$0`. A later issue wires itself in by one
+`definition` per slot in the scope that calls `Form1040`; nothing else in the
+chain changes. Direct File's own default for an unanswered optional fact is
+also `$0` (CONVENTIONS section 3).
+
+| Slot (`context`) | 1040 line | DF fact | Filled by |
+|---|---|---|---|
+| `taxable_dependent_care` | 1e | `/taxableDependentCare` | CDCC, #28 |
+| `taxable_pensions_and_annuities` | 5b | `/taxablePensionsAndAnnuities` | #22 |
+| `taxable_social_security_benefits` | 6b | `/taxableSocialSecurityBenefits` | #23 |
+| `unemployment_compensation` | 8 (via Sch 1) | `/unemploymentCompensation` | #21 |
+| `alaska_pfd_income` | 8 (via Sch 1) | `/alaskaPfdIncome` | #21 |
+| `student_loan_interest_adjustment_amount` | 10 (Sch 1) | `/studentLoanInterestAdjustmentAmount` | #24 |
+| `educator_expenses_adjustment` | 10 (Sch 1) | `/educatorExpensesAdjustment` | #24 |
+| `hsa_total_deductible_amount` | 10 (Sch 1) | `/hsaTotalDeductibleAmount` | #35 |
+| `total_additional_taxes_owed` | 17 | `/totalAdditionalTaxesOwed` | PTC, #32 to #34 (excess APTC) |
+| `total_ctc_and_odc` | 19 | `/totalCtcAndOdc` | #27 |
+| `line8_of_schedule3` | 20 | `/line8OfSchedule3` | #28 to #30, #31 |
+| `other_1099_withholding` | 25b (part) | `/form1099Withholding` less the interest part | #21 to #23 |
+| `paid_estimated_taxes_or_from_last_year` | none | `/paidEstimatedTaxesOrFromLastYear` | #25 |
+| `estimated_and_from_last_year` | 26 | `/estimatedAndFromLastYear` | #25 |
+| `earned_income_credit` | 27 | `/earnedIncomeCredit` | #26 |
+| `additional_ctc` | 28 | `/additionalCtc` | #27 |
+| `other_payments_and_refundable_credits_total` | 31 | `/otherPaymentsAndRefundableCreditsTotal` | #31 to #34 |
+
+Lines DF hard-wires to `$0` are not slots (they are `# OUT OF SCOPE`
+definitions): 1b, 1c, 1d, 1f, 1g, 1h, 3b, 4b, 7, 13, 23, 25c, 29.
+
+Inputs that the filers and household modules (#15 to #20) will compute are
+plain `input`s of this scope for now (`treat_as_mfs`, the blind and 65-or-older
+flags, the two `can_be_claimed` flags, `treat_filers_as_dependents`): the
+return scope takes them as answers, as DF does for its `Writable` facts.
+
+## The scalar output list (for the Lean mirror)
+
+The Lean implementation (strategy (c) of `docs/catala-to-lean.md`) mirrors
+exactly these scalar outputs of `Form1040`, each integer-cents `money` except
+`unsupported`: `wages` (1a), `employer_income_subtotal` (1z),
+`interest_income` (2b), `total_income` (9), `adjustments_to_income` (10),
+`agi` (11), `standard_or_itemized_deductions` (12), `total_deductions` (14),
+`taxable_income` (15), `tentative_tax_from_taxable_income` (16),
+`total_tentative_tax` (18), `non_refundable_credits` (21),
+`tax_less_non_refundable_credits` (22), `total_tax` (24),
+`total_withholding` (25d), `total_other_payments_refundable_credits` (32),
+`total_payments` (33), `overpayment` (34), `balance_due` (37) and
+`unsupported`. The inputs are the scalars and the two lists (`w2s`,
+`interest_reports`) declared below.
+
+## Declarations
+
+```catala-metadata
+## Form 1040 for tax year 2024, lines 1a to 37, for the supported W-2 plus
+## interest return, with plug-in slots for the lines later modules compute.
+declaration scope Form1040:
+  # ---- Inputs: answers to Direct File's writable questions ----
+  # DF: /filingStatus
+  input filing_status content Types.FilingStatus
+  # DF: /formW2s (Writable collection)
+  input w2s content list of W.FormW2
+  # DF: /interestReports (Writable collection)
+  input interest_reports content list of I.InterestReport
+  # DF: income.xml /hasForeignAccountsOrTrusts
+  input has_foreign_accounts_or_trusts content boolean
+  # DF: /combatPayElection (eitc.xml)
+  input combat_pay_election content W.CombatPayElection
+  # DF: /filers/<primary>/canBeClaimed
+  input primary_filer_can_be_claimed condition
+  # DF: /filers/<secondary>/canBeClaimed
+  input secondary_filer_can_be_claimed condition
+  # DF: filingStatus.xml /treatAsMFS (filing status module, #19, #20)
+  input treat_as_mfs condition
+  # DF: filers.xml /primaryFiler/isBlind
+  input primary_filer_is_blind condition
+  # DF: filers.xml /primaryFiler/age65OrOlder
+  input primary_filer_age65_or_older condition
+  # DF: filers.xml /secondaryFiler/isBlind
+  input secondary_filer_is_blind condition
+  # DF: filers.xml /secondaryFiler/age65OrOlder
+  input secondary_filer_age65_or_older condition
+  # DF: filers.xml /isWidowedInTaxYear
+  input is_widowed_in_tax_year condition
+  # DF: filers.xml /MFJDeceasedSpouseReachedAge65ForStandardD
+  input mfj_deceased_spouse_reached_age65 condition
+  # DF: filers.xml /MFSSpouse65OrOlder
+  input mfs_spouse_65_or_older condition
+  # DF: filers.xml /MFSSpouseProvidesNoBenefits
+  input mfs_spouse_provides_no_benefits condition
+  # DF: filers.xml /treatFilersAsDependents
+  input treat_filers_as_dependents condition
+
+  # ---- Plug-in slots (default $0; see the table in the module text) ----
+  context taxable_dependent_care content money
+  context taxable_pensions_and_annuities content money
+  context taxable_social_security_benefits content money
+  context unemployment_compensation content money
+  context alaska_pfd_income content money
+  context student_loan_interest_adjustment_amount content money
+  context educator_expenses_adjustment content money
+  context hsa_total_deductible_amount content money
+  context total_additional_taxes_owed content money
+  context total_ctc_and_odc content money
+  context line8_of_schedule3 content money
+  context other_1099_withholding content money
+  context paid_estimated_taxes_or_from_last_year content boolean
+  context estimated_and_from_last_year content money
+  context earned_income_credit content money
+  context additional_ctc content money
+  context other_payments_and_refundable_credits_total content money
+
+  # ---- Sub-scopes ----
+  w2 scope W.FormW2s
+  interest scope I.Interest
+  # Second Interest instance, used only for its AGI-based knockouts
+  interest_ko scope I.Interest
+  std_deduction scope S.StandardDeduction
+  tax_table scope T.TentativeTax
+
+  # ---- Income ----
+  # Line 1a, DF: /wages
+  output wages content money
+  # Line 1z, DF: income.xml /employerIncomeSubtotal
+  output employer_income_subtotal content money
+  # Line 2b, DF: interest.xml /interestIncome
+  output interest_income content money
+  # Line 8 part, DF: income.xml /schedule1TotalOtherIncome
+  output schedule1_total_other_income content money
+  # Line 8, DF: income.xml /otherIncome
+  output other_income content money
+  # Line 9, DF: income.xml /totalIncome
+  output total_income content money
+  # ---- Adjustments, AGI, deductions, taxable income ----
+  # Line 10, DF: /adjustmentsToIncome
+  output adjustments_to_income content money
+  # Line 11, DF: /agi
+  output agi content money
+  # Line 12, DF: /standardOrItemizedDeductions
+  output standard_or_itemized_deductions content money
+  # Line 13, DF: /qualifiedBusinessIncomeDeduction
+  output qualified_business_income_deduction content money
+  # Line 14, DF: /totalDeductions
+  output total_deductions content money
+  # Line 15, DF: /taxableIncome
+  output taxable_income content money
+  # ---- Tax and credits ----
+  # Line 16, DF: /tentativeTaxFromTaxableIncome
+  output tentative_tax_from_taxable_income content money
+  # Line 18, DF: /totalTentativeTax
+  output total_tentative_tax content money
+  # Line 21, DF: /nonRefundableCredits
+  output non_refundable_credits content money
+  # Line 22, DF: /taxLessNonRefundableCredits
+  output tax_less_non_refundable_credits content money
+  # Line 23, DF: /line21OfSchedule2
+  output line21_of_schedule2 content money
+  # Line 24, DF: /totalTax
+  output total_tax content money
+  # ---- Payments ----
+  # Line 25a, DF: /formW2Withholding
+  output form_w2_withholding content money
+  # Line 25b, DF: /form1099Withholding
+  output form_1099_withholding content money
+  # Line 25c, DF: /otherFormWithholding
+  output other_form_withholding content money
+  # Line 25d, DF: /totalWithholding
+  output total_withholding content money
+  # Line 29, DF: /americanOpportunityCredit
+  output american_opportunity_credit content money
+  # Line 32, DF: /totalOtherPaymentsRefundableCredits
+  output total_other_payments_refundable_credits content money
+  # Line 33, DF: /totalPayments
+  output total_payments content money
+  # ---- Refund or amount owed ----
+  # Line 34, DF: /overpayment
+  output overpayment content money
+  # Line 37, DF: /balanceDue
+  output balance_due content money
+  # ---- Knockouts ----
+  # DF: /knockoutHasNoPaymentsOrCredits
+  output ko_knockout_has_no_payments_or_credits condition
+  # DF: /flowIsKnockedOut restricted to the modules wired in so far
+  output unsupported condition
+```
+
+## Wiring the sub-scopes
+
+`catala/CONVENTIONS.md` section 2: only the top-level return scope takes user
+data; the sub-scopes get it with `definition sub.x equals ...`.
+
+`Interest` takes `agi` as an input, but only for its three
+`hasInterestIncomeAndAgiAboveThresholdFor...` knockouts; `interest_income`
+does not depend on it. Catala treats a call to a sub-scope as one node of the
+dependency graph, so feeding `agi` (which depends on `interest_income`) into
+the same instance would be a cycle. `interest_ko` is a second instance that
+receives the real `agi` and supplies only the knockouts; `interest` receives
+`$0` and supplies only the amounts and withholding.
+
+`flow_has_seen_deductions` is a screen-flow flag (DF `/flowHasSeenDeductions`,
+true on every oracle scenario). The return scope passes `true`, as
+`catala/interest.catala_en` asks.
+
+The defaults of the plug-in slots (a `context` variable keeps its default
+unless the caller, or the JSON input, defines it):
+
+```catala
+scope Form1040:
+  definition taxable_dependent_care equals $0
+  definition taxable_pensions_and_annuities equals $0
+  definition taxable_social_security_benefits equals $0
+  definition unemployment_compensation equals $0
+  definition alaska_pfd_income equals $0
+  definition student_loan_interest_adjustment_amount equals $0
+  definition educator_expenses_adjustment equals $0
+  definition hsa_total_deductible_amount equals $0
+  definition total_additional_taxes_owed equals $0
+  definition total_ctc_and_odc equals $0
+  definition line8_of_schedule3 equals $0
+  definition other_1099_withholding equals $0
+  definition paid_estimated_taxes_or_from_last_year equals false
+  definition estimated_and_from_last_year equals $0
+  definition earned_income_credit equals $0
+  definition additional_ctc equals $0
+  definition other_payments_and_refundable_credits_total equals $0
+```
+
+The sub-scope arguments:
+
+```catala
+scope Form1040:
+  definition w2.w2s equals w2s
+  definition w2.filing_status equals filing_status
+  definition w2.primary_filer_can_be_claimed equals primary_filer_can_be_claimed
+  definition w2.secondary_filer_can_be_claimed equals secondary_filer_can_be_claimed
+  definition w2.combat_pay_election equals combat_pay_election
+
+  definition interest.interest_reports equals interest_reports
+  definition interest.has_foreign_accounts_or_trusts equals has_foreign_accounts_or_trusts
+  definition interest.filing_status equals filing_status
+  definition interest.agi equals $0
+  definition interest.flow_has_seen_deductions equals true
+
+  definition interest_ko.interest_reports equals interest_reports
+  definition interest_ko.has_foreign_accounts_or_trusts equals has_foreign_accounts_or_trusts
+  definition interest_ko.filing_status equals filing_status
+  definition interest_ko.agi equals agi
+  definition interest_ko.flow_has_seen_deductions equals true
+
+  definition std_deduction.filing_status equals filing_status
+  definition std_deduction.treat_as_mfs equals treat_as_mfs
+  definition std_deduction.primary_filer_is_blind equals primary_filer_is_blind
+  definition std_deduction.primary_filer_age65_or_older equals primary_filer_age65_or_older
+  definition std_deduction.secondary_filer_is_blind equals secondary_filer_is_blind
+  definition std_deduction.secondary_filer_age65_or_older equals secondary_filer_age65_or_older
+  definition std_deduction.is_widowed_in_tax_year equals is_widowed_in_tax_year
+  definition std_deduction.mfj_deceased_spouse_reached_age65 equals mfj_deceased_spouse_reached_age65
+  definition std_deduction.mfs_spouse_65_or_older equals mfs_spouse_65_or_older
+  definition std_deduction.mfs_spouse_provides_no_benefits equals mfs_spouse_provides_no_benefits
+  definition std_deduction.treat_filers_as_dependents equals treat_filers_as_dependents
+  definition std_deduction.employer_income_subtotal equals employer_income_subtotal
+
+  definition tax_table.taxable_income equals taxable_income
+  definition tax_table.filing_status equals filing_status
+```
+
+## Income, lines 1a to 9
+
+Form 1040 line 1a: "Total amount from Form(s) W-2, box 1 (see
+instructions)" (`f1040--2024.pdf` p 1). Line 1z: "Add lines 1a through 1h".
+DF's `/employerIncomeSubtotal` is `Round(primary filer base + secondary filer
+base + taxableDependentCare)`, where a filer's base is that filer's W-2 wages
+plus the stubs for lines 1b, 1c, 1d, 1f, 1g and 1h, all `$0` and marked "OUT OF
+SCOPE" in `income.xml`. Line 1e (taxable dependent care benefits) is the
+`taxable_dependent_care` slot. Line 1i (nontaxable combat pay election) is
+not part of 1z.
+
+```catala
+scope Form1040:
+  # Line 1a, DF: form_w2s.xml /wages (already rounded per W-2)
+  definition wages equals w2.wages
+
+  # Line 1z, DF: income.xml /employerIncomeSubtotal. Lines 1b, 1c, 1d, 1f,
+  # 1g, 1h: OUT OF SCOPE, $0 in DF (income.xml lines 194 to 425).
+  definition employer_income_subtotal equals
+    R.round_dollar of (
+      (w2.primary_filer_wages + $0 + $0 + $0 + $0 + $0 + $0)
+      + (w2.secondary_filer_wages + $0 + $0 + $0 + $0 + $0 + $0)
+      + taxable_dependent_care)
+
+  # Line 2b, DF: interest.xml /interestIncome (Schedule B rule inside)
+  definition interest_income equals interest.interest_income
+```
+
+Line 8 is "Additional income from Schedule 1, line 10". DF:
+`/schedule1TotalOtherIncome = Round(alaskaPfdIncome)` and
+`/otherIncome = Round(unemploymentCompensation + schedule1TotalOtherIncome)`.
+
+```catala
+scope Form1040:
+  # DF: income.xml /schedule1TotalOtherIncome
+  definition schedule1_total_other_income equals
+    R.round_dollar of alaska_pfd_income
+  # DF: income.xml /otherIncome
+  definition other_income equals
+    R.round_dollar of (unemployment_compensation + schedule1_total_other_income)
+```
+
+Line 9: "Add lines 1z, 2b, 3b, 4b, 5b, 6b, 7, and 8. This is your total income".
+Lines 3b (ordinary dividends), 4b (taxable IRA distributions) and 7 (capital
+gain or loss) are `$0` "OUT OF SCOPE" in DF (`income.xml` lines 497, 517,
+697); the knockouts for dividends, IRA and capital gains are the
+`incomeSourcesSupported`, `notDigitalAssets` and 1099 knockouts of other issues.
+
+```catala
+scope Form1040:
+  # DF: income.xml /totalIncome. Lines 3b, 4b, 7 OUT OF SCOPE: $0.
+  definition total_income equals
+    R.round_dollar of (
+      employer_income_subtotal + interest_income + $0 + $0
+      + taxable_pensions_and_annuities + taxable_social_security_benefits
+      + $0 + other_income)
+```
+
+## Adjustments, AGI, deductions and taxable income, lines 10 to 15
+
+Line 10: "Adjustments to income from Schedule 1, line 26"; line 11: "Subtract line
+10 from line 9. This is your adjusted gross income". DF
+`/adjustmentsToIncome = Round(studentLoanInterestAdjustmentAmount +
+educatorExpensesAdjustment + hsaTotalDeductibleAmount)`; the other Schedule 1
+adjustments are comments only in `taxCalculations.xml` lines 91 to 100. DF
+reads `hsaTotalDeductibleAmount` as `$0` when it is incomplete; inputs here
+are complete (CONVENTIONS section 3), so the slot is read directly.
+
+```catala
+scope Form1040:
+  # DF: taxCalculations.xml /adjustmentsToIncome
+  definition adjustments_to_income equals
+    R.round_dollar of (
+      student_loan_interest_adjustment_amount
+      + educator_expenses_adjustment
+      + hsa_total_deductible_amount)
+
+  # DF: taxCalculations.xml /agi
+  definition agi equals R.round_dollar of (total_income - adjustments_to_income)
+```
+
+Line 12: "Standard deduction or itemized deductions (from Schedule A)". DF's
+`/wantsStandardDeduction` is hard-coded `True`, so line 12 is
+`Round(standardDeduction)`. Line 13 (QBI) is a `$0` stub and is not added into
+line 14 in DF.
+
+```catala
+scope Form1040:
+  # DF: taxCalculations.xml /standardOrItemizedDeductions.
+  # OUT OF SCOPE: itemized deductions (/wantsStandardDeduction is True).
+  definition standard_or_itemized_deductions equals
+    R.round_dollar of std_deduction.standard_deduction
+
+  # QUIRK(Q4): QBI (line 13) is a $0 stub in DF, and DF's /totalDeductions
+  # does not add it (line 14 = line 12 only). Reproduced; both are $0.
+  definition qualified_business_income_deduction equals $0
+
+  # DF: taxCalculations.xml /totalDeductions
+  definition total_deductions equals
+    R.round_dollar of standard_or_itemized_deductions
+
+  # Line 15: "Subtract line 14 from line 11. If zero or less, enter -0-".
+  # DF: taxCalculations.xml /taxableIncome
+  definition taxable_income equals
+    R.round_dollar of (Money.positive of (agi - total_deductions))
+```
+
+## Tax and credits, lines 16 to 24
+
+Line 16 is `T.TentativeTax` (`/tentativeTaxFromTaxableIncome`). Line 17 is "Amount
+from Schedule 2, line 3" (excess advance premium tax credit repayment, slot
+`total_additional_taxes_owed`). Line 18: "Add lines 16 and 17". Line 21: "Add
+lines 19 and 20", where 19 is "Child tax credit or credit for other
+dependents from Schedule 8812" and 20 is "Amount from Schedule 3, line 8".
+Line 22: "Subtract line 21 from line 18. If zero or less, enter -0-".
+
+```catala
+scope Form1040:
+  # DF: taxCalculations.xml /tentativeTaxFromTaxableIncome
+  definition tentative_tax_from_taxable_income equals
+    tax_table.tentative_tax_from_taxable_income
+
+  # DF: taxCalculations.xml /totalTentativeTax
+  definition total_tentative_tax equals
+    R.round_dollar of (tentative_tax_from_taxable_income + total_additional_taxes_owed)
+
+  # DF: taxCalculations.xml /nonRefundableCredits
+  definition non_refundable_credits equals
+    R.round_dollar of (total_ctc_and_odc + line8_of_schedule3)
+
+  # DF: taxCalculations.xml /taxLessNonRefundableCredits
+  definition tax_less_non_refundable_credits equals
+    R.round_dollar of (Money.positive of (total_tentative_tax - non_refundable_credits))
+```
+
+Line 23: "Other taxes, including self-employment tax, from Schedule 2, line 21".
+Line 24: "Add lines 22 and 23. This is your total tax".
+
+QUIRK(Q3): DF defines `/line21OfSchedule2` as `$0` and does **not** add it
+into `/totalTax`: `/totalTax = Round(taxLessNonRefundableCredits)`
+(`taxCalculations.xml` lines 1388 to 1410). The form says line 24 is line 22
+plus line 23. Schedule 2 line 21 is `$0` for every supported return (no
+self-employment, Additional Medicare Tax or NIIT: those are knocked out), so
+adding it would give the same value today. CONVENTIONS section 8 Q3 says to
+follow the form and add it; the issue text for #14 asks to reproduce DF. This
+module reproduces DF literally: `total_tax` omits line 23, so a later module
+that makes line 23 non-zero will not change `total_tax` until someone changes
+the definition below on purpose. The next change to that definition is a
+decision for the owner of #60. Line 23 is still an output (`$0`).
+
+```catala
+scope Form1040:
+  # OUT OF SCOPE: Schedule 2 line 21 (DF /line21OfSchedule2 is $0).
+  definition line21_of_schedule2 equals $0
+
+  # QUIRK(Q3): DF /totalTax = Round(taxLessNonRefundableCredits); line 23
+  # (/line21OfSchedule2) is defined in DF but never added. Same value as the
+  # form while line 23 is $0. Decision: reproduce (#60).
+  definition total_tax equals
+    R.round_dollar of tax_less_non_refundable_credits
+```
+
+## Payments, lines 25 to 33
+
+Line 25: "Federal income tax withheld from: a Form(s) W-2, b Form(s) 1099, c Other
+forms (see instructions), d Add lines 25a through 25c". DF
+`/form1099Withholding` sums 1099-INT, SSA-1099, 1099-G, 1099-MISC and 1099-R
+withholding; the interest part comes from `Interest`, the rest is the
+`other_1099_withholding` slot. DF's `/totalWithholding = Round(formW2Withholding +
+form1099Withholding)` does not add the `$0` line 25c (`/otherFormWithholding`).
+
+```catala
+scope Form1040:
+  # DF: formW2s.xml /formW2Withholding
+  definition form_w2_withholding equals w2.form_w2_withholding
+
+  # DF: taxCalculations.xml /form1099Withholding
+  definition form_1099_withholding equals
+    interest.total_tax_withheld + other_1099_withholding
+
+  # OUT OF SCOPE: line 25c, DF /otherFormWithholding is $0 and not added
+  # into /totalWithholding.
+  definition other_form_withholding equals $0
+
+  # DF: taxCalculations.xml /totalWithholding
+  definition total_withholding equals
+    R.round_dollar of (form_w2_withholding + form_1099_withholding)
+```
+
+Line 26: "2024 estimated tax payments and amount applied from 2023 return" (slot).
+Line 29: "American opportunity credit from Form 8863, line 8".
+
+QUIRK(Q4): DF defines `/americanOpportunityCredit` as `$0` (Form 8863 is not
+supported). A filer who qualifies for the American opportunity credit gets
+`$0` here, as in DF.
+
+Line 32: "Add lines 27, 28, 29, and 31. These are your total other payments and
+refundable credits". Line 33: "Add lines 25d, 26, and 32. These are your total
+payments".
+
+```catala
+scope Form1040:
+  # QUIRK(Q4): DF /americanOpportunityCredit is a $0 stub. Reproduced.
+  definition american_opportunity_credit equals $0
+
+  # DF: taxCalculations.xml /totalOtherPaymentsRefundableCredits
+  definition total_other_payments_refundable_credits equals
+    R.round_dollar of (
+      earned_income_credit + additional_ctc + american_opportunity_credit
+      + other_payments_and_refundable_credits_total)
+
+  # DF: taxCalculations.xml /totalPayments
+  definition total_payments equals
+    R.round_dollar of (
+      total_withholding + estimated_and_from_last_year
+      + total_other_payments_refundable_credits)
+```
+
+## Refund or amount owed, lines 34 and 37
+
+Line 34: "If line 33 is more than line 24, subtract line 24 from line 33. This is
+the amount you overpaid". Line 37: "Subtract line 33 from line 24. This is the
+amount you owe." (`f1040--2024.pdf` p 2). At most one of the two is non-zero.
+Line 35a/36 (refund routing, amount applied to 2025 estimated tax) and line 38
+(estimated tax penalty) are not computed by DF.
+
+```catala
+scope Form1040:
+  # DF: taxCalculations.xml /overpayment
+  definition overpayment equals
+    R.round_dollar of (Money.positive of (total_payments - total_tax))
+
+  # DF: taxCalculations.xml /balanceDue
+  definition balance_due equals
+    R.round_dollar of (Money.positive of (total_tax - total_payments))
+```
+
+## Knockouts
+
+`taxCalculations.xml` `/knockoutHasNoPaymentsOrCredits` (listed in
+`flow.xml` line 70): the filer is knocked out when there are no payments or
+credits at all, that is, when they did not pay estimated taxes and total
+income, AGI, total tentative tax, non-refundable credits, total tax and total
+payments are all `$0`.
+
+`unsupported` is the disjunction of the sub-scopes' `unsupported` and this
+module's own knockout (CONVENTIONS section 6, item 3). It is the whole of DF's
+`/flowIsKnockedOut` only for returns that use the modules wired in so far;
+each later module adds its `unsupported` here. The `interest_ko` instance
+contributes the AGI-based interest knockouts, `interest` the rest.
+
+```catala
+scope Form1040:
+  # DF: taxCalculations.xml /knockoutHasNoPaymentsOrCredits
+  rule ko_knockout_has_no_payments_or_credits under condition
+    not paid_estimated_taxes_or_from_last_year
+    and total_income = $0
+    and agi = $0
+    and total_tentative_tax = $0
+    and non_refundable_credits = $0
+    and total_tax = $0
+    and total_payments = $0
+  consequence fulfilled
+
+  rule unsupported under condition
+    w2.unsupported
+    or interest.unsupported
+    or interest_ko.unsupported
+    or ko_knockout_has_no_payments_or_credits
+  consequence fulfilled
+```

@@ -62,3 +62,17 @@ want checked (for example `/agi`, `/totalIncome`); each becomes one fact check p
 (4 knocked out skipped). The first version summed unrounded amounts and failed 5 scenarios
 (for example `ticket-12386`, expected 60002.00, actual 60001.16), which is how the per-W-2 `Round` in
 `formW2s.xml:1149` was found. Delete the smoke scope and mapping once a real module covers `/wages`.
+
+## Form 1040 scopes (issue #14)
+
+`catala/form_1040.catala_en` (scope `Form1040`) has three mappings over the same inputs
+(`difftest/form_1040_inputs.mjs`):
+
+- `form_1040` (strict): scenarios that use only W-2 + interest and no credits, adjustments or other income.
+  A scenario is skipped, with a reason naming the later module, when the oracle holds a non-zero value
+  for a fact that module computes (the plug-in slots of `Form1040`). Result: 21/21 scenarios, 441/441 checks.
+- `form_1040_plugged`: all 157 non-knocked-out scenarios, each plug-in slot filled with the oracle's own
+  value (for example `/earnedIncomeCredit`). Tests the 1040 chain wiring everywhere, not the later modules.
+- `form_1040_unplugged` (`reportOnly`: excluded from `SCOPE=all`, never sets the exit code): all 157
+  scenarios with the slots at `$0`. Its failures are exactly the scenarios the strict scope skips; they go
+  away as the later modules are wired in.
