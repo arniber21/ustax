@@ -17,6 +17,8 @@ oracle/persons.csv
 difftest/mappings/ctc_odc_household.mjs
   s_3031b504518be3::t_b9890edb0c05c2 21-23,25-38,44-49
   s_3031b504518be3::t_72b94998f2c5b4 1-20,24,39-43,50-94
+Makefile
+  s_3031b504518be3::t_73fa508b57491c 56-57
 ---
 {
   "schema_version": "authorship/3.0.0",
