@@ -194,8 +194,8 @@ However, this doesn't allow the noncustodial parent to claim head of
 household filing status, the credit for child and dependent care expenses,
 ... or the earned income credit."
 
-This test wires this module's two outputs into
-`Qualifying_relative.DependentTest` (the wiring listed in the PR): the child
+This test goes through `Qualifying_relative.DependentTest`, which calls
+this module for the same person and reads its two outputs: the child
 is still the filer's qualifying child (HoH, EITC and CDCC read that, with
 `tp_can_claim_split_benefits_hoh_eitc_cdcc`), but is not an eligible or
 claimed dependent, so there is no CTC, ACTC or ODC for him on this return.
@@ -206,17 +206,11 @@ split.
 #[test]
 declaration scope TestCustodialReleasedKeepsHohEitcCdcc:
   m scope MkMember
-  internal s content B.BenefitSplitTest
   internal d content R.DependentTest
   internal d_without_split content R.DependentTest
   internal answers content R.DependentAnswers
 
 scope TestCustodialReleasedKeepsHohEitcCdcc:
-  definition s equals
-    output of B.BenefitSplitTest with {
-      -- member: m.member
-      -- minimum_filer_date_of_birth: |1985-06-15|
-      -- treat_as_mfj: false }
   definition answers equals R.DependentAnswers {
     -- gross_income: $0
     -- writable_qr_support_test: false
@@ -225,34 +219,37 @@ scope TestCustodialReleasedKeepsHohEitcCdcc:
     -- writable_us_resident: false
     -- writable_us_national: false
     -- writable_canada_mexico_resident: false
-    -- tp_claims: true
-    -- tp_can_claim_split_benefits_hoh_eitc_cdcc:
-         s.tp_can_claim_split_benefits_hoh_eitc_cdcc
-    -- disqualified_due_to_parental_custody:
-         s.disqualified_due_to_parental_custody }
+    -- tp_claims: true }
   definition d equals
     output of R.DependentTest with {
-      -- member: R.Member { -- person: m.member.person -- answers: answers }
+      -- member: R.Member {
+           -- person: m.member.person
+           -- answers: answers
+           -- split: m.member.answers }
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   definition d_without_split equals
     output of R.DependentTest with {
       -- member: R.Member {
            -- person: m.member.person
-           -- answers: answers but replace {
-                -- tp_can_claim_split_benefits_hoh_eitc_cdcc: false } }
+           -- answers: answers
+           -- split: m.member.answers but replace {
+                -- which_parent_not_claiming: B.WrittenDeclaration.NobodyDid } }
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   # Keeps HoH, EITC, CDCC
-  assertion s.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  assertion d.split.tp_can_claim_split_benefits_hoh_eitc_cdcc
   assertion d.qualifying_child
   # Not a dependent, so no CTC, ACTC or ODC
   assertion not d.eligible_dependent
   assertion not d.is_claimed_dependent
   assertion d.is_claimed_if_claimable
   # Without the release the same child is a claimed dependent
+  assertion not d_without_split.split.tp_can_claim_split_benefits_hoh_eitc_cdcc
   assertion d_without_split.eligible_dependent
   assertion d_without_split.is_claimed_dependent
 ```

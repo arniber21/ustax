@@ -1,0 +1,735 @@
+> Module Hoh_qss_persons
+
+> Using Types
+> Using Qualifying_child as Q
+> Using Qualifying_relative as R
+> Using Dependents_benefit_split as B
+
+# Qualifying persons for head of household and qualifying surviving spouse: IRC 2(a), 2(b), 7703(b)
+
+Direct File ("DF" below) facts `/familyAndHousehold/*/hohQualifyingPerson`
+(`familyAndHousehold.xml` line 3332), `/familyAndHousehold/*/qssQualifyingPerson`
+(line 3443), their helpers `qssPersonResidencyTest` (line 1886),
+`flowAddPersonKeepingUpHome` (line 1903), `flowAddPersonKeepingUpParentsHome`
+(line 1959), `personQualifiesTPforHoH` and `personQualifiesTPforQss` (lines
+2228-2253), `isBiologicalAdoptedFosterOrStepchild` (line 4984), the household
+facts `/hasHohQualifyingParent`, `/hasHohQualifyingChild` and
+`/knockoutHohQpHasNoTin` (lines 4908, 5025, 5107), and
+`/familyAndHousehold/*/marriedHohRelationshipTest` in
+`dependentsRelationship.xml` (line 1275), under
+`../direct-file/direct-file/backend/src/main/resources/tax/`. Issue #19,
+scope.md section 5.3. Tests: `catala/tests/test_hoh_qss_persons.catala_en`.
+Oracle comparison: `difftest/mappings/hoh_qss_persons.mjs` against the
+per-person oracle `oracle/persons.csv` (`make difftest-persons`).
+
+The file is named after the topic, as `qualifying_child.catala_en`,
+`qualifying_relative.catala_en` and `dependents_benefit_split.catala_en` are
+(CONVENTIONS section 9 lists `filing_status.catala_en` for #19 and #20
+together; the filing-status choice itself, `/eligibleForHoh` and
+`/eligibleForQss`, is issue #20 and reads the counts below).
+
+Like the other household modules, this module works on one member of the DF
+collection `/familyAndHousehold` at a time (scope `HohQssPersonTest`) and maps
+that scope over the household (scope `HohQssPersons`). It calls
+`Qualifying_relative.DependentTest` for the same person, which itself calls
+`Qualifying_child.QualifyingChildTest` and
+`Dependents_benefit_split.BenefitSplitTest`; so the qualifying child,
+qualifying relative, dependent and benefit-split results used below are those
+modules' outputs, not inputs.
+
+Facts read from outside the person, all inputs here (CONVENTIONS section 7,
+stage 1):
+
+- `/minimumFilerDateOfBirth`, `/treatFilersAsDependents`,
+  `/eitherFilerUSCitizenOrNational`, `/treatAsMFJ` (`Filers`, #15), passed
+  to `DependentTest`;
+- `/eligibleForMFJ` (`filingStatus.xml` line 512; `Filers.eligible_for_mfj`):
+  the filer is married at the end of the year and not treated as unmarried by
+  IRC 2(b)(2), so HoH needs IRC 7703(b);
+- `/filerCouldQualifyForHoh`, `/filerCouldQualifyForQss` (`filers.xml`;
+  `Filers.filer_could_qualify_for_hoh`, `Filers.filer_could_qualify_for_qss`),
+  read by DF's question gates and by `personQualifiesTPforHoH` / `...Qss`;
+- `/filingStatus` (an input everywhere, CONVENTIONS section 7), for the
+  knockout `/knockoutHohQpHasNoTin` only.
+
+Not here, on purpose: choosing one HoH qualifying person among several (the
+Writable `/hohQualifyingPerson`, a screen concern; out of scope per issue
+#19), the filing-status eligibility itself (`/eligibleForHoh`,
+`/eligibleForQss`, issue #20), and the filer-side tests of IRC 2(a)(2),
+2(b)(1) "not married", 2(b)(2), 2(b)(3)(A) and 7703(b)(3) (`Filers`, #15).
+This module feeds no Form 1040 dollar line directly; it feeds the filing
+status (Form 1040 "Filing Status" checkboxes, and the HoH/QSS child's name in
+the entry space when the child is not claimed).
+
+The inputs are complete (CONVENTIONS section 3). Where DF disagrees with the
+statute, the statute wins (CONVENTIONS section 8): four places below, marked
+`# DF-BUG(19)` to `# DF-BUG(22)`.
+
+## Declarations
+
+```catala-metadata
+## The `Writable` answers DF keeps per household member that only the HoH and
+## QSS tests read.
+declaration structure UpkeepAnswers:
+  # DF: /familyAndHousehold/*/tpPaidMostOfHomeUpkeep ("Did taxpayer pay more
+  # than half the cost of keeping up the home shared with the dependent?")
+  data tp_paid_most_of_home_upkeep content boolean
+  # DF: /familyAndHousehold/*/tpPaidMostOfParentHomeUpkeep ("Did taxpayer pay
+  # more than half the cost of keeping up their dependent parent's main
+  # home?")
+  data tp_paid_most_of_parent_home_upkeep content boolean
+
+## One member of DF /familyAndHousehold: the dependent answers (qualifying
+## child, dependent and benefit-split answers, `Qualifying_relative.Member`)
+## and the upkeep answers.
+declaration structure Member:
+  data dependent content R.Member
+  data upkeep content UpkeepAnswers
+```
+
+## The scope for one person
+
+```catala-metadata
+declaration scope HohQssPersonTest:
+  # One member of DF /familyAndHousehold
+  input member content Member
+  # DF: filers.xml /minimumFilerDateOfBirth (Filers.minimum_filer_date_of_birth)
+  input minimum_filer_date_of_birth content date
+  # DF: filers.xml /treatFilersAsDependents (Filers.treat_filers_as_dependents)
+  input treat_filers_as_dependents content boolean
+  # DF: filers.xml /eitherFilerUSCitizenOrNational
+  input either_filer_us_citizen_or_national content boolean
+  # DF: filingStatus.xml /treatAsMFJ (Filers.treat_as_mfj)
+  input treat_as_mfj content boolean
+  # DF: filingStatus.xml /eligibleForMFJ (Filers.eligible_for_mfj)
+  input eligible_for_mfj content boolean
+  # DF: filers.xml /filerCouldQualifyForHoh (Filers.filer_could_qualify_for_hoh)
+  input filer_could_qualify_for_hoh content boolean
+  # DF: filers.xml /filerCouldQualifyForQss (Filers.filer_could_qualify_for_qss)
+  input filer_could_qualify_for_qss content boolean
+
+  # The qualifying child, qualifying relative, dependent and benefit-split
+  # tests for the same person (issues #16, #17, #18)
+  output dep content R.DependentTest
+
+  # DF: dependentsRelationship.xml /familyAndHousehold/*/marriedHohRelationshipTest
+  output married_hoh_relationship_test condition
+  # DF: /familyAndHousehold/*/isBiologicalAdoptedFosterOrStepchild
+  output is_biological_adopted_foster_or_stepchild condition
+  # The person is the filer's father or mother (DF relationship `parent`; no
+  # DF fact of its own, read by /hasHohQualifyingParent)
+  output is_parent condition
+  # DF: /familyAndHousehold/*/qssPersonResidencyTest
+  output qss_person_residency_test condition
+  # DF: /familyAndHousehold/*/flowAddPersonKeepingUpHome (a question gate
+  # that DF ANDs into the third HoH branch; see below)
+  output flow_add_person_keeping_up_home condition
+  # DF: /familyAndHousehold/*/flowAddPersonKeepingUpParentsHome (likewise,
+  # second HoH branch)
+  output flow_add_person_keeping_up_parents_home condition
+
+  # IRC 7703(b)(1) for this person: a child the filer is entitled to claim
+  # (or would be but for 152(e)). No DF fact; DF-BUG(19).
+  output considered_unmarried_child condition
+  # IRC 2(b)(1)(A)(i)(I)-(II): the child is not excluded as married. No DF
+  # fact; DF-BUG(21).
+  output married_child_not_excluded condition
+  # The three branches of DF's /hohQualifyingPerson (no DF fact each; kept
+  # apart so each branch sits under its own paragraph of IRC 2(b)(1))
+  output hoh_qualifying_child_path condition
+  output hoh_parent_path condition
+  output hoh_other_relative_path condition
+  # DF: /familyAndHousehold/*/hohQualifyingPerson
+  output hoh_qualifying_person condition
+  # DF: /familyAndHousehold/*/personQualifiesTPforHoH
+  output person_qualifies_tp_for_hoh condition
+  # DF: /hohQPHasTin, for this person (DF tests only the person the filer
+  # chose; see the household scope)
+  output hoh_qp_has_tin condition
+
+  # DF: /familyAndHousehold/*/qssQualifyingPerson
+  output qss_qualifying_person condition
+  # DF: /familyAndHousehold/*/personQualifiesTPforQss
+  output person_qualifies_tp_for_qss condition
+```
+
+```catala
+scope HohQssPersonTest:
+  definition dep equals
+    output of R.DependentTest with {
+      -- member: member.dependent
+      -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
+      -- treat_filers_as_dependents: treat_filers_as_dependents
+      -- either_filer_us_citizen_or_national: either_filer_us_citizen_or_national
+      -- treat_as_mfj: treat_as_mfj }
+```
+
+## 26 U.S.C. § 2(b) Definition of head of household
+
+### (1) In general
+
+IRC 2(b)(1) (`sources/statute/irc-2.html`): "For purposes of this subtitle, an
+individual shall be considered a head of a household if, and only if, such
+individual is not married at the close of his taxable year, is not a
+surviving spouse (as defined in subsection (a)), and either— (A) maintains as
+his home a household which constitutes for more than one-half of such taxable
+year the principal place of abode, as a member of such household, of— (i) a
+qualifying child of the individual (as defined in section 152(c), determined
+without regard to section 152(e)), but not if such child— (I) is married at
+the close of the taxpayer's taxable year, and (II) is not a dependent of such
+individual by reason of section 152(b)(2) or 152(b)(3), or both, or (ii) any
+other person who is a dependent of the taxpayer, if the taxpayer is entitled
+to a deduction for the taxable year for such person under section 151, or (B)
+maintains a household which constitutes for such taxable year the principal
+place of abode of the father or mother of the taxpayer, if the taxpayer is
+entitled to a deduction for the taxable year for such father or mother under
+section 151. For purposes of this paragraph, an individual shall be
+considered as maintaining a household only if over half of the cost of
+maintaining the household during the taxable year is furnished by such
+individual."
+
+Pub. 501 (2024), `sources/pubs/p501--2024.pdf` p 9, Head of Household: "You
+may be able to file as head of household if you meet all the following
+requirements. 1. You are unmarried or considered unmarried on the last day of
+the year. ... 2. You paid more than half the cost of keeping up a home for
+the year. 3. A qualifying person lived with you in the home for more than
+half the year (except for temporary absences, such as school). However, if
+the qualifying person is your dependent parent, your dependent parent doesn't
+have to live with you." Treas. Reg. § 1.2-2(b)(2) (`sources/regs/cfr-1.2-2.xml`):
+"Under no circumstances shall the same person be used to qualify more than
+one taxpayer as the head of a household for the same taxable year."
+
+"Over half of the cost of maintaining the household" is the answer
+`tp_paid_most_of_home_upkeep` (Pub. 501 p 9, Worksheet 1, "Cost of Keeping Up
+a Home"; Treas. Reg. § 1.7703-1(b)(4) lists the costs). Birth, death,
+temporary absences, adoption and foster placement during the year (Pub. 501 p
+9) are part of the residency answer, as in DF (`Qualifying_child`).
+
+Pub. 501 p 10, Table 4, "Who Is a Qualifying Person Qualifying You To File as
+Head of Household?", has three rows, one per branch below:
+"qualifying child (such as a son, daughter, or grandchild who lived with you
+more than half the year and meets certain other tests)"; "qualifying relative
+who is your father or mother"; "qualifying relative other than your father or
+mother (such as a grandparent, brother, or sister who meets certain tests)".
+
+#### (A)(i) A qualifying child
+
+Table 4, first row: "the child is single: a qualifying person, whether or not
+the child meets the citizen or resident test. the child is married and you
+can claim the child as a dependent: a qualifying person. the child is married
+and you can't claim the child as a dependent: not a qualifying person."
+Footnote 3: "This person is a qualifying person if the only reason you can't
+claim the person as a dependent is that you can be claimed as a dependent on
+another taxpayer's return." Footnote 1: "If you are the custodial parent and
+those rules apply, the child is generally your qualifying child for head of
+household filing status even though the child isn't a qualifying child you
+can claim as a dependent."
+
+The qualifying child is "determined without regard to section 152(e)": DF's
+`qualifyingChild` is the plain 152(c) test (`Qualifying_child`), and the
+benefit split only removes the child as a *dependent* (`Qualifying_relative`).
+The custodial parent who released the claim keeps the child here.
+
+DF's branch (lines 3355-3389): the person is a qualifying child, the filer
+paid most of the home upkeep, the child is not the qualifying child of
+another taxpayer unless the filer claims the child (DF's way of applying the
+tie-breakers of IRC 152(c)(4), Q6 in CONVENTIONS section 8), and the child is
+unmarried or is an "eligible dependent minus filer information" (or an
+eligible dependent, or a split child who is unmarried, both covered by the
+first two).
+
+**The married child.** The statute excludes a married child only if the child
+"is not a dependent of such individual by reason of section 152(b)(2) or
+152(b)(3)", i.e. the child filed a joint return (152(b)(2), the joint return
+test with its refund-only exception, `Qualifying_child.joint_return_test`) or
+fails the citizen or resident test (152(b)(3), `citizen_or_resident_test`).
+DF instead requires `eligibleDependentMinusFilerInformation`, which also
+fails when the child has no TIN or when the filer, as custodial parent,
+released the claim (152(e)). Neither is a reason under 152(b)(2) or (b)(3), so
+the statute keeps those married children; Table 4 and footnote 1 agree. This
+is `DF-BUG(21)`. (A qualifying child who filed a joint return fails 152(c)(1)(E)
+already, so the first half of the exclusion only matters for clarity.)
+
+```catala
+scope HohQssPersonTest:
+  # DF-BUG(21): DF excludes a married qualifying child unless
+  # eligibleDependentMinusFilerInformation, which also needs a TIN and no
+  # benefit split. The statute excludes a married child only for 152(b)(2) or
+  # (b)(3). IRC 2(b)(1)(A)(i)(I)-(II); Pub 501 p 10 Table 4 and footnote 1.
+  # Status: candidate. No DF fact.
+  rule married_child_not_excluded under condition
+    not member.dependent.person.married
+    or (dep.qc.joint_return_test and dep.citizen_or_resident_test)
+  consequence fulfilled
+
+  # IRC 2(b)(1)(A)(i); Pub 501 pp 9-10, Table 4 row 1.
+  # DF: /familyAndHousehold/*/hohQualifyingPerson, first branch
+  rule hoh_qualifying_child_path under condition
+    dep.qualifying_child
+    and member.upkeep.tp_paid_most_of_home_upkeep
+    and (not dep.is_qualifying_child_of_another or dep.is_claimed_dependent)
+    and married_child_not_excluded
+  consequence fulfilled
+```
+
+#### (B) The father or mother
+
+Pub. 501 p 9, Special rule for parent: "If your qualifying person is your
+parent, you may be eligible to file as head of household even if your parent
+doesn't live with you. However, you must be able to claim your parent as a
+dependent. Also, you must pay more than half the cost of keeping up a home
+that was the main home for the entire year for your parent. If you pay more
+than half the cost of keeping your parent in a rest home or home for the
+elderly, that counts as paying more than half the cost of keeping up your
+parent's main home." Table 4, second row: "qualifying relative who is your
+father or mother: you can claim your parent as a dependent: a qualifying
+person." Treas. Reg. § 1.2-2(b)(4): "For this purpose, a person who legally
+adopted the taxpayer is considered the father or mother of the taxpayer."
+
+"Entitled to a deduction ... under section 151" is DF's `eligibleDependent`:
+a dependent (152), the filer is nobody's dependent (152(b)(1)), and a TIN
+(IRC 151(e): "No exemption shall be allowed under this section with respect
+to any individual unless the TIN of such individual is included on the return
+claiming the exemption.").
+
+DF's branch (lines 3391-3404) asks the parent-home question
+(`tpPaidMostOfParentHomeUpkeep`) only for a parent who lived with the filer
+less than six months (`flowAddPersonKeepingUpParentsHome`, line 1959, which
+also requires `/filerCouldQualifyForHoh`). A parent who lived with the filer
+six months or more is a member of the filer's household and goes through the
+third branch with the filer's own home upkeep. The gate is reproduced: it only
+chooses which home's upkeep is asked about, and `/filerCouldQualifyForHoh` is
+ANDed into `/eligibleForHoh` anyway (`filingStatus.xml` line 566).
+
+Multiple support agreements (IRC 2(b)(3)(B)(ii), Table 4 footnote 5) are
+part of the support answer `writableQrSupportTest` in DF; not modelled
+(`Qualifying_relative`).
+
+```catala
+scope HohQssPersonTest:
+  # IRC 2(b)(1)(B) "the father or mother"; Treas. Reg. 1.2-2(b)(4).
+  # DF: dependentsRelationship.xml /relationshipOptions `parent`
+  rule is_parent under condition
+    member.dependent.person.relationship = Q.Relationship.Parent
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/flowAddPersonKeepingUpParentsHome
+  rule flow_add_person_keeping_up_parents_home under condition
+    filer_could_qualify_for_hoh
+    and is_parent
+    and member.dependent.person.residency_duration
+          = Q.ResidencyDuration.LessThanSixMonths
+  consequence fulfilled
+
+  # IRC 2(b)(1)(B), 151(e); Treas. Reg. 1.2-2(b)(4); Pub 501 pp 9-10, Table 4
+  # row 2. DF: /familyAndHousehold/*/hohQualifyingPerson, second branch
+  rule hoh_parent_path under condition
+    dep.qualifying_relative
+    and dep.eligible_dependent
+    and flow_add_person_keeping_up_parents_home
+    and member.upkeep.tp_paid_most_of_parent_home_upkeep
+    and is_parent
+  consequence fulfilled
+```
+
+#### (A)(ii) Any other dependent, and (3)(B) the limitations
+
+IRC 2(b)(3): "Notwithstanding paragraph (1), for purposes of this subtitle a
+taxpayer shall not be considered to be a head of a household— ... (B) by
+reason of an individual who would not be a dependent for the taxable year but
+for— (i) subparagraph (H) of section 152(d)(2), or (ii) paragraph (3) of
+section 152(d)."
+
+Table 4, third row: "qualifying relative other than your father or mother
+(such as a grandparent, brother, or sister who meets certain tests): your
+relative lived with you more than half the year, and your relative is related
+to you in one of the ways listed under Relatives who don't have to live with
+you, later, and you can claim your relative as a dependent: a qualifying
+person. ... your relative isn't related to you in one of the ways listed ...
+and is your qualifying relative only because your relative lived with you all
+year as a member of your household: not a qualifying person." Pub. 501 p 9,
+Example 3, your friend: "your friend isn't your qualifying person for head of
+household purposes because your friend isn't related to you in one of the
+ways listed under Relatives who don't have to live with you".
+
+DF's branch (lines 3405-3424): a qualifying relative, related by 152(d)(2)(A)
+to (G) (`qrRelationshipTest`, so not by (H) alone), who lived with the filer
+more than half the year (`residencyTest`), the filer paid most of the home
+upkeep, and the person is an eligible dependent **or** the filer can claim the
+person for HoH through a benefit split (`tpCanClaimSplitBenefitsHohEitcCdcc`).
+The gate `flowAddPersonKeepingUpHome` (line 1903) is reproduced: given the
+other conditions of this branch it reduces to `/filerCouldQualifyForHoh` or
+`/filerCouldQualifyForQss` (its other disjunct, an MFS filer considered
+unmarried for the CDCC, implies `/filerCouldQualifyForHoh`: `filers.xml`,
+`Filers.mfs_filer_could_be_considered_unmarried_for_cdcc` needs
+`lived_apart_last_six_months`), and `/eligibleForHoh` ANDs
+`/filerCouldQualifyForHoh` in, so the gate changes no filing status.
+
+**The benefit split.** 2(b)(1)(A)(ii) requires that "the taxpayer is
+entitled to a deduction for the taxable year for such person under section
+151". Only the qualifying child of (A)(i) is "determined without regard to
+section 152(e)", and Pub. 501 footnote 1 keeps only the custodial parent's
+*qualifying child*. A person who is the filer's qualifying relative (and,
+since `DF-BUG(15)`, not the filer's qualifying child) on the custodial side
+of a split is not a dependent the filer may claim, so not a qualifying person
+here. DF admits them. The reachable cases are rare: a child under 18 who
+filed a joint return (no qualifying child, 152(c)(1)(E)), or, on the
+non-parent path, a minor who is older than the filer (152(c)(3)(A)). This is
+`DF-BUG(22)`.
+
+**DF-BUG(15) and this branch (issue #17's question).** DF's
+`qualifyingRelative` can be true for the filer's own qualifying child. The
+only configuration where this third branch then admits a qualifying child
+that the first branch rejects is a married qualifying child on the custodial
+side of a benefit split who also passes the qualifying relative gross income
+and support tests: the first branch rejects them through
+`eligibleDependentMinusFilerInformation` (false under a split) and the third
+admits them through `tpCanClaimSplitBenefitsHohEitcCdcc`. Here the third
+branch rejects them (not a qualifying relative, DF-BUG(15)) and the first
+admits them (DF-BUG(21), whatever their gross income and support). Every
+other qualifying child the third branch admits in DF is admitted by the first
+branch too. So the HoH result is unaffected by DF-BUG(15).
+
+```catala
+scope HohQssPersonTest:
+  # DF: /familyAndHousehold/*/flowAddPersonKeepingUpHome. The CDCC disjunct
+  # (/mfsFilerCouldBeConsiderUnmarriedForCdcc and cdccQualifyingPerson)
+  # implies /filerCouldQualifyForHoh (text above), so it is left out.
+  rule flow_add_person_keeping_up_home under condition
+    (filer_could_qualify_for_hoh or filer_could_qualify_for_qss)
+    and (dep.qc.qc_relationship_test
+         or (dep.qr_relationship_test
+             and member.dependent.person.residency_duration
+                   != Q.ResidencyDuration.LessThanSixMonths))
+  consequence fulfilled
+
+  # DF-BUG(22): DF also admits a qualifying relative the filer cannot claim
+  # because of a benefit split (tpCanClaimSplitBenefitsHohEitcCdcc). IRC
+  # 2(b)(1)(A)(ii) needs a dependent the filer is entitled to claim. Status:
+  # candidate.
+  # IRC 2(b)(1)(A)(ii), 2(b)(3)(B)(i); Pub 501 pp 9-10, Table 4 row 3,
+  # Example 3. DF: /familyAndHousehold/*/hohQualifyingPerson, third branch
+  rule hoh_other_relative_path under condition
+    dep.qualifying_relative
+    and dep.eligible_dependent
+    and dep.qr_relationship_test
+    and dep.qc.residency_test
+    and member.upkeep.tp_paid_most_of_home_upkeep
+    and flow_add_person_keeping_up_home
+  consequence fulfilled
+```
+
+### (2) and § 7703(b): married individuals considered unmarried
+
+IRC 2(c): "For purposes of this part, an individual shall be treated as not
+married at the close of the taxable year if such individual is so treated
+under the provisions of section 7703(b)." IRC 7703(b)
+(`sources/statute/irc-7703.html`): "if— (1) an individual who is married
+(within the meaning of subsection (a)) and who files a separate return
+maintains as his home a household which constitutes for more than one-half
+of the taxable year the principal place of abode of a child (within the
+meaning of section 152(f)(1)) with respect to whom such individual is
+entitled to a deduction for the taxable year under section 151 (or would be
+so entitled but for section 152(e)), (2) such individual furnishes over
+one-half of the cost of maintaining such household during the taxable year,
+and (3) during the last 6 months of the taxable year, such individual's
+spouse is not a member of such household, such individual shall not be
+considered as married." IRC 152(f)(1): "(A) ... a son, daughter, stepson, or
+stepdaughter of the taxpayer, or (ii) an eligible foster child of the
+taxpayer. (B) ... a legally adopted individual of the taxpayer ... shall be
+treated as a child of such individual by blood."
+
+Pub. 501 p 9, Considered Unmarried: "You are considered unmarried on the last
+day of the tax year if you meet all the following tests. 1. You file a
+separate return. ... 2. You paid more than half the cost of keeping up your
+home for the tax year. 3. Your spouse didn't live in your home during the
+last 6 months of the tax year. ... 4. Your home was the main home of your
+child, stepchild, or foster child for more than half the year. ... 5. You
+must be able to claim the child as a dependent. However, you meet this test
+if you can't claim the child as a dependent only because the noncustodial
+parent can claim the child using the rules described later in Children of
+divorced or separated parents".
+
+DF (line 3339): if the filer is `/eligibleForMFJ` (married, spouse not a
+nonresident alien), the qualifying person must pass
+`marriedHohRelationshipTest` (biological, adopted, step or foster child). The
+filer-side tests 1 and 3 are `Filers` (#15: `/filerCouldQualifyForHoh` needs
+`/livedApartLastSixMonths`); tests 2 and 4 are in every branch above
+(upkeep, more than half the year). DF does not check test 5: a child who is
+the filer's qualifying child but whom the filer cannot claim (the filer is
+someone's dependent, 152(b)(1); the child fails the citizen or resident test;
+the child has no TIN, 151(e)) passes the first branch when unmarried, so DF
+treats the married filer as unmarried. The statute does not: the child must
+be one "with respect to whom such individual is entitled to a deduction ...
+(or would be so entitled but for section 152(e))". This is `DF-BUG(19)`.
+
+Applying the restriction to the qualifying person rather than to the filer is
+DF's (the statute makes the filer unmarried through a 7703(b) child, after
+which any qualifying person counts). The household result is the same: a
+7703(b) child is always a qualifying person itself (first or third branch).
+
+```catala
+scope HohQssPersonTest:
+  # IRC 7703(b)(1), 152(f)(1). DF: dependentsRelationship.xml
+  # /familyAndHousehold/*/marriedHohRelationshipTest
+  rule married_hoh_relationship_test under condition
+    match member.dependent.person.relationship with pattern
+    -- Q.Relationship.BiologicalChild: true
+    -- Q.Relationship.AdoptedChild: true
+    -- Q.Relationship.StepChild: true
+    -- Q.Relationship.FosterChild: true
+    -- anything: false
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/isBiologicalAdoptedFosterOrStepchild (same test
+  # as marriedHohRelationshipTest; DF keeps both, read by /hasHohQualifyingChild)
+  rule is_biological_adopted_foster_or_stepchild under condition
+    married_hoh_relationship_test
+  consequence fulfilled
+
+  # DF-BUG(19): DF only checks the relationship. IRC 7703(b)(1) also needs a
+  # child "with respect to whom such individual is entitled to a deduction
+  # ... under section 151 (or would be so entitled but for section 152(e))";
+  # Pub 501 p 9, Considered Unmarried, test 5. Status: candidate. No DF fact.
+  rule considered_unmarried_child under condition
+    married_hoh_relationship_test
+    and (dep.eligible_dependent
+         or dep.split.tp_can_claim_split_benefits_hoh_eitc_cdcc)
+  consequence fulfilled
+```
+
+### The qualifying person
+
+DF `/familyAndHousehold/*/hohQualifyingPerson` (line 3332) is the `All` of:
+the married-filer restriction above, not `disqualifiedDueToParentalCustody`
+(a non-parent who reached a benefit split but loses the child to the parents
+under the tie-breaker of IRC 152(c)(4)(C), `Dependents_benefit_split`), the
+person `isClaimedIfClaimable`, and one of the three branches.
+
+**Claimed if claimable.** DF requires that a person the filer can claim as a
+dependent is claimed (`isClaimedIfClaimable`; its description cites an
+internal decision record, "Must claim dependent on return ... a claimable
+dependent must be claimed to act as a QP in TY2023"). IRC 2(b)(1) asks for a
+qualifying child (no deduction at all) or a person for whom "the taxpayer is
+entitled to a deduction", not one the taxpayer claims; Pub. 501 p 9, How to
+file: "If the child who qualifies you for this filing status isn't claimed as
+your dependent in the Dependents section of Form 1040 or 1040-SR, enter the
+child's name in the entry space at the bottom of the Filing Status section."
+A filer who chooses not to list an eligible dependent keeps head of
+household. This is `DF-BUG(20)`; it applies to QSS as well (below).
+
+```catala
+scope HohQssPersonTest:
+  # DF-BUG(19) (considered_unmarried_child replaces
+  # marriedHohRelationshipTest) and DF-BUG(20) (no isClaimedIfClaimable):
+  # IRC 2(b)(1), 2(c), 7703(b)(1); Pub 501 p 9 "How to file". Status:
+  # candidate. IRC 2(b)(1); Pub 501 pp 9-10.
+  # DF: /familyAndHousehold/*/hohQualifyingPerson
+  rule hoh_qualifying_person under condition
+    (not eligible_for_mfj or considered_unmarried_child)
+    and not dep.split.disqualified_due_to_parental_custody
+    and (hoh_qualifying_child_path or hoh_parent_path or hoh_other_relative_path)
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/personQualifiesTPforHoH
+  rule person_qualifies_tp_for_hoh under condition
+    hoh_qualifying_person and filer_could_qualify_for_hoh
+  consequence fulfilled
+
+  # DF: /hohQPHasTin (for this person)
+  rule hoh_qp_has_tin under condition
+    member.dependent.answers.tin_type != R.TinType.NoTin
+  consequence fulfilled
+```
+
+## 26 U.S.C. § 2(a) Definition of surviving spouse
+
+IRC 2(a)(1): "the term "surviving spouse" means a taxpayer— (A) whose spouse
+died during either of his two taxable years immediately preceding the taxable
+year, and (B) who maintains as his home a household which constitutes for the
+taxable year the principal place of abode (as a member of such household) of
+a dependent (i) who (within the meaning of section 152, determined without
+regard to subsections (b)(1), (b)(2), and (d)(1)(B) thereof) is a son,
+stepson, daughter, or stepdaughter of the taxpayer, and (ii) with respect to
+whom the taxpayer is entitled to a deduction for the taxable year under
+section 151. For purposes of this paragraph, an individual shall be
+considered as maintaining a household only if over half of the cost of
+maintaining the household during the taxable year is furnished by such
+individual." Treas. Reg. § 1.2-2(a)(1)(ii): "a person who is (whether by blood
+or adoption) a son, stepson, daughter, or stepdaughter of the taxpayer".
+
+Pub. 501 p 10, Qualifying Surviving Spouse, Eligibility rules: "3. You have a
+child or stepchild (not a foster child) whom you can claim as a dependent or
+could claim as a dependent except that, for 2024: a. The child had gross
+income of $5,050 or more, b. The child filed a joint return, or c. You could
+be claimed as a dependent on someone else's return. ... 4. This child lived in
+your home all year, except for temporary absences. ... 5. You paid more than
+half the cost of keeping up a home for the year." Pub. 501 p 11, Death or
+birth: "You must have provided more than half of the cost of keeping up a
+home that was the child's main home during the entire part of the year the
+child was alive." Adopted child: "The child is considered to have lived with
+you for all of 2024 if your main home was this child's main home for the
+entire time since this child was adopted or placed with you in 2024."
+
+The filer-side tests (2(a)(1)(A), (2)) are `Filers.filer_could_qualify_for_qss`
+(#15).
+
+DF `/familyAndHousehold/*/qssQualifyingPerson` (line 3443): the filer paid
+most of the home upkeep; the person is a biological, adopted or step child
+(not a foster child); the citizen or resident test (152(b)(3) is not among
+the disregarded subsections); lived with the filer all year
+(`qssPersonResidencyTest`); and either the qualifying child age and support
+tests or the qualifying relative "not a qualifying child of another" and
+support tests, without the joint return test, the gross income test and the
+filer's dependency (the three disregarded subsections and 152(c)(1)(E), as
+Pub. 501 test 3 says); and the filer is not the custodial parent who released
+the claim (`tpCanClaimSplitBenefitsHohEitcCdcc`: then the filer is not
+"entitled to a deduction", 2(a)(1)(B)(ii), and 2(a) has no "but for 152(e)").
+DF also requires `isClaimedIfClaimable`: `DF-BUG(20)`, as for HoH ("whom you
+can claim as a dependent", not "whom you claim").
+
+The qualifying relative half reads `notQualifyingChildTest`, which here
+applies the answer "qualifying child of another taxpayer" to every person who
+can be anyone's qualifying child (`Qualifying_relative`, DF-BUG(16)).
+
+```catala
+scope HohQssPersonTest:
+  # IRC 2(a)(1)(B); Pub 501 p 10 test 4. DF: /familyAndHousehold/*/qssPersonResidencyTest
+  rule qss_person_residency_test under condition
+    member.dependent.person.residency_duration = Q.ResidencyDuration.AllYear
+  consequence fulfilled
+
+  # DF-BUG(20): DF also requires isClaimedIfClaimable. Status: candidate.
+  # IRC 2(a)(1)(B), 152(f)(1)(B); Treas. Reg. 1.2-2(a)(1)(ii); Pub 501 pp
+  # 10-11. DF: /familyAndHousehold/*/qssQualifyingPerson
+  rule qss_qualifying_person under condition
+    member.upkeep.tp_paid_most_of_home_upkeep
+    and (member.dependent.person.relationship = Q.Relationship.BiologicalChild
+         or dep.child_is_adopted
+         or member.dependent.person.relationship = Q.Relationship.StepChild)
+    and dep.citizen_or_resident_test
+    and qss_person_residency_test
+    and ((dep.qc.age_test and dep.qc.qc_support_test)
+         or (dep.not_qualifying_child_test and dep.qr_support_test))
+    and not dep.split.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/personQualifiesTPforQss
+  rule person_qualifies_tp_for_qss under condition
+    qss_qualifying_person and filer_could_qualify_for_qss
+  consequence fulfilled
+```
+
+## The household: every person
+
+The scope `HohQssPersons` applies `HohQssPersonTest` to each member of
+`/familyAndHousehold`, in order, and counts the qualifying persons. The counts
+are what `filingStatus.xml` reads: `/eligibleForHoh` (line 549) is "the Count
+of `/familyAndHousehold/*/hohQualifyingPerson` is greater than 0" and
+`/filerCouldQualifyForHoh` and not `/eligibleForQss`; `/eligibleForQss` (line
+576) is `/filerCouldQualifyForQss` and "the Count of
+`/familyAndHousehold/*/qssQualifyingPerson` is greater than 0" (issue #20).
+
+**No TIN.** DF `/knockoutHohQpHasNoTin` (line 5107, `flow.xml` line 66): the
+filer files as head of household and the qualifying person the filer chose
+(`/hohQualifyingPerson`, a Writable collection item) has no TIN. IRC 2(b)
+asks for no TIN for a qualifying child who is not claimed (Pub. 501 p 9 asks
+only for the child's name); a qualifying parent or other relative needs one
+anyway (151(e), through `eligibleDependent`). Refusing the return is a scope
+decision of DF, reproduced as a knockout (CONVENTIONS section 6). The choice
+among several qualifying persons is out of scope (issue #19), so this module
+assumes the filer chooses one with a TIN when there is one: the knockout
+fires when the filer files as head of household, has at least one qualifying
+person, and none of them has a TIN. With no qualifying person at all, the
+filing status is not eligible (#20's knockout), not this one.
+
+```catala-metadata
+declaration scope HohQssPersons:
+  # DF: /familyAndHousehold
+  input members content list of Member
+  # DF: filers.xml /minimumFilerDateOfBirth
+  input minimum_filer_date_of_birth content date
+  # DF: filers.xml /treatFilersAsDependents
+  input treat_filers_as_dependents content boolean
+  # DF: filers.xml /eitherFilerUSCitizenOrNational
+  input either_filer_us_citizen_or_national content boolean
+  # DF: filingStatus.xml /treatAsMFJ
+  input treat_as_mfj content boolean
+  # DF: filingStatus.xml /eligibleForMFJ
+  input eligible_for_mfj content boolean
+  # DF: filers.xml /filerCouldQualifyForHoh
+  input filer_could_qualify_for_hoh content boolean
+  # DF: filers.xml /filerCouldQualifyForQss
+  input filer_could_qualify_for_qss content boolean
+  # DF: filingStatus.xml /filingStatus
+  input filing_status content Types.FilingStatus
+
+  # DF: /familyAndHousehold/*/... (one result per member, same order)
+  output results content list of HohQssPersonTest
+  # DF: Count(/familyAndHousehold/*/hohQualifyingPerson), read by /eligibleForHoh
+  output hoh_qualifying_people_count content integer
+  # DF: Count(/familyAndHousehold/*/qssQualifyingPerson), read by /eligibleForQss
+  output qss_qualifying_people_count content integer
+  # DF: /hasHohQualifyingChild
+  output has_hoh_qualifying_child condition
+  # DF: /hasHohQualifyingParent
+  output has_hoh_qualifying_parent condition
+  # HoH qualifying persons with a TIN (no DF fact; text above)
+  output hoh_qualifying_people_with_tin_count content integer
+  # DF: /knockoutHohQpHasNoTin
+  output ko_knockout_hoh_qp_has_no_tin condition
+  # CONVENTIONS section 6: every ko_ of this scope
+  output unsupported condition
+```
+
+```catala
+scope HohQssPersons:
+  definition results equals
+    map each m among members to
+      (output of HohQssPersonTest with {
+         -- member: m
+         -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
+         -- treat_filers_as_dependents: treat_filers_as_dependents
+         -- either_filer_us_citizen_or_national:
+              either_filer_us_citizen_or_national
+         -- treat_as_mfj: treat_as_mfj
+         -- eligible_for_mfj: eligible_for_mfj
+         -- filer_could_qualify_for_hoh: filer_could_qualify_for_hoh
+         -- filer_could_qualify_for_qss: filer_could_qualify_for_qss })
+
+  # filingStatus.xml /eligibleForHoh, the Count
+  definition hoh_qualifying_people_count equals
+    number of (list of r among results such that r.hoh_qualifying_person)
+
+  # filingStatus.xml /eligibleForQss, the Count
+  definition qss_qualifying_people_count equals
+    number of (list of r among results such that r.qss_qualifying_person)
+
+  # DF: /hasHohQualifyingChild
+  rule has_hoh_qualifying_child under condition
+    exists r among results such that
+      r.hoh_qualifying_person and r.is_biological_adopted_foster_or_stepchild
+  consequence fulfilled
+
+  # DF: /hasHohQualifyingParent
+  rule has_hoh_qualifying_parent under condition
+    exists r among results such that
+      r.hoh_qualifying_person and r.is_parent
+  consequence fulfilled
+
+  definition hoh_qualifying_people_with_tin_count equals
+    number of (list of r among results such that
+                 r.hoh_qualifying_person and r.hoh_qp_has_tin)
+
+  # DF: /knockoutHohQpHasNoTin, with the filer choosing a person with a TIN
+  # when there is one (text above)
+  rule ko_knockout_hoh_qp_has_no_tin under condition
+    filing_status = Types.FilingStatus.HeadOfHousehold
+    and hoh_qualifying_people_count > 0
+    and hoh_qualifying_people_with_tin_count = 0
+  consequence fulfilled
+
+  # flow.xml line 66
+  rule unsupported under condition ko_knockout_hoh_qp_has_no_tin
+  consequence fulfilled
+```

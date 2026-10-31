@@ -1,0 +1,683 @@
+# Tests for the Hoh_qss_persons module
+
+Run with `clerk test`. Each named scope is one concrete person (or household),
+worked by hand from IRC 2(a), 2(b), 7703(b) and Pub. 501 (2024) pp 9-11 as
+quoted in `catala/hoh_qss_persons.catala_en`. Every scope sets satisfiable
+inputs (answers a real filer could give) and asserts the expected result and
+the rejection of the wrong one. The oracle comparison is
+`make difftest-persons` (per-person Direct File values, `oracle/persons.csv`).
+
+> Using Types
+> Using Qualifying_child as Q
+> Using Qualifying_relative as R
+> Using Dependents_benefit_split as B
+> Using Hoh_qss_persons as H
+
+## Helper: one household member and the filer, with default answers
+
+The default person is the filer's biological son, born 2016-05-01 (8),
+unmarried, a U.S. citizen with an SSN, who lived with the filer all year, had
+no gross income, did not provide over half of his own support, is nobody
+else's qualifying child, and is claimed. The filer (born 1985-06-15) is
+unmarried (`eligible_for_mfj` false), could qualify for HoH but not QSS,
+cannot be claimed by anyone, paid more than half the cost of keeping up the
+home, and did not pay for a parent's separate home. No benefit split. A test
+overrides only what it tests; `r` is the person's result.
+
+```catala
+declaration scope Case:
+  context relationship content Q.Relationship
+  context date_of_birth content date
+  context residency content Q.ResidencyDuration
+  context married content boolean
+  context writable_joint_return content boolean
+  context own_support content boolean
+  context could_be_qc_of_another content boolean
+  context potential_claimer_must_file content boolean
+  context gross_income content money
+  context qr_support content boolean
+  context tin_type content R.TinType
+  context citizen content boolean
+  context tp_claims content boolean
+  # The filer is the custodial parent who signed Form 8332 (IRC 152(e)(2))
+  context custodial_release content boolean
+  # The filer is a grandparent who reached the non-parent split with a lower
+  # AGI than the parent (Pub 501 p 18, Example 2)
+  context grandparent_lower_agi content boolean
+  context upkeep content boolean
+  context parent_upkeep content boolean
+  context eligible_for_mfj content boolean
+  context filer_could_qualify_for_hoh content boolean
+  context filer_could_qualify_for_qss content boolean
+  context minimum_filer_date_of_birth content date
+  output member content H.Member
+  output r content H.HohQssPersonTest
+
+scope Case:
+  definition relationship equals Q.Relationship.BiologicalChild
+  definition date_of_birth equals |2016-05-01|
+  definition residency equals Q.ResidencyDuration.AllYear
+  definition married equals false
+  definition writable_joint_return equals false
+  definition own_support equals false
+  definition could_be_qc_of_another equals false
+  definition potential_claimer_must_file equals false
+  definition gross_income equals $0
+  definition qr_support equals true
+  definition tin_type equals R.TinType.Ssn
+  definition citizen equals true
+  definition tp_claims equals true
+  definition custodial_release equals false
+  definition grandparent_lower_agi equals false
+  definition upkeep equals true
+  definition parent_upkeep equals false
+  definition eligible_for_mfj equals false
+  definition filer_could_qualify_for_hoh equals true
+  definition filer_could_qualify_for_qss equals false
+  definition minimum_filer_date_of_birth equals |1985-06-15|
+  definition member equals H.Member {
+    -- dependent: R.Member {
+      -- person: Q.Person {
+           -- relationship: relationship
+           -- date_of_birth: date_of_birth
+           -- full_time_student: false
+           -- permanent_total_disability: false
+           -- residency_duration: residency
+           -- own_support: own_support
+           -- married: married
+           -- writable_joint_return: writable_joint_return
+           -- writable_required_to_file: writable_joint_return
+           -- writable_filing_only_for_refund: false
+           -- writable_could_be_qualifying_child_of_another: could_be_qc_of_another
+           -- writable_potential_claimer_must_file: potential_claimer_must_file
+           -- writable_potential_claimer_did_file: potential_claimer_must_file
+           -- writable_potential_claimer_filed_only_for_refund: false }
+      -- answers: R.DependentAnswers {
+           -- gross_income: gross_income
+           -- writable_qr_support_test: qr_support
+           -- tin_type: tin_type
+           -- is_us_citizen_full_year: citizen
+           -- writable_us_resident: false
+           -- writable_us_national: false
+           -- writable_canada_mexico_resident: false
+           -- tp_claims: tp_claims }
+      -- split: B.BenefitSplitAnswers {
+           -- has_other_biological_or_adoptive_parent: custodial_release
+           -- non_parental_some_parent_not_claiming: grandparent_lower_agi
+           -- which_parent_not_claiming:
+                if custodial_release then B.WrittenDeclaration.IDid
+                else B.WrittenDeclaration.NobodyDid
+           -- in_parents_custody: custodial_release or grandparent_lower_agi
+           -- lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months:
+                custodial_release
+           -- biological_or_adoptive_parents_living: grandparent_lower_agi
+           -- nights_with_tp_vs_other_parent:
+                if custodial_release then B.NightsComparison.More
+                else B.NightsComparison.Less
+           -- tp_agi_higher_than_other_parent: false
+           -- parents_meet_reqs_rule_for_children_of_divorced_parents:
+                grandparent_lower_agi
+           -- special_rule_child_used_by_custodial_parent_as_qp: false
+           -- special_rule_agi_test: false
+           -- parental_situation:
+                if custodial_release then B.ParentalSituation.DivorcedOrSeparated
+                else B.ParentalSituation.Other
+           -- parental_support: custodial_release
+           -- multiple_support_agreement: false } }
+    -- upkeep: H.UpkeepAnswers {
+         -- tp_paid_most_of_home_upkeep: upkeep
+         -- tp_paid_most_of_parent_home_upkeep: parent_upkeep } }
+  definition r equals
+    output of H.HohQssPersonTest with {
+      -- member: member
+      -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false
+      -- eligible_for_mfj: eligible_for_mfj
+      -- filer_could_qualify_for_hoh: filer_could_qualify_for_hoh
+      -- filer_could_qualify_for_qss: filer_could_qualify_for_qss }
+```
+
+## The cases of issue #19
+
+### Child path: a qualifying child, the filer paid most of the upkeep
+
+IRC 2(b)(1)(A)(i); Pub. 501 p 9, Example 1 (an unmarried child who is your
+qualifying child). Known-bad output rejected: the same child without the
+upkeep is not a qualifying person (2(b)(1), "over half of the cost of
+maintaining the household").
+
+```catala
+#[test]
+declaration scope TestChildPath:
+  c scope Case
+  no_upkeep scope Case
+
+scope TestChildPath:
+  definition no_upkeep.upkeep equals false
+  assertion c.r.dep.qualifying_child
+  assertion c.r.hoh_qualifying_child_path
+  assertion not c.r.hoh_parent_path and not c.r.hoh_other_relative_path
+  assertion c.r.hoh_qualifying_person
+  assertion c.r.person_qualifies_tp_for_hoh
+  # Known-bad: no upkeep, no qualifying person
+  assertion no_upkeep.r.dep.qualifying_child
+  assertion not no_upkeep.r.hoh_qualifying_child_path
+  assertion not no_upkeep.r.hoh_qualifying_person
+```
+
+### Parent path: a dependent parent living apart, the filer pays for the parent's home
+
+IRC 2(b)(1)(B); Pub. 501 p 9, Special rule for parent. The filer's mother,
+74, lives in her own apartment (less than six months with the filer), had
+$3,000 of gross income, and the filer paid over half her support and over
+half the cost of her apartment. Known-bad outputs rejected: the same mother
+with $5,050 of gross income cannot be claimed (IRC 152(d)(1)(B)), so she is
+not a qualifying person (Table 4 row 2); and paying for the filer's own home
+instead of the parent's home does not count.
+
+```catala
+#[test]
+declaration scope TestParentPath:
+  c scope Case
+  high_income scope Case
+  own_home_only scope Case
+
+scope TestParentPath:
+  definition c.relationship equals Q.Relationship.Parent
+  definition c.date_of_birth equals |1950-04-02|
+  definition c.residency equals Q.ResidencyDuration.LessThanSixMonths
+  definition c.gross_income equals $3,000
+  definition c.upkeep equals false
+  definition c.parent_upkeep equals true
+  definition high_income.relationship equals Q.Relationship.Parent
+  definition high_income.date_of_birth equals |1950-04-02|
+  definition high_income.residency equals Q.ResidencyDuration.LessThanSixMonths
+  definition high_income.gross_income equals $5,050
+  definition high_income.upkeep equals false
+  definition high_income.parent_upkeep equals true
+  definition own_home_only.relationship equals Q.Relationship.Parent
+  definition own_home_only.date_of_birth equals |1950-04-02|
+  definition own_home_only.residency equals Q.ResidencyDuration.LessThanSixMonths
+  definition own_home_only.gross_income equals $3,000
+  definition own_home_only.upkeep equals true
+  definition own_home_only.parent_upkeep equals false
+  assertion c.r.is_parent
+  assertion c.r.dep.qualifying_relative and c.r.dep.eligible_dependent
+  assertion c.r.flow_add_person_keeping_up_parents_home
+  assertion c.r.hoh_parent_path
+  assertion c.r.hoh_qualifying_person
+  assertion not c.r.hoh_other_relative_path
+  # Known-bad: not a dependent
+  assertion not high_income.r.dep.eligible_dependent
+  assertion not high_income.r.hoh_qualifying_person
+  # Known-bad: the filer's own home does not house the parent
+  assertion not own_home_only.r.hoh_parent_path
+  assertion not own_home_only.r.hoh_other_relative_path
+  assertion not own_home_only.r.hoh_qualifying_person
+```
+
+### Other-relative path: a brother who lived with the filer more than half the year
+
+IRC 2(b)(1)(A)(ii); Pub. 501 p 10, Table 4 row 3. The filer's brother, 34 (so
+not a qualifying child), lived with the filer eight months, had $2,000 of
+gross income and was supported over half by the filer. Known-bad outputs
+rejected: the same brother living with the filer less than six months
+("your relative didn't live with you more than half the year: not a
+qualifying person"), and a friend who lived with the filer all year (Pub. 501
+p 9, Example 3: a qualifying relative only under 152(d)(2)(H), excluded by
+IRC 2(b)(3)(B)(i)).
+
+```catala
+#[test]
+declaration scope TestOtherRelativePath:
+  c scope Case
+  short scope Case
+  friend scope Case
+
+scope TestOtherRelativePath:
+  definition c.relationship equals Q.Relationship.Sibling
+  definition c.date_of_birth equals |1990-01-01|
+  definition c.residency equals Q.ResidencyDuration.SixToElevenMonths
+  definition c.gross_income equals $2,000
+  definition short.relationship equals Q.Relationship.Sibling
+  definition short.date_of_birth equals |1990-01-01|
+  definition short.residency equals Q.ResidencyDuration.LessThanSixMonths
+  definition short.gross_income equals $2,000
+  definition friend.relationship equals Q.Relationship.NoneOfTheAbove
+  definition friend.date_of_birth equals |1984-01-01|
+  definition friend.gross_income equals $2,000
+  assertion not c.r.dep.qualifying_child
+  assertion c.r.dep.qualifying_relative
+  assertion c.r.hoh_other_relative_path
+  assertion c.r.hoh_qualifying_person
+  # Known-bad: under half the year
+  assertion short.r.dep.qualifying_relative
+  assertion not short.r.hoh_qualifying_person
+  # Known-bad: a friend is a qualifying relative but not a qualifying person
+  assertion friend.r.dep.qualifying_relative
+  assertion friend.r.dep.eligible_dependent
+  assertion not friend.r.hoh_qualifying_person
+```
+
+### Married but considered unmarried: only a child qualifies
+
+IRC 2(c), 7703(b)(1) ("a child (within the meaning of section 152(f)(1))");
+Pub. 501 p 9, Considered Unmarried, test 4 ("your child, stepchild, or foster
+child"). The filer is married (`eligible_for_mfj`) and lived apart from the
+spouse for the last six months. The son and a foster daughter (both
+qualifying children and dependents) qualify; the brother of the previous test
+does not, although he would for an unmarried filer.
+
+```catala
+#[test]
+declaration scope TestMarriedConsideredUnmarried:
+  son scope Case
+  foster scope Case
+  brother scope Case
+
+scope TestMarriedConsideredUnmarried:
+  definition son.eligible_for_mfj equals true
+  definition foster.eligible_for_mfj equals true
+  definition foster.relationship equals Q.Relationship.FosterChild
+  definition brother.eligible_for_mfj equals true
+  definition brother.relationship equals Q.Relationship.Sibling
+  definition brother.date_of_birth equals |1990-01-01|
+  definition brother.residency equals Q.ResidencyDuration.SixToElevenMonths
+  definition brother.gross_income equals $2,000
+  assertion son.r.considered_unmarried_child
+  assertion son.r.hoh_qualifying_person
+  assertion foster.r.married_hoh_relationship_test
+  assertion foster.r.hoh_qualifying_person
+  # Known-bad: the brother passes the third branch but is not a child
+  assertion not brother.r.married_hoh_relationship_test
+  assertion brother.r.hoh_other_relative_path
+  assertion not brother.r.hoh_qualifying_person
+```
+
+### QSS: all-year residence, foster child excluded
+
+IRC 2(a)(1)(B) ("for the taxable year the principal place of abode"; "a son,
+stepson, daughter, or stepdaughter"); Pub. 501 p 10, tests 3 ("a child or
+stepchild (not a foster child)") and 4 ("This child lived in your home all
+year"). The filer could qualify for QSS. The son who lived there all year
+qualifies; the same son who lived there eight months does not (but is still a
+HoH qualifying person); a foster daughter who lived there all year does not
+(but is a HoH qualifying person); a stepdaughter does.
+
+```catala
+#[test]
+declaration scope TestQss:
+  son scope Case
+  part_year scope Case
+  foster scope Case
+  step scope Case
+
+scope TestQss:
+  definition son.filer_could_qualify_for_qss equals true
+  definition part_year.filer_could_qualify_for_qss equals true
+  definition part_year.residency equals Q.ResidencyDuration.SixToElevenMonths
+  definition foster.filer_could_qualify_for_qss equals true
+  definition foster.relationship equals Q.Relationship.FosterChild
+  definition step.filer_could_qualify_for_qss equals true
+  definition step.relationship equals Q.Relationship.StepChild
+  assertion son.r.qss_person_residency_test
+  assertion son.r.qss_qualifying_person
+  assertion son.r.person_qualifies_tp_for_qss
+  # Known-bad: eight months
+  assertion not part_year.r.qss_person_residency_test
+  assertion not part_year.r.qss_qualifying_person
+  assertion part_year.r.hoh_qualifying_person
+  # Known-bad: foster child
+  assertion not foster.r.qss_qualifying_person
+  assertion foster.r.hoh_qualifying_person
+  assertion step.r.qss_qualifying_person
+```
+
+### QSS disregards the gross income test; HoH does not
+
+IRC 2(a)(1)(B)(i) ("determined without regard to subsections (b)(1), (b)(2),
+and (d)(1)(B)"); Pub. 501 p 10, test 3a ("The child had gross income of
+$5,050 or more"). A 25-year-old daughter with $6,000 of gross income, all year
+at home, supported over half by the filer: a QSS qualifying person, but not a
+HoH qualifying person (Pub. 501 p 9, Example 2: not a qualifying child by age,
+not a qualifying relative by gross income).
+
+```catala
+#[test]
+declaration scope TestQssGrossIncomeDisregarded:
+  c scope Case
+
+scope TestQssGrossIncomeDisregarded:
+  definition c.date_of_birth equals |1999-03-01|
+  definition c.gross_income equals $6,000
+  definition c.filer_could_qualify_for_qss equals true
+  assertion not c.r.dep.qualifying_child
+  assertion not c.r.dep.qualifying_relative
+  assertion c.r.qss_qualifying_person
+  assertion not c.r.hoh_qualifying_person
+```
+
+### No TIN: excluded
+
+A brother with no SSN, ITIN or ATIN cannot be claimed (IRC 151(e)), so he is
+not a HoH qualifying person through the other-relative path. An unmarried son
+with no TIN is still a qualifying child and a qualifying person (IRC
+2(b)(1)(A)(i) asks for no deduction), but DF does not support a HoH return
+whose qualifying person has no TIN (`/knockoutHohQpHasNoTin`): the household
+test below knocks it out unless another qualifying person has a TIN.
+
+```catala
+#[test]
+declaration scope TestNoTinPerson:
+  brother scope Case
+  son scope Case
+
+scope TestNoTinPerson:
+  definition brother.relationship equals Q.Relationship.Sibling
+  definition brother.date_of_birth equals |1990-01-01|
+  definition brother.residency equals Q.ResidencyDuration.SixToElevenMonths
+  definition brother.gross_income equals $2,000
+  definition brother.tin_type equals R.TinType.NoTin
+  definition son.tin_type equals R.TinType.NoTin
+  assertion brother.r.dep.qualifying_relative
+  assertion not brother.r.dep.eligible_dependent
+  assertion not brother.r.hoh_qualifying_person
+  assertion son.r.hoh_qualifying_person
+  assertion not son.r.hoh_qp_has_tin
+```
+
+```catala
+#[test]
+declaration scope TestNoTinHousehold:
+  son scope Case
+  daughter scope Case
+  internal only_no_tin content H.HohQssPersons
+  internal with_tin content H.HohQssPersons
+  internal single content H.HohQssPersons
+
+scope TestNoTinHousehold:
+  definition son.tin_type equals R.TinType.NoTin
+  definition daughter.date_of_birth equals |2018-09-09|
+  definition only_no_tin equals
+    output of H.HohQssPersons with {
+      -- members: [son.member]
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false
+      -- eligible_for_mfj: false
+      -- filer_could_qualify_for_hoh: true
+      -- filer_could_qualify_for_qss: false
+      -- filing_status: Types.FilingStatus.HeadOfHousehold }
+  definition with_tin equals
+    output of H.HohQssPersons with {
+      -- members: [son.member; daughter.member]
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false
+      -- eligible_for_mfj: false
+      -- filer_could_qualify_for_hoh: true
+      -- filer_could_qualify_for_qss: false
+      -- filing_status: Types.FilingStatus.HeadOfHousehold }
+  definition single equals
+    output of H.HohQssPersons with {
+      -- members: [son.member]
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false
+      -- eligible_for_mfj: false
+      -- filer_could_qualify_for_hoh: true
+      -- filer_could_qualify_for_qss: false
+      -- filing_status: Types.FilingStatus.Single }
+  assertion only_no_tin.hoh_qualifying_people_count = 1
+  assertion only_no_tin.hoh_qualifying_people_with_tin_count = 0
+  assertion only_no_tin.ko_knockout_hoh_qp_has_no_tin
+  assertion only_no_tin.unsupported
+  # Known-bad: another qualifying person with a TIN is chosen, no knockout
+  assertion with_tin.hoh_qualifying_people_count = 2
+  assertion with_tin.hoh_qualifying_people_with_tin_count = 1
+  assertion with_tin.has_hoh_qualifying_child
+  assertion not with_tin.has_hoh_qualifying_parent
+  assertion not with_tin.ko_knockout_hoh_qp_has_no_tin
+  # Known-bad: not filing as head of household, no knockout
+  assertion not single.ko_knockout_hoh_qp_has_no_tin
+  assertion not single.unsupported
+```
+
+## Benefit split and the tie-breakers
+
+### The custodial parent who released the claim keeps HoH, not QSS
+
+Pub. 501 p 10, Table 4 footnote 1: "If you are the custodial parent and those
+rules apply, the child is generally your qualifying child for head of
+household filing status even though the child isn't a qualifying child you
+can claim as a dependent." QSS needs a child "with respect to whom the
+taxpayer is entitled to a deduction" (IRC 2(a)(1)(B)(ii)). The same holds
+for a married filer living apart: IRC 7703(b)(1), "or would be so entitled
+but for section 152(e)".
+
+```catala
+#[test]
+declaration scope TestCustodialRelease:
+  c scope Case
+  married scope Case
+
+scope TestCustodialRelease:
+  definition c.custodial_release equals true
+  definition c.filer_could_qualify_for_qss equals true
+  definition married.custodial_release equals true
+  definition married.eligible_for_mfj equals true
+  assertion c.r.dep.split.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  assertion not c.r.dep.eligible_dependent
+  assertion c.r.hoh_qualifying_person
+  # Known-bad: QSS
+  assertion not c.r.qss_qualifying_person
+  assertion married.r.considered_unmarried_child
+  assertion married.r.hoh_qualifying_person
+```
+
+### A grandparent who loses the child to the parent under the tie-breaker
+
+Pub. 501 p 18, Example 2: "Your parent can't claim Kody as a qualifying child
+for any purpose because your parent's AGI isn't higher than yours." The
+grandson lives with the filer all year and is the filer's qualifying child
+under 152(c), but is `disqualified_due_to_parental_custody`.
+
+```catala
+#[test]
+declaration scope TestGrandparentDisqualified:
+  c scope Case
+  plain scope Case
+
+scope TestGrandparentDisqualified:
+  definition c.relationship equals Q.Relationship.GrandChildOrOtherDescendantOfChild
+  definition c.date_of_birth equals |2019-03-01|
+  definition c.minimum_filer_date_of_birth equals |1960-06-15|
+  definition c.grandparent_lower_agi equals true
+  definition plain.relationship equals Q.Relationship.GrandChildOrOtherDescendantOfChild
+  definition plain.date_of_birth equals |2019-03-01|
+  definition plain.minimum_filer_date_of_birth equals |1960-06-15|
+  assertion c.r.dep.split.disqualified_due_to_parental_custody
+  assertion c.r.hoh_qualifying_child_path
+  assertion not c.r.hoh_qualifying_person
+  # Known-bad: without the split the grandson qualifies the grandparent
+  assertion plain.r.hoh_qualifying_person
+```
+
+### The qualifying child of another taxpayer must be claimed
+
+DF's encoding of the tie-breakers of IRC 152(c)(4) (Q6): a child who is also
+the qualifying child of another taxpayer counts only if the filer claims the
+child.
+
+```catala
+#[test]
+declaration scope TestQualifyingChildOfAnother:
+  claimed scope Case
+  unclaimed scope Case
+
+scope TestQualifyingChildOfAnother:
+  definition claimed.could_be_qc_of_another equals true
+  definition claimed.potential_claimer_must_file equals true
+  definition unclaimed.could_be_qc_of_another equals true
+  definition unclaimed.potential_claimer_must_file equals true
+  definition unclaimed.tp_claims equals false
+  assertion claimed.r.dep.is_qualifying_child_of_another
+  assertion claimed.r.hoh_qualifying_person
+  assertion unclaimed.r.dep.is_qualifying_child_of_another
+  assertion not unclaimed.r.hoh_qualifying_person
+```
+
+## Divergences from Direct File (CONVENTIONS section 8)
+
+### DF-BUG(19): a child the married filer cannot claim does not make them unmarried
+
+IRC 7703(b)(1); Pub. 501 p 9, Considered Unmarried, test 5. A married filer
+living apart whose only child has no TIN (151(e)) cannot claim the child, so
+is not considered unmarried. DF says the child is a HoH qualifying person.
+The same son for an unmarried filer still qualifies (2(b)(1)(A)(i)).
+
+```catala
+#[test]
+declaration scope TestDfBug19aMarriedChildNoTin:
+  married scope Case
+  unmarried scope Case
+
+scope TestDfBug19aMarriedChildNoTin:
+  definition married.eligible_for_mfj equals true
+  definition married.tin_type equals R.TinType.NoTin
+  definition unmarried.tin_type equals R.TinType.NoTin
+  assertion married.r.married_hoh_relationship_test
+  assertion not married.r.considered_unmarried_child
+  assertion married.r.hoh_qualifying_child_path
+  assertion not married.r.hoh_qualifying_person
+  assertion unmarried.r.hoh_qualifying_person
+```
+
+### DF-BUG(20): a dependent the filer chose not to claim still qualifies
+
+IRC 2(b)(1), 2(a)(1)(B); Pub. 501 p 9, How to file ("If the child who
+qualifies you for this filing status isn't claimed as your dependent ...,
+enter the child's name"). DF requires `isClaimedIfClaimable`.
+
+```catala
+#[test]
+declaration scope TestDfBug19bUnclaimed:
+  c scope Case
+
+scope TestDfBug19bUnclaimed:
+  definition c.tp_claims equals false
+  definition c.filer_could_qualify_for_qss equals true
+  assertion c.r.dep.eligible_dependent
+  assertion not c.r.dep.is_claimed_if_claimable
+  assertion c.r.hoh_qualifying_person
+  assertion c.r.qss_qualifying_person
+```
+
+### DF-BUG(21): the married-child exclusion is only for 152(b)(2) and (b)(3)
+
+IRC 2(b)(1)(A)(i)(I)-(II). A married 17-year-old son who did not file a joint
+return and has no TIN: a qualifying person here, not in DF. Known-bad outputs
+rejected: the same married son who filed a joint return (not a qualifying
+child, 152(c)(1)(E)), and a married son who is not a citizen or resident
+(152(b)(3)).
+
+```catala
+#[test]
+declaration scope TestDfBug19cMarriedChild:
+  no_tin scope Case
+  joint scope Case
+  foreign scope Case
+
+scope TestDfBug19cMarriedChild:
+  definition no_tin.date_of_birth equals |2007-02-01|
+  definition no_tin.married equals true
+  definition no_tin.tin_type equals R.TinType.NoTin
+  definition joint.date_of_birth equals |2007-02-01|
+  definition joint.married equals true
+  definition joint.writable_joint_return equals true
+  definition foreign.date_of_birth equals |2007-02-01|
+  definition foreign.married equals true
+  definition foreign.citizen equals false
+  assertion no_tin.r.dep.qualifying_child
+  assertion not no_tin.r.dep.eligible_dependent_minus_filer_information
+  assertion no_tin.r.married_child_not_excluded
+  assertion no_tin.r.hoh_qualifying_person
+  # Known-bad: joint return
+  assertion not joint.r.dep.qualifying_child
+  assertion not joint.r.hoh_qualifying_person
+  # Known-bad: 152(b)(3)
+  assertion not foreign.r.married_child_not_excluded
+  assertion not foreign.r.hoh_qualifying_person
+```
+
+### DF-BUG(22): a qualifying relative on the filer's side of a split
+
+IRC 2(b)(1)(A)(ii). A married 16-year-old son who filed a joint return (so
+not a qualifying child) and whose custody split lets the filer keep HoH,
+EITC and CDCC benefits: he is the filer's qualifying relative but not a
+dependent the filer may claim, so not a qualifying person. DF says he is.
+
+```catala
+#[test]
+declaration scope TestDfBug19dSplitRelative:
+  c scope Case
+
+scope TestDfBug19dSplitRelative:
+  definition c.date_of_birth equals |2008-02-01|
+  definition c.married equals true
+  definition c.writable_joint_return equals true
+  definition c.gross_income equals $1,000
+  definition c.custodial_release equals true
+  assertion not c.r.dep.qualifying_child
+  assertion c.r.dep.qualifying_relative
+  assertion c.r.dep.split.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  assertion not c.r.dep.eligible_dependent
+  assertion not c.r.hoh_other_relative_path
+  assertion not c.r.hoh_qualifying_person
+```
+
+## The household
+
+A son, the filer's mother living apart, and a lodger: two HoH qualifying
+persons (one of them a parent), one QSS qualifying person.
+
+```catala
+#[test]
+declaration scope TestHousehold:
+  son scope Case
+  mother scope Case
+  lodger scope Case
+  internal h content H.HohQssPersons
+
+scope TestHousehold:
+  definition mother.relationship equals Q.Relationship.Parent
+  definition mother.date_of_birth equals |1950-04-02|
+  definition mother.residency equals Q.ResidencyDuration.LessThanSixMonths
+  definition mother.gross_income equals $3,000
+  definition mother.parent_upkeep equals true
+  definition lodger.relationship equals Q.Relationship.NoneOfTheAbove
+  definition lodger.date_of_birth equals |1984-01-01|
+  definition lodger.gross_income equals $2,000
+  definition h equals
+    output of H.HohQssPersons with {
+      -- members: [son.member; mother.member; lodger.member]
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false
+      -- eligible_for_mfj: false
+      -- filer_could_qualify_for_hoh: true
+      -- filer_could_qualify_for_qss: true
+      -- filing_status: Types.FilingStatus.QualifyingSurvivingSpouse }
+  assertion number of h.results = 3
+  assertion h.hoh_qualifying_people_count = 2
+  assertion h.qss_qualifying_people_count = 1
+  assertion h.has_hoh_qualifying_child
+  assertion h.has_hoh_qualifying_parent
+  assertion not h.unsupported
+```

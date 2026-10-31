@@ -103,6 +103,9 @@ declaration scope CtcOdcPersonTest:
   # DF: filers.xml /eitherFilerUSCitizenOrNational
   # (Filers.either_filer_us_citizen_or_national)
   input either_filer_us_citizen_or_national content boolean
+  # DF: filingStatus.xml /treatAsMFJ (Filers.treat_as_mfj); read only by the
+  # benefit-split scope that DependentTest runs (issue #18)
+  input treat_as_mfj content boolean
 
   # The dependent tests for the same person (issue #17)
   output dependent content QR.DependentTest
@@ -122,7 +125,8 @@ scope CtcOdcPersonTest:
       -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
       -- treat_filers_as_dependents: treat_filers_as_dependents
       -- either_filer_us_citizen_or_national:
-           either_filer_us_citizen_or_national }
+           either_filer_us_citizen_or_national
+      -- treat_as_mfj: treat_as_mfj }
 ```
 
 ### 26 U.S.C. § 24(a) and (c): the qualifying child
@@ -268,6 +272,8 @@ declaration scope CtcOdcDependents:
   input treat_filers_as_dependents content boolean
   # DF: filers.xml /eitherFilerUSCitizenOrNational
   input either_filer_us_citizen_or_national content boolean
+  # DF: filingStatus.xml /treatAsMFJ
+  input treat_as_mfj content boolean
 
   # DF: /familyAndHousehold/*/... (one result per member, same order)
   output results content list of CtcOdcPersonTest
@@ -286,7 +292,8 @@ scope CtcOdcDependents:
          -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
          -- treat_filers_as_dependents: treat_filers_as_dependents
          -- either_filer_us_citizen_or_national:
-              either_filer_us_citizen_or_national })
+              either_filer_us_citizen_or_national
+         -- treat_as_mfj: treat_as_mfj })
 
   # Sch 8812 line 4, f1040s8--2024.pdf p 1. DF: /ctcEligibleDependents
   definition ctc_eligible_dependents equals

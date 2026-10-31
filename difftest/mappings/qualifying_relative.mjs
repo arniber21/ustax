@@ -11,9 +11,12 @@
 //   writableCanadaMexicoResident missing: false.
 // grossIncomeTest is a yes/no Writable in DF; the Catala input is the amount. "yes" (less than the
 // limit) becomes $0, "no" becomes $5,050 (Params_2024.qualifying_relative_gross_income_limit).
-// The benefit-split facts (dependentsBenefitSplit.xml, issue #18) and the filers.xml facts are DF's
-// own derived values from the oracle, as /minimumFilerDateOfBirth is for qualifying_child.
+// The benefit-split answers (dependentsBenefitSplit.xml, issue #18) are mapped by
+// dependents_benefit_split.mjs; DependentTest computes tpCanClaimSplitBenefitsHohEitcCdcc and
+// disqualifiedDueToParentalCustody itself (Dependents_benefit_split.BenefitSplitTest). The filers.xml
+// facts are DF's own derived values from the oracle, as /minimumFilerDateOfBirth is for qualifying_child.
 import { person } from './qualifying_child.mjs';
+import { splitAnswers } from './dependents_benefit_split.mjs';
 
 const P = '/familyAndHousehold/*/';
 const val = (f, n) => f.get(P + n)?.value;
@@ -37,8 +40,6 @@ export function answers(f) {
     writable_us_national: bool(f, 'writableUsNational'),
     writable_canada_mexico_resident: bool(f, 'writableCanadaMexicoResident'),
     tp_claims: bool(f, 'tpClaims'),
-    tp_can_claim_split_benefits_hoh_eitc_cdcc: sbool(f, P + 'tpCanClaimSplitBenefitsHohEitcCdcc'),
-    disqualified_due_to_parental_custody: sbool(f, P + 'disqualifiedDueToParentalCustody'),
   };
 }
 
@@ -50,10 +51,11 @@ export default {
   file: 'catala/qualifying_relative.catala_en',
   appliesTo: (f) => (f.has(P + 'eligibleDependent') ? true : 'needs per-person oracle: make difftest-persons'),
   inputs: {
-    member: (f) => ({ person: person(f), answers: answers(f) }),
+    member: (f) => ({ person: person(f), answers: answers(f), split: splitAnswers(f) }),
     minimum_filer_date_of_birth: (f) => f.get('/minimumFilerDateOfBirth').value,
     treat_filers_as_dependents: (f) => sbool(f, '/treatFilersAsDependents'),
     either_filer_us_citizen_or_national: (f) => sbool(f, '/eitherFilerUSCitizenOrNational'),
+    treat_as_mfj: (f) => sbool(f, '/treatAsMFJ'),
   },
   outputs: [
     b('qualifyingChild', 'qualifying_child'),
