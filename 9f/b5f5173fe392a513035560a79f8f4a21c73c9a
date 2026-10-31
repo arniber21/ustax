@@ -1,0 +1,33 @@
+difftest/mappings/tax_rates.mjs
+  s_3031b504518be3::t_5eb686c6b901d4 1-38
+difftest/run.mjs
+  s_3031b504518be3::t_33453eb104a615 60
+  s_3031b504518be3::t_e4f364ee7fab5f 11
+  s_3031b504518be3::t_9e32a26c7d34b4 54
+difftest/lib.mjs
+  s_3031b504518be3::t_269585c4c2bac0 192-205
+Makefile
+  s_3031b504518be3::t_992ed80126db2b 53-55
+difftest/lean.mjs
+  s_3031b504518be3::t_9f290500d0889c 1-164
+catala/DIFFTEST.md
+  s_3031b504518be3::t_85a31e3b2ff411 89-105,107-108
+lean/README.md
+  s_3031b504518be3::t_b432c381889f31 142-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9fb5f5173fe392a513035560a79f8f4a21c73c9a",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
