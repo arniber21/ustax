@@ -36,6 +36,12 @@ difftest:  ## run mapped Catala scopes against the oracle, per-scenario pass/fai
 	node difftest/run.mjs --scope $(SCOPE) $(ARGS)
 difftest-selftest:  ## unit tests of the runner itself (no Catala)
 	node --test difftest/selftest.mjs
+# Per-person household facts (issue #16): oracle/persons.csv from oracle/generate_persons.mjs.
+.PHONY: difftest-persons oracle-persons
+difftest-persons:  ## qualifying-child tests per household member vs oracle/persons.csv
+	node difftest/run.mjs --scope qualifying_child --oracle oracle/persons.csv $(ARGS)
+oracle-persons:  ## regenerate oracle/persons.csv (needs DIRECT_FILE, as for `make oracle`)
+	cd oracle && npm ci --ignore-scripts --no-audit --no-fund && node generate_persons.mjs
 
 # --- TLS (see docs/tls.md): Caddy terminates HTTPS, Lean server stays on plain loopback HTTP ---
 # Requires `caddy` on PATH (brew install caddy); not installed by `make install`.

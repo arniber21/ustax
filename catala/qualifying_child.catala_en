@@ -1,0 +1,626 @@
+> Module Qualifying_child
+
+> Using Filers as F
+
+# Qualifying child: the five tests of IRC 152(c), one person at a time
+
+Direct File ("DF" below) facts `/familyAndHousehold/*/qualifyingChild` and
+its sub-tests in `familyAndHousehold.xml` (lines 758-845, 1585-1648,
+1804-1885, 2009-2147, 2687-2705, 4731-4749) and `/familyAndHousehold/*/qcRelationshipTest`
+in `dependentsRelationship.xml` (lines 986-1108), under
+`../direct-file/direct-file/backend/src/main/resources/tax/`. Issue #16,
+scope.md section 5.2. Tests: `catala/tests/test_qualifying_child.catala_en`.
+Oracle comparison: `difftest/mappings/qualifying_child.mjs` against the
+per-person oracle `oracle/persons.csv` (`make difftest-persons`).
+
+DF keeps the people of the household in the collection `/familyAndHousehold`.
+Every fact below is a per-person fact `/familyAndHousehold/*/x`. Following
+`catala/CONVENTIONS.md` section 2, the collection is a `list of Person`, the
+per-person facts are computed by the scope `QualifyingChildTest` applied to
+one person, and `QualifyingChildren` maps it over the list.
+
+The only fact read from outside the person is `/minimumFilerDateOfBirth`
+(`filers.xml` line 3306), the date of birth of the oldest filer: the older of
+the two filers if the return is treated as joint, else the primary filer. It
+is the output `minimum_filer_date_of_birth` of `Filers.Filers` (issue #15),
+and an input here.
+
+The inputs are complete (CONVENTIONS section 3). DF asks some of them only
+under a UI condition (the student question only between ages 19 and 23, the
+disability question only when `disabilityStatusMayAffectBenefits`, the
+joint-return questions only of a married person, the support question only
+after the relationship, age and residency tests pass). They are still inputs
+here, and the law decides how they count: where DF's gate disagrees with the
+statute, the statute wins (CONVENTIONS section 8, `# DF-BUG(n):` comments;
+one case, the disability answer in the age test).
+
+The tie-breakers of IRC 152(c)(4) cannot be computed from the return; a
+person who needs them makes the return unsupported (DF-BUG-3, below).
+
+Not here, on purpose: the qualifying relative and the dependent tests
+(issue #17), the
+children of divorced or separated parents (IRC 152(e), `dependentsBenefitSplit.xml`,
+issue #18), and the credit-specific person tests (EITC, CTC, CDCC; issues
+#26-#28). This module feeds those modules; it feeds no Form 1040 line
+directly.
+
+## Declarations
+
+```catala-metadata
+## The relationship of a person to the filers. DF: dependentsRelationship.xml
+## /relationshipOptions (lines 5-35), one constructor per option, same order.
+## DF derives /familyAndHousehold/*/relationship from a category question and
+## one sub-question per category (lines 194-642); the result is always one
+## of these options (`notRelated` gives `noneOfTheAbove`), so the derived
+## fact is the input here.
+declaration enumeration Relationship:
+  -- BiologicalChild
+  -- AdoptedChild
+  -- StepChild
+  -- FosterChild
+  -- GrandChildOrOtherDescendantOfChild
+  -- ChildInLaw
+  -- Sibling
+  -- ChildOfSibling
+  -- HalfSibling
+  -- ChildOfHalfSibling
+  -- StepSibling
+  -- ChildOfStepSibling
+  -- OtherDescendantOfSibling
+  -- OtherDescendantOfHalfSibling
+  -- OtherDescendantOfStepSibling
+  -- SiblingsSpouse
+  -- SiblingInLaw
+  -- Parent
+  -- FosterParent
+  -- SiblingOfParent
+  -- GrandParent
+  -- OtherAncestorOfParent
+  -- StepParent
+  -- ParentInLaw
+  -- NoneOfTheAbove
+
+## How long the person lived with the filer. DF: familyAndHousehold.xml
+## /residencyDurationOptions (lines 34-44). The UI text of `sixToElevenMonths`
+## is "More than 6 months (... days) but less than a year"
+## (df-client-app/src/locales/en.yaml line 18028).
+declaration enumeration ResidencyDuration:
+  -- AllYear
+  -- SixToElevenMonths
+  -- LessThanSixMonths
+
+## The `Writable` answers DF keeps per household member that the qualifying
+## child tests read. Names, TIN, citizenship, CDCC and benefit-split answers
+## belong to the modules that read them (#17, #18, #28).
+declaration structure Person:
+  # DF: dependentsRelationship.xml /familyAndHousehold/*/relationship
+  data relationship content Relationship
+  # DF: /familyAndHousehold/*/dateOfBirth
+  data date_of_birth content date
+  # DF: /familyAndHousehold/*/fullTimeStudent
+  data full_time_student content boolean
+  # DF: /familyAndHousehold/*/permanentTotalDisability
+  data permanent_total_disability content boolean
+  # DF: /familyAndHousehold/*/residencyDuration
+  data residency_duration content ResidencyDuration
+  # DF: /familyAndHousehold/*/ownSupport
+  data own_support content boolean
+  # DF: /familyAndHousehold/*/married
+  data married content boolean
+  # DF: /familyAndHousehold/*/writableJointReturn
+  data writable_joint_return content boolean
+  # DF: /familyAndHousehold/*/writableRequiredToFile
+  data writable_required_to_file content boolean
+  # DF: /familyAndHousehold/*/writableFilingOnlyForRefund
+  data writable_filing_only_for_refund content boolean
+  # DF: /familyAndHousehold/*/writableCouldBeQualifyingChildOfAnother
+  data writable_could_be_qualifying_child_of_another content boolean
+  # DF: /familyAndHousehold/*/writablePotentialClaimerMustFile
+  data writable_potential_claimer_must_file content boolean
+  # DF: /familyAndHousehold/*/writablePotentialClaimerDidFile
+  data writable_potential_claimer_did_file content boolean
+  # DF: /familyAndHousehold/*/writablePotentialClaimerFiledOnlyForRefund
+  data writable_potential_claimer_filed_only_for_refund content boolean
+
+## Ages used below. None is inflation indexed.
+## IRC 152(c)(3)(A)(i): "has not attained the age of 19".
+declaration qc_age_limit content integer equals 19
+## IRC 152(c)(3)(A)(ii): "a student who has not attained the age of 24".
+declaration qc_student_age_limit content integer equals 24
+## DF product decision, familyAndHousehold.xml /studentStatusMayAffectBenefits
+## (line 775): the student question is asked only of a person older than 18.
+## A student of 18 or younger passes the age test without it.
+declaration student_question_minimum_age content integer equals 18
+## DF product decision, familyAndHousehold.xml
+## /disabilityStatusMayAffectBenefits (line 803): age 18 on July 2 of the
+## tax year. No statute uses this number (quirk Q5).
+declaration disability_question_age content integer equals 18
+## DF /familyAndHousehold/*/ageAtFirstHalfOfYear (line 1585): the age on
+## July 2, "the age of the dependent for the majority of the year".
+declaration first_half_month content integer equals 7
+declaration first_half_day content integer equals 2
+```
+
+## The scope for one person
+
+```catala-metadata
+declaration scope QualifyingChildTest:
+  # One member of DF /familyAndHousehold
+  input person content Person
+  # DF: filers.xml /minimumFilerDateOfBirth (Filers.minimum_filer_date_of_birth)
+  input minimum_filer_date_of_birth content date
+
+  # DF: /familyAndHousehold/*/age
+  output age content integer
+  # DF: /familyAndHousehold/*/ageAtFirstHalfOfYear
+  output age_at_first_half_of_year content integer
+  # True if the person was born after the oldest filer (no DF fact; DF
+  # writes the comparison inline in /ageTest and /isAStudentUnder24)
+  output younger_than_oldest_filer condition
+  # DF: dependentsRelationship.xml /familyAndHousehold/*/qcRelationshipTest
+  output qc_relationship_test condition
+  # DF: /familyAndHousehold/*/studentStatusMayAffectBenefits
+  output student_status_may_affect_benefits condition
+  # DF: /familyAndHousehold/*/isAStudentUnder24
+  output is_a_student_under24 condition
+  # DF: /familyAndHousehold/*/disabilityStatusMayAffectBenefits
+  output disability_status_may_affect_benefits condition
+  # DF: /familyAndHousehold/*/ageTest
+  output age_test condition
+  # DF: /familyAndHousehold/*/residencyTest
+  output residency_test condition
+  # DF: /familyAndHousehold/*/qcSupportTest
+  output qc_support_test condition
+  # DF: /familyAndHousehold/*/jointReturn
+  output joint_return condition
+  # DF: /familyAndHousehold/*/requiredToFile
+  output required_to_file condition
+  # DF: /familyAndHousehold/*/filingOnlyForRefund
+  output filing_only_for_refund condition
+  # DF: /familyAndHousehold/*/jointReturnTest
+  output joint_return_test condition
+  # DF: /familyAndHousehold/*/qualifyingChild
+  output qualifying_child condition
+  # DF: /familyAndHousehold/*/qcOfAnotherButNot
+  output qc_of_another_but_not condition
+  # Another taxpayer can also claim the person as a qualifying child
+  # (IRC 152(c)(4) "2 or more taxpayers"; no DF fact)
+  output other_taxpayer_can_claim_as_qualifying_child condition
+  # The filer and another taxpayer can both claim the person, so the
+  # 152(c)(4) tie-breaker is needed (DF-BUG-3; no DF fact)
+  output ko_qualifying_child_tie_breaker condition
+```
+
+## 26 U.S.C. § 152(c) Qualifying child
+
+### (1) In general
+
+IRC 152(c)(1) (`sources/statute/irc-152.html`): "The term "qualifying child"
+means, with respect to any taxpayer for any taxable year, an individual— (A)
+who bears a relationship to the taxpayer described in paragraph (2), (B) who
+has the same principal place of abode as the taxpayer for more than one-half
+of such taxable year, (C) who meets the age requirements of paragraph (3),
+(D) who has not provided over one-half of such individual's own support for
+the calendar year in which the taxable year of the taxpayer begins, and (E)
+who has not filed a joint return (other than only for a claim of refund) with
+the individual's spouse under section 6013 for the taxable year beginning in
+the calendar year in which the taxable year of the taxpayer begins."
+
+Pub. 501 (2024), `sources/pubs/p501--2024.pdf` p 11: "Qualifying Child ...
+The five tests are: 1. Relationship, 2. Age, 3. Residency, 4. Support, 5.
+Joint return." DF `/familyAndHousehold/*/qualifyingChild`
+(`familyAndHousehold.xml` line 2133): "Does the dependent pass all five
+qualifying child tests?", the `All` of the five tests below.
+
+```catala
+scope QualifyingChildTest:
+  # IRC 152(c)(1); Pub 501 p 11. DF: /familyAndHousehold/*/qualifyingChild
+  rule qualifying_child under condition
+    qc_relationship_test and age_test and residency_test
+    and qc_support_test and joint_return_test
+  consequence fulfilled
+```
+
+### (1)(A) and (2) Relationship
+
+IRC 152(c)(2): "an individual bears a relationship to the taxpayer described
+in this paragraph if such individual is— (A) a child of the taxpayer or a
+descendant of such a child, or (B) a brother, sister, stepbrother, or
+stepsister of the taxpayer or a descendant of any such relative."
+
+IRC 152(f)(1)(A): "The term "child" means an individual who is— (i) a son,
+daughter, stepson, or stepdaughter of the taxpayer, or (ii) an eligible
+foster child of the taxpayer." IRC 152(f)(1)(B): "a legally adopted
+individual of the taxpayer, or an individual who is lawfully placed with the
+taxpayer for legal adoption by the taxpayer, shall be treated as a child of
+such individual by blood." IRC 152(f)(4): "The terms "brother" and "sister"
+include a brother or sister by the half blood."
+
+Pub. 501 p 12, Relationship Test: "To meet this test, a child must be: •
+Your son, daughter, stepchild, or foster child, or a descendant (for
+example, your grandchild) of any of them; or • Your brother, sister, half
+brother, half sister, stepbrother, or stepsister, or a descendant (for
+example, your niece or nephew) of any of them."
+
+On a joint return the relationship may be to either spouse: Treas. Reg.
+§ 1.152-2(d) (`sources/regs/cfr-1.152-2.xml`): "In the case of a joint return
+it is not necessary that the prescribed relationship exist between the person
+claimed as a dependent and the spouse who furnishes the support; it is
+sufficient if the prescribed relationship exists with respect to either
+spouse." DF asks one relationship "to the taxpayer(s)" (`relationship`,
+`dependentsRelationship.xml` line 196), so this is the answer's meaning.
+
+DF `qcRelationshipTest` (`dependentsRelationship.xml` line 986) lists the 14
+options below: the five child options (descendants of a child are
+`grandChildOrOtherDescendantOfChild`) and the nine sibling options. In-laws,
+parents, ancestors, siblings of a parent and unrelated persons fail.
+
+```catala
+scope QualifyingChildTest:
+  # IRC 152(c)(2), 152(f)(1), 152(f)(4); Pub 501 p 12.
+  # DF: dependentsRelationship.xml /familyAndHousehold/*/qcRelationshipTest
+  rule qc_relationship_test under condition
+    match person.relationship with pattern
+    -- BiologicalChild: true
+    -- AdoptedChild: true
+    -- StepChild: true
+    -- FosterChild: true
+    -- GrandChildOrOtherDescendantOfChild: true
+    -- Sibling: true
+    -- HalfSibling: true
+    -- StepSibling: true
+    -- ChildOfSibling: true
+    -- ChildOfHalfSibling: true
+    -- ChildOfStepSibling: true
+    -- OtherDescendantOfSibling: true
+    -- OtherDescendantOfHalfSibling: true
+    -- OtherDescendantOfStepSibling: true
+    -- anything: false
+  consequence fulfilled
+```
+
+### (1)(C) and (3) Age
+
+IRC 152(c)(3)(A): "an individual meets the requirements of this paragraph if
+such individual is younger than the taxpayer claiming such individual as a
+qualifying child and— (i) has not attained the age of 19 as of the close of
+the calendar year in which the taxable year of the taxpayer begins, or (ii)
+is a student who has not attained the age of 24 as of the close of such
+calendar year." IRC 152(c)(3)(B): "In the case of an individual who is
+permanently and totally disabled (as defined in section 22(e)(3)) at any time
+during such calendar year, the requirements of subparagraph (A) shall be
+treated as met with respect to such individual."
+
+IRC 152(f)(2): "The term "student" means an individual who during each of 5
+calendar months during the calendar year in which the taxable year of the
+taxpayer begins— (A) is a full-time student at an educational organization
+described in section 170(b)(1)(A)(ii), or (B) is pursuing a full-time course
+of institutional on-farm training". DF asks one question, `fullTimeStudent`
+("Is the dependent a full-time student?").
+
+Pub. 501 p 12, Age Test: "To meet this test, a child must be: • Under age 19
+at the end of the year and younger than you (or your spouse if filing
+jointly); • A student under age 24 at the end of the year and younger than
+you (or your spouse if filing jointly); or • Permanently and totally disabled
+at any time during the year, regardless of age." Pub. 501 p 13: "if you are
+married filing jointly, the child must be younger than you or your spouse but
+doesn't have to be younger than both of you." That is why DF compares with
+the oldest filer's date of birth (`/minimumFilerDateOfBirth`).
+
+#### Age at the end of the year
+
+DF `/familyAndHousehold/*/age` (line 758) is the tax year minus the year of
+birth. A person attains an age on the anniversary of the birth, so this is
+exactly the age attained "as of the close of the calendar year": Pub. 501
+p 12, "Your child turned 19 on December 10. ... this child doesn't meet the
+age test because, at the end of the year, this child wasn't under age 19."
+
+`/familyAndHousehold/*/ageAtFirstHalfOfYear` (line 1585) is the age on
+July 2: one less than `age` if the birthday falls after July 2.
+
+```catala
+scope QualifyingChildTest:
+  # Age at the close of the tax year. DF: /familyAndHousehold/*/age
+  definition age equals F.tax_year - Date.get_year of person.date_of_birth
+
+  # DF: /familyAndHousehold/*/ageAtFirstHalfOfYear (age on July 2)
+  definition age_at_first_half_of_year equals
+    if Date.get_month of person.date_of_birth > first_half_month
+       or (Date.get_month of person.date_of_birth = first_half_month
+           and Date.get_day of person.date_of_birth > first_half_day)
+    then age - 1
+    else age
+
+  # IRC 152(c)(3)(A) "younger than the taxpayer"; Pub 501 p 13.
+  # DF: the comparison dateOfBirth > /minimumFilerDateOfBirth written inline
+  # in /familyAndHousehold/*/ageTest (line 1840) and /isAStudentUnder24 (line 4741)
+  rule younger_than_oldest_filer under condition
+    person.date_of_birth > minimum_filer_date_of_birth
+  consequence fulfilled
+```
+
+#### Student under 24
+
+DF `/familyAndHousehold/*/studentStatusMayAffectBenefits` (line 775) is true
+for ages 19 to 23 at the end of the year; `/isAStudentUnder24` (line 4731)
+is a full-time student of that age who is younger than the oldest filer. A
+student of 18 or younger already passes under 152(c)(3)(A)(i), so the
+age floor changes nothing.
+
+```catala
+scope QualifyingChildTest:
+  # DF: /familyAndHousehold/*/studentStatusMayAffectBenefits
+  rule student_status_may_affect_benefits under condition
+    age > student_question_minimum_age and age < qc_student_age_limit
+  consequence fulfilled
+
+  # IRC 152(c)(3)(A)(ii), 152(f)(2). DF: /familyAndHousehold/*/isAStudentUnder24
+  rule is_a_student_under24 under condition
+    person.full_time_student and student_status_may_affect_benefits
+    and younger_than_oldest_filer
+  consequence fulfilled
+```
+
+#### Permanently and totally disabled
+
+DF `/familyAndHousehold/*/disabilityStatusMayAffectBenefits` (line 803) is
+`Any(ageAtFirstHalfOfYear >= 18, All(ageAtFirstHalfOfYear < 18, dateOfBirth
+< /minimumFilerDateOfBirth))`, and `/ageTest` ANDs it with
+`permanentTotalDisability`.
+
+**Is the condition inverted? No** (scope.md section 11 item 5, quirk Q5,
+re-read for issue #16). The description says the question is asked when the
+person "is not 18.5, but they are younger than the filer". The code tests
+`dateOfBirth < /minimumFilerDateOfBirth`: born *before* the oldest filer,
+i.e. *older* than every filer. The code is right and the description is
+wrong. A person under 18 on July 2 is at most 18 at the end of the year, so
+if they are also younger than the oldest filer they pass 152(c)(3)(A)(i)
+whatever the disability answer; disability can only change the age test for
+someone 18 or older on July 2 or not younger than the oldest filer, which is
+the set the code selects. The literal description (`>`) would ask exactly
+the people for whom the answer cannot matter, and would ignore it for a
+disabled person under 18 who is older than a young filer (for example a
+disabled 17-year-old sibling of a 16-year-old filer), who passes under
+152(c)(3)(B).
+
+The gate still misses one case. A disabled person under 18 on July 2 born on
+exactly the same day as the oldest filer (a twin of the filer) is neither
+younger (`dateOfBirth > min`) nor older (`dateOfBirth < min`), so DF fails
+the age test, while 152(c)(3)(B) says the age requirements "shall be treated
+as met". Following CONVENTIONS section 8 (statute wins), `age_test` below
+counts the disability answer for everyone, as the statute does. The gate is
+kept as an output because DF also uses it for the benefit-split rules (#18)
+and Schedule EIC line 4b.
+
+```catala
+scope QualifyingChildTest:
+  # Not inverted (Q5): the gate selects the persons for whom the disability
+  # answer can change the age test (text above).
+  # DF: /familyAndHousehold/*/disabilityStatusMayAffectBenefits
+  rule disability_status_may_affect_benefits under condition
+    age_at_first_half_of_year >= disability_question_age
+    or (age_at_first_half_of_year < disability_question_age
+        and person.date_of_birth < minimum_filer_date_of_birth)
+  consequence fulfilled
+
+  # DF-BUG(11): DF ANDs the disability answer with
+  # disabilityStatusMayAffectBenefits, which fails a disabled person under 18
+  # born on the same day as the oldest filer. IRC 152(c)(3)(B): for a person
+  # "permanently and totally disabled ... at any time during such calendar
+  # year, the requirements of subparagraph (A) shall be treated as met";
+  # Pub 501 p 12: "regardless of age". Status: candidate. We follow the law.
+  # IRC 152(c)(3); Pub 501 p 12. DF: /familyAndHousehold/*/ageTest
+  rule age_test under condition
+    (age < qc_age_limit and younger_than_oldest_filer)
+    or is_a_student_under24
+    or person.permanent_total_disability
+  consequence fulfilled
+```
+
+### (1)(B) Residency
+
+IRC 152(c)(1)(B): "who has the same principal place of abode as the taxpayer
+for more than one-half of such taxable year". Pub. 501 p 13, Residency Test:
+"To meet this test, your child must have lived with you for more than half
+the year. There are exceptions for temporary absences, children who were
+born or died during the year, adopted or foster children, kidnapped
+children, and children of divorced or separated parents."
+
+DF `/familyAndHousehold/*/residencyTest` (line 1869): the answer is not
+`lessThanSixMonths`. The exceptions are folded into the answer by the
+questionnaire (temporary absences count as time lived together); the
+divorced-parents rule is issue #18.
+
+```catala
+scope QualifyingChildTest:
+  # IRC 152(c)(1)(B); Pub 501 p 13. DF: /familyAndHousehold/*/residencyTest
+  rule residency_test under condition
+    person.residency_duration != LessThanSixMonths
+  consequence fulfilled
+```
+
+### (1)(D) Support
+
+IRC 152(c)(1)(D): "who has not provided over one-half of such individual's
+own support for the calendar year". Pub. 501 p 14, Support Test (To Be a
+Qualifying Child): "To meet this test, the child can't have provided more
+than half of the child's own support for the year." DF
+`/familyAndHousehold/*/qcSupportTest` (line 2696) is `Not(ownSupport)`, where
+`ownSupport` asks "Did the dependent provide more than half their own
+support?". The 152(f)(5) scholarship rule is part of answering that
+question.
+
+```catala
+scope QualifyingChildTest:
+  # IRC 152(c)(1)(D); Pub 501 p 14. DF: /familyAndHousehold/*/qcSupportTest
+  rule qc_support_test under condition not person.own_support
+  consequence fulfilled
+```
+
+### (1)(E) Joint return
+
+IRC 152(c)(1)(E): "who has not filed a joint return (other than only for a
+claim of refund) with the individual's spouse under section 6013". Pub. 501
+p 15, Joint Return Test (To Be a Qualifying Child): "To meet this test, the
+child can't file a joint return for the year. Exception. An exception to the
+joint return test applies if your child and their spouse file a joint return
+only to claim a refund of income tax withheld or estimated tax paid." Pub.
+501 p 15, Example 2: the couple "file a joint return only to get a refund of
+the withheld taxes. The exception to the joint return test applies, so this
+child may be your qualifying child if all the other tests are met."
+
+DF asks three questions of a married person: are they filing jointly, are
+they required to file, are they filing only for a refund. Each derived fact
+is ANDed with `married` (lines 2027-2096). `/filingOnlyForRefund` is also
+ANDed with "`requiredToFile` is complete and false"; with complete inputs
+that is `not required_to_file`. `/jointReturnTest` (line 2098) passes if the
+person is not married, does not file jointly, or files only for a refund and
+is not required to file.
+
+```catala
+scope QualifyingChildTest:
+  # DF: /familyAndHousehold/*/jointReturn
+  rule joint_return under condition
+    person.married and person.writable_joint_return
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/requiredToFile
+  rule required_to_file under condition
+    person.married and joint_return and person.writable_required_to_file
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/filingOnlyForRefund (IsComplete(requiredToFile)
+  # is always true here, CONVENTIONS section 3)
+  rule filing_only_for_refund under condition
+    person.married and joint_return and person.writable_filing_only_for_refund
+    and not required_to_file
+  consequence fulfilled
+
+  # IRC 152(c)(1)(E); Pub 501 p 15. DF: /familyAndHousehold/*/jointReturnTest
+  rule joint_return_test under condition
+    (not person.married)
+    or (not joint_return)
+    or (filing_only_for_refund and not required_to_file)
+  consequence fulfilled
+```
+
+### (4) Two or more taxpayers who can claim the same child
+
+IRC 152(c)(4)(A): "if (but for this paragraph) an individual may be claimed
+as a qualifying child by 2 or more taxpayers for a taxable year beginning in
+the same calendar year, such individual shall be treated as the qualifying
+child of the taxpayer who is— (i) a parent of the individual, or (ii) if
+clause (i) does not apply, the taxpayer with the highest adjusted gross
+income for such taxable year." IRC 152(c)(4)(B): "If the parents claiming
+any qualifying child do not file a joint return together, such child shall
+be treated as the qualifying child of— (i) the parent with whom the child
+resided for the longest period of time during the taxable year, or (ii) if
+the child resides with both parents for the same amount of time during such
+taxable year, the parent with the highest adjusted gross income." IRC
+152(c)(4)(C): "If the parents of an individual may claim such individual as
+a qualifying child but no parent so claims the individual, such individual
+may be claimed as the qualifying child of another taxpayer but only if the
+adjusted gross income of such taxpayer is higher than the highest adjusted
+gross income of any parent of the individual."
+
+Pub. 501 p 15, Qualifying Child of More Than One Person: "If your qualifying
+child isn't a qualifying child of anyone else, this topic doesn't apply to
+you". Pub. 501 p 18, Not a Qualifying Child Test: "A child isn't the
+qualifying child of any other taxpayer ... if the child's parent (or other
+person for whom the child is defined as a qualifying child) isn't required
+to file an income tax return and either: • Doesn't file an income tax
+return, or • Files a return only to get a refund of income tax withheld or
+estimated tax paid."
+
+What DF does (DF-BUG-3, `docs/direct-file-bugs.md`): nothing. It asks
+whether the person "could be the qualifying child of another taxpayer"
+(`writableCouldBeQualifyingChildOfAnother`, line 2450) and whether that
+taxpayer must file, did file, or filed only for a refund (lines 2483-2547),
+but uses the answers only for the qualifying-relative path (#17) and for the
+EITC, where `/familyAndHousehold/*/eitcQualifyingChild` carries "TODO: take
+into account QC of another" (line 2259). A filer whose child is also the
+qualifying child of a taxpayer with priority under 152(c)(4) still gets the
+child for every benefit.
+
+What we do: knock out. Deciding 152(c)(4) needs facts about the other
+taxpayer that no DF question collects (whether they are a parent, the
+child's time with each parent, both AGIs, whether a parent claims the child),
+so the rule cannot be computed from the return. The knockout fires when the
+person passes the five tests for the filer and the other taxpayer is a real
+competing claimant: they "could" claim the child and are not the
+non-filer / refund-only case of Pub. 501 p 18 (DF's own
+`/familyAndHousehold/*/qcOfAnotherButNot`, line 2549, with its inputs
+complete). The filer's spouse on a joint return is not "another taxpayer"
+(Pub. 501 p 15: "except your spouse with whom you plan to file a joint
+return"); DF's question is understood the same way.
+
+```catala
+scope QualifyingChildTest:
+  # DF: /familyAndHousehold/*/qcOfAnotherButNot (inputs complete, so the
+  # derived potentialClaimer* facts reduce to the answers below)
+  rule qc_of_another_but_not under condition
+    person.writable_could_be_qualifying_child_of_another
+    and not person.writable_potential_claimer_must_file
+    and ((not person.writable_potential_claimer_did_file)
+         or person.writable_potential_claimer_filed_only_for_refund)
+  consequence fulfilled
+
+  # IRC 152(c)(4); Pub 501 pp 15, 18. No DF fact (see the text above).
+  rule other_taxpayer_can_claim_as_qualifying_child under condition
+    person.writable_could_be_qualifying_child_of_another
+    and not qc_of_another_but_not
+  consequence fulfilled
+
+  # DF-BUG(3): DF never applies IRC 152(c)(4). We cannot apply it from the
+  # facts on the return, so the return is refused when it would matter.
+  # Status: candidate (docs/direct-file-bugs.md), owner #16, #60.
+  rule ko_qualifying_child_tie_breaker under condition
+    qualifying_child and other_taxpayer_can_claim_as_qualifying_child
+  consequence fulfilled
+```
+
+## The household: every person
+
+DF evaluates each `/familyAndHousehold/*/` fact per collection member. The
+scope `QualifyingChildren` does the same with `map each`, and counts the
+members who are qualifying children (no DF fact; a convenience output for
+tests and later modules).
+
+```catala-metadata
+declaration scope QualifyingChildren:
+  # DF: /familyAndHousehold
+  input persons content list of Person
+  # DF: filers.xml /minimumFilerDateOfBirth
+  input minimum_filer_date_of_birth content date
+
+  # DF: /familyAndHousehold/*/... (one result per person, same order)
+  output results content list of QualifyingChildTest
+  # Number of persons with `qualifying_child` (no DF fact)
+  output qualifying_child_count content integer
+
+  # Knockouts, CONVENTIONS section 6
+  # Some person needs the IRC 152(c)(4) tie-breaker (DF-BUG-3; no DF fact)
+  output ko_qualifying_child_tie_breaker condition
+  output unsupported condition
+```
+
+```catala
+scope QualifyingChildren:
+  definition results equals
+    map each p among persons to
+      (output of QualifyingChildTest with {
+         -- person: p
+         -- minimum_filer_date_of_birth: minimum_filer_date_of_birth })
+
+  definition qualifying_child_count equals
+    number of (list of r among results such that r.qualifying_child)
+
+  # DF-BUG(3): IRC 152(c)(4). No DF fact (DF has no knockout here).
+  rule ko_qualifying_child_tie_breaker under condition
+    exists r among results such that r.ko_qualifying_child_tie_breaker
+  consequence fulfilled
+
+  rule unsupported under condition
+    ko_qualifying_child_tie_breaker
+  consequence fulfilled
+```
