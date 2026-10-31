@@ -1,0 +1,239 @@
+> Module Unemployment
+
+> Using Types
+> Using Params_2024 as P
+> Using Rounding as R
+
+# Unemployment compensation (Form 1099-G; Schedule 1 line 7, Form 1040 line 8)
+
+Direct File module `unemployment.xml`
+(`../direct-file/direct-file/backend/src/main/resources/tax/unemployment.xml`,
+"DF" below), scope.md section 3.4, issue #21. Tests:
+`catala/tests/test_unemployment.catala_en`. Oracle comparison:
+`make difftest SCOPE=unemployment`.
+
+Inputs are complete (`catala/CONVENTIONS.md` section 3): an empty box of a
+Form 1099-G is an explicit `$0`. This module feeds three things to the Form
+1040 scope (#14), listed in the PR body: `unemployment_compensation` (slot
+`unemployment_compensation`, Schedule 1 line 7 and then 1040 line 8),
+`form_1099g_federal_tax_withheld` (part of the slot `other_1099_withholding`,
+1040 line 25b), and `unsupported` (return-level knockout aggregation, #38).
+
+## Statute and form
+
+Unemployment compensation is gross income. 26 U.S.C. § 85 is not among the
+files in `sources/statute/`, so the form and its instructions are the cited
+source. Schedule 1 (Form 1040) 2024, `sources/forms-instructions/f1040s1--2024.pdf`
+p 1, line 7: "Unemployment compensation". Instructions for Form 1040 2024,
+`sources/forms-instructions/i1040gi--2024.pdf` p 85, "Line 7, Unemployment
+Compensation": "You should receive a Form 1099-G showing in box 1 the total
+unemployment compensation paid to you in 2024. Report this amount on line 7."
+and "If you received an overpayment of unemployment compensation in 2024 and
+you repaid any of it in 2024, subtract the amount you repaid from the total
+amount you received. Enter the result on line 7. Also enter "Repaid" and the
+amount you repaid on the dotted line next to line 7. If, in 2024, you repaid
+more than $3,000 of unemployment compensation you included in gross income in
+an earlier year, see Repayments in Pub. 525."
+
+The $3,000 is the threshold of 26 U.S.C. § 1341(a)(3)
+(`sources/statute/irc-1341.html`): relief under the claim-of-right rule applies
+"if the amount of such deduction exceeds $3,000". Direct File does not
+compute the § 1341 computation; it refuses the filer (knockout below).
+`P.claim_of_right_threshold` holds the figure.
+
+Rounding. The instruction says to subtract the repayment from the amount
+received and enter the result. Direct File computes a net amount for each form
+without rounding, adds the nets, and rounds the sum once
+(`/unemploymentCompensation = Round(CollectionSum(netUnemploymentComp))`). The
+federal tax withheld of each form is rounded per form (a per-item `Round`, the
+pattern of scope.md section 3.1; Q-R1 in `CONVENTIONS.md`).
+
+## One Form 1099-G
+
+DF collection `/form1099Gs`. The `Writable` children are fields of
+`Form1099G`; the derived children are outputs of the scope `Form1099GFacts`.
+Payer name, TINs, state ID and the "has a 1099" flag change no tax result and
+are not modelled.
+
+```catala-metadata
+## One entry of DF `/form1099Gs`: the boxes of a Form 1099-G the tax depends on.
+declaration structure Form1099G:
+  # DF: /form1099Gs/*/filer (CollectionItem of /filers)
+  data filer content Types.FilerRole
+  # 1099-G box 1. DF: /form1099Gs/*/amount
+  data amount content money
+  # DF: /form1099Gs/*/writableAmountPaidBackForBenefitsInTaxYear: repayment, in
+  # the tax year, of benefits received in the tax year.
+  data writable_amount_paid_back_for_benefits_in_tax_year content money
+  # DF: /form1099Gs/*/writableAmountPaidBackForBenefitsBeforeTaxYear:
+  # repayment, in the tax year, of benefits received in an earlier year.
+  data writable_amount_paid_back_for_benefits_before_tax_year content money
+  # 1099-G box 4. DF: /form1099Gs/*/writableFederalTaxWithheld
+  data writable_federal_tax_withheld content money
+  # DF: /form1099Gs/*/writableState: true when the filer chose
+  # `differentState` from /incomeFormStateOptions (`sameState` or no answer:
+  # false).
+  data state_is_different_state content boolean
+```
+
+```catala-metadata
+declaration scope Form1099GFacts:
+  input form content Form1099G
+  # DF: /form1099Gs/*/amountPaidBackForBenefitsInTaxYear
+  output amount_paid_back_for_benefits_in_tax_year content money
+  # DF: /form1099Gs/*/netUnemploymentComp
+  output net_unemployment_comp content money
+  # DF: /form1099Gs/*/amountPaidBackForBenefitsBeforeTaxYear
+  output amount_paid_back_for_benefits_before_tax_year content money
+  # DF: /form1099Gs/*/federalTaxWithheld
+  output federal_tax_withheld content money
+  # DF: /form1099Gs/*/hasKnockoutUnemploymentCompensationInDifferentState
+  output has_knockout_unemployment_compensation_in_different_state condition
+```
+
+```catala
+scope Form1099GFacts:
+  # DF-BUG(candidate): DF caps the repayment at box 1 ("a stopgap to prevent the
+  # amount being paid back from being greater than the amount being paid",
+  # unemployment.xml, TODO issue 4962). The 1040 instructions have no cap: a
+  # repayment above box 1 would make line 7 negative. The cap is kept as it matches the issue #21 case and
+  # only bites on inconsistent input (a same-year repayment above box 1);
+  # the instruction would give a negative line 7.
+  # DF: /form1099Gs/*/amountPaidBackForBenefitsInTaxYear
+  definition amount_paid_back_for_benefits_in_tax_year equals
+    Money.min of
+      form.writable_amount_paid_back_for_benefits_in_tax_year, form.amount
+
+  # "subtract the amount you repaid from the total amount you received"
+  # (i1040gi--2024.pdf p 85). Not rounded here: DF rounds the sum.
+  # DF: /form1099Gs/*/netUnemploymentComp
+  definition net_unemployment_comp equals
+    form.amount - amount_paid_back_for_benefits_in_tax_year
+
+  # DF: /form1099Gs/*/amountPaidBackForBenefitsBeforeTaxYear
+  definition amount_paid_back_for_benefits_before_tax_year equals
+    form.writable_amount_paid_back_for_benefits_before_tax_year
+
+  # Box 4, rounded to the whole dollar per form. Feeds Form 1040 line 25b
+  # (taxCalculations.xml /form1099Withholding).
+  # DF: /form1099Gs/*/federalTaxWithheld
+  definition federal_tax_withheld equals
+    R.round_dollar of form.writable_federal_tax_withheld
+
+  # DF: /form1099Gs/*/hasKnockoutUnemploymentCompensationInDifferentState
+  rule has_knockout_unemployment_compensation_in_different_state
+    under condition form.state_is_different_state
+    consequence fulfilled
+```
+
+## All Forms 1099-G: Schedule 1 line 7 and line 25b
+
+```catala-metadata
+declaration scope Unemployment:
+  # DF: /form1099Gs (Writable collection)
+  input form_1099gs content list of Form1099G
+
+  internal facts content list of Form1099GFacts
+
+  # DF: /unemploymentCompensation (Schedule 1 line 7; downstream of
+  # income.xml /otherIncome, Form 1040 line 8)
+  output unemployment_compensation content money
+  # DF: /unemploymentCompRepaidAmt (the "Repaid" amount next to line 7)
+  output unemployment_comp_repaid_amt content money
+  # DF: /receivedUnemploymentCompensation
+  output received_unemployment_compensation condition
+  # DF: /xmlHasRepaidUnemploymentCompensation (received and repaid > $0)
+  output has_repaid_unemployment_compensation condition
+  # DF: /totalAmountPaidBackForBenefitsBeforeTaxYear
+  output total_amount_paid_back_for_benefits_before_tax_year content money
+  # Sum of /form1099Gs/*/federalTaxWithheld, the 1099-G term of DF
+  # taxCalculations.xml /form1099Withholding (Form 1040 line 25b).
+  output form_1099g_federal_tax_withheld content money
+
+  # Knockouts (catala/CONVENTIONS.md section 6).
+  # DF: /flowKnockout1099GRepayTooHigh
+  output ko_flow_knockout1099_g_repay_too_high condition
+  # DF: /flowKnockoutUnemploymentCompensationUnsupportedState
+  output ko_flow_knockout_unemployment_compensation_unsupported_state condition
+  # All knockouts of this scope (flow.xml /flowIsKnockedOut).
+  output unsupported condition
+```
+
+```catala
+scope Unemployment:
+  definition facts equals
+    map each f among form_1099gs to (output of Form1099GFacts with { -- form: f })
+
+  # The nets are added with cents and only the total is rounded, as the 1040
+  # instructions say (i1040gi--2024.pdf p 23); no per-form rounding here.
+  # DF: /unemploymentCompensation
+  definition unemployment_compensation equals
+    R.round_dollar of
+      (Money.sum of (map each f among facts to f.net_unemployment_comp))
+
+  # DF: /unemploymentCompRepaidAmt
+  definition unemployment_comp_repaid_amt equals
+    R.round_dollar of
+      (Money.sum of
+        (map each f among facts to
+          f.amount_paid_back_for_benefits_in_tax_year))
+
+  # True when some form shows a box 1 above $0.
+  # DF: /receivedUnemploymentCompensation
+  rule received_unemployment_compensation
+    under condition exists f among form_1099gs such that f.amount > $0
+    consequence fulfilled
+
+  # DF: /xmlHasRepaidUnemploymentCompensation
+  rule has_repaid_unemployment_compensation
+    under condition
+      received_unemployment_compensation and unemployment_comp_repaid_amt > $0
+    consequence fulfilled
+
+  # DF: /totalAmountPaidBackForBenefitsBeforeTaxYear
+  definition total_amount_paid_back_for_benefits_before_tax_year equals
+    Money.sum of
+      (map each f among facts to
+        f.amount_paid_back_for_benefits_before_tax_year)
+
+  # Sum of the per-form rounded box 4 amounts, no outer rounding (the DF
+  # `Add` in /form1099Withholding has none).
+  # DF: taxCalculations.xml /form1099Withholding, CollectionSum of
+  # /form1099Gs/*/federalTaxWithheld
+  definition form_1099g_federal_tax_withheld equals
+    Money.sum of (map each f among facts to f.federal_tax_withheld)
+```
+
+## Knockouts
+
+scope.md section 3.4: "Repayment of prior-year benefits above 3,000 is a
+knockout." The instructions send such a filer to Pub. 525 (§ 1341 relief), which
+Direct File does not compute. A filer who received 1099-G income from a state
+other than the filer's own state is also refused.
+
+```catala
+scope Unemployment:
+  # The repayments of all forms are added; the test is strictly "greater than"
+  # $3,000 (IRC 1341(a)(3): "exceeds $3,000"). The in-year repayment of
+  # this-year benefits (above) is not part of the test.
+  # DF: /flowKnockout1099GRepayTooHigh (maximumRepaymentUnemploymentCompensation
+  # is $3,000, here P.claim_of_right_threshold)
+  rule ko_flow_knockout1099_g_repay_too_high
+    under condition
+      total_amount_paid_back_for_benefits_before_tax_year
+        > P.claim_of_right_threshold
+    consequence fulfilled
+
+  # DF: /flowKnockoutUnemploymentCompensationUnsupportedState
+  rule ko_flow_knockout_unemployment_compensation_unsupported_state
+    under condition
+      exists f among facts such that
+        f.has_knockout_unemployment_compensation_in_different_state
+    consequence fulfilled
+
+  # The two DF knockouts of this module in flow.xml /flowIsKnockedOut.
+  rule unsupported under condition
+    ko_flow_knockout1099_g_repay_too_high
+    or ko_flow_knockout_unemployment_compensation_unsupported_state
+  consequence fulfilled
+```

@@ -1,0 +1,106 @@
+# Tests for the Form1099_misc module (Alaska PFD)
+
+Run with `clerk test`. Oracle comparison: `make difftest SCOPE=form1099_misc`.
+
+> Using Form1099_misc
+> Using Types
+
+```catala
+declaration scope MkM:
+  input box3 content money
+  input box4 content money
+  output form content Form1099_misc.Form1099Misc
+
+scope MkM:
+  definition form equals
+    Form1099_misc.Form1099Misc {
+      -- filer: Types.FilerRole.PrimaryFiler
+      -- is_alaska_pfd: true
+      -- writable_other_income: box3
+      -- writable_federal_withholding: box4
+    }
+```
+
+## PFD of $1,702.00 is $1,702 on Schedule 1 line 8g
+
+```catala
+#[test]
+declaration scope TestPfd1702:
+  output ok condition
+  m scope MkM
+  s scope Form1099_misc.Form1099Miscs
+
+scope TestPfd1702:
+  definition m.box3 equals $1,702.00
+  definition m.box4 equals $0
+  definition s.form_1099miscs equals [m.form]
+  assertion s.alaska_pfd_income = $1,702
+  assertion s.has_alaska_pfd_income
+  assertion s.has_1099_misc
+  assertion s.form_1099_misc_federal_income_tax_withheld = $0
+  assertion not s.unsupported
+  # known-bad outputs are rejected
+  assertion s.alaska_pfd_income != $1,701
+  assertion s.alaska_pfd_income != $0
+  rule ok fulfilled
+```
+
+## Rounding and withholding
+
+Two dividends of $1,000.40 and $1,000.40 total $2,000.80, rounded once to
+$2,001. Box 4 of $10.40 and $10.40 totals $20.80, rounded once to $21, flowing
+to Form 1040 line 25b.
+
+```catala
+#[test]
+declaration scope TestRoundedOnceAndWithholding:
+  output ok condition
+  m1 scope MkM
+  m2 scope MkM
+  s scope Form1099_misc.Form1099Miscs
+
+scope TestRoundedOnceAndWithholding:
+  definition m1.box3 equals $1,000.40
+  definition m1.box4 equals $10.40
+  definition m2.box3 equals $1,000.40
+  definition m2.box4 equals $10.40
+  definition s.form_1099miscs equals [m1.form; m2.form]
+  assertion s.alaska_pfd_income = $2,001
+  assertion s.alaska_pfd_income != $2,000
+  assertion s.form_1099_misc_federal_income_tax_withheld = $21
+  assertion s.form_1099_misc_federal_income_tax_withheld != $20
+  rule ok fulfilled
+
+#[test]
+declaration scope TestNoForms:
+  output ok condition
+  s scope Form1099_misc.Form1099Miscs
+
+scope TestNoForms:
+  definition s.form_1099miscs equals []
+  assertion s.alaska_pfd_income = $0
+  assertion not s.has_alaska_pfd_income
+  assertion not s.has_1099_misc
+  rule ok fulfilled
+```
+
+## A 1099-MISC that is not a PFD is excluded from line 8g and knocked out
+
+```catala
+#[test]
+declaration scope TestNonPfdKnockedOut:
+  output ok condition
+  s scope Form1099_misc.Form1099Miscs
+
+scope TestNonPfdKnockedOut:
+  definition s.form_1099miscs equals
+    [ Form1099_misc.Form1099Misc {
+        -- filer: Types.FilerRole.PrimaryFiler
+        -- is_alaska_pfd: false
+        -- writable_other_income: $500
+        -- writable_federal_withholding: $0 } ]
+  assertion s.alaska_pfd_income = $0
+  assertion s.ko_non_pfd_1099_misc
+  assertion s.unsupported
+  rule ok fulfilled
+```

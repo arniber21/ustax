@@ -1,0 +1,111 @@
+> Module Form1099_misc
+
+> Using Types
+> Using Params_2024 as P
+> Using Rounding as R
+
+# Form 1099-MISC: Alaska Permanent Fund dividends (Schedule 1 line 8g)
+
+Direct File module `form1099Misc.xml`
+(`../direct-file/direct-file/backend/src/main/resources/tax/form1099Misc.xml`,
+"DF" below), scope.md section 3.4, issue #21. Tests:
+`catala/tests/test_form1099_misc.catala_en`. Oracle comparison:
+`make difftest SCOPE=form1099_misc`.
+
+Inputs are complete (`catala/CONVENTIONS.md` section 3): an empty box is
+`$0`. This module feeds the Form 1040 scope (#14): `alaska_pfd_income` (slot
+`alaska_pfd_income`, Schedule 1 line 8g, then line 9, line 10 and 1040 line 8)
+and `form_1099_misc_federal_income_tax_withheld` (part of the slot
+`other_1099_withholding`, 1040 line 25b). Schedule 1 line 9 and line 10 are
+already computed in `form_1040.catala_en` (`schedule1_total_other_income`,
+`other_income`), so they are not repeated here.
+
+## Statute and form
+
+Schedule 1 (Form 1040) 2024, `sources/forms-instructions/f1040s1--2024.pdf`
+p 1, Part I: "8 Other income: ... g Alaska Permanent Fund dividends", and
+"9 Total other income. Add lines 8a through 8z". A permanent fund dividend is
+gross income under 26 U.S.C. § 61(a) (not among the files in
+`sources/statute/`, so the form is the cited source). The dividend is reported
+by the payer in box 3 ("Other income") of Form 1099-MISC; box 4 is "Federal
+income tax withheld".
+
+## One Form 1099-MISC
+
+```catala-metadata
+## One entry of DF `/form1099Miscs`: the boxes the tax depends on. The payer
+## name and TIN change no tax result and are not modelled.
+declaration structure Form1099Misc:
+  # DF: /form1099Miscs/*/filer (CollectionItem of /filers)
+  data filer content Types.FilerRole
+  # DF: /form1099Miscs/*/isAlaskaPfd. DF hard-wires it to true (DF-BUG(candidate),
+  # see alaska_pfd_income); here it is an input, so the statute reading holds.
+  data is_alaska_pfd content boolean
+  # 1099-MISC box 3. DF: /form1099Miscs/*/writableOtherIncome
+  data writable_other_income content money
+  # 1099-MISC box 4. DF: /form1099Miscs/*/writableFederalWithholding
+  data writable_federal_withholding content money
+```
+
+## All Forms 1099-MISC
+
+```catala-metadata
+declaration scope Form1099Miscs:
+  # DF: /form1099Miscs (Writable collection)
+  input form_1099miscs content list of Form1099Misc
+
+  # DF: /alaskaPfdIncome (Schedule 1 line 8g)
+  output alaska_pfd_income content money
+  # DF: /hasAlaskaPfdIncome
+  output has_alaska_pfd_income condition
+  # DF: /has1099Misc
+  output has_1099_misc condition
+  # DF: /form1099MiscFederalIncomeTaxWithheld, the 1099-MISC term of
+  # taxCalculations.xml /form1099Withholding (Form 1040 line 25b)
+  output form_1099_misc_federal_income_tax_withheld content money
+  # A Form 1099-MISC that is not an Alaska PFD: its box 3 is not line 8g income.
+  # Not a DF knockout (DF-BUG(candidate)): added so the statute reading is safe.
+  output ko_non_pfd_1099_misc condition
+  # All knockouts of this scope.
+  output unsupported condition
+```
+
+```catala
+scope Form1099Miscs:
+  # DF-BUG(candidate): DF treats every Form 1099-MISC as Alaska PFD income
+  # (`/form1099Miscs/*/isAlaskaPfd` is `True`, "TODO change this if/when we
+  # have 1099-MISCs for more than APF"), so all of box 3 goes to line 8g. Schedule 1
+  # line 8g (f1040s1--2024.pdf p 1) is only for "Alaska Permanent Fund
+  # dividends"; other box 3 income (prizes, awards) belongs on other lines. We
+  # sum only forms marked as PFD and knock out the rest. Oracle forms are all PFD.
+  # The sum is added with cents and rounded once (i1040gi--2024.pdf p 23).
+  # DF: /alaskaPfdIncome = Round(CollectionSum(/alaskaPfd1099s/*/writableOtherIncome))
+  definition alaska_pfd_income equals
+    R.round_dollar of
+      (Money.sum of
+        (map each f among
+           (list of f among form_1099miscs such that f.is_alaska_pfd)
+         to f.writable_other_income))
+
+  rule ko_non_pfd_1099_misc
+    under condition exists f among form_1099miscs such that not f.is_alaska_pfd
+    consequence fulfilled
+
+  # DF: /hasAlaskaPfdIncome
+  rule has_alaska_pfd_income under condition alaska_pfd_income > $0
+    consequence fulfilled
+
+  # DF: /has1099Misc (the list is not empty)
+  rule has_1099_misc under condition (number of form_1099miscs) > 0
+    consequence fulfilled
+
+  # Box 4 is added with cents, then the sum is rounded once.
+  # DF: /form1099MiscFederalIncomeTaxWithheld
+  definition form_1099_misc_federal_income_tax_withheld equals
+    R.round_dollar of
+      (Money.sum of
+        (map each f among form_1099miscs to f.writable_federal_withholding))
+
+  rule unsupported under condition ko_non_pfd_1099_misc
+    consequence fulfilled
+```
