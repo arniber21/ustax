@@ -1,0 +1,23 @@
+catala/qualifying_relative.catala_en
+  s_3031b504518be3::t_590d1d385e645c 45,125,131,239,255,312,335,350
+catala/tests/test_qualifying_relative.catala_en
+  s_3031b504518be3::t_e3536520056fdb 493,526,600
+difftest/mappings/qualifying_relative.mjs
+  s_3031b504518be3::t_c2f79d06d73e20 86,92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b7dd48a8c630825229d875fc9f7bc74f4e5b8942",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
