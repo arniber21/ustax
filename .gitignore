@@ -3,3 +3,4 @@ _opam/
 *.install
 .DS_Store
 .lake/
+sources/reference-catala/

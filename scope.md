@@ -213,7 +213,7 @@ All per-person, in `familyAndHousehold.xml`.
 4. Not self-supporting (`ownSupport` false).
 5. Joint-return test: not married, or not filing jointly, or filing only for refund and not required to file.
 
-**Qualifying relative** = not a qualifying child of another AND (relationship in the qualifying-relative set OR lived with taxpayer all year) AND gross income < **5,050** (`/grossIncomeLimit`, Rev. Proc. 24-40) AND taxpayer provided over half support.
+**Qualifying relative** = not a qualifying child of another AND (relationship in the qualifying-relative set OR lived with taxpayer all year) AND gross income < **5,050** (`/grossIncomeLimit`; Rev. Proc. 2023-34 §3.24 and Pub 501. Direct File's own comment cites Rev. Proc. 24-40, which is the TY2025 procedure and gives 5,200) AND taxpayer provided over half support.
 
 **Eligible dependent** = (QC or QR) AND not disqualified by parental custody rules AND not a benefit-split case AND citizen/resident test AND joint-return test AND has a TIN. `isClaimedDependent` also requires the taxpayer to elect `tpClaims`.
 
