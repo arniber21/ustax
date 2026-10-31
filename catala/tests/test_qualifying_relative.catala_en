@@ -9,13 +9,15 @@ the rejection of the wrong one. The oracle comparison is
 
 > Using Qualifying_child as Q
 > Using Qualifying_relative as R
+> Using Dependents_benefit_split as B
 
 ## Helper: a household member with default answers
 
 The default is the filer's parent, born 1950-04-02 (74), a U.S. citizen with
 an SSN, who lived with the filer for less than six months, had $3,000 of
 gross income, did not provide over half of their own support, was supported
-over half by the filer, is unmarried, and is nobody's qualifying child. The
+over half by the filer, is unmarried, and is nobody's qualifying child; no
+parent signed a Form 8332 for them (no benefit split, IRC 152(e)). The
 filer (`oldest_filer_dob`) was born 1985-06-15, is a U.S. citizen, and cannot
 be claimed by anyone. A test overrides only what it tests.
 
@@ -84,9 +86,23 @@ scope MkMember:
          -- writable_us_resident: us_resident
          -- writable_us_national: us_national
          -- writable_canada_mexico_resident: canada_mexico_resident
-         -- tp_claims: tp_claims
-         -- tp_can_claim_split_benefits_hoh_eitc_cdcc: false
-         -- disqualified_due_to_parental_custody: false }
+         -- tp_claims: tp_claims }
+    -- split: B.BenefitSplitAnswers {
+         -- has_other_biological_or_adoptive_parent: false
+         -- non_parental_some_parent_not_claiming: false
+         -- which_parent_not_claiming: B.WrittenDeclaration.NobodyDid
+         -- in_parents_custody: false
+         -- lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months:
+              false
+         -- biological_or_adoptive_parents_living: false
+         -- nights_with_tp_vs_other_parent: B.NightsComparison.Less
+         -- tp_agi_higher_than_other_parent: false
+         -- parents_meet_reqs_rule_for_children_of_divorced_parents: false
+         -- special_rule_child_used_by_custodial_parent_as_qp: false
+         -- special_rule_agi_test: false
+         -- parental_situation: B.ParentalSituation.Other
+         -- parental_support: false
+         -- multiple_support_agreement: false }
   }
 ```
 
@@ -110,7 +126,8 @@ scope TestParentIncome5049:
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion not d.qualifying_child
   assertion d.qr_relationship_test
   assertion not d.member_of_household_test
@@ -144,7 +161,8 @@ scope TestParentIncome5050:
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion not d.gross_income_test
   assertion d.relationship_member_of_household_test and d.qr_support_test
     and d.not_qualifying_child_test
@@ -175,7 +193,8 @@ scope TestNonRelativeAllYear:
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion not d.qr_relationship_test
   assertion d.member_of_household_test
   assertion d.relationship_member_of_household_test
@@ -202,7 +221,8 @@ scope TestNonRelativeEightMonths:
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion not d.member_of_household_test
   assertion not d.relationship_member_of_household_test
   assertion d.gross_income_test and d.qr_support_test
@@ -237,7 +257,8 @@ scope TestQualifyingChildOfAnother:
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion not d.qualifying_child
   assertion d.qualifying_relative_minus_not_qc_test
   assertion d.is_qualifying_child_of_another
@@ -271,7 +292,8 @@ scope TestQualifyingChildOfNonFiler:
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion not d.is_qualifying_child_of_another
   assertion d.not_qualifying_child_test
   assertion d.qualifying_relative
@@ -306,13 +328,15 @@ scope TestNoTin:
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   definition d2 equals
     output of R.DependentTest with {
       -- member: m2.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion d.qualifying_child
   assertion d.qc_or_qr
   assertion not d.eligible_dependent_minus_filer_information
@@ -355,19 +379,22 @@ scope TestAdoptedChildException:
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   definition d_noncitizen_filer equals
     output of R.DependentTest with {
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: false }
+      -- either_filer_us_citizen_or_national: false
+      -- treat_as_mfj: false }
   definition d_part_year equals
     output of R.DependentTest with {
       -- member: m_part.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion d.qualifying_child
   assertion d.child_is_adopted
   assertion not d.us_resident and not d.us_national
@@ -413,7 +440,8 @@ scope TestChildInMexico:
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion not d.qualifying_child
   assertion d.qualifying_relative
   assertion d.canada_mexico_resident
@@ -436,7 +464,8 @@ scope TestFilerIsDependent:
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: true
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion d.qualifying_relative
   assertion d.eligible_dependent_minus_filer_information
   assertion not d.eligible_dependent
@@ -463,7 +492,8 @@ scope TestMarriedParentJointReturn:
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion d.qualifying_relative
   assertion not d.qc.joint_return_test
   assertion not d.eligible_dependent
@@ -484,7 +514,8 @@ scope TestEligibleNotClaimed:
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion d.eligible_dependent
   assertion not d.is_claimed_dependent
   assertion not d.is_claimed_if_claimable
@@ -514,7 +545,8 @@ scope TestOwnQualifyingChildNotQualifyingRelative:
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion d.qualifying_child
   assertion d.not_qualifying_child_test
   assertion d.qualifying_relative_minus_not_qc_test
@@ -553,7 +585,8 @@ scope TestOlderSiblingQualifyingChildOfParent:
       -- member: m.member
       -- minimum_filer_date_of_birth: |2004-03-01|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion not d.qc.age_test
   assertion not d.qualifying_child
   assertion not d.ask_about_qc_of_another
@@ -592,7 +625,8 @@ scope TestHousehold:
       -- members: [parent.member; lodger.member; child.member]
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion number of h.results = 3
   assertion h.claimed_dependents_count = 1
 ```
@@ -624,7 +658,8 @@ scope TestOwnSupportChildCannotBeAnyonesQualifyingChild:
       -- member: m.member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion not d.qc.qc_support_test
   assertion not d.could_be_qualifying_child_of_some_taxpayer
   assertion d.not_qualifying_child_test

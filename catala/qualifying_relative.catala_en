@@ -2,6 +2,7 @@
 
 > Using Params_2024 as P
 > Using Qualifying_child as Q
+> Using Dependents_benefit_split as B
 
 # Qualifying relative and eligible dependent: IRC 152(d), 152(b), one person at a time
 
@@ -35,17 +36,21 @@ Facts read from outside the person, all inputs here:
   IRC 152(b)(1);
 - `/eitherFilerUSCitizenOrNational` (`Filers.either_filer_us_citizen_or_national`,
   #15), IRC 152(b)(3)(B)(ii);
+- `/treatAsMFJ` (`Filers.treat_as_mfj`, #15), passed to the benefit-split
+  scope;
 - per person, `dependentsBenefitSplit.xml` `/familyAndHousehold/*/tpCanClaimSplitBenefitsHohEitcCdcc`
   and `/familyAndHousehold/*/disqualifiedDueToParentalCustody` (IRC 152(e),
-  issue #18, not yet written). They are fields of `DependentAnswers` until #18
-  provides them. TODO(#18): take them from the benefit-split scope.
+  issue #18). They are outputs of `Dependents_benefit_split.BenefitSplitTest`,
+  which this scope calls for the same person (output `split`); that module
+  reads only `Qualifying_child`, so there is no cycle.
 
 The inputs are complete (CONVENTIONS section 3). Where DF's question gates
 disagree with the statute, the statute wins (CONVENTIONS section 8,
 `# DF-BUG(n):` comments; two cases below, `DF-BUG(15)` and `DF-BUG(16)`).
 
-Not here, on purpose: the children of divorced or separated parents and
-multiple support agreements (IRC 152(e), 152(d)(3), issue #18 and the
+Not here, on purpose: the rules for children of divorced or separated parents
+(IRC 152(e), in `Dependents_benefit_split`, whose two outputs are read
+below), multiple support agreements (152(d)(3), part of the
 `writableQrSupportTest` answer), HoH and QSS qualifying persons (#19, #20),
 the credit-specific person tests (#26-#28). This module feeds those modules
 and Form 1040 "Dependents" (the list of claimed dependents); it feeds no Form
@@ -88,18 +93,13 @@ declaration structure DependentAnswers:
   # DF: /familyAndHousehold/*/tpClaims ("Whether the taxpayer wants to claim
   # the dependent")
   data tp_claims content boolean
-  # DF: dependentsBenefitSplit.xml /familyAndHousehold/*/tpCanClaimSplitBenefitsHohEitcCdcc
-  # (derived there, issue #18; an input until #18 lands)
-  data tp_can_claim_split_benefits_hoh_eitc_cdcc content boolean
-  # DF: dependentsBenefitSplit.xml /familyAndHousehold/*/disqualifiedDueToParentalCustody
-  # (derived there, issue #18; an input until #18 lands)
-  data disqualified_due_to_parental_custody content boolean
 
-## One member of DF /familyAndHousehold: the qualifying-child answers and the
-## dependent answers.
+## One member of DF /familyAndHousehold: the qualifying-child answers, the
+## dependent answers and the benefit-split answers (IRC 152(e), issue #18).
 declaration structure Member:
   data person content Q.Person
   data answers content DependentAnswers
+  data split content B.BenefitSplitAnswers
 ```
 
 ## The scope for one person
@@ -115,9 +115,14 @@ declaration scope DependentTest:
   # DF: filers.xml /eitherFilerUSCitizenOrNational
   # (Filers.either_filer_us_citizen_or_national)
   input either_filer_us_citizen_or_national content boolean
+  # DF: filingStatus.xml /treatAsMFJ (Filers.treat_as_mfj); read only by the
+  # benefit-split scope
+  input treat_as_mfj content boolean
 
   # The qualifying child tests for the same person (issue #16)
   output qc content Q.QualifyingChildTest
+  # The benefit-split tests for the same person (IRC 152(e), issue #18)
+  output split content B.BenefitSplitTest
 
   # DF: /familyAndHousehold/*/qualifyingChild (copied from `qc`)
   output qualifying_child condition
@@ -181,6 +186,12 @@ scope DependentTest:
     output of Q.QualifyingChildTest with {
       -- person: member.person
       -- minimum_filer_date_of_birth: minimum_filer_date_of_birth }
+
+  definition split equals
+    output of B.BenefitSplitTest with {
+      -- member: B.Member { -- person: member.person -- answers: member.split }
+      -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
+      -- treat_as_mfj: treat_as_mfj }
 
   # IRC 152(c). DF: /familyAndHousehold/*/qualifyingChild
   rule qualifying_child under condition qc.qualifying_child
@@ -321,7 +332,7 @@ scope DependentTest:
   rule ask_about_qc_of_another under condition
     qc.age_test
     and (qualifying_relative_minus_not_qc_test or qualifying_child)
-    and not member.answers.tp_can_claim_split_benefits_hoh_eitc_cdcc
+    and not split.tp_can_claim_split_benefits_hoh_eitc_cdcc
   consequence fulfilled
 
   # DF: /familyAndHousehold/*/isQualifyingChildOfAnother. couldBeQualifying
@@ -664,8 +675,8 @@ scope DependentTest:
   # DF: /familyAndHousehold/*/eligibleDependentMinusFilerInformation
   rule eligible_dependent_minus_filer_information under condition
     qc_or_qr
-    and not member.answers.disqualified_due_to_parental_custody
-    and not member.answers.tp_can_claim_split_benefits_hoh_eitc_cdcc
+    and not split.disqualified_due_to_parental_custody
+    and not split.tp_can_claim_split_benefits_hoh_eitc_cdcc
     and citizen_or_resident_test
     and qc.joint_return_test
     and member.answers.tin_type != NoTin
@@ -718,6 +729,8 @@ declaration scope Dependents:
   input treat_filers_as_dependents content boolean
   # DF: filers.xml /eitherFilerUSCitizenOrNational
   input either_filer_us_citizen_or_national content boolean
+  # DF: filingStatus.xml /treatAsMFJ
+  input treat_as_mfj content boolean
 
   # DF: /familyAndHousehold/*/... (one result per member, same order)
   output results content list of DependentTest
@@ -734,7 +747,8 @@ scope Dependents:
          -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
          -- treat_filers_as_dependents: treat_filers_as_dependents
          -- either_filer_us_citizen_or_national:
-              either_filer_us_citizen_or_national })
+              either_filer_us_citizen_or_national
+         -- treat_as_mfj: treat_as_mfj })
 
   # DF: /claimedDependentsCount
   definition claimed_dependents_count equals
