@@ -1,0 +1,136 @@
+# Tests for the Educator_adjustment module (issue #24)
+
+Run with `clerk test`. Hand-worked TY2024 cases from the Form 1040
+instructions, Schedule 1 line 11 (`i1040gi--2024.pdf` p 89): "up to $300 ...
+If you and your spouse are filing jointly and both of you were eligible
+educators, the maximum deduction is $600. However, neither spouse can deduct
+more than $300". The oracle comparison is
+`make difftest SCOPE=educator_adjustment`.
+
+> Using Educator_adjustment as E
+
+## Wrapper with defaults
+
+A wrapper scope gives every input a default (not an educator, $0 expenses,
+not an MFJ dependent) so each test states only what it changes. The defaults
+are satisfiable: they are an ordinary taxpayer who is not an educator.
+
+```catala
+declaration scope Base:
+  context was_k12_educators content E.K12EducatorOptions
+  context primary_expenses content money
+  context secondary_expenses content money
+  context is_mfj_dependent condition
+  e scope E.EducatorAdjustment
+  output adjustment content money
+  output receiving condition
+
+scope Base:
+  definition was_k12_educators equals Neither
+  definition primary_expenses equals $0
+  definition secondary_expenses equals $0
+  definition is_mfj_dependent equals false
+  definition e.was_k12_educators equals was_k12_educators
+  definition e.primary_educator_expenses_writable equals primary_expenses
+  definition e.secondary_educator_expenses_writable equals secondary_expenses
+  definition e.is_mfj_dependent equals is_mfj_dependent
+  definition adjustment equals e.educator_expenses_adjustment
+  definition receiving equals e.is_receiving_educator_expenses_adjustment
+```
+
+## Acceptance cases
+
+A single educator with $450 of expenses gets the $300 cap; one with $175 gets
+$175; an MFJ couple who both taught, each with $450, get $600; with $12 and
+$250 (oracle `mfj-44k`) they get $262.
+
+```catala
+#[test]
+declaration scope TestEducatorCases:
+  output ok condition
+  single_450 scope Base
+  single_175 scope Base
+  both_450 scope Base
+  both_12_250 scope Base
+  boundary_300 scope Base
+  spouse_only scope Base
+
+scope TestEducatorCases:
+  rule ok fulfilled
+  definition single_450.was_k12_educators equals TpDid
+  definition single_450.primary_expenses equals $450
+  definition single_175.was_k12_educators equals TpDid
+  definition single_175.primary_expenses equals $175
+  definition both_450.was_k12_educators equals BothDid
+  definition both_450.primary_expenses equals $450
+  definition both_450.secondary_expenses equals $450
+  definition both_12_250.was_k12_educators equals BothDid
+  definition both_12_250.primary_expenses equals $12
+  definition both_12_250.secondary_expenses equals $250
+  definition boundary_300.was_k12_educators equals TpDid
+  definition boundary_300.primary_expenses equals $300
+  definition spouse_only.was_k12_educators equals SpouseDid
+  definition spouse_only.primary_expenses equals $999
+  definition spouse_only.secondary_expenses equals $208
+  assertion single_450.adjustment = $300
+  assertion single_175.adjustment = $175
+  assertion both_450.adjustment = $600
+  assertion both_12_250.adjustment = $262
+  assertion boundary_300.adjustment = $300
+  # the spouse's $999 is ignored when only the spouse is the educator
+  assertion spouse_only.adjustment = $208
+```
+
+## Zero cases
+
+Not an educator: expenses entered in the writable boxes are ignored (DF
+`/primaryEducatorExpenses` is `$0` unless `/tpWasK12Educator`). An MFJ
+dependent gets `$0` (DF `/educatorExpensesAdjustment`).
+
+```catala
+#[test]
+declaration scope TestEducatorZero:
+  output ok condition
+  neither scope Base
+  dependent scope Base
+
+scope TestEducatorZero:
+  rule ok fulfilled
+  definition neither.was_k12_educators equals Neither
+  definition neither.primary_expenses equals $300
+  definition neither.secondary_expenses equals $300
+  definition dependent.was_k12_educators equals BothDid
+  definition dependent.primary_expenses equals $300
+  definition dependent.secondary_expenses equals $300
+  definition dependent.is_mfj_dependent equals true
+  assertion neither.adjustment = $0
+  assertion dependent.adjustment = $0
+  assertion not neither.receiving
+  assertion not dependent.receiving
+```
+
+## The spec rejects bad outputs
+
+A $450 single educator must not get $450 (cap ignored) and an MFJ couple must
+not get more than $600; the specification gives exactly $300 and $600, so any
+other value is rejected.
+
+```catala
+#[test]
+declaration scope TestEducatorRejectsBad:
+  output ok condition
+  single_450 scope Base
+  both_450 scope Base
+
+scope TestEducatorRejectsBad:
+  rule ok fulfilled
+  definition single_450.was_k12_educators equals TpDid
+  definition single_450.primary_expenses equals $450
+  definition both_450.was_k12_educators equals BothDid
+  definition both_450.primary_expenses equals $450
+  definition both_450.secondary_expenses equals $450
+  assertion not (single_450.adjustment = $450)
+  assertion not (single_450.adjustment = $0)
+  assertion not (both_450.adjustment = $900)
+  assertion not (both_450.adjustment = $300)
+```

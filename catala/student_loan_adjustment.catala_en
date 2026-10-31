@@ -1,0 +1,317 @@
+> Module Student_loan_adjustment
+
+# Student loan interest deduction (Schedule 1 line 21)
+
+Direct File module `studentLoanAdjustment.xml`, with the modified AGI of
+`taxCalculations.xml` `/magiForStudentLoanInterestDeduction`. Issue #24. Tests
+are in `catala/tests/test_student_loan_adjustment.catala_en`; the oracle
+comparison is `make difftest SCOPE=student_loan_adjustment`
+(`difftest/mappings/student_loan_adjustment.mjs`).
+
+> Using Types
+> Using Params_2024 as P
+> Using Rounding as R
+
+## 26 U.S.C. § 221 Interest on education loans
+
+### (a) Allowance of deduction
+
+"In the case of an individual, there shall be allowed as a deduction for the
+taxable year an amount equal to the interest paid by the taxpayer during the
+taxable year on any qualified education loan." (`sources/statute/irc-221.html`)
+
+### (b) Maximum deduction
+
+"(1) In general. Except as provided in paragraph (2), the deduction allowed by
+subsection (a) for the taxable year shall not exceed $2,500." This is
+`P.student_loan_interest_cap`.
+
+"(2)(A) In general. The amount which would (but for this paragraph) be
+allowable as a deduction under this section shall be reduced (but not below
+zero) by the amount determined under subparagraph (B). (B) Amount of
+reduction. The amount determined under this subparagraph is the amount which
+bears the same ratio to the amount which would be so taken into account as—
+(i) the excess of— (I) the taxpayer's modified adjusted gross income for such
+taxable year, over (II) $50,000 ($100,000 in the case of a joint return),
+bears to (ii) $15,000 ($30,000 in the case of a joint return)."
+
+The $50,000 and $100,000 are indexed by § 221(f). For TY2024 "the $2,500
+maximum deduction for interest paid on qualified education loans under § 221
+begins to phase out under § 221(b)(2)(B), as adjusted for inflation, for
+taxpayers with modified adjusted gross income in excess of $80,000 ($165,000
+for joint returns), and is completely phased out for taxpayers with modified
+adjusted gross income of $95,000 or more ($195,000 or more for joint returns)"
+(Rev. Proc. 2023-34 § 3.30, `sources/revproc/rp-23-34.pdf` p 16). The four
+figures are `P.student_loan_phaseout_*`; the ranges $15,000 and $30,000 are the
+differences end minus start.
+
+### (c) Dependents not eligible for deduction
+
+"No deduction shall be allowed by this section to an individual for the taxable
+year if a deduction under section 151 with respect to such individual is
+allowed to another taxpayer".
+
+### (e)(2) Married couples must file joint return
+
+"If the taxpayer is married at the close of the taxable year, the deduction
+shall be allowed under subsection (a) only if the taxpayer and the taxpayer's
+spouse file a joint return for the taxable year." Married filing separately is
+therefore disallowed.
+
+## Student Loan Interest Deduction Worksheet, Schedule 1 line 21
+
+(`sources/forms-instructions/i1040gi--2024.pdf` p 94; the filing-status rules
+are on the preceding page.) Lines of the worksheet and the facts that compute
+them:
+
+1. "Enter the total interest you paid in 2024 on qualified student loans ...
+   Don't enter more than $2,500": `LesserOf(interest, 2500)`.
+2. "Enter the amount from Form 1040 or 1040-SR, line 9": `/totalIncome`.
+3. "Enter the total of the amounts from Schedule 1, lines 11 through 20, and 23
+   and 25": `/adjustmentsToIncomeExcludingStudentLoanInterest`.
+4. "Subtract line 3 from line 2": the modified AGI.
+5. "$80,000 ... Married filing jointly $165,000."
+6. "Is the amount on line 4 more than the amount on line 5? No. Skip lines 6 and
+   7, enter -0- on line 8 ... Yes. Subtract line 5 from line 4."
+7. "Divide line 6 by $15,000 ($30,000 if married filing jointly). Enter the
+   result as a decimal (rounded to at least three places). If the result is
+   1.000 or more, enter 1.000."
+8. "Multiply line 1 by line 7."
+9. "Student loan interest deduction. Subtract line 8 from line 1."
+
+## Direct File's three-decimal ratio is not followed (DF-BUG(7), candidate)
+
+IRC 221(b)(2)(B) reduces the deduction by "the amount which bears the same
+ratio to the amount which would be so taken into account as" excess MAGI over
+the range: the exact fraction. Worksheet line 7 asks for the ratio "rounded to
+at least three places". Direct File stores every `Dollar` at two decimals, so
+`/studentLoanAmountPhaseOutAmount` computes
+
+    phase_out = ( ( (10 * excess) / range ) * capped_interest ) / 10
+
+with three `HALF_EVEN` roundings to the cent (`types/Dollar.scala`): the ratio
+is cut to exactly three decimals, then the product and the quotient are each
+rounded again. Rounding the ratio to three decimals is allowed by the form
+("at least three") but is not the statute's exact ratio, and it moves the
+result by up to $2 (see the tests and the pull request). Under the project
+policy (CONVENTIONS section 8: the statute wins, engine rounding artefacts are
+computed exactly) this module computes the exact fraction and rounds once, at
+line 21, to the whole dollar. At MAGI $87,500 single the ratio is exactly 1/2
+and both readings agree on $1,250; at $85,000 single the statute gives
+$2,500 - $833.33 = $1,666.67, i.e. $1,667, and Direct File $1,668.
+
+`df_phase_out_amount` is Direct File's computation, kept only so the tests
+can show the divergence; the scope does not use it. It uses
+`round_half_even_cents`.
+
+```catala-metadata
+## `value` (in dollars, exact) rounded to the cent with `HALF_EVEN`: ties go to
+## the even cent, like Java `RoundingMode.HALF_EVEN` in DF `Dollar.apply`.
+## Used only by `df_phase_out_amount`.
+declaration round_half_even_cents content money
+  depends on value content decimal
+  equals
+    let cents equals value * 100.0 in
+    let below equals Decimal.round_by_default of cents in
+    let fraction equals cents - below in
+    let even_cents equals
+      if fraction < 0.5 then below
+      else if fraction > 0.5 then below + 1.0
+      else if (Decimal.truncate of (below / 2.0)) * 2.0 = below then below
+      else below + 1.0
+    in
+    $0.01 * even_cents
+
+## Direct File's `/studentLoanAmountPhaseOutAmount` for an excess over the
+## phase-out start, the range and the capped interest. Reference for tests
+## only; it is the DF-BUG(7) behaviour and is not what the scope computes.
+declaration df_phase_out_amount content money
+  depends on
+    excess content money,
+    range content money,
+    capped_interest content money
+  equals
+    let ratio_times_ten equals
+      round_half_even_cents of ((excess * 10.0) / range) in
+    let product equals
+      round_half_even_cents of ((ratio_times_ten / $1) * (capped_interest / $1)) in
+    round_half_even_cents of ((product / $1) / 10.0)
+
+## The statute's phase-out (IRC 221(b)(2)(B)): the capped interest times
+## excess / range, to the cent (display value; line 21 rounds the exact value).
+declaration exact_phase_out_amount content money
+  depends on
+    excess content money,
+    range content money,
+    capped_interest content money
+  equals
+    capped_interest * (excess / range)
+```
+
+## The scope
+
+```catala-metadata
+## Schedule 1 line 21. DF: studentLoanAdjustment.xml.
+declaration scope StudentLoanAdjustment:
+  # DF: filingStatus.xml /filingStatus (Writable)
+  input filing_status content Types.FilingStatus
+  # DF: studentLoanAdjustment.xml /hadStudentLoanInterestPayments (Writable)
+  input had_student_loan_interest_payments condition
+  # DF: studentLoanAdjustment.xml /studentLoansQualify (Writable)
+  input student_loans_qualify condition
+  # DF: studentLoanAdjustment.xml /studentLoanInterestAmount (Writable)
+  input student_loan_interest_amount content money
+  # DF: filers.xml /isMFJDependent, from Filers.is_mfj_dependent
+  input is_mfj_dependent condition
+  # DF: filers.xml /eitherFilerIsClaimedAsDependent, from Filers
+  input either_filer_is_claimed_as_dependent condition
+  # DF: income.xml /totalIncome (Form 1040 line 9)
+  input total_income content money
+  # DF: taxCalculations.xml /adjustmentsToIncomeExcludingStudentLoanInterest
+  # (Schedule 1 lines 11 to 20, 23 and 25: educator expenses plus HSA deduction)
+  input adjustments_to_income_excluding_student_loan_interest content money
+
+  # DF: filingStatus.xml /isFilingStatusMFJ
+  internal is_filing_status_mfj condition
+  # DF: filingStatus.xml /isFilingStatusMFS
+  internal is_filing_status_mfs condition
+  # Worksheet line 4. DF: taxCalculations.xml /magiForStudentLoanInterestDeduction
+  output magi_for_student_loan_interest_deduction content money
+  # DF: /incomeTooHighForStudentLoanInterestDeductionNotMFJ
+  output income_too_high_not_mfj condition
+  # DF: /incomeTooHighForStudentLoanInterestDeductionMFJ
+  output income_too_high_mfj condition
+  # DF: /cannotDeductStudentLoanInterestBecauseIncomeOrFilingStatus
+  output cannot_deduct_because_income_or_filing_status condition
+  # DF: /cannotDeductStudentLoanInterestBecauseDependents
+  output cannot_deduct_because_dependents condition
+  # DF: /cannotDeductStudentLoanInterestBecauseLoansDontQualify
+  output cannot_deduct_because_loans_dont_qualify condition
+  # DF: /cannotDeductStudentLoanInterest
+  output cannot_deduct_student_loan_interest condition
+  # Worksheet line 1. DF: LesserOf(/studentLoanInterestAmount, /maxStudentLoadDeduction)
+  internal capped_interest content money
+  # Worksheet line 5, and the denominator of line 7.
+  # DF: /studentLoanPhaseOutStart(Mfj), /studentLoanPhaseOutRange(Mfj)
+  internal phase_out_start content money
+  internal phase_out_range content money
+  # Worksheet line 6 (zero when line 4 is not above line 5)
+  internal excess_over_phase_out_start content money
+  # Worksheet line 7, exact: excess / range, at most 1 (decimal, not rounded)
+  internal phase_out_ratio content decimal
+  # Worksheet line 8, to the cent for display. DF: /studentLoanAmountPhaseOutAmount
+  output student_loan_amount_phase_out_amount content money
+  # Schedule 1 line 21. DF: /studentLoanInterestAdjustmentAmount
+  output student_loan_interest_adjustment_amount content money
+  # DF: /isReceivingStudentLoanInterestAdjustment
+  output is_receiving_student_loan_interest_adjustment condition
+```
+
+## Modified AGI and the income limit
+
+```catala
+scope StudentLoanAdjustment:
+  definition is_filing_status_mfj equals filing_status = MarriedFilingJointly
+  definition is_filing_status_mfs equals filing_status = MarriedFilingSeparately
+
+  # Worksheet lines 2 to 4, i1040gi--2024.pdf p 94.
+  # DF: /magiForStudentLoanInterestDeduction
+  definition magi_for_student_loan_interest_deduction equals
+    total_income - adjustments_to_income_excluding_student_loan_interest
+
+  # Rev. Proc. 2023-34 p 16: "$95,000 or more" is fully phased out. DF tests
+  # `magi > 95,000` and lets the phase-out reach 100 percent at 95,000 itself.
+  # DF: /incomeTooHighForStudentLoanInterestDeductionNotMFJ
+  definition income_too_high_not_mfj equals
+    (not is_filing_status_mfj)
+    and magi_for_student_loan_interest_deduction
+        > P.student_loan_phaseout_end_other
+
+  # DF: /incomeTooHighForStudentLoanInterestDeductionMFJ
+  definition income_too_high_mfj equals
+    is_filing_status_mfj
+    and magi_for_student_loan_interest_deduction
+        > P.student_loan_phaseout_end_joint
+```
+
+## Who cannot take the deduction
+
+IRC 221(e)(2): married filing separately is out. IRC 221(c) and the worksheet
+text: a filer (or spouse) claimed as a dependent is out. The loans must
+qualify (§ 221(d)(1)).
+
+```catala
+scope StudentLoanAdjustment:
+  # IRC 221(e)(2), 221(b)(2).
+  # DF: /cannotDeductStudentLoanInterestBecauseIncomeOrFilingStatus
+  definition cannot_deduct_because_income_or_filing_status equals
+    is_filing_status_mfs or income_too_high_not_mfj or income_too_high_mfj
+
+  # IRC 221(c). DF: /cannotDeductStudentLoanInterestBecauseDependents
+  definition cannot_deduct_because_dependents equals
+    (not cannot_deduct_because_income_or_filing_status)
+    and either_filer_is_claimed_as_dependent
+
+  # IRC 221(d)(1). DF: /cannotDeductStudentLoanInterestBecauseLoansDontQualify
+  definition cannot_deduct_because_loans_dont_qualify equals
+    (not cannot_deduct_because_income_or_filing_status)
+    and had_student_loan_interest_payments
+    and (not either_filer_is_claimed_as_dependent)
+    and (not student_loans_qualify)
+
+  # DF: /cannotDeductStudentLoanInterest
+  definition cannot_deduct_student_loan_interest equals
+    cannot_deduct_because_dependents
+    or cannot_deduct_because_loans_dont_qualify
+    or cannot_deduct_because_income_or_filing_status
+    or is_mfj_dependent
+```
+
+## Worksheet lines 1 to 9
+
+```catala
+scope StudentLoanAdjustment:
+  # Worksheet line 1, IRC 221(b)(1)
+  definition capped_interest equals
+    Money.min of student_loan_interest_amount, P.student_loan_interest_cap
+
+  # Worksheet line 5
+  definition phase_out_start equals
+    if is_filing_status_mfj then P.student_loan_phaseout_start_joint
+    else P.student_loan_phaseout_start_other
+
+  # IRC 221(b)(2)(B)(ii): $15,000 ($30,000 joint).
+  # DF: /studentLoanPhaseOutRange(Mfj)
+  definition phase_out_range equals
+    if is_filing_status_mfj
+    then P.student_loan_phaseout_end_joint - P.student_loan_phaseout_start_joint
+    else P.student_loan_phaseout_end_other - P.student_loan_phaseout_start_other
+
+  # Worksheet line 6: "No. Skip ... enter -0-" when line 4 is not above line 5
+  definition excess_over_phase_out_start equals
+    Money.max of $0,
+      (magi_for_student_loan_interest_deduction - phase_out_start)
+
+  # Worksheet line 7. IRC 221(b)(2)(B): the exact ratio, capped at 1.
+  # DF-BUG(7): DF rounds this ratio to three decimals through a x10 trick with
+  # HALF_EVEN cent roundings (`df_phase_out_amount`); not reproduced.
+  definition phase_out_ratio equals
+    Decimal.min of 1.0, (excess_over_phase_out_start / phase_out_range)
+
+  # Worksheet line 8, display value. DF: /studentLoanAmountPhaseOutAmount
+  definition student_loan_amount_phase_out_amount equals
+    capped_interest * phase_out_ratio
+
+  # Worksheet line 9, Sch 1 line 21: one rounding to the whole dollar of the
+  # exact value, as DF's final `Round` (CONVENTIONS: R.round_dollar_exact).
+  # DF: /studentLoanInterestAdjustmentAmount
+  definition student_loan_interest_adjustment_amount equals
+    if cannot_deduct_student_loan_interest
+       or (not had_student_loan_interest_payments)
+    then $0
+    else R.round_dollar_exact of capped_interest, (1.0 - phase_out_ratio)
+
+  # DF: /isReceivingStudentLoanInterestAdjustment
+  definition is_receiving_student_loan_interest_adjustment equals
+    student_loan_interest_adjustment_amount > $0
+```

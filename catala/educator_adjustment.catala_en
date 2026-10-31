@@ -1,0 +1,131 @@
+> Module Educator_adjustment
+
+# Educator expenses adjustment (Schedule 1 line 11)
+
+Direct File module `educatorAdjustment.xml`. Issue #24. Tests are in
+`catala/tests/test_educator_adjustment.catala_en`; the oracle comparison is
+`make difftest SCOPE=educator_adjustment` (`difftest/mappings/educator_adjustment.mjs`).
+
+> Using Params_2024 as P
+> Using Rounding as R
+
+## 26 U.S.C. § 62(a)(2)(D) Certain expenses of elementary and secondary school teachers
+
+"The deductions allowed by section 162 which consist of expenses, not in
+excess of $250, paid or incurred by an eligible educator— (i) by reason of the
+participation of the educator in professional development courses related to
+the curriculum in which the educator provides instruction or to the students
+for which the educator provides instruction, and (ii) in connection with
+books, supplies (other than nonathletic supplies for courses of instruction in
+health or physical education), computer equipment (including related software
+and services) and other equipment, and supplementary materials used by the
+eligible educator in the classroom." (`sources/statute/irc-62.html`)
+
+The $250 is indexed. For TY2024 it is $300: "for taxable years beginning in
+2024, under § 62(a)(2)(D) the amount of the deduction allowed under § 162 ...
+is $300." (Rev. Proc. 2023-34 § 3.13, `sources/revproc/rp-23-34.pdf` p 11.)
+The constant is `P.educator_expense_cap_per_educator`.
+
+## Form 1040 instructions, Schedule 1 line 11
+
+"If you were an eligible educator in 2024, you can deduct on line 11 up to $300
+of qualified expenses you paid in 2024. If you and your spouse are filing
+jointly and both of you were eligible educators, the maximum deduction is $600.
+However, neither spouse can deduct more than $300 of their qualified expenses
+on line 11." (`sources/forms-instructions/i1040gi--2024.pdf` p 89.)
+
+## Direct File rules reproduced
+
+- `/wasK12Educators` is an enumeration `tpDid`, `spouseDid`, `bothDid`,
+  `neither` (`/k12EducatorOptions`). The flow only offers `spouseDid` and
+  `bothDid` on a joint return; the facts `/tpWasK12Educator` and
+  `/spouseWasK12Educator` themselves do not test the filing status, so neither
+  does this module (inputs are complete, CONVENTIONS section 3).
+- Each educator's amount is `LesserOf(300, expenses)`; an educator who is not
+  flagged contributes $0 whatever the expenses box holds.
+- `/educatorExpensesAdjustment` is `Round` of the sum, and `$0` for a filer who
+  is an MFJ dependent (`/isMFJDependent`, `filers.xml`).
+
+```catala-metadata
+## The `/k12EducatorOptions` answer. DF: educatorAdjustment.xml `/wasK12Educators`.
+declaration enumeration K12EducatorOptions:
+  -- TpDid
+  -- SpouseDid
+  -- BothDid
+  -- Neither
+
+## Schedule 1 line 11. DF: educatorAdjustment.xml.
+declaration scope EducatorAdjustment:
+  # DF: educatorAdjustment.xml /wasK12Educators (Writable)
+  input was_k12_educators content K12EducatorOptions
+  # DF: educatorAdjustment.xml /primaryEducatorExpensesWritable
+  input primary_educator_expenses_writable content money
+  # DF: educatorAdjustment.xml /secondaryEducatorExpensesWritable
+  input secondary_educator_expenses_writable content money
+  # DF: filers.xml /isMFJDependent, from Filers.is_mfj_dependent
+  input is_mfj_dependent condition
+
+  # DF: educatorAdjustment.xml /tpWasK12Educator
+  output tp_was_k12_educator condition
+  # DF: educatorAdjustment.xml /spouseWasK12Educator
+  output spouse_was_k12_educator condition
+  # DF: educatorAdjustment.xml /primaryEducatorExpenses
+  output primary_educator_expenses content money
+  # DF: educatorAdjustment.xml /secondaryEducatorExpenses
+  output secondary_educator_expenses content money
+  # Schedule 1 line 11. DF: educatorAdjustment.xml /educatorExpensesAdjustment
+  output educator_expenses_adjustment content money
+  # DF: educatorAdjustment.xml /isReceivingEducatorExpensesAdjustment
+  output is_receiving_educator_expenses_adjustment condition
+```
+
+## Who is an eligible educator
+
+```catala
+scope EducatorAdjustment:
+  # IRC 62(a)(2)(D) "eligible educator"; DF: /tpWasK12Educator
+  definition tp_was_k12_educator equals
+    was_k12_educators = BothDid or was_k12_educators = TpDid
+
+  # DF: /spouseWasK12Educator
+  definition spouse_was_k12_educator equals
+    was_k12_educators = BothDid or was_k12_educators = SpouseDid
+```
+
+## The $300 cap per educator
+
+```catala
+scope EducatorAdjustment:
+  # IRC 62(a)(2)(D), Rev. Proc. 2023-34 p 11; DF: /primaryEducatorExpenses
+  definition primary_educator_expenses equals
+    if tp_was_k12_educator then
+      Money.min of P.educator_expense_cap_per_educator,
+                   primary_educator_expenses_writable
+    else $0
+
+  # DF: /secondaryEducatorExpenses
+  definition secondary_educator_expenses equals
+    if spouse_was_k12_educator then
+      Money.min of P.educator_expense_cap_per_educator,
+                   secondary_educator_expenses_writable
+    else $0
+```
+
+## Schedule 1 line 11
+
+"Educator expenses" is the sum of both educators' capped amounts (at most $600
+on a joint return). A filer who is only on a joint return as the dependent of
+another taxpayer (`/isMFJDependent`) gets nothing.
+
+```catala
+scope EducatorAdjustment:
+  # Sch 1 line 11, f1040s1--2024.pdf p 1. DF: /educatorExpensesAdjustment
+  definition educator_expenses_adjustment equals
+    if is_mfj_dependent then $0
+    else R.round_dollar of (primary_educator_expenses
+                            + secondary_educator_expenses)
+
+  # DF: /isReceivingEducatorExpensesAdjustment
+  definition is_receiving_educator_expenses_adjustment equals
+    educator_expenses_adjustment > $0
+```
