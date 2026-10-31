@@ -1,0 +1,38 @@
+> Using Tax_rates as T
+> Using Types
+
+# Batch wrapper of `TentativeTax` for the Lean differential test
+
+`difftest/lean_rates.mjs` runs this scope once with a few thousand
+(taxable income, filing status) pairs instead of one `clerk run` per pair.
+Each element is one run of the scope `T.TentativeTax`; the three output lists
+are its three outputs, in input order.
+
+```catala
+declaration structure RateQuery:
+  data taxable_income content money
+  data filing_status content Types.FilingStatus
+
+declaration scope TentativeTaxBatch:
+  input queries content list of RateQuery
+  output rounded_taxable_income content list of money
+  output tentative_tax_from_taxable_income content list of money
+  output tentative_tax_cumulative_form content list of money
+
+scope TentativeTaxBatch:
+  definition rounded_taxable_income equals
+    map each q among queries to
+      (output of T.TentativeTax with {
+        -- taxable_income: q.taxable_income -- filing_status: q.filing_status
+      }).rounded_taxable_income
+  definition tentative_tax_from_taxable_income equals
+    map each q among queries to
+      (output of T.TentativeTax with {
+        -- taxable_income: q.taxable_income -- filing_status: q.filing_status
+      }).tentative_tax_from_taxable_income
+  definition tentative_tax_cumulative_form equals
+    map each q among queries to
+      (output of T.TentativeTax with {
+        -- taxable_income: q.taxable_income -- filing_status: q.filing_status
+      }).tentative_tax_cumulative_form
+```

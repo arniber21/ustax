@@ -49,6 +49,10 @@ difftest-persons:  ## qualifying-child and dependent tests per household member 
 	node difftest/run.mjs --scope qualifying_child,qualifying_relative --oracle oracle/persons.csv $(ARGS)
 oracle-persons:  ## regenerate oracle/persons.csv (needs DIRECT_FILE, as for `make oracle`)
 	cd oracle && npm ci --ignore-scripts --no-audit --no-fund && node generate_persons.mjs
+# Lean rate schedule vs Catala (clerk run) and vs the oracle (see lean/README.md).
+.PHONY: lean-difftest-rates
+lean-difftest-rates:  ## Lean TentativeTax vs Catala and vs oracle/facts.csv
+	node difftest/lean_rates.mjs $(ARGS)
 
 # --- TLS (see docs/tls.md): Caddy terminates HTTPS, Lean server stays on plain loopback HTTP ---
 # Requires `caddy` on PATH (brew install caddy); not installed by `make install`.
