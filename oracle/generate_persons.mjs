@@ -149,6 +149,8 @@ const PERSON_FACTS = [
   'parentsAreDivorcedSeparatedOrLivingApart', 'tpIsCustodialParent', 'contradictory8832TPIsCustodialParent',
   'contradictory8832TPNotCustodialParent', 'contradictory8832Knockout', 'causesNoncustodialParentBenefitSplitKnockout',
   'eligibleForBenefitSplit', 'reachedNonParentalBenefitSplit',
+  // Issue #27: CTC and ODC per person.
+  'ssnValidForEmployment', 'eligibleCtc', 'eligibleOdc',
 ];
 const SCENARIO_FACTS = [
   '/flowIsKnockedOut', '/minimumFilerDateOfBirth', '/treatAsMFJ',

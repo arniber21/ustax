@@ -1,0 +1,921 @@
+> Module Ctc_odc
+
+> Using Types
+> Using Params_2024 as P
+> Using Rounding as R
+> Using Qualifying_child as Q
+> Using Qualifying_relative as QR
+> Using Eitc as E
+
+# Child tax credit, credit for other dependents, additional child tax credit (Schedule 8812; Form 1040 lines 19 and 28)
+
+Issue #27, `scope.md` section 6.1. Direct File ("DF" below) module
+`../direct-file/direct-file/backend/src/main/resources/tax/ctcOdc.xml` (1596
+lines, read in full) and the per-person facts
+`/familyAndHousehold/*/ssnValidForEmployment`, `/familyAndHousehold/*/eligibleCtc`
+and `/familyAndHousehold/*/eligibleOdc` of `familyAndHousehold.xml` (lines
+3756-3920). Law: 26 U.S.C. § 24 (`sources/statute/irc-24.html`, U.S. Code 2024
+edition); Treas. Reg. § 1.24-1 (`sources/regs/cfr-1.24-1.xml`); Rev. Proc.
+2023-34 § 3.05 (`sources/revproc/rp-23-34.pdf` p 8); Schedule 8812 (Form 1040)
+2024 (`sources/forms-instructions/f1040s8--2024.pdf`, 2 pp) and its
+instructions (`sources/forms-instructions/i1040s8--2024.pdf`, 9 pp; Credit
+Limit Worksheet A on p 4, Earned Income Chart on p 7).
+
+The module has three scopes.
+
+- `CtcOdcPersonTest`: one member of the household. It runs the dependent
+  tests of `Qualifying_relative.DependentTest` (issue #17, which itself runs
+  `Qualifying_child.QualifyingChildTest`, issue #16) and adds the two
+  credit-specific tests: is the person a qualifying child for the child tax
+  credit (DF `eligibleCtc`), or a dependent for the credit for other
+  dependents (DF `eligibleOdc`).
+- `CtcOdcDependents`: the same test mapped over the household, and the two
+  counts, Schedule 8812 lines 4 and 6 (DF `/ctcEligibleDependents`,
+  `/odcEligibleDependents`).
+- `Schedule8812`: Schedule 8812 Parts I and II, from the two counts and the
+  return figures. Outputs `total_ctc_and_odc` (line 14, Form 1040 line 19)
+  and `additional_ctc` (line 27, Form 1040 line 28).
+
+The return figures are inputs (CONVENTIONS sections 2 and 7): the order in
+which credits are taken (scope.md section 6.7) puts the CTC and ODC last
+among the nonrefundable credits, and the additional child tax credit after
+the earned income credit, which it reads. Each input names the module that
+computes it; the wiring is listed in the pull request.
+
+Tests: `catala/tests/test_ctc_odc.catala_en`. Oracle comparison:
+`make difftest SCOPE=ctc_odc` (Schedule 8812 from the oracle's counts) and
+`make difftest SCOPE=ctc_odc_household` (the counts from the household
+members), against `oracle/facts.csv`; `make difftest-persons` (scope
+`ctc_odc_person`, each person against `oracle/persons.csv`).
+
+Not here, on purpose: Form 8862 (information to claim the credit after a
+disallowance), which DF fills in and this module only flags
+(`ctc8862_required`); Credit Limit Worksheet B (needed only with the mortgage
+interest, adoption, residential clean energy or D.C. homebuyer credits, which
+DF does not support); Puerto Rico residents and Form 2555 filers (DF scope);
+the line 15 box "do not want to claim the additional child tax credit"
+(DF has no such question). The PDF-only facts (`/pdf8812...`) are not
+modelled (CONVENTIONS section 2).
+
+## Declarations
+
+```catala-metadata
+## IRC 24(c)(1): a qualifying child "who has not attained age 17". Not
+## indexed. DF: `familyAndHousehold.xml` `/familyAndHousehold/*/eligibleCtc`
+## (`age` less than `17`).
+declaration ctc_age_limit content integer equals 17
+
+## IRC 24(d)(1)(B)(ii): "in the case of a taxpayer with 3 or more qualifying
+## children". Schedule 8812 line 20 asks the same thing as "On line 16b, is
+## the amount $5,100 or more?" ($5,100 = 3 x $1,700).
+## DF: `/threeOrMoreCtcEligibleDependents` (`GreaterThanOrEqual` `3`).
+declaration actc_alternative_minimum_children content integer equals 3
+
+## What the person's Social Security card says about employment. DF:
+## `familyAndHousehold.xml` `/familyAndHouseholdSsnEmploymentValidityOptions`
+## (lines 20-31), one constructor per option, same order. `Neither` is a card
+## with no restriction printed on it.
+declaration enumeration SsnEmploymentValidity:
+  -- Neither
+  -- NotValid
+  -- ValidOnlyWithDhsAuthorizationInEffect
+  -- ValidOnlyWithDhsAuthorizationExpired
+
+## One member of DF `/familyAndHousehold`, with the one answer the CTC reads
+## beyond those of `Qualifying_relative.Member`.
+declaration structure HouseholdMember:
+  data member content QR.Member
+  # DF: /familyAndHousehold/*/ssnEmploymentValidity. DF asks it of persons
+  # with an SSN; for anybody else the value is never read.
+  data ssn_employment_validity content SsnEmploymentValidity
+```
+
+## One person: who counts for which credit
+
+```catala-metadata
+declaration scope CtcOdcPersonTest:
+  # One member of DF /familyAndHousehold
+  input household_member content HouseholdMember
+  # DF: filers.xml /minimumFilerDateOfBirth (Filers.minimum_filer_date_of_birth)
+  input minimum_filer_date_of_birth content date
+  # DF: filers.xml /treatFilersAsDependents (Filers.treat_filers_as_dependents)
+  input treat_filers_as_dependents content boolean
+  # DF: filers.xml /eitherFilerUSCitizenOrNational
+  # (Filers.either_filer_us_citizen_or_national)
+  input either_filer_us_citizen_or_national content boolean
+
+  # The dependent tests for the same person (issue #17)
+  output dependent content QR.DependentTest
+  # DF: /familyAndHousehold/*/ssnValidForEmployment
+  output ssn_valid_for_employment condition
+  # DF: /familyAndHousehold/*/eligibleCtc
+  output eligible_ctc condition
+  # DF: /familyAndHousehold/*/eligibleOdc
+  output eligible_odc condition
+```
+
+```catala
+scope CtcOdcPersonTest:
+  definition dependent equals
+    output of QR.DependentTest with {
+      -- member: household_member.member
+      -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
+      -- treat_filers_as_dependents: treat_filers_as_dependents
+      -- either_filer_us_citizen_or_national:
+           either_filer_us_citizen_or_national }
+```
+
+### 26 U.S.C. § 24(a) and (c): the qualifying child
+
+IRC 24(a): "There shall be allowed as a credit against the tax imposed by this
+chapter for the taxable year with respect to each qualifying child of the
+taxpayer for which the taxpayer is allowed a deduction under section 151 an
+amount equal to $1,000." So the child must be claimed: DF
+`/familyAndHousehold/*/isClaimedDependent` (the filer chose to claim an
+eligible dependent; `Qualifying_relative`).
+
+IRC 24(c)(1): "The term "qualifying child" means a qualifying child of the
+taxpayer (as defined in section 152(c)) who has not attained age 17." DF
+`qualifyingChild` (`Qualifying_child`) and `age` less than 17, where `age` is
+2024 minus the year of birth, the age on December 31, 2024. The Schedule 8812
+instructions (`i1040s8--2024.pdf` p 2), "Credits for Qualifying Children":
+"the child must be your dependent, under age 17 at the end of 2024", and
+"Example 1. Your child turned 17 on December 30, 2024, ... You can't use the
+child to claim the CTC or ACTC because the child was not under age 17 at the
+end of 2024." A child born on December 31, 2007 is 17 at the end of 2024 and
+does not count; a child born on January 1, 2008 is 16 and counts (the
+"day before the birthday" rule used for some other ages, scope.md section
+5.1, is not the rule here).
+
+IRC 24(c)(2): "The term "qualifying child" shall not include any individual
+who would not be a dependent if subparagraph (A) of section 152(b)(3) were
+applied without regard to all that follows "resident of the United States"."
+That is the citizen or resident test without the Canada and Mexico residents;
+the adopted-child exception of 152(b)(3)(B) still applies, because only
+subparagraph (A) is cut. DF `/familyAndHousehold/*/citizenOrUsResidentTest`
+(`Qualifying_relative.citizen_or_us_resident_test`: citizen, U.S. resident,
+U.S. national, or the adopted-child exception).
+
+### 26 U.S.C. § 24(h)(7): the required Social Security number
+
+IRC 24(h)(7): "No credit shall be allowed under this section to a taxpayer
+with respect to any qualifying child unless the taxpayer includes the social
+security number of such child on the return of tax for the taxable year. For
+purposes of the preceding sentence, the term "social security number" means a
+social security number issued to an individual by the Social Security
+Administration, but only if the social security number is issued— (A) to a
+citizen of the United States or pursuant to subclause (I) (or that portion of
+subclause (III) that relates to subclause (I)) of section 205(c)(2)(B)(i) of
+the Social Security Act, and (B) before the due date for such return."
+
+Schedule 8812 instructions p 1, "Each Qualifying Child You Use for CTC or
+ACTC Must Have the Required SSN": "The required SSN is one that is valid for
+employment and is issued before the due date of your 2024 return (including
+extensions)." DF: the TIN is an SSN (`tinType` = `ssn`) and
+`ssnValidForEmployment`: the card says neither "Not valid for employment" nor
+"Valid for work only with DHS authorization" with the authorization expired.
+DF has no question about the issue date; an SSN entered on the return is
+taken as issued in time.
+
+```catala
+scope CtcOdcPersonTest:
+  # IRC 24(h)(7); i1040s8--2024.pdf p 1.
+  # DF: /familyAndHousehold/*/ssnValidForEmployment
+  rule ssn_valid_for_employment under condition
+    household_member.ssn_employment_validity = Neither
+    or household_member.ssn_employment_validity
+       = ValidOnlyWithDhsAuthorizationInEffect
+  consequence fulfilled
+
+  # IRC 24(a), 24(c)(1), 24(c)(2), 24(h)(7); i1040s8--2024.pdf pp 1-2.
+  # DF: /familyAndHousehold/*/eligibleCtc
+  rule eligible_ctc under condition
+    dependent.is_claimed_dependent
+    and dependent.qualifying_child
+    and dependent.qc.age < ctc_age_limit
+    and dependent.citizen_or_us_resident_test
+    and household_member.member.answers.tin_type = QR.TinType.Ssn
+    and ssn_valid_for_employment
+  consequence fulfilled
+```
+
+### 26 U.S.C. § 24(h)(4): the credit for other dependents
+
+IRC 24(h)(4)(A): "The credit determined under subsection (a) (after the
+application of paragraph (2)) shall be increased by $500 for each dependent of
+the taxpayer (as defined in section 152) other than a qualifying child
+described in subsection (c)." Treas. Reg. § 1.24-1(a) says the same: "a
+taxpayer may be eligible to increase the credit determined under section
+24(a) by $500 for a dependent of the taxpayer, as defined in section 152,
+other than a qualifying child described in section 24(c)."
+
+IRC 24(h)(4)(B): "Subparagraph (A) shall not apply with respect to any
+individual who would not be a dependent if subparagraph (A) of section
+152(b)(3) were applied without regard to all that follows "resident of the
+United States"." The same citizen or U.S. resident test as 24(c)(2).
+
+IRC 24(h)(4)(C): "In the case of any qualifying child with respect to whom a
+credit is not allowed under this section by reason of paragraph (7), such
+child shall be treated as a dependent to whom subparagraph (A) applies."
+
+Schedule 8812 line 6 (`f1040s8--2024.pdf` p 1): "Number of other dependents,
+including any qualifying children who are not under age 17 or who do not have
+the required social security number ... Caution: Do not include yourself,
+your spouse, or anyone who is not a U.S. citizen, U.S. national, or U.S.
+resident alien. Also, do not include anyone you included on line 4."
+Instructions p 2, "Credit for Other Dependents (ODC)": "1. The person is
+claimed as a dependent on your return. ... 2. The person can't be used by you
+to claim the CTC or ACTC. ... 3. The person was a U.S. citizen, U.S. national,
+or U.S. resident alien. ... If the person is your adopted child, see Adopted
+child". Instructions p 1: a dependent with no SSN, ITIN or ATIN can't be used
+for the ODC; `Qualifying_relative.eligible_dependent` already requires a TIN.
+
+DF `/familyAndHousehold/*/eligibleOdc`: claimed, not `eligibleCtc`, and
+`citizenOrUsResidentTest`. "Not eligible for the CTC" covers both the
+dependent who is not a qualifying child under 17 and, by (h)(4)(C), the
+qualifying child under 17 without the required SSN.
+
+```catala
+scope CtcOdcPersonTest:
+  # IRC 24(h)(4)(A)-(C); Treas. Reg. 1.24-1(a); Sch 8812 line 6,
+  # f1040s8--2024.pdf p 1; i1040s8--2024.pdf p 2.
+  # DF: /familyAndHousehold/*/eligibleOdc
+  rule eligible_odc under condition
+    dependent.is_claimed_dependent
+    and not eligible_ctc
+    and dependent.citizen_or_us_resident_test
+  consequence fulfilled
+```
+
+## The household: Schedule 8812 lines 4 and 6
+
+Schedule 8812 line 4: "Number of qualifying children under age 17 with the
+required social security number"; line 6: "Number of other dependents"
+(text above). Instructions p 2: "You can't check both the child tax credit
+box and the credit for other dependents box for the same person." The two
+tests above exclude each other (`eligible_odc` requires `not eligible_ctc`).
+
+DF `/ctcEligibleDependents` and `/odcEligibleDependents` count
+`/familyAndHousehold/*/eligibleCtc` and `/familyAndHousehold/*/eligibleOdc`.
+
+```catala-metadata
+declaration scope CtcOdcDependents:
+  # DF: /familyAndHousehold
+  input household_members content list of HouseholdMember
+  # DF: filers.xml /minimumFilerDateOfBirth
+  input minimum_filer_date_of_birth content date
+  # DF: filers.xml /treatFilersAsDependents
+  input treat_filers_as_dependents content boolean
+  # DF: filers.xml /eitherFilerUSCitizenOrNational
+  input either_filer_us_citizen_or_national content boolean
+
+  # DF: /familyAndHousehold/*/... (one result per member, same order)
+  output results content list of CtcOdcPersonTest
+  # Sch 8812 line 4. DF: /ctcEligibleDependents
+  output ctc_eligible_dependents content integer
+  # Sch 8812 line 6. DF: /odcEligibleDependents
+  output odc_eligible_dependents content integer
+```
+
+```catala
+scope CtcOdcDependents:
+  definition results equals
+    map each m among household_members to
+      (output of CtcOdcPersonTest with {
+         -- household_member: m
+         -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
+         -- treat_filers_as_dependents: treat_filers_as_dependents
+         -- either_filer_us_citizen_or_national:
+              either_filer_us_citizen_or_national })
+
+  # Sch 8812 line 4, f1040s8--2024.pdf p 1. DF: /ctcEligibleDependents
+  definition ctc_eligible_dependents equals
+    number of (list of r among results such that r.eligible_ctc)
+
+  # Sch 8812 line 6, f1040s8--2024.pdf p 1. DF: /odcEligibleDependents
+  definition odc_eligible_dependents equals
+    number of (list of r among results such that r.eligible_odc)
+```
+
+## Schedule 8812
+
+```catala-metadata
+declaration scope Schedule8812:
+  # ---- Household (CtcOdcDependents) ----
+  # Sch 8812 line 4. DF: /ctcEligibleDependents
+  input ctc_eligible_dependents content integer
+  # Sch 8812 line 6. DF: /odcEligibleDependents
+  input odc_eligible_dependents content integer
+
+  # ---- Return figures ----
+  # DF: /filingStatus (only "is it MFJ" is read: filingStatus.xml /isFilingStatusMFJ)
+  input filing_status content Types.FilingStatus
+  # Form 1040 line 11. DF: taxCalculations.xml /agi (Form_1040)
+  input agi content money
+  # Form 1040 line 18. DF: taxCalculations.xml /totalTentativeTax (Form_1040)
+  input total_tentative_tax content money
+  # Schedule 3 line 2. DF: cdcc.xml /cdccTotalCredit (CDCC, issue #28)
+  input cdcc_total_credit content money
+  # Schedule 3 line 4. DF: saversCredits.xml /qualifiedSaverCreditAmount
+  # (Savers_credit, issue #29)
+  input qualified_saver_credit_amount content money
+  # Schedule 3 line 6d. DF: elderlyAndDisabled.xml /totalEdc
+  # (Elderly_and_disabled, issue #30)
+  input total_edc content money
+  # Form 1040 line 1z. DF: income.xml /employerIncomeSubtotal (Form_1040)
+  input employer_income_subtotal content money
+  # Nontaxable combat pay of both filers, Sch 8812 line 18b.
+  # DF: formW2s.xml /allCombatPay (Form_w2s.FormW2s.all_combat_pay)
+  input all_combat_pay content money
+  # W-2 boxes 4 and 6, Sch 8812 line 21.
+  # DF: formW2s.xml /socialSecurityTaxesWithheld
+  # (Form_w2s.FormW2s.social_security_taxes_withheld)
+  input social_security_taxes_withheld content money
+  # Form 1040 line 27. DF: eitc.xml /earnedIncomeCredit
+  # (Eitc.EarnedIncomeCredit.earned_income_credit)
+  input earned_income_credit content money
+
+  # ---- Improper claims (IRC 24(g)) ----
+  # DF: /receivedImproperClaims
+  input received_improper_claims content boolean
+  # DF: /receivedImproperClaimsNotice (options /improperClaimsNoticeOptions)
+  input received_improper_claims_notice content E.ImproperClaimsNotice
+  # DF: /improperClaimsNoticeExpired
+  input improper_claims_notice_expired content boolean
+  # DF: /hasFiledCtcOdcSinceNoticeExpired
+  input has_filed_ctc_odc_since_notice_expired content boolean
+
+  # DF: /hadCtcOdcImproperClaimsBan
+  output had_ctc_odc_improper_claims_ban condition
+  # DF: /ctcOdcDisqualifiedForImproperClaims
+  output ctc_odc_disqualified_for_improper_claims condition
+
+  # ---- Part I ----
+  # DF: /maybeEligibleForCtc
+  output maybe_eligible_for_ctc condition
+  # DF: /maybeEligibleForOdc
+  output maybe_eligible_for_odc condition
+  # DF: /ctcQualified
+  output ctc_qualified condition
+  # DF: /odcQualified
+  output odc_qualified condition
+  # Sch 8812 line 3. DF: /dependentCreditMagi
+  output dependent_credit_magi content money
+  # Sch 8812 line 5. DF: /totalPotentialCtc
+  output total_potential_ctc content money
+  # Sch 8812 line 7. DF: /totalPotentialOdc
+  output total_potential_odc content money
+  # Sch 8812 line 8. DF: /totalPotentialDependentCredits
+  output total_potential_dependent_credits content money
+  # Sch 8812 line 9. DF: /dependentCreditPhaseoutThreshold
+  output dependent_credit_phaseout_threshold content money
+  # Line 3 minus line 9, not below zero. DF: /dependentCreditMagiAboveThreshold
+  output dependent_credit_magi_above_threshold content money
+  # Sch 8812 line 10. DF: /roundedDependentCreditMagiAboveThreshold
+  output rounded_dependent_credit_magi_above_threshold content money
+  # Sch 8812 line 11. DF: /dependentCreditPhaseout
+  output dependent_credit_phaseout content money
+  # Sch 8812 line 12. DF: /dependentCreditLessPhaseout
+  output dependent_credit_less_phaseout content money
+  # Sch 8812 line 12 "Yes" box. DF: /dependentCreditNotFullyPhasedOut
+  output dependent_credit_not_fully_phased_out condition
+  # Sch 8812 line 13 (Credit Limit Worksheet A line 5). DF: /sched8812CreditLimit
+  output sched8812_credit_limit content money
+  # Sch 8812 line 14, Form 1040 line 19. DF: /totalCtcAndOdc
+  output total_ctc_and_odc content money
+  # DF: /maxPotentialOdcAfterPhaseOut
+  output max_potential_odc_after_phase_out content money
+  # The ODC part of line 14 (no form line). DF: /totalOdc
+  output total_odc content money
+  # The CTC part of line 14 (no form line). DF: /totalCtc
+  output total_ctc content money
+  # DF: /isReceivingCtc
+  output is_receiving_ctc condition
+  # DF: /isReceivingOdc
+  output is_receiving_odc condition
+  # DF: /isReceivingCtcOrOdc
+  output is_receiving_ctc_or_odc condition
+
+  # ---- Part II-A ----
+  # Sch 8812 line 16a. DF: /remainingCtcAndOdc
+  output remaining_ctc_and_odc content money
+  # DF: /xmlHasRemainingCtcAndOdc
+  output xml_has_remaining_ctc_and_odc condition
+  # Sch 8812 line 16b. DF: /totalPotentialActc
+  output total_potential_actc content money
+  # DF: /xmlHasPotentialActc
+  output xml_has_potential_actc condition
+  # Sch 8812 line 17. DF: /remainingPotentialActc
+  output remaining_potential_actc content money
+  # Sch 8812 line 18a. DF: income.xml /earnedIncomeWithAllCombatPay
+  output earned_income_with_all_combat_pay content money
+  # Sch 8812 line 19. DF: /earnedIncomeAboveActcRefundabilityThreshold
+  output earned_income_above_actc_refundability_threshold content money
+  # Sch 8812 line 19 "Yes" box. DF: /earnedIncomeExceedsActcRefundabilityThreshold
+  output earned_income_exceeds_actc_refundability_threshold condition
+  # Sch 8812 line 20. DF: /regularMaximumActc
+  output regular_maximum_actc content money
+  # Sch 8812 line 20 "Next" question (line 16b at least $5,100).
+  # DF: /threeOrMoreCtcEligibleDependents
+  output three_or_more_ctc_eligible_dependents condition
+  # DF: /xmlThreeOrMoreCtcEligibleDependents
+  output xml_three_or_more_ctc_eligible_dependents condition
+
+  # ---- Part II-B ----
+  # Sch 8812 line 25. DF: /socialSecurityOverEitc
+  output social_security_over_eitc content money
+  # Sch 8812 line 26 (or line 20 when Part II-B is skipped). DF: /maximumActc
+  output maximum_actc content money
+
+  # ---- Part II-C ----
+  # Sch 8812 line 27, Form 1040 line 28. DF: /additionalCtc
+  output additional_ctc content money
+  # DF: /isReceivingActc
+  output is_receiving_actc condition
+  # DF: /ctc8862Required
+  output ctc8862_required condition
+```
+
+### 26 U.S.C. § 24(g): taxpayers who improperly claimed the credit
+
+IRC 24(g)(1)(A): "No credit shall be allowed under this section for any
+taxable year in the disallowance period." (g)(1)(B): "the disallowance period
+is— (i) the period of 10 taxable years after the most recent taxable year for
+which there was a final determination that the taxpayer's claim of credit
+under this section was due to fraud, and (ii) the period of 2 taxable years
+after the most recent taxable year for which there was a final determination
+that the taxpayer's claim of credit under this section was due to reckless or
+intentional disregard of rules and regulations (but not due to fraud)."
+IRC 24(g)(2): "In the case of a taxpayer who is denied credit under this
+section for any taxable year as a result of the deficiency procedures under
+subchapter B of chapter 63, no credit shall be allowed under this section for
+any subsequent taxable year unless the taxpayer provides such information as
+the Secretary may require to demonstrate eligibility for such credit."
+
+Schedule 8812 instructions p 2, "Improper Claims": "If you erroneously claim
+the CTC, ACTC, or ODC and it is later determined that your error was due to
+reckless or intentional disregard of the CTC, ACTC, or ODC rules, you will not
+be allowed to claim any of these credits for 2 years ... If it is determined
+that your error was due to fraud, you will not be allowed to claim any of
+these credits for 10 years." "Form 8862 may be required. If your CTC ...,
+ACTC, or ODC for a year after 2015 was denied or reduced for any reason other
+than a math or clerical error, you must attach Form 8862 to your tax return to
+claim the CTC, ACTC, or ODC unless an exception applies."
+
+DF asks whether the credit was reduced or disallowed (`receivedImproperClaims`),
+for how many years the IRS letter barred it (`receivedImproperClaimsNotice`:
+2, 10 or 0 years), whether that period is over (`improperClaimsNoticeExpired`)
+and whether the filer has claimed the credit since it ended
+(`hasFiledCtcOdcSinceNoticeExpired`). A filer still inside a 2- or 10-year
+period gets no CTC, ODC or ACTC (`ctcOdcDisqualifiedForImproperClaims`: lines
+5, 7 and 16b are `$0`); a filer whose period is over and who has not claimed
+since, or whose letter set no period, must attach Form 8862
+(`ctc8862Required`). Both match the statute.
+
+```catala
+scope Schedule8812:
+  # DF: /hadCtcOdcImproperClaimsBan
+  rule had_ctc_odc_improper_claims_ban under condition
+    not has_filed_ctc_odc_since_notice_expired
+    and (received_improper_claims_notice = E.ImproperClaimsNotice.TwoYears
+         or received_improper_claims_notice = E.ImproperClaimsNotice.TenYears)
+  consequence fulfilled
+
+  # IRC 24(g)(1); i1040s8--2024.pdf p 2.
+  # DF: /ctcOdcDisqualifiedForImproperClaims
+  rule ctc_odc_disqualified_for_improper_claims under condition
+    received_improper_claims
+    and not has_filed_ctc_odc_since_notice_expired
+    and had_ctc_odc_improper_claims_ban
+    and not improper_claims_notice_expired
+  consequence fulfilled
+
+  # IRC 24(g)(2); i1040s8--2024.pdf p 2. DF: /ctc8862Required
+  rule ctc8862_required under condition
+    (is_receiving_ctc or is_receiving_actc or is_receiving_odc)
+    and received_improper_claims
+    and not has_filed_ctc_odc_since_notice_expired
+    and ((had_ctc_odc_improper_claims_ban and improper_claims_notice_expired)
+         or received_improper_claims_notice
+            = E.ImproperClaimsNotice.ZeroYears)
+  consequence fulfilled
+```
+
+### Part I, lines 4 to 8: the credit before the phase-out
+
+IRC 24(h)(2): "Subsection (a) shall be applied by substituting "$2,000" for
+"$1,000"." (`P.ctc_per_qualifying_child`). IRC 24(h)(4)(A): "increased by
+$500 for each dependent" (`P.odc_per_other_dependent`). Schedule 8812 line 5:
+"Multiply line 4 by $2,000"; line 7: "Multiply line 6 by $500"; line 8: "Add
+lines 5 and 7".
+
+DF `/totalPotentialCtc`, `/totalPotentialOdc`: `$0` when the filer is
+disqualified under 24(g) or has no such dependent, else the count times the
+amount, rounded (a no-op on whole dollars).
+
+```catala
+scope Schedule8812:
+  # DF: /maybeEligibleForCtc
+  rule maybe_eligible_for_ctc under condition ctc_eligible_dependents > 0
+  consequence fulfilled
+  # DF: /maybeEligibleForOdc
+  rule maybe_eligible_for_odc under condition odc_eligible_dependents > 0
+  consequence fulfilled
+  # DF: /ctcQualified
+  rule ctc_qualified under condition
+    not ctc_odc_disqualified_for_improper_claims and maybe_eligible_for_ctc
+  consequence fulfilled
+  # DF: /odcQualified
+  rule odc_qualified under condition
+    not ctc_odc_disqualified_for_improper_claims and maybe_eligible_for_odc
+  consequence fulfilled
+
+  # IRC 24(a), 24(h)(2), 24(g)(1); Sch 8812 line 5, f1040s8--2024.pdf p 1.
+  # DF: /totalPotentialCtc
+  definition total_potential_ctc equals
+    R.round_dollar of
+      (if ctc_odc_disqualified_for_improper_claims or not maybe_eligible_for_ctc
+       then $0
+       else P.ctc_per_qualifying_child * (decimal of ctc_eligible_dependents))
+
+  # IRC 24(h)(4)(A), 24(g)(1); Sch 8812 line 7, f1040s8--2024.pdf p 1.
+  # DF: /totalPotentialOdc
+  definition total_potential_odc equals
+    R.round_dollar of
+      (if ctc_odc_disqualified_for_improper_claims or not maybe_eligible_for_odc
+       then $0
+       else P.odc_per_other_dependent * (decimal of odc_eligible_dependents))
+
+  # Sch 8812 line 8, f1040s8--2024.pdf p 1. DF: /totalPotentialDependentCredits
+  definition total_potential_dependent_credits equals
+    R.round_dollar of (total_potential_ctc + total_potential_odc)
+```
+
+### 26 U.S.C. § 24(b)(1) and (h)(3): the phase-out, lines 1 to 3 and 9 to 12
+
+IRC 24(b)(1): "The amount of the credit allowable under subsection (a) shall
+be reduced (but not below zero) by $50 for each $1,000 (or fraction thereof)
+by which the taxpayer's modified adjusted gross income exceeds the threshold
+amount. For purposes of the preceding sentence, the term "modified adjusted
+gross income" means adjusted gross income increased by any amount excluded
+from gross income under section 911, 931, or 933." IRC 24(h)(3): "In lieu of
+the amount determined under subsection (b)(2), the threshold amount shall be
+$400,000 in the case of a joint return ($200,000 in any other case)."
+
+Schedule 8812 line 1: "Enter the amount from line 11 of your Form 1040"; lines
+2a to 2c (Puerto Rico income, Form 2555, Form 4563) are `$0` in DF's scope, so
+line 3 is the AGI (DF `/dependentCreditMagi`, whose description says so).
+Line 9: "Married filing jointly—$400,000; All other filing statuses—$200,000".
+A qualifying surviving spouse does not file a joint return and uses $200,000.
+Line 10: "Subtract line 9 from line 3. If zero or less, enter -0-. If more
+than zero and not a multiple of $1,000, enter the next multiple of $1,000. For
+example, if the result is $425, enter $1,000; if the result is $1,025, enter
+$2,000, etc." Line 11: "Multiply line 10 by 5% (0.05)". Line 12: "Is the
+amount on line 8 more than the amount on line 11? No. STOP. You cannot take
+the child tax credit, credit for other dependents, or additional child tax
+credit. ... Yes. Subtract line 11 from line 8."
+
+**Rounding up to the next $1,000.** DF `/roundedDependentCreditMagiAboveThreshold`
+is `Round(StepwiseMultiply(excess + 999.99, 1000/1000))`: add $999.99, drop
+the cents, keep the whole thousands. The excess is a whole number of dollars
+(line 3 is rounded), so this is the next multiple of $1,000 at or above the
+excess, as line 10 says ($0 stays $0, $1 gives $1,000, $1,000 gives $1,000,
+$1,001 gives $2,000). We use `R.stepwise_multiply` exactly as DF does, with
+`$999.99` written as the step less one cent. `Money.round_to_decimal` is not
+used: Catala rounds half away from zero there, so it would need a different
+offset, and the convention is to mirror DF's operator (CONVENTIONS section 4).
+Line 11 is line 10 times $50 / $1,000 = 5%, exact on a multiple of $1,000.
+
+```catala
+scope Schedule8812:
+  # IRC 24(b)(1); Sch 8812 lines 1-3, f1040s8--2024.pdf p 1.
+  # DF: /dependentCreditMagi
+  definition dependent_credit_magi equals R.round_dollar of agi
+
+  # IRC 24(h)(3); Sch 8812 line 9, f1040s8--2024.pdf p 1.
+  # DF: /dependentCreditPhaseoutThreshold
+  definition dependent_credit_phaseout_threshold equals
+    if filing_status = Types.FilingStatus.MarriedFilingJointly
+    then P.ctc_phaseout_threshold_joint
+    else P.ctc_phaseout_threshold_other
+
+  # IRC 24(b)(1) "exceeds the threshold amount".
+  # DF: /dependentCreditMagiAboveThreshold
+  definition dependent_credit_magi_above_threshold equals
+    Money.positive of (dependent_credit_magi - dependent_credit_phaseout_threshold)
+
+  # IRC 24(b)(1) "for each $1,000 (or fraction thereof)"; Sch 8812 line 10,
+  # f1040s8--2024.pdf p 1.
+  # DF: /roundedDependentCreditMagiAboveThreshold
+  # (Round(StepwiseMultiply(excess + 999.99, 1000/1000)))
+  definition rounded_dependent_credit_magi_above_threshold equals
+    R.round_dollar of
+      (R.stepwise_multiply of
+         (dependent_credit_magi_above_threshold + P.ctc_phaseout_step - $0.01),
+         1000, 1000)
+
+  # IRC 24(b)(1) "$50 for each $1,000"; Sch 8812 line 11, f1040s8--2024.pdf p 1.
+  # DF: /dependentCreditPhaseout (Round(line 10 x 5/100))
+  definition dependent_credit_phaseout equals
+    R.round_dollar of
+      (rounded_dependent_credit_magi_above_threshold
+       * (P.ctc_phaseout_reduction_per_step / P.ctc_phaseout_step))
+
+  # IRC 24(b)(1) "(but not below zero)"; Sch 8812 line 12, f1040s8--2024.pdf p 1.
+  # DF: /dependentCreditLessPhaseout
+  definition dependent_credit_less_phaseout equals
+    R.round_dollar of
+      (Money.positive of (total_potential_dependent_credits - dependent_credit_phaseout))
+
+  # Sch 8812 line 12 "Yes". DF: /dependentCreditNotFullyPhasedOut
+  rule dependent_credit_not_fully_phased_out under condition
+    dependent_credit_less_phaseout > $0
+  consequence fulfilled
+```
+
+### Lines 13 and 14: the credit limit (Credit Limit Worksheet A)
+
+IRC 24 allows the credit "against the tax imposed by this chapter"; the
+nonrefundable credits of subpart A together may not exceed the tax (IRC
+26(a)), and the CTC and ODC are taken after the other credits on Schedule 3.
+Credit Limit Worksheet A (`i1040s8--2024.pdf` p 4): "1. Enter the amount from
+line 18 of your Form 1040 ... 2. Add the following amounts (if applicable)
+from: Schedule 3, line 1 ... line 2 ... line 3 ... line 4 ... line 5b ...
+line 6d ... line 6f ... line 6l ... line 6m ... 3. Subtract line 2 from line
+1. ... 4. If you are not completing Credit Limit Worksheet B, enter -0-;
+otherwise, enter the amount from Credit Limit Worksheet B. 5. Subtract line 4
+from line 3. Enter here and on Schedule 8812, line 13." Schedule 8812 line 14:
+"Enter the smaller of line 12 or line 13. This is your child tax credit and
+credit for other dependents ... Enter this amount on Form 1040 ... line 19."
+
+DF `/sched8812CreditLimit`: `GreaterOf(0, totalTentativeTax - (sched3Line1 +
+cdccTotalCredit + sched3Line3 + qualifiedSaverCreditAmount + sched3Line5b +
+totalEdc + sched3Line6f + sched3Line6l + sched3Line6m))`. Of the nine
+Schedule 3 lines only line 2 (child and dependent care credit, #28), line 4
+(retirement savings contributions credit, #29) and line 6d (credit for the
+elderly or disabled, #30) are in DF's scope; the others are `<!-- PLACEHOLDER
+-->` facts held at `$0` (foreign tax credit, education credits, residential
+energy, and the 6f, 6l, 6m lines). Worksheet B is "OUT OF SCOPE" in DF (its
+four credits are not supported), so line 4 is `$0`. The `GreaterOf(0, ...)`
+is not on the worksheet, but the three credits are each limited to the tax
+left before them (scope.md section 6.7), so line 3 cannot be negative; the
+floor changes nothing.
+
+```catala
+scope Schedule8812:
+  # OUT OF SCOPE: Schedule 3 lines 1, 3, 5b, 6f, 6l, 6m are $0 placeholders
+  # in DF (their credits are not supported), and Credit Limit Worksheet B
+  # (line 4) is out of scope.
+  # Credit Limit Worksheet A lines 1-5, i1040s8--2024.pdf p 4; Sch 8812 line 13.
+  # DF: /sched8812CreditLimit
+  definition sched8812_credit_limit equals
+    Money.positive of
+      (total_tentative_tax
+       - (cdcc_total_credit + qualified_saver_credit_amount + total_edc))
+
+  # IRC 24(a), 26(a); Sch 8812 line 14, f1040s8--2024.pdf p 1; Form 1040 line 19.
+  # DF: /totalCtcAndOdc
+  definition total_ctc_and_odc equals
+    R.round_dollar of
+      (Money.min of dependent_credit_less_phaseout, sched8812_credit_limit)
+
+  # DF: /isReceivingCtcOrOdc
+  rule is_receiving_ctc_or_odc under condition total_ctc_and_odc > $0
+  consequence fulfilled
+```
+
+**The split of line 14 between CTC and ODC.** Schedule 8812 has one line for
+both credits. DF splits it for its own explanations
+(`/totalOdc`, `/totalCtc`; descriptions: "ODC credits are applied before CTC
+credits as per the IRM and is also reduced first if there is a phase out"):
+the ODC part is the ODC left after the whole phase-out, capped by line 14;
+the rest is CTC. The split feeds no form line; `is_receiving_ctc` and
+`is_receiving_odc` feed `ctc8862_required`. The same "ODC first" order is why
+line 16a (the unused part of line 12) can be treated as unused CTC, capped
+by line 16b.
+
+```catala
+scope Schedule8812:
+  # DF: /maxPotentialOdcAfterPhaseOut
+  definition max_potential_odc_after_phase_out equals
+    Money.positive of (total_potential_odc - dependent_credit_phaseout)
+
+  # DF: /totalOdc
+  definition total_odc equals
+    if total_ctc_and_odc = $0 then $0
+    else Money.min of max_potential_odc_after_phase_out, total_ctc_and_odc
+
+  # DF: /totalCtc
+  definition total_ctc equals
+    if total_ctc_and_odc = $0 then $0
+    else total_ctc_and_odc - total_odc
+
+  # DF: /isReceivingCtc
+  rule is_receiving_ctc under condition total_ctc > $0
+  consequence fulfilled
+  # DF: /isReceivingOdc
+  rule is_receiving_odc under condition total_odc > $0
+  consequence fulfilled
+```
+
+### 26 U.S.C. § 24(d), (h)(5), (h)(6): Part II-A, the additional child tax credit for all filers
+
+IRC 24(d)(1): "The aggregate credits allowed to a taxpayer under subpart C
+shall be increased by the lesser of— (A) the credit which would be allowed
+under this section without regard to this subsection and the limitation under
+section 26(a) or (B) the amount by which the aggregate amount of credits
+allowed by this subpart (determined without regard to this subsection) would
+increase if the limitation imposed by section 26(a) were increased by the
+greater of— (i) 15 percent of so much of the taxpayer's earned income (within
+the meaning of section 32) which is taken into account in computing taxable
+income for the taxable year as exceeds $3,000, or (ii) in the case of a
+taxpayer with 3 or more qualifying children, the excess (if any) of— (I) the
+taxpayer's social security taxes for the taxable year, over (II) the credit
+allowed under section 32 for the taxable year. ... For purposes of
+subparagraph (B), any amount excluded from gross income by reason of section
+112 shall be treated as earned income which is taken into account in
+computing taxable income for the taxable year."
+
+IRC 24(h)(5)(A): "The amount determined under subsection (d)(1)(A) with
+respect to any qualifying child shall not exceed $1,400, and such subsection
+shall be applied without regard to paragraph (4) of this subsection." Rev.
+Proc. 2023-34 § 3.05 (p 8): "For taxable years beginning in 2024, the amount
+used in § 24(d)(1)(A) to determine the amount of credit under § 24 that may be
+refundable is $1,700." (`P.actc_per_qualifying_child_cap`). IRC 24(h)(6):
+"Subsection (d)(1)(B)(i) shall be applied by substituting "$2,500" for
+"$3,000"." (`P.actc_earned_income_floor`, rate `P.actc_earned_income_rate`).
+
+Schedule 8812 line 16a: "Subtract line 14 from line 12. If zero, stop here;
+you cannot take the additional child tax credit." Line 16b: "Number of
+qualifying children under age 17 with the required social security number: x
+$1,700. ... If zero, stop here". Line 17: "Enter the smaller of line 16a or
+line 16b". Line 18a: "Earned income (see instructions)"; line 18b:
+"Nontaxable combat pay". Line 19: "Is the amount on line 18a more than $2,500?
+No. Leave line 19 blank and enter -0- on line 20. Yes. Subtract $2,500 from
+the amount on line 18a." Line 20: "Multiply the amount on line 19 by 15%
+(0.15)". "Next. On line 16b, is the amount $5,100 or more? No. ... skip Part
+II-B and enter the smaller of line 17 or line 20 on line 27. Yes. If line 20
+is equal to or more than line 17, skip Part II-B and enter the amount from
+line 17 on line 27. Otherwise, go to line 21."
+
+**Line 18a.** The Earned Income Chart (`i1040s8--2024.pdf` p 7): a filer
+taking the EIC enters "your earned income from Step 5 of the EIC
+instructions ..., plus all of your nontaxable combat pay if you did not elect
+to include it in earned income for the EIC"; any other filer uses the Earned
+Income Worksheet (p 8): line 1a "the amount from line 1z of Form 1040", plus
+1b "nontaxable combat pay", less (lines 4 to 6) Medicaid waiver payments
+excluded on Schedule 1 line 8s and Schedule 1 line 15 (self-employment).
+In DF's scope there is no self-employment income, and the W-2 items that
+make earned income differ from line 1z (box 11 nonqualified plans, box 12
+code II Medicaid waiver payments) are knockouts (`formW2s.xml`
+`/flowKnockoutNonQualifiedPlans`, `/formW2s/*/knockoutBox12Code`). Both
+routes then give line 1z plus all combat pay: DF
+`income.xml` `/earnedIncomeWithAllCombatPay` = `Round(employerIncomeSubtotal
++ allCombatPay)`. Section 112 (combat pay) is the "amount excluded from gross
+income by reason of section 112" of 24(d)(1).
+
+**The order of the two tests.** DF computes line 26 whenever there are three
+or more qualifying children (`/maximumActc`: `GreaterOf(regularMaximumActc,
+socialSecurityOverEitc)`), without the form's shortcut "If line 20 is equal
+to or more than line 17, skip Part II-B". The shortcut never changes line
+27: if line 20 is at least line 17, then line 26 (at least line 20) is too,
+and line 27 is line 17 either way.
+
+```catala
+scope Schedule8812:
+  # Sch 8812 line 16a, f1040s8--2024.pdf p 2. DF: /remainingCtcAndOdc
+  definition remaining_ctc_and_odc equals
+    R.round_dollar of
+      (Money.positive of (dependent_credit_less_phaseout - total_ctc_and_odc))
+
+  # Sch 8812 line 16a "If zero, stop here". DF: /xmlHasRemainingCtcAndOdc
+  rule xml_has_remaining_ctc_and_odc under condition
+    dependent_credit_not_fully_phased_out and remaining_ctc_and_odc > $0
+  consequence fulfilled
+
+  # IRC 24(h)(5); Rev. Proc. 2023-34 §3.05, rp-23-34.pdf p 8; 24(g)(1);
+  # Sch 8812 line 16b, f1040s8--2024.pdf p 2. DF: /totalPotentialActc
+  definition total_potential_actc equals
+    R.round_dollar of
+      (if ctc_odc_disqualified_for_improper_claims or not maybe_eligible_for_ctc
+       then $0
+       else P.actc_per_qualifying_child_cap * (decimal of ctc_eligible_dependents))
+
+  # Sch 8812 line 16b "If zero, stop here". DF: /xmlHasPotentialActc
+  rule xml_has_potential_actc under condition
+    xml_has_remaining_ctc_and_odc and total_potential_actc > $0
+  consequence fulfilled
+
+  # IRC 24(d)(1)(A), 24(h)(5)(A); Sch 8812 line 17, f1040s8--2024.pdf p 2.
+  # DF: /remainingPotentialActc
+  definition remaining_potential_actc equals
+    R.round_dollar of (Money.min of remaining_ctc_and_odc, total_potential_actc)
+
+  # IRC 24(d)(1) last sentence (section 112 combat pay); Sch 8812 line 18a,
+  # f1040s8--2024.pdf p 2; Earned Income Chart and Worksheet,
+  # i1040s8--2024.pdf pp 7-8. DF: income.xml /earnedIncomeWithAllCombatPay
+  definition earned_income_with_all_combat_pay equals
+    R.round_dollar of (employer_income_subtotal + all_combat_pay)
+
+  # IRC 24(d)(1)(B)(i), 24(h)(6); Sch 8812 line 19, f1040s8--2024.pdf p 2.
+  # DF: /earnedIncomeAboveActcRefundabilityThreshold, /actcRefundabilityThreshold
+  definition earned_income_above_actc_refundability_threshold equals
+    R.round_dollar of
+      (Money.positive of
+         (earned_income_with_all_combat_pay - P.actc_earned_income_floor))
+
+  # Sch 8812 line 19 "Yes". DF: /earnedIncomeExceedsActcRefundabilityThreshold
+  rule earned_income_exceeds_actc_refundability_threshold under condition
+    xml_has_potential_actc
+    and earned_income_above_actc_refundability_threshold > $0
+  consequence fulfilled
+
+  # IRC 24(d)(1)(B)(i); Sch 8812 line 20, f1040s8--2024.pdf p 2.
+  # DF: /regularMaximumActc (Round(line 19 x 15/100))
+  definition regular_maximum_actc equals
+    R.round_dollar of
+      (earned_income_above_actc_refundability_threshold
+       * P.actc_earned_income_rate)
+
+  # IRC 24(d)(1)(B)(ii) "3 or more qualifying children"; Sch 8812 line 20
+  # "Next. On line 16b, is the amount $5,100 or more?".
+  # DF: /threeOrMoreCtcEligibleDependents
+  rule three_or_more_ctc_eligible_dependents under condition
+    ctc_eligible_dependents >= actc_alternative_minimum_children
+  consequence fulfilled
+
+  # DF: /xmlThreeOrMoreCtcEligibleDependents
+  rule xml_three_or_more_ctc_eligible_dependents under condition
+    xml_has_potential_actc and three_or_more_ctc_eligible_dependents
+  consequence fulfilled
+```
+
+### 26 U.S.C. § 24(d)(1)(B)(ii) and (d)(2): Part II-B, three or more qualifying children
+
+IRC 24(d)(2)(A): "The term "social security taxes" means, with respect to any
+taxpayer for any taxable year— (i) the amount of the taxes imposed by sections
+3101 and 3201(a) on amounts received by the taxpayer during the calendar year
+in which the taxable year begins, (ii) 50 percent of the taxes imposed by
+section 1401 on the self-employment income of the taxpayer for the taxable
+year, and (iii) 50 percent of the taxes imposed by section 3211(a) on amounts
+received by the taxpayer during the calendar year in which the taxable year
+begins." (d)(2)(B): "The term "social security taxes" shall not include any
+taxes to the extent the taxpayer is entitled to a special refund of such
+taxes under section 6413(c)."
+
+Schedule 8812 line 21: "Withheld social security, Medicare, and Additional
+Medicare taxes from Form(s) W-2, boxes 4 and 6. If married filing jointly,
+include your spouse's amounts with yours." Line 22: "Enter the total of the
+amounts from Schedule 1 (Form 1040), line 15; Schedule 2 (Form 1040), line 5;
+Schedule 2 (Form 1040), line 6; and Schedule 2 (Form 1040), line 13". Line 23:
+"Add lines 21 and 22". Line 24: "Enter the total of the amounts from Form 1040
+or 1040-SR, line 27, and Schedule 3 (Form 1040), line 11." Line 25: "Subtract
+line 24 from line 23. If zero or less, enter -0-". Line 26: "Enter the larger
+of line 20 or line 25. Next, enter the smaller of line 17 or line 26 on line
+27."
+
+In DF's scope: line 21 is `/socialSecurityTaxesWithheld` (`Form_w2s`; boxes 4
+and 6 of every W-2); line 22 is `$0` (no self-employment, no unreported tip
+or wage tax: Schedule 2 lines 5, 6, 13 are out of scope); Schedule 3 line 11
+(excess social security tax withheld, the 6413(c) special refund of
+(d)(2)(B)) is a knockout (`Form_w2s.ko_any_filer_exceeds_max_oasdi_wages`),
+and so is a W-2 with Additional Medicare Tax or tier 1 RRTA tax. So line 25 is
+`max(0, socialSecurityTaxesWithheld - earnedIncomeCredit)`: DF
+`/socialSecurityOverEitc`.
+
+```catala
+scope Schedule8812:
+  # OUT OF SCOPE: Sch 8812 line 22 (Schedule 1 line 15, Schedule 2 lines 5, 6,
+  # 13) is $0 and Schedule 3 line 11 is a knockout (Form_w2s), see above.
+  # IRC 24(d)(1)(B)(ii), 24(d)(2); Sch 8812 lines 21-25, f1040s8--2024.pdf p 2.
+  # DF: /socialSecurityOverEitc
+  definition social_security_over_eitc equals
+    R.round_dollar of
+      (Money.positive of (social_security_taxes_withheld - earned_income_credit))
+
+  # IRC 24(d)(1)(B); Sch 8812 line 26 (line 20 when Part II-B does not apply),
+  # f1040s8--2024.pdf p 2. DF: /maximumActc
+  definition maximum_actc equals
+    R.round_dollar of
+      (if three_or_more_ctc_eligible_dependents
+       then Money.max of regular_maximum_actc, social_security_over_eitc
+       else regular_maximum_actc)
+```
+
+### Part II-C: line 27
+
+Schedule 8812 line 27: "This is your additional child tax credit. Enter this
+amount on Form 1040, 1040-SR, or 1040-NR, line 28." It is the smaller of line
+17 and line 26 (or line 20).
+
+```catala
+scope Schedule8812:
+  # IRC 24(d)(1); Sch 8812 line 27, f1040s8--2024.pdf p 2; Form 1040 line 28.
+  # DF: /additionalCtc
+  definition additional_ctc equals
+    R.round_dollar of (Money.min of remaining_potential_actc, maximum_actc)
+
+  # DF: /isReceivingActc
+  rule is_receiving_actc under condition additional_ctc > $0
+  consequence fulfilled
+```

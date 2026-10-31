@@ -1,0 +1,88 @@
+# Child tax credit from the household (difftest scaffold)
+
+> Using Types
+> Using Eitc as E
+> Using Ctc_odc as C
+
+This scope exists for `make difftest SCOPE=ctc_odc_household` and as the
+reference for the wiring the orchestrator adds to the return (issue #27):
+`Ctc_odc.CtcOdcDependents` counts the CTC and ODC dependents of the household
+(Schedule 8812 lines 4 and 6), and `Ctc_odc.Schedule8812` computes lines 14
+and 27 from those counts. The household members and the filer facts come
+from `oracle/persons.csv`; the return figures are inputs taken from the
+oracle, and in the full return come from `Form1040`, `Form_w2s.FormW2s`,
+`Eitc.EarnedIncomeCredit` and the CDCC, Saver's and Schedule R modules.
+
+```catala
+declaration scope CtcOdcFromHousehold:
+  # ---- Ctc_odc.CtcOdcDependents inputs ----
+  input household_members content list of C.HouseholdMember
+  input minimum_filer_date_of_birth content date
+  input treat_filers_as_dependents content boolean
+  input either_filer_us_citizen_or_national content boolean
+  # ---- Ctc_odc.Schedule8812 inputs other than the two counts ----
+  input filing_status content Types.FilingStatus
+  input agi content money
+  input total_tentative_tax content money
+  input cdcc_total_credit content money
+  input qualified_saver_credit_amount content money
+  input total_edc content money
+  input employer_income_subtotal content money
+  input all_combat_pay content money
+  input social_security_taxes_withheld content money
+  input earned_income_credit content money
+  input received_improper_claims content boolean
+  input received_improper_claims_notice content E.ImproperClaimsNotice
+  input improper_claims_notice_expired content boolean
+  input has_filed_ctc_odc_since_notice_expired content boolean
+
+  internal household content C.CtcOdcDependents
+  internal schedule content C.Schedule8812
+
+  output ctc_eligible_dependents content integer
+  output odc_eligible_dependents content integer
+  output total_potential_ctc content money
+  output total_potential_odc content money
+  output total_ctc_and_odc content money
+  output total_potential_actc content money
+  output three_or_more_ctc_eligible_dependents condition
+  output additional_ctc content money
+
+scope CtcOdcFromHousehold:
+  definition household equals
+    output of C.CtcOdcDependents with {
+      -- household_members: household_members
+      -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
+      -- treat_filers_as_dependents: treat_filers_as_dependents
+      -- either_filer_us_citizen_or_national:
+           either_filer_us_citizen_or_national }
+  definition schedule equals
+    output of C.Schedule8812 with {
+      -- ctc_eligible_dependents: household.ctc_eligible_dependents
+      -- odc_eligible_dependents: household.odc_eligible_dependents
+      -- filing_status: filing_status
+      -- agi: agi
+      -- total_tentative_tax: total_tentative_tax
+      -- cdcc_total_credit: cdcc_total_credit
+      -- qualified_saver_credit_amount: qualified_saver_credit_amount
+      -- total_edc: total_edc
+      -- employer_income_subtotal: employer_income_subtotal
+      -- all_combat_pay: all_combat_pay
+      -- social_security_taxes_withheld: social_security_taxes_withheld
+      -- earned_income_credit: earned_income_credit
+      -- received_improper_claims: received_improper_claims
+      -- received_improper_claims_notice: received_improper_claims_notice
+      -- improper_claims_notice_expired: improper_claims_notice_expired
+      -- has_filed_ctc_odc_since_notice_expired:
+           has_filed_ctc_odc_since_notice_expired }
+  definition ctc_eligible_dependents equals household.ctc_eligible_dependents
+  definition odc_eligible_dependents equals household.odc_eligible_dependents
+  definition total_potential_ctc equals schedule.total_potential_ctc
+  definition total_potential_odc equals schedule.total_potential_odc
+  definition total_ctc_and_odc equals schedule.total_ctc_and_odc
+  definition total_potential_actc equals schedule.total_potential_actc
+  rule three_or_more_ctc_eligible_dependents under condition
+    schedule.three_or_more_ctc_eligible_dependents
+  consequence fulfilled
+  definition additional_ctc equals schedule.additional_ctc
+```
