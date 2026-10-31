@@ -47,19 +47,12 @@ describe('routing', () => {
 });
 
 describe('results (mock mode, $50,000 single)', () => {
-  it('shows the refund hero from the fixture', async () => {
+  it('shows the refund hero and the line walk from the fixture', async () => {
     at('/results');
     expect(await screen.findByText(/Your refund is/)).toBeInTheDocument();
-    expect(screen.getByText('$981', { exact: false })).toBeInTheDocument();
-    expect(screen.getByText('$35,400')).toBeInTheDocument(); // taxable income
-  });
-
-  it('switches to the balance-due example', async () => {
-    at('/results');
-    await screen.findByText(/Your refund is/);
-    await userEvent.click(screen.getByRole('button', { name: '$3,000 withheld' }));
-    expect(await screen.findByText(/You’ll owe/)).toBeInTheDocument();
-    expect(screen.getByText('$1,019', { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '$981.00' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Walk me through it' }));
+    expect(screen.getByText('$35,400.00')).toBeInTheDocument(); // taxable income
   });
 });
 

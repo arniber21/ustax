@@ -16,8 +16,8 @@ Without `VITE_API_MOCK=1` the client calls `VITE_API_URL` (default `http://local
 | --- | --- | --- |
 | `/` | Welcome | shell |
 | `/start/:step` | Wizard: `about`, `household`, `income`, `adjustments`, `review` | #76 to #78 replace `pages/StepPage.tsx` per step |
-| `/results` | Refund / you-owe hero, runs the $50,000 single example through the client | #79 |
-| `/cant-do-yet` | Friendly knockout page (`UnsupportedView` takes `reasons`) | #80 |
+| `/results` | Hero with count-up, line-by-line 1040 walk, what-if slider, error/offline states (`src/results/`). Request comes from `useCurrentRequest` (the $50,000 example until the wizard lands) | #79 |
+| `/cant-do-yet` | Friendly knockout page (`src/knockout/`: per-code copy in `reasonCopy.ts`, a test fails if a code in `api/knockout-reasons.json` has none). Also shown inline on `/results` | #80 |
 | `/trust` | "Why you can trust this" stub | #82 |
 
 Add a step body by routing `start/:step` children (see `src/App.tsx`); `WizardLayout` supplies progress and Back/Next from `src/layout/steps.ts`.
