@@ -20,6 +20,7 @@ catala/eitc.catala_en
 catala/params_2024.catala_en
   s_3031b504518be3::t_36a9e934875ac5 360
   s_3031b504518be3::t_9c1e59e6b4d40f 202,281-359
+  s_3031b504518be3::t_79216d6083fd22 280
 catala/tests/difftest_eitc.catala_en
   s_3031b504518be3::t_69f46d57f8b542 1-160
 difftest/mappings/eitc.mjs
