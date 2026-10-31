@@ -4,3 +4,5 @@ _opam/
 .DS_Store
 .lake/
 sources/reference-catala/
+.forensics-tool/
+forensics-out.json
