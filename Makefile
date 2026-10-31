@@ -4,7 +4,7 @@ SRC := $(wildcard catala/*.catala_en catala/tests/*.catala_en)
 
 .PHONY: install check run clean
 install:   ## install the Catala toolchain (catala + clerk) via opam
-	opam install -y catala
+	opam install -y catala.1.3.0
 	clerk start
 check:     ## type-check every Catala source, then run the #[test] scopes
 	clerk typecheck $(SRC)
@@ -73,3 +73,8 @@ tls-trust: ## one-time: trust Caddy's local CA so browsers/curl accept the dev c
 	caddy trust
 tls-check: ## validate deploy/Caddyfile syntax
 	caddy validate --config deploy/Caddyfile --adapter caddyfile
+
+# Proof audit (see docs/audit.md): source scan, axiom audit, forensics smells. Fails on sorry/axiom/etc.
+.PHONY: audit
+audit:     ## fail on sorry, admit, native_decide, new axioms, vacuous theorems (SKIP_FORENSICS=1 skips step 3)
+	./scripts/audit.sh

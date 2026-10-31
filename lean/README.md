@@ -158,3 +158,5 @@ primitives it uses). The agreement with Catala is by testing, not proof.
    `Lean.Json.parse` in `UsTax/Cli.lean`; there is no parsing script.
 9. **Register** the new modules in `UsTax.lean`, build with `lake build`
    (one `lake` process at a time), and run `make forensics`.
+
+CI and the proof audit (`make audit`, `.github/workflows/ci.yml`): see `docs/audit.md`.
