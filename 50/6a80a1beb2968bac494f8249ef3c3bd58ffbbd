@@ -9,6 +9,7 @@ catala/tests/test_savers_credit.catala_en
   s_3031b504518be3::t_9d7de683d557e1 1-92,94-552
 catala/params_2024.catala_en
   s_3031b504518be3::t_a59672f302bed6 202,240-279
+  s_3031b504518be3::t_44d9c52333eac1 239
 difftest/mappings/savers_credit.mjs
   s_3031b504518be3::t_e15c03a0f0ae6d 1-25,31-98,105-141
   s_3031b504518be3::t_b5b8494ab7fd4a 26-30,99-104
