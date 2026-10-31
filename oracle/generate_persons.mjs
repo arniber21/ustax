@@ -143,11 +143,19 @@ const PERSON_FACTS = [
   'eligibleDependent', 'isClaimedDependent', 'isClaimedIfClaimable',
   // dependentsBenefitSplit.xml (issue #18), read by eligibleDependentMinusFilerInformation.
   'tpCanClaimSplitBenefitsHohEitcCdcc', 'disqualifiedDueToParentalCustody',
+  // Issue #18: the rest of dependentsBenefitSplit.xml (per-person facts, file order).
+  'childMayQualifyForBenefitSplit', 'tpIsParent', 'tpIsNotParent', 'parentalSomeParentNotClaiming',
+  'primaryFilerNotClaiming', 'bothFilersNotClaiming', 'otherParentNotClaiming', 'hadEqualNumberOfNightsWithParents',
+  'parentsAreDivorcedSeparatedOrLivingApart', 'tpIsCustodialParent', 'contradictory8832TPIsCustodialParent',
+  'contradictory8832TPNotCustodialParent', 'contradictory8832Knockout', 'causesNoncustodialParentBenefitSplitKnockout',
+  'eligibleForBenefitSplit', 'reachedNonParentalBenefitSplit',
 ];
 const SCENARIO_FACTS = [
   '/flowIsKnockedOut', '/minimumFilerDateOfBirth', '/treatAsMFJ',
   // Issue #17: filers.xml facts read by eligibleDependent and adoptedChildException.
   '/treatFilersAsDependents', '/eitherFilerUSCitizenOrNational',
+  // Issue #18: the household benefit-split knockouts (dependentsBenefitSplit.xml, read by flow.xml).
+  '/knockedOutByContradictory8832', '/knockedOutByNonCustodialParentBenefitSplit',
 ];
 const known = new Set(wrapped.map((f) => f.path));
 for (const f of PERSON_FACTS) {

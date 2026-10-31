@@ -1,0 +1,588 @@
+# Tests for the Dependents_benefit_split module
+
+Run with `clerk test`. Each named scope is one concrete person, worked by
+hand from IRC 152(e), Treas. Reg. § 1.152-4 and Pub. 501 (2024) pp 13-14,
+17-18 as quoted in `catala/dependents_benefit_split.catala_en`. Every scope
+sets satisfiable inputs (answers a real filer could give) and asserts the
+expected result and the rejection of the wrong one. The oracle comparison is
+`make difftest-persons` (per-person Direct File values, `oracle/persons.csv`).
+
+> Using Qualifying_child as Q
+> Using Qualifying_relative as R
+> Using Dependents_benefit_split as B
+
+## Helper: a child of divorced parents with default answers
+
+The default is the filer's biological son, born 2016-05-01 (8), a U.S.
+citizen with an SSN, who lived with the filer all year. The filer (born
+1985-06-15, not filing jointly) and the child's other parent are divorced;
+the child was in their legal custody on July 2 and lived with them more than
+six months; they paid over half of his support; there is no multiple support
+agreement. The filer signed Form 8332 (`IDid`) and the child spent more
+nights with the filer. The non-parent answers are "no". A test overrides
+only what it tests.
+
+```catala
+declaration scope MkMember:
+  context relationship content Q.Relationship
+  context date_of_birth content date
+  context permanent_total_disability content boolean
+  context which_parent content B.WrittenDeclaration
+  context nights content B.NightsComparison
+  context agi_higher content boolean
+  context situation content B.ParentalSituation
+  context parental_support content boolean
+  context in_custody content boolean
+  context parents_living content boolean
+  context non_parental_signed content boolean
+  context parents_meet_reqs content boolean
+  context used_by_custodial_parent content boolean
+  context special_agi content boolean
+  context multiple_support_agreement content boolean
+  output member content B.Member
+
+scope MkMember:
+  definition relationship equals Q.Relationship.BiologicalChild
+  definition date_of_birth equals |2016-05-01|
+  definition permanent_total_disability equals false
+  definition which_parent equals B.WrittenDeclaration.IDid
+  definition nights equals B.NightsComparison.More
+  definition agi_higher equals false
+  definition situation equals B.ParentalSituation.DivorcedOrSeparated
+  definition parental_support equals true
+  definition in_custody equals true
+  definition parents_living equals false
+  definition non_parental_signed equals false
+  definition parents_meet_reqs equals false
+  definition used_by_custodial_parent equals false
+  definition special_agi equals false
+  definition multiple_support_agreement equals false
+  definition member equals B.Member {
+    -- person: Q.Person {
+         -- relationship: relationship
+         -- date_of_birth: date_of_birth
+         -- full_time_student: false
+         -- permanent_total_disability: permanent_total_disability
+         -- residency_duration: Q.ResidencyDuration.AllYear
+         -- own_support: false
+         -- married: false
+         -- writable_joint_return: false
+         -- writable_required_to_file: false
+         -- writable_filing_only_for_refund: false
+         -- writable_could_be_qualifying_child_of_another: false
+         -- writable_potential_claimer_must_file: false
+         -- writable_potential_claimer_did_file: false
+         -- writable_potential_claimer_filed_only_for_refund: false }
+    -- answers: B.BenefitSplitAnswers {
+         -- has_other_biological_or_adoptive_parent: true
+         -- non_parental_some_parent_not_claiming: non_parental_signed
+         -- which_parent_not_claiming: which_parent
+         -- in_parents_custody: in_custody
+         -- lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months:
+              true
+         -- biological_or_adoptive_parents_living: parents_living
+         -- nights_with_tp_vs_other_parent: nights
+         -- tp_agi_higher_than_other_parent: agi_higher
+         -- parents_meet_reqs_rule_for_children_of_divorced_parents:
+              parents_meet_reqs
+         -- special_rule_child_used_by_custodial_parent_as_qp:
+              used_by_custodial_parent
+         -- special_rule_agi_test: special_agi
+         -- parental_situation: situation
+         -- parental_support: parental_support
+         -- multiple_support_agreement: multiple_support_agreement }
+  }
+```
+
+## The cases of issue #18
+
+### More nights: the filer is the custodial parent, released the claim
+
+Pub. 501 p 14, Example 1: "your child lived with you 210 nights and with the
+other parent 156 nights. You are the custodial parent." The filer signed Form
+8332, so the filer keeps HoH, EITC and CDCC (`tp_can_claim_split...`).
+Known-bad output rejected: no knockout, and not "disqualified".
+
+```catala
+#[test]
+declaration scope TestMoreNightsCustodialReleased:
+  m scope MkMember
+  internal s content B.BenefitSplitTest
+
+scope TestMoreNightsCustodialReleased:
+  definition s equals
+    output of B.BenefitSplitTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_as_mfj: false }
+  assertion s.child_may_qualify_for_benefit_split
+  assertion s.tp_is_parent and not s.tp_is_not_parent
+  assertion s.parental_some_parent_not_claiming
+  assertion s.primary_filer_not_claiming and not s.both_filers_not_claiming
+  assertion not s.other_parent_not_claiming
+  assertion not s.had_equal_number_of_nights_with_parents
+  assertion s.parents_are_divorced_separated_or_living_apart
+  assertion s.tp_is_custodial_parent
+  assertion s.eligible_for_benefit_split
+  assertion not s.reached_non_parental_benefit_split
+  assertion s.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  assertion not s.disqualified_due_to_parental_custody
+  assertion not s.contradictory8832_knockout
+  assertion not s.causes_noncustodial_parent_benefit_split_knockout
+  assertion not s.unsupported
+```
+
+### Equal nights, higher AGI: the filer is the custodial parent
+
+Treas. Reg. § 1.152-4(d)(4); Pub. 501 p 14, Example 3 (180 nights each, AGI
+$40,000 against $25,000).
+
+```catala
+#[test]
+declaration scope TestEqualNightsHigherAgi:
+  m scope MkMember
+  internal s content B.BenefitSplitTest
+
+scope TestEqualNightsHigherAgi:
+  definition m.nights equals B.NightsComparison.Equal
+  definition m.agi_higher equals true
+  definition s equals
+    output of B.BenefitSplitTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_as_mfj: false }
+  assertion s.had_equal_number_of_nights_with_parents
+  assertion s.tp_is_custodial_parent
+  assertion s.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  assertion not s.unsupported
+```
+
+### Equal nights, lower AGI: the other parent is custodial
+
+The same child, but the filer's AGI is lower: the other parent is the
+custodial parent, so the filer's "I signed" contradicts the rule that only
+the custodial parent signs. Knocked out; known-bad output (custodial)
+rejected.
+
+```catala
+#[test]
+declaration scope TestEqualNightsLowerAgi:
+  m scope MkMember
+  internal s content B.BenefitSplitTest
+
+scope TestEqualNightsLowerAgi:
+  definition m.nights equals B.NightsComparison.Equal
+  definition m.agi_higher equals false
+  definition s equals
+    output of B.BenefitSplitTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_as_mfj: false }
+  assertion not s.tp_is_custodial_parent
+  assertion s.contradictory8832_tp_not_custodial_parent
+  assertion s.contradictory8832_knockout
+  assertion not s.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  assertion s.unsupported
+```
+
+### The custodial parent who released the claim keeps HoH, EITC and CDCC, not the dependent
+
+Pub. 501 p 13: "only the noncustodial parent can: • Claim the child as a
+dependent; and • Claim the child as a qualifying child for the child tax
+credit, the credit for other dependents, or the additional child tax credit.
+However, this doesn't allow the noncustodial parent to claim head of
+household filing status, the credit for child and dependent care expenses,
+... or the earned income credit."
+
+This test wires this module's two outputs into
+`Qualifying_relative.DependentTest` (the wiring listed in the PR): the child
+is still the filer's qualifying child (HoH, EITC and CDCC read that, with
+`tp_can_claim_split_benefits_hoh_eitc_cdcc`), but is not an eligible or
+claimed dependent, so there is no CTC, ACTC or ODC for him on this return.
+Known-bad output rejected: `eligible_dependent` would be true without the
+split.
+
+```catala
+#[test]
+declaration scope TestCustodialReleasedKeepsHohEitcCdcc:
+  m scope MkMember
+  internal s content B.BenefitSplitTest
+  internal d content R.DependentTest
+  internal d_without_split content R.DependentTest
+  internal answers content R.DependentAnswers
+
+scope TestCustodialReleasedKeepsHohEitcCdcc:
+  definition s equals
+    output of B.BenefitSplitTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_as_mfj: false }
+  definition answers equals R.DependentAnswers {
+    -- gross_income: $0
+    -- writable_qr_support_test: false
+    -- tin_type: R.TinType.Ssn
+    -- is_us_citizen_full_year: true
+    -- writable_us_resident: false
+    -- writable_us_national: false
+    -- writable_canada_mexico_resident: false
+    -- tp_claims: true
+    -- tp_can_claim_split_benefits_hoh_eitc_cdcc:
+         s.tp_can_claim_split_benefits_hoh_eitc_cdcc
+    -- disqualified_due_to_parental_custody:
+         s.disqualified_due_to_parental_custody }
+  definition d equals
+    output of R.DependentTest with {
+      -- member: R.Member { -- person: m.member.person -- answers: answers }
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  definition d_without_split equals
+    output of R.DependentTest with {
+      -- member: R.Member {
+           -- person: m.member.person
+           -- answers: answers but replace {
+                -- tp_can_claim_split_benefits_hoh_eitc_cdcc: false } }
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  # Keeps HoH, EITC, CDCC
+  assertion s.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  assertion d.qualifying_child
+  # Not a dependent, so no CTC, ACTC or ODC
+  assertion not d.eligible_dependent
+  assertion not d.is_claimed_dependent
+  assertion d.is_claimed_if_claimable
+  # Without the release the same child is a claimed dependent
+  assertion d_without_split.eligible_dependent
+  assertion d_without_split.is_claimed_dependent
+```
+
+### Fewer nights, the other parent signed: noncustodial claimant, knocked out
+
+The filer is the noncustodial parent holding a release: the child is the
+filer's dependent under 152(e), a return DF does not support (scope.md 5.5).
+
+```catala
+#[test]
+declaration scope TestNoncustodialClaimant:
+  m scope MkMember
+  internal s content B.BenefitSplitTest
+
+scope TestNoncustodialClaimant:
+  definition m.nights equals B.NightsComparison.Less
+  definition m.which_parent equals B.WrittenDeclaration.TheyDid
+  definition s equals
+    output of B.BenefitSplitTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_as_mfj: false }
+  assertion s.eligible_for_benefit_split
+  assertion s.other_parent_not_claiming
+  assertion not s.tp_is_custodial_parent
+  assertion s.causes_noncustodial_parent_benefit_split_knockout
+  assertion not s.contradictory8832_knockout
+  assertion not s.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  assertion s.unsupported
+```
+
+### More nights, the other parent signed: contradictory, knocked out
+
+Only the custodial parent signs (IRC 152(e)(2)(A)).
+
+```catala
+#[test]
+declaration scope TestCustodialButOtherSigned:
+  m scope MkMember
+  internal s content B.BenefitSplitTest
+
+scope TestCustodialButOtherSigned:
+  definition m.which_parent equals B.WrittenDeclaration.TheyDid
+  definition s equals
+    output of B.BenefitSplitTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_as_mfj: false }
+  assertion s.tp_is_custodial_parent
+  assertion s.contradictory8832_tp_is_custodial_parent
+  assertion s.contradictory8832_knockout
+  assertion not s.causes_noncustodial_parent_benefit_split_knockout
+  assertion not s.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  assertion s.unsupported
+```
+
+### Nobody signed: no split
+
+Treas. Reg. § 1.152-4(g) Example 2: "B does not execute a Form 8332 or
+similar declaration ... Therefore, section 152(e) and this section do not
+apply." On a joint return.
+
+```catala
+#[test]
+declaration scope TestNobodySigned:
+  m scope MkMember
+  internal s content B.BenefitSplitTest
+
+scope TestNobodySigned:
+  definition m.which_parent equals B.WrittenDeclaration.NobodyDid
+  definition s equals
+    output of B.BenefitSplitTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_as_mfj: true }
+  assertion s.tp_is_custodial_parent
+  assertion not s.parental_some_parent_not_claiming
+  assertion not s.both_filers_not_claiming
+  assertion not s.eligible_for_benefit_split
+  assertion not s.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  assertion not s.unsupported
+```
+
+### Parents together, the other parent signed: not divorced, no split
+
+DF scenario `mfj-30k-eitc-ctc-actc`: the custodial filer says the other parent
+signed, but the parental situation is "None of the above", so 152(e) does not
+apply (152(e)(1)(A)) and the contradiction does not knock out.
+
+```catala
+#[test]
+declaration scope TestNotSeparatedNoKnockout:
+  m scope MkMember
+  internal s content B.BenefitSplitTest
+
+scope TestNotSeparatedNoKnockout:
+  definition m.relationship equals Q.Relationship.AdoptedChild
+  definition m.which_parent equals B.WrittenDeclaration.TheyDid
+  definition m.situation equals B.ParentalSituation.Other
+  definition s equals
+    output of B.BenefitSplitTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_as_mfj: true }
+  assertion s.tp_is_parent
+  assertion not s.parents_are_divorced_separated_or_living_apart
+  assertion s.contradictory8832_tp_is_custodial_parent
+  assertion not s.eligible_for_benefit_split
+  assertion not s.contradictory8832_knockout
+  assertion not s.unsupported
+```
+
+### Custody ends at 18: born July 2, 2006, against July 3, 2006
+
+Pub. 501 p 14, Example 5. A child who turns 18 on July 2, 2024 is in custody
+183 of 366 nights, not more than half; one who turns 18 on July 3 is in
+custody 184. Known-bad output rejected both ways.
+
+```catala
+#[test]
+declaration scope TestAgeOfMajorityBoundary:
+  m18 scope MkMember
+  m17 scope MkMember
+  internal s18 content B.BenefitSplitTest
+  internal s17 content B.BenefitSplitTest
+
+scope TestAgeOfMajorityBoundary:
+  definition m18.date_of_birth equals |2006-07-02|
+  definition m17.date_of_birth equals |2006-07-03|
+  definition s18 equals
+    output of B.BenefitSplitTest with {
+      -- member: m18.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_as_mfj: false }
+  definition s17 equals
+    output of B.BenefitSplitTest with {
+      -- member: m17.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_as_mfj: false }
+  assertion not s18.child_may_qualify_for_benefit_split
+  assertion not s18.eligible_for_benefit_split
+  assertion not s18.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  assertion s17.child_may_qualify_for_benefit_split
+  assertion s17.eligible_for_benefit_split
+  assertion s17.tp_can_claim_split_benefits_hoh_eitc_cdcc
+```
+
+### Permanently and totally disabled adult child
+
+A 30-year-old disabled son still in his parents' legal custody (DF's
+`childMayQualifyForBenefitSplit` second branch).
+
+```catala
+#[test]
+declaration scope TestDisabledAdultChild:
+  m scope MkMember
+  internal s content B.BenefitSplitTest
+
+scope TestDisabledAdultChild:
+  definition m.date_of_birth equals |1994-03-01|
+  definition m.permanent_total_disability equals true
+  definition s equals
+    output of B.BenefitSplitTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1965-06-15|
+      -- treat_as_mfj: false }
+  assertion s.child_may_qualify_for_benefit_split
+  assertion s.eligible_for_benefit_split
+  assertion s.tp_can_claim_split_benefits_hoh_eitc_cdcc
+```
+
+### Multiple support agreement: the split does not apply (DF-BUG(18-a))
+
+IRC 152(e)(5): "This subsection shall not apply in any case where over
+one-half of the support of the child is treated as having been received from
+a taxpayer under the provision of subsection (d)(3)." DF would split.
+
+```catala
+#[test]
+declaration scope TestMultipleSupportAgreement:
+  m scope MkMember
+  internal s content B.BenefitSplitTest
+
+scope TestMultipleSupportAgreement:
+  definition m.multiple_support_agreement equals true
+  definition s equals
+    output of B.BenefitSplitTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_as_mfj: false }
+  assertion not s.section_152e_applies_despite_support_agreements
+  assertion s.tp_is_custodial_parent
+  assertion not s.eligible_for_benefit_split
+  assertion not s.tp_can_claim_split_benefits_hoh_eitc_cdcc
+```
+
+### Grandparent, custodial parent not using the child, higher AGI
+
+Pub. 501 p 17, Example 1 (Kody): the grandparent may use the child for HoH and
+EITC; Kody is the other parent's dependent.
+
+```catala
+#[test]
+declaration scope TestGrandparentHigherAgi:
+  m scope MkMember
+  internal s content B.BenefitSplitTest
+
+scope TestGrandparentHigherAgi:
+  definition m.relationship equals Q.Relationship.GrandChildOrOtherDescendantOfChild
+  definition m.date_of_birth equals |2019-03-01|
+  definition m.which_parent equals B.WrittenDeclaration.NobodyDid
+  definition m.parents_living equals true
+  definition m.non_parental_signed equals true
+  definition m.parents_meet_reqs equals true
+  definition m.used_by_custodial_parent equals false
+  definition m.special_agi equals true
+  definition s equals
+    output of B.BenefitSplitTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1960-06-15|
+      -- treat_as_mfj: false }
+  assertion s.tp_is_not_parent
+  assertion s.reached_non_parental_benefit_split
+  assertion s.eligible_for_benefit_split
+  assertion s.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  assertion not s.disqualified_due_to_parental_custody
+  assertion not s.unsupported
+```
+
+### Grandparent with lower AGI: disqualified
+
+Pub. 501 p 18, Example 2: "Your parent can't claim Kody as a qualifying child
+for any purpose because your parent's AGI isn't higher than yours."
+
+```catala
+#[test]
+declaration scope TestGrandparentLowerAgi:
+  m scope MkMember
+  internal s content B.BenefitSplitTest
+
+scope TestGrandparentLowerAgi:
+  definition m.relationship equals Q.Relationship.GrandChildOrOtherDescendantOfChild
+  definition m.date_of_birth equals |2019-03-01|
+  definition m.which_parent equals B.WrittenDeclaration.NobodyDid
+  definition m.parents_living equals true
+  definition m.non_parental_signed equals true
+  definition m.parents_meet_reqs equals true
+  definition m.special_agi equals false
+  definition s equals
+    output of B.BenefitSplitTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1960-06-15|
+      -- treat_as_mfj: false }
+  assertion s.reached_non_parental_benefit_split
+  assertion not s.eligible_for_benefit_split
+  assertion not s.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  assertion s.disqualified_due_to_parental_custody
+```
+
+### Grandparent, the custodial parent uses the child: disqualified
+
+Pub. 501 p 18, Example 3: the parent's claim wins.
+
+```catala
+#[test]
+declaration scope TestGrandparentCustodialParentClaims:
+  m scope MkMember
+  internal s content B.BenefitSplitTest
+
+scope TestGrandparentCustodialParentClaims:
+  definition m.relationship equals Q.Relationship.GrandChildOrOtherDescendantOfChild
+  definition m.date_of_birth equals |2019-03-01|
+  definition m.which_parent equals B.WrittenDeclaration.NobodyDid
+  definition m.parents_living equals true
+  definition m.non_parental_signed equals true
+  definition m.parents_meet_reqs equals true
+  definition m.used_by_custodial_parent equals true
+  definition m.special_agi equals true
+  definition s equals
+    output of B.BenefitSplitTest with {
+      -- member: m.member
+      -- minimum_filer_date_of_birth: |1960-06-15|
+      -- treat_as_mfj: false }
+  assertion not s.eligible_for_benefit_split
+  assertion s.disqualified_due_to_parental_custody
+```
+
+## The household
+
+Two children: the first is the custodial-parent split above, the second a
+noncustodial claim. The return is knocked out by the second only.
+
+```catala
+#[test]
+declaration scope TestHousehold:
+  first scope MkMember
+  second scope MkMember
+  internal h content B.BenefitSplit
+
+scope TestHousehold:
+  definition second.date_of_birth equals |2012-10-10|
+  definition second.nights equals B.NightsComparison.Less
+  definition second.which_parent equals B.WrittenDeclaration.TheyDid
+  definition h equals
+    output of B.BenefitSplit with {
+      -- members: [first.member; second.member]
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_as_mfj: false }
+  assertion number of h.results = 2
+  assertion not h.ko_knocked_out_by_contradictory8832
+  assertion h.ko_knocked_out_by_non_custodial_parent_benefit_split
+  assertion h.unsupported
+```
+
+The same household without the second child is supported.
+
+```catala
+#[test]
+declaration scope TestHouseholdSupported:
+  first scope MkMember
+  internal h content B.BenefitSplit
+
+scope TestHouseholdSupported:
+  definition h equals
+    output of B.BenefitSplit with {
+      -- members: [first.member]
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_as_mfj: false }
+  assertion not h.ko_knocked_out_by_contradictory8832
+  assertion not h.ko_knocked_out_by_non_custodial_parent_benefit_split
+  assertion not h.unsupported
+```

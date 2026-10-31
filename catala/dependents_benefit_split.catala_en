@@ -1,0 +1,746 @@
+> Module Dependents_benefit_split
+
+> Using Qualifying_child as Q
+
+# Children of divorced or separated parents: IRC 152(e) and Form 8332
+
+Direct File ("DF" below) module `dependentsBenefitSplit.xml` (687 lines, under
+`../direct-file/direct-file/backend/src/main/resources/tax/`), every fact.
+Issue #18, scope.md section 5.5. Tests:
+`catala/tests/test_dependents_benefit_split.catala_en`. Oracle comparison:
+`difftest/mappings/dependents_benefit_split.mjs` against the per-person oracle
+`oracle/persons.csv` (`make difftest-persons`).
+
+DF calls the rule of IRC 152(e) a "benefit split": when the parents of a child
+are divorced, separated or live apart and the custodial parent signs a written
+declaration (Form 8332) not to claim the child, the noncustodial parent claims
+the child as a dependent and for the child tax credit, the additional child
+tax credit and the credit for other dependents, while the custodial parent
+keeps head of household, the earned income credit and the child and dependent
+care credit. DF also lets a filer who is not a parent (a grandparent, an aunt)
+use the child for those three benefits when the custodial parent does not.
+
+Like `Qualifying_child` and `Qualifying_relative`, this module works on one
+member of the DF collection `/familyAndHousehold` at a time (scope
+`BenefitSplitTest`) and maps that scope over the household (scope
+`BenefitSplit`). It calls `Qualifying_child.QualifyingChildTest` for the same
+person, for the age on July 2, the disability gate and the relationship test.
+It does not read the qualifying relative or dependent tests, so
+`Qualifying_relative` can read this module's outputs without a cycle.
+
+Facts read from outside the person, all inputs here:
+
+- `/minimumFilerDateOfBirth` (`Filers.minimum_filer_date_of_birth`, #15), for
+  the qualifying child scope;
+- `/treatAsMFJ` (`filingStatus.xml`; `Filers.treat_as_mfj`, #15), read only by
+  the two DF display facts `primaryFilerNotClaiming` and
+  `bothFilersNotClaiming`.
+
+The outputs read elsewhere in DF (`Export downstreamFacts`):
+`eligibleForBenefitSplit`, `tpCanClaimSplitBenefitsHohEitcCdcc`,
+`disqualifiedDueToParentalCustody` (all in `familyAndHousehold.xml`: dependent,
+HoH, QSS, EITC and CDCC person tests) and the two knockouts
+`knockedOutByContradictory8832` and `knockedOutByNonCustodialParentBenefitSplit`
+(`flow.xml` lines 68-69). This module feeds no Form 1040 line directly.
+
+The inputs are complete (CONVENTIONS section 3). DF asks most of the questions
+below only on one path (parent or non-parent) and only after the earlier
+answers allow the split. They are still inputs here; every rule below is the
+DF rule, which already ignores an answer off its path, except where marked
+`# DF-BUG(18-a)` (the multiple support agreement exception, IRC 152(e)(5)).
+
+Not here, on purpose: a noncustodial parent claiming the child (a DF
+knockout, below), the pre-1985 decrees of IRC 152(e)(3) (see section (3)
+below), the tie-breakers of IRC 152(c)(4) between a parent and a non-parent
+when no declaration was signed (DF-BUG-3, `Qualifying_child`), and the
+credit-specific person tests that read the outputs (issues #19, #26-#28).
+
+## Declarations
+
+```catala-metadata
+## DF: dependentsBenefitSplit.xml /parentalSituationOptions (lines 4-14), same
+## order. The filer's "marital or living situation with the other biological
+## or adoptive parent at the end of" the tax year. DF's help text
+## (df-client-app/src/locales/en.yaml line 15028): "If you're divorced or
+## legally separated under a decree of divorce or separate maintenance, or
+## separated under a written separation agreement, answer Divorced or
+## separated", so `DivorcedOrSeparated` is IRC 152(e)(1)(A)(i) or (ii).
+declaration enumeration ParentalSituation:
+  -- DivorcedOrSeparated
+  -- LivedApartLastSixMonths
+  -- Other
+
+## DF: dependentsBenefitSplit.xml /writtenDeclarationOptions (lines 16-28),
+## same order. "Did one of <child>'s parents sign a form 8332, or other
+## written declaration, not to claim <child> as a dependent?" `IDid`: the
+## filer (on a joint return, either spouse) signed; `TheyDid`: the child's
+## other biological or adoptive parent signed.
+declaration enumeration WrittenDeclaration:
+  -- IDid
+  -- TheyDid
+  -- NobodyDid
+
+## DF: constants.xml /moreLessEqualOptions (lines 774-784), same order.
+## "Did <child> live more nights of the year with you or the other parent?"
+declaration enumeration NightsComparison:
+  -- More
+  -- Less
+  -- Equal
+
+## The `Writable` answers DF keeps per household member that the benefit
+## split reads, beyond those of `Qualifying_child.Person`.
+declaration structure BenefitSplitAnswers:
+  # DF: /familyAndHousehold/*/hasOtherBiologicalOrAdoptiveParent ("Does the
+  # dependent have another legal parent apart from the taxpayer and spouse?")
+  data has_other_biological_or_adoptive_parent content boolean
+  # DF: /familyAndHousehold/*/nonParentalSomeParentNotClaiming (non-parent
+  # path: "Has any of the dependent's parents signed a written declaration
+  # not to claim them?")
+  data non_parental_some_parent_not_claiming content boolean
+  # DF: /familyAndHousehold/*/whichParentNotClaiming (parent path)
+  data which_parent_not_claiming content WrittenDeclaration
+  # DF: /familyAndHousehold/*/inParentsCustody ("As of July 2, was the
+  # dependent still in the legal custody of their biological or adoptive
+  # parents?")
+  data in_parents_custody content boolean
+  # DF: /familyAndHousehold/*/livedWithTpOrOtherBiologicalOrAdoptiveParentMoreThanSixMonths
+  data lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months
+    content boolean
+  # DF: /familyAndHousehold/*/biologicalOrAdoptiveParentsLiving
+  data biological_or_adoptive_parents_living content boolean
+  # DF: /familyAndHousehold/*/nightsWithTpVsOtherParent
+  data nights_with_tp_vs_other_parent content NightsComparison
+  # DF: /familyAndHousehold/*/tpAgiHigherThanOtherParent. An answer, not a
+  # comparison of two AGIs: the filer's AGI is computed only at stage 4
+  # (CONVENTIONS section 7) and the other parent's AGI is not on this return.
+  data tp_agi_higher_than_other_parent content boolean
+  # DF: /familyAndHousehold/*/parentsMeetReqsRuleForChildrenOfDivorcedParents
+  # (non-parent path: the parents meet "the requirements of the rule for
+  # children of divorced or separated parents (or parents who live apart)")
+  data parents_meet_reqs_rule_for_children_of_divorced_parents content boolean
+  # DF: /familyAndHousehold/*/specialRuleChildUsedByCustodialParentAsQP
+  # (non-parent path: the custodial parent uses the child for HoH, EITC or
+  # CDCC)
+  data special_rule_child_used_by_custodial_parent_as_qp content boolean
+  # DF: /familyAndHousehold/*/specialRuleAgiTest (non-parent path: the
+  # filer's AGI is higher than the custodial parent's)
+  data special_rule_agi_test content boolean
+  # DF: /familyAndHousehold/*/parentalSituation
+  data parental_situation content ParentalSituation
+  # DF: /familyAndHousehold/*/parentalSupport ("Did you and/or the other
+  # biological or adoptive parent pay for more than half of <child>'s total
+  # support?")
+  data parental_support content boolean
+  # No DF fact (DF-BUG(18-a)): over one-half of the child's support is treated
+  # as received from a taxpayer under a multiple support agreement (IRC
+  # 152(d)(3), Form 2120). DF never asks; its value is false for every DF
+  # return.
+  data multiple_support_agreement content boolean
+
+## One member of DF /familyAndHousehold: the qualifying-child answers and the
+## benefit-split answers.
+declaration structure Member:
+  data person content Q.Person
+  data answers content BenefitSplitAnswers
+
+## Age of majority. Custody is a matter of state law (Treas. Reg.
+## 1.152-4(c)); DF assumes custody ends at 18 (description of
+## /familyAndHousehold/*/childMayQualifyForBenefitSplit). True in every state
+## DF supports (Types.ScopedState: no AL, NE (19), MS or PR (21)). Out of
+## scope per issue #18; flagged as a candidate in the PR.
+declaration age_of_majority content integer equals 18
+```
+
+## The scope for one person
+
+```catala-metadata
+declaration scope BenefitSplitTest:
+  # One member of DF /familyAndHousehold
+  input member content Member
+  # DF: filers.xml /minimumFilerDateOfBirth (Filers.minimum_filer_date_of_birth)
+  input minimum_filer_date_of_birth content date
+  # DF: filingStatus.xml /treatAsMFJ (Filers.treat_as_mfj)
+  input treat_as_mfj content boolean
+
+  # The qualifying child tests for the same person (issue #16)
+  output qc content Q.QualifyingChildTest
+
+  # DF: /familyAndHousehold/*/childMayQualifyForBenefitSplit
+  output child_may_qualify_for_benefit_split condition
+  # DF: /familyAndHousehold/*/tpIsParent
+  output tp_is_parent condition
+  # DF: /familyAndHousehold/*/tpIsNotParent
+  output tp_is_not_parent condition
+  # DF: /familyAndHousehold/*/parentalSomeParentNotClaiming
+  output parental_some_parent_not_claiming condition
+  # DF: /familyAndHousehold/*/primaryFilerNotClaiming
+  output primary_filer_not_claiming condition
+  # DF: /familyAndHousehold/*/bothFilersNotClaiming
+  output both_filers_not_claiming condition
+  # DF: /familyAndHousehold/*/otherParentNotClaiming
+  output other_parent_not_claiming condition
+  # DF: /familyAndHousehold/*/hadEqualNumberOfNightsWithParents
+  output had_equal_number_of_nights_with_parents condition
+  # DF: /familyAndHousehold/*/parentsAreDivorcedSeparatedOrLivingApart
+  output parents_are_divorced_separated_or_living_apart condition
+  # DF: /familyAndHousehold/*/tpIsCustodialParent
+  output tp_is_custodial_parent condition
+  # IRC 152(e)(5) (no DF fact; DF-BUG(18-a))
+  output section_152e_applies_despite_support_agreements condition
+  # The two branches of DF's /familyAndHousehold/*/eligibleForBenefitSplit
+  # (no DF fact each; kept apart so each branch sits under its own law)
+  internal eligible_on_parental_path condition
+  internal eligible_on_non_parental_path condition
+  # DF: /familyAndHousehold/*/eligibleForBenefitSplit
+  output eligible_for_benefit_split condition
+  # DF: /familyAndHousehold/*/reachedNonParentalBenefitSplit
+  output reached_non_parental_benefit_split condition
+  # DF: /familyAndHousehold/*/tpCanClaimSplitBenefitsHohEitcCdcc
+  output tp_can_claim_split_benefits_hoh_eitc_cdcc condition
+  # DF: /familyAndHousehold/*/disqualifiedDueToParentalCustody
+  output disqualified_due_to_parental_custody condition
+  # DF: /familyAndHousehold/*/contradictory8832TPIsCustodialParent
+  output contradictory8832_tp_is_custodial_parent condition
+  # DF: /familyAndHousehold/*/contradictory8832TPNotCustodialParent
+  output contradictory8832_tp_not_custodial_parent condition
+  # DF: /familyAndHousehold/*/contradictory8832Knockout
+  output contradictory8832_knockout condition
+  # DF: /familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout
+  output causes_noncustodial_parent_benefit_split_knockout condition
+  # This person makes the return unsupported (either knockout above)
+  output unsupported condition
+```
+
+```catala
+scope BenefitSplitTest:
+  definition qc equals
+    output of Q.QualifyingChildTest with {
+      -- person: member.person
+      -- minimum_filer_date_of_birth: minimum_filer_date_of_birth }
+```
+
+## 26 U.S.C. § 152(e) Special rule for divorced parents, etc.
+
+### (1) In general
+
+IRC 152(e)(1) (`sources/statute/irc-152.html`): "Notwithstanding subsection
+(c)(1)(B), (c)(4), or (d)(1)(C), if— (A) a child receives over one-half of the
+child's support during the calendar year from the child's parents— (i) who
+are divorced or legally separated under a decree of divorce or separate
+maintenance, (ii) who are separated under a written separation agreement, or
+(iii) who live apart at all times during the last 6 months of the calendar
+year, and— (B) such child is in the custody of 1 or both of the child's
+parents for more than one-half of the calendar year, such child shall be
+treated as being the qualifying child or qualifying relative of the
+noncustodial parent for a calendar year if the requirements described in
+paragraph (2) or (3) are met."
+
+Pub. 501 (2024), `sources/pubs/p501--2024.pdf` p 13, "Children of divorced or
+separated parents (or parents who live apart)": "the child will be treated as
+the qualifying child of the noncustodial parent if all four of the following
+statements are true. 1. The parents: a. Are divorced or legally separated
+under a decree of divorce or separate maintenance; b. Are separated under a
+written separation agreement; or c. Lived apart at all times during the last
+6 months of the year, whether or not they are or were married. 2. The child
+received over half of the child's support for the year from the parents. 3.
+The child is in the custody of one or both parents for more than half of the
+year. 4. Either of the following statements is true. a. The custodial parent
+signs a written declaration, discussed later, that they won't claim the child
+as a dependent for the year, and the noncustodial parent attaches this
+written declaration to their return. ... b. A pre-1985 decree of divorce or
+separate maintenance or written separation agreement ..."
+
+Form 8332 (Rev. December 2025), `sources/forms-instructions/f8332.pdf` p 1,
+"Special Rule for Children of Divorced or Separated Parents" says the same
+(no 2024 revision exists, `sources/INDEX.md`; the text quoted here is the
+statute's and Pub. 501's, which are 2024).
+
+#### (B) Custody for more than one-half of the year
+
+Treas. Reg. § 1.152-4(c) (`sources/regs/cfr-1.152-4.xml`): "A child is in the
+custody of one or both parents for more than one-half of the calendar year if
+one or both parents have the right under state law to physical custody of the
+child for more than one-half of the calendar year." § 1.152-4(d)(1): "A child
+is treated as residing with neither parent if the child is emancipated under
+state law." Pub. 501 p 14, "Example 5—child emancipated in May. Your child
+turned 18 in May 2024 and became emancipated under the law of the state where
+your child lives. As a result, your child isn't considered in the custody of
+either parent for more than half of the year."
+
+DF first screens on age: `childMayQualifyForBenefitSplit` is true if the
+person is under 18 on July 2 (`ageAtFirstHalfOfYear`, the DF day that splits
+2024's 366 days into 183 + 183) or is permanently and totally disabled, then
+asks about legal custody on July 2 (`inParentsCustody`) and about living with
+a parent for more than six months. A child who turns 18 (`age_of_majority`)
+on or before July 2 is in custody at most 183 of 366 days, not "more than
+one-half"; one who turns 18 on July 3 is in custody 184 days. So the screen is
+exact when custody ends at 18.
+
+DF writes the disability half as `All(disabilityStatusMayAffectBenefits,
+permanentTotalDisability)`. The gate is true for everyone 18 or older on July
+2, and the first half of the `Any` already covers everyone younger, so the
+value is the same as "under 18 or disabled" for every input; we keep DF's
+form.
+
+```catala
+scope BenefitSplitTest:
+  # IRC 152(e)(1)(B); Treas. Reg. 1.152-4(c), (d)(1); Pub 501 p 14 Example 5.
+  # DF: /familyAndHousehold/*/childMayQualifyForBenefitSplit
+  rule child_may_qualify_for_benefit_split under condition
+    qc.age_at_first_half_of_year < age_of_majority
+    or (qc.disability_status_may_affect_benefits
+        and member.person.permanent_total_disability)
+  consequence fulfilled
+```
+
+#### Who is a parent
+
+The rule is about "the child's parents". DF's parent path is for a filer whose
+relationship to the person is `biologicalChild` or `adoptedChild` (IRC
+152(f)(1)(B): "a legally adopted individual of the taxpayer ... shall be
+treated as a child of such individual by blood"); the questions name "the
+other biological or adoptive parent". Every other relationship that passes
+the qualifying child relationship test (a stepparent, a grandparent, a
+sibling, a foster parent) takes the non-parent path.
+
+```catala
+scope BenefitSplitTest:
+  # IRC 152(e)(1) "the child's parents", 152(f)(1)(B).
+  # DF: /familyAndHousehold/*/tpIsParent
+  rule tp_is_parent under condition
+    member.person.relationship = Q.Relationship.BiologicalChild
+    or member.person.relationship = Q.Relationship.AdoptedChild
+  consequence fulfilled
+
+  # IRC 152(c)(2). DF: /familyAndHousehold/*/tpIsNotParent
+  rule tp_is_not_parent under condition
+    not tp_is_parent and qc.qc_relationship_test
+  consequence fulfilled
+```
+
+#### (A)(i)-(iii) Divorced, separated, or living apart
+
+```catala
+scope BenefitSplitTest:
+  # IRC 152(e)(1)(A)(i)-(iii); Pub 501 p 13 statement 1, p 14 "Parents who
+  # never married". DF: /familyAndHousehold/*/parentsAreDivorcedSeparatedOrLivingApart
+  rule parents_are_divorced_separated_or_living_apart under condition
+    member.answers.parental_situation != Other
+  consequence fulfilled
+```
+
+### (2) Exception where custodial parent releases claim to exemption
+
+IRC 152(e)(2): "the requirements described in this paragraph are met with
+respect to any calendar year if— (A) the custodial parent signs a written
+declaration (in such manner and form as the Secretary may by regulations
+prescribe) that such custodial parent will not claim such child as a
+dependent for any taxable year beginning in such calendar year, and (B) the
+noncustodial parent attaches such written declaration to the noncustodial
+parent's return for the taxable year beginning during such calendar year."
+
+Treas. Reg. § 1.152-4(e)(1)(ii): "A written declaration may be made on Form
+8332, Release/Revocation of Release of Claim to Exemption for Child by
+Custodial Parent, or successor form designated by the IRS." Form 8332 Part I:
+"I agree not to claim an exemption for [name of child] for the tax year 20__.
+[Signature of custodial parent releasing claim to exemption]".
+
+DF asks the parent which parent signed (`whichParentNotClaiming`). The three
+facts below name its answers; `primaryFilerNotClaiming` and
+`bothFilersNotClaiming` split `iDid` by `/treatAsMFJ` and are read by no other
+fact (they choose screen text).
+
+```catala
+scope BenefitSplitTest:
+  # IRC 152(e)(2)(A). DF: /familyAndHousehold/*/parentalSomeParentNotClaiming
+  rule parental_some_parent_not_claiming under condition
+    member.answers.which_parent_not_claiming = IDid
+    or member.answers.which_parent_not_claiming = TheyDid
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/primaryFilerNotClaiming
+  rule primary_filer_not_claiming under condition
+    member.answers.which_parent_not_claiming = IDid and not treat_as_mfj
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/bothFilersNotClaiming
+  rule both_filers_not_claiming under condition
+    member.answers.which_parent_not_claiming = IDid and treat_as_mfj
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/otherParentNotClaiming
+  rule other_parent_not_claiming under condition
+    member.answers.which_parent_not_claiming = TheyDid
+  consequence fulfilled
+```
+
+### (3) Exception for certain pre-1985 instruments
+
+IRC 152(e)(3)(A): "the requirements described in this paragraph are met with
+respect to any calendar year if— (i) a qualified pre-1985 instrument between
+the parents applicable to the taxable year beginning in such calendar year
+provides that the noncustodial parent shall be entitled to any deduction
+allowable under section 151 for such child, and (ii) the noncustodial parent
+provides at least $600 for the support of such child during such calendar
+year." A "qualified pre-1985 instrument" is one "executed before January 1,
+1985" (152(e)(3)(B)(i)).
+
+Not modelled; DF does not ask. Only a noncustodial parent can rely on it, and
+DF knocks out every noncustodial parent (below), so it changes no supported
+return. Noted in the PR.
+
+### (4) Custodial parent and noncustodial parent
+
+IRC 152(e)(4): "(A) Custodial parent. The term "custodial parent" means the
+parent having custody for the greater portion of the calendar year. (B)
+Noncustodial parent. The term "noncustodial parent" means the parent who is
+not the custodial parent."
+
+Treas. Reg. § 1.152-4(d)(1): "The custodial parent is the parent with whom the
+child resides for the greater number of nights during the calendar year, and
+the noncustodial parent is the parent who is not the custodial parent."
+§ 1.152-4(d)(4): "If a child is in the custody of one or both parents for more
+than one-half of the calendar year and the child resides with each parent for
+an equal number of nights during the calendar year, the parent with the
+higher adjusted gross income for the calendar year is treated as the
+custodial parent."
+
+Pub. 501 p 14: "Custodial parent and noncustodial parent. The custodial
+parent is the parent with whom the child lived for the greater number of
+nights during the year. The other parent is the noncustodial parent." "Equal
+number of nights. If the child lived with each parent for an equal number of
+nights during the year, the custodial parent is the parent with the higher
+AGI." Example 1: "your child lived with you 210 nights and with the other
+parent 156 nights. You are the custodial parent." Example 3: "Your child
+lived with you 180 nights during the year and lived the same number of nights
+with the child's other parent, your ex-spouse. Your AGI is $40,000. Your
+ex-spouse's AGI is $25,000. You are treated as your child's custodial parent
+because you have the higher AGI."
+
+The other night-counting rules of § 1.152-4(d)(1)-(5) (nights away, the night
+of December 31, emancipation, a parent who works at night) decide how the
+nights are counted, and DF shows them as help text with the nights question
+("Who is the custodial parent?", `en.yaml` lines 13110-13150, including
+"Parent works at night ... that parent is treated as the custodial parent").
+So the `nights_with_tp_vs_other_parent` answer is the comparison after those
+rules. With equal nights and equal AGIs neither AGI is "higher" and the filer
+is not the custodial parent, as in DF.
+
+```catala
+scope BenefitSplitTest:
+  # Treas. Reg. 1.152-4(d)(4). DF: /familyAndHousehold/*/hadEqualNumberOfNightsWithParents
+  rule had_equal_number_of_nights_with_parents under condition
+    member.answers.nights_with_tp_vs_other_parent = Equal
+  consequence fulfilled
+
+  # IRC 152(e)(4)(A); Treas. Reg. 1.152-4(d)(1), (4); Pub 501 p 14,
+  # Examples 1 and 3. DF: /familyAndHousehold/*/tpIsCustodialParent
+  rule tp_is_custodial_parent under condition
+    member.answers.nights_with_tp_vs_other_parent = More
+    or (member.answers.nights_with_tp_vs_other_parent = Equal
+        and member.answers.tp_agi_higher_than_other_parent)
+  consequence fulfilled
+```
+
+### (5) Exception for multiple-support agreement
+
+IRC 152(e)(5): "This subsection shall not apply in any case where over
+one-half of the support of the child is treated as having been received from
+a taxpayer under the provision of subsection (d)(3)." Treas. Reg.
+§ 1.152-4(b)(2)(ii): "The requirements of this paragraph (b)(2) are not met if
+over one-half of the support of the child is treated as having been received
+from a taxpayer under section 152(d)(3)." Form 8332 p 2: "Exception. If the
+support of the child is determined under a multiple support agreement, this
+special rule does not apply, and this form should not be used."
+
+DF has no multiple support agreement anywhere (no fact mentions one). Such an
+agreement is possible here: the parents together may pay over half of the
+support while neither pays over half alone (152(d)(3)(A), "no one person
+contributed over one-half"), and the agreement then names someone else
+(another relative) as the person who claims. DF would still apply the split.
+We follow the statute with the extra input
+`multiple_support_agreement`; it is false on every DF return, so no oracle
+value changes.
+
+```catala
+scope BenefitSplitTest:
+  # DF-BUG(18-a): DF never asks about a multiple support agreement and applies
+  # the benefit split regardless. IRC 152(e)(5); Treas. Reg. 1.152-4(b)(2)(ii);
+  # Form 8332 p 2 "Exception". Status: candidate. No oracle value changes.
+  # IRC 152(e)(5) (no DF fact)
+  rule section_152e_applies_despite_support_agreements under condition
+    not member.answers.multiple_support_agreement
+  consequence fulfilled
+```
+
+### The filer is a parent: eligible for the split
+
+DF `/familyAndHousehold/*/eligibleForBenefitSplit` (line 616), parent path:
+the person may qualify (custody age), the filer is a parent, there is another
+parent, one of the two signed a declaration (statement 4), the child was in
+the parents' legal custody on July 2 and lived with them for more than six
+months (statement 3), the parents are divorced, separated or live apart
+(statement 1), and the parents paid over half of the support (statement 2).
+
+The non-parent path of the same fact is in the next section.
+
+```catala
+scope BenefitSplitTest:
+  # IRC 152(e)(1), (2), (5); Pub 501 p 13 statements 1-4.
+  # DF: /familyAndHousehold/*/eligibleForBenefitSplit, first branch
+  rule eligible_on_parental_path under condition
+    child_may_qualify_for_benefit_split
+    and tp_is_parent
+    and member.answers.has_other_biological_or_adoptive_parent
+    and parental_some_parent_not_claiming
+    and member.answers.in_parents_custody
+    and member.answers.lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months
+    and parents_are_divorced_separated_or_living_apart
+    and member.answers.parental_support
+    and section_152e_applies_despite_support_agreements
+  consequence fulfilled
+```
+
+### The filer is not a parent
+
+When 152(e) applies, the child is "the qualifying child or qualifying relative
+of the noncustodial parent ... Notwithstanding subsection ... (c)(4)", so no
+one else claims the child as a dependent. HoH and the EITC read the
+qualifying child "determined without regard to section 152(e)" (IRC
+2(b)(1)(A)(i), 32(c)(3)(A)), so for them the child stays a qualifying child of
+everyone who passes 152(c), and the tie-breakers of 152(c)(4) decide.
+152(c)(4)(C): "if the parents of an individual may claim such individual as a
+qualifying child but no parent so claims the individual, such individual may
+be claimed as the qualifying child of another taxpayer but only if the
+adjusted gross income of such taxpayer is higher than the highest adjusted
+gross income of any parent of the individual."
+
+Pub. 501 pp 17-18, "Applying the tiebreaker rules to divorced or separated
+parents (or parents who live apart)", Example 1: Kody, 5, lives with you and
+your parent; Kody's other parent lives elsewhere. "Kody is treated as the
+qualifying child of Kody's other parent, who can claim the child tax credit
+for the child. ... However, you agree to let your parent claim Kody. This
+means your parent can claim Kody for head of household filing status and the
+earned income credit if your parent qualifies for each and if you don't claim
+Kody as a qualifying child for the earned income credit." Example 2: "Your
+parent can't claim Kody as a qualifying child for any purpose because your
+parent's AGI isn't higher than yours."
+
+DF reaches the non-parent split (`reachedNonParentalBenefitSplit`, line 646)
+when the person may qualify, the filer is not a parent but passes the
+relationship test, the parents are living, the child was in their custody on
+July 2, one parent signed a declaration, and the parents meet the rule (a
+single question for statements 1-3). Then the filer may use the child for
+HoH, EITC and CDCC (`eligibleForBenefitSplit`, non-parent path) if the
+custodial parent does not use the child for those benefits and the filer's
+AGI is higher (Examples 1 and 2); otherwise the person is
+`disqualifiedDueToParentalCustody` and gives the filer no benefit at all.
+
+```catala
+scope BenefitSplitTest:
+  # IRC 152(e)(1), (5); Pub 501 pp 17-18.
+  # DF: /familyAndHousehold/*/reachedNonParentalBenefitSplit
+  rule reached_non_parental_benefit_split under condition
+    child_may_qualify_for_benefit_split
+    and tp_is_not_parent
+    and member.answers.biological_or_adoptive_parents_living
+    and member.answers.in_parents_custody
+    and member.answers.non_parental_some_parent_not_claiming
+    and member.answers.parents_meet_reqs_rule_for_children_of_divorced_parents
+    and section_152e_applies_despite_support_agreements
+  consequence fulfilled
+
+  # IRC 152(c)(4)(C); Pub 501 pp 17-18, Examples 1 and 2.
+  # DF: /familyAndHousehold/*/eligibleForBenefitSplit, second branch
+  rule eligible_on_non_parental_path under condition
+    reached_non_parental_benefit_split
+    and not member.answers.special_rule_child_used_by_custodial_parent_as_qp
+    and member.answers.special_rule_agi_test
+  consequence fulfilled
+
+  # IRC 152(e)(1); 152(c)(4)(C). DF: /familyAndHousehold/*/eligibleForBenefitSplit
+  rule eligible_for_benefit_split under condition
+    eligible_on_parental_path or eligible_on_non_parental_path
+  consequence fulfilled
+
+  # IRC 152(e)(1) (the noncustodial parent claims the dependent),
+  # 152(c)(4)(A), (C); Pub 501 pp 17-18, Examples 2 and 3.
+  # DF: /familyAndHousehold/*/disqualifiedDueToParentalCustody
+  rule disqualified_due_to_parental_custody under condition
+    reached_non_parental_benefit_split
+    and (not member.answers.special_rule_agi_test
+         or member.answers.special_rule_child_used_by_custodial_parent_as_qp)
+  consequence fulfilled
+```
+
+## What the custodial parent keeps
+
+Pub. 501 p 13: "If statements (1) through (4) are all true, only the
+noncustodial parent can: • Claim the child as a dependent; and • Claim the
+child as a qualifying child for the child tax credit, the credit for other
+dependents, or the additional child tax credit. However, this doesn't allow
+the noncustodial parent to claim head of household filing status, the credit
+for child and dependent care expenses, the exclusion for dependent care
+benefits, or the earned income credit." Pub. 501 p 10, HoH table note 1: "If
+you are the custodial parent and those rules apply, the child is generally
+your qualifying child for head of household filing status even though the
+child isn't a qualifying child you can claim as a dependent."
+
+The statute: IRC 2(b)(1)(A)(i), HoH, "a qualifying child of the individual
+(as defined in section 152(c), determined without regard to section 152(e))";
+IRC 32(c)(3)(A), EITC, "a qualifying child of the taxpayer (as defined in
+section 152(c), determined without regard to paragraph (1)(D) thereof and
+section 152(e))"; IRC 21(e)(5), CDCC: "If— (A) section 152(e) applies to any
+child with respect to any calendar year, and (B) such child is under the age
+of 13 or is physically or mentally incapable of caring for himself, ... such
+child shall be treated as a qualifying individual ... with respect to the
+custodial parent (as defined in section 152(e)(4)(A)), and shall not be
+treated as a qualifying individual with respect to the noncustodial parent."
+
+DF `/familyAndHousehold/*/tpCanClaimSplitBenefitsHohEitcCdcc` (line 388): the
+person is eligible for the split, and either the filer is the custodial parent
+who signed (`iDid`), or the filer is a non-parent who reached the split.
+Readers (`familyAndHousehold.xml`): `eligibleDependentMinusFilerInformation`
+(not a dependent, so no CTC, ACTC or ODC), `hohQualifyingPerson`,
+`eitcQualifyingChild`, `cdccNonDependentQualifyingPerson`,
+`qssQualifyingPerson` and `askAboutQCOfAnother`. If the other parent signed
+and the filer is the custodial parent, there is no split and the filer keeps
+everything (DF's comment, line 410), but DF knocks that answer out as
+contradictory (below).
+
+```catala
+scope BenefitSplitTest:
+  # IRC 152(e)(1), (2); IRC 2(b)(1)(A)(i), 32(c)(3)(A), 21(e)(5); Pub 501 pp
+  # 10, 13. DF: /familyAndHousehold/*/tpCanClaimSplitBenefitsHohEitcCdcc
+  rule tp_can_claim_split_benefits_hoh_eitc_cdcc under condition
+    eligible_for_benefit_split
+    and ((member.answers.which_parent_not_claiming = IDid
+          and tp_is_custodial_parent)
+         or reached_non_parental_benefit_split)
+  consequence fulfilled
+```
+
+## Knockouts
+
+### Contradictory Form 8332 answers
+
+Only the custodial parent signs the release (IRC 152(e)(2)(A), "the custodial
+parent signs a written declaration"; Form 8332 Part I, "Signature of
+custodial parent releasing claim to exemption"). A filer who is the custodial
+parent by the nights test but says the other parent signed, or who is not the
+custodial parent but says they signed, contradicts that. DF knocks the return
+out (`contradictory8832Knockout`, line 459; its description cites an internal
+issue). Treas. Reg. § 1.152-4(e)(4): "A written declaration ... that fails to
+satisfy the requirements of this paragraph (e) has no effect", so the law
+would ignore the declaration rather than refuse the return; refusing is a
+scope decision, not a computation, and is reproduced (CONVENTIONS section 6).
+
+```catala
+scope BenefitSplitTest:
+  # IRC 152(e)(2)(A). DF: /familyAndHousehold/*/contradictory8832TPIsCustodialParent
+  rule contradictory8832_tp_is_custodial_parent under condition
+    tp_is_custodial_parent
+    and member.answers.which_parent_not_claiming = TheyDid
+  consequence fulfilled
+
+  # IRC 152(e)(2)(A). DF: /familyAndHousehold/*/contradictory8832TPNotCustodialParent
+  rule contradictory8832_tp_not_custodial_parent under condition
+    not tp_is_custodial_parent
+    and member.answers.which_parent_not_claiming = IDid
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/contradictory8832Knockout
+  rule contradictory8832_knockout under condition
+    eligible_for_benefit_split
+    and (contradictory8832_tp_is_custodial_parent
+         or contradictory8832_tp_not_custodial_parent)
+  consequence fulfilled
+```
+
+### The filer is the noncustodial parent
+
+The noncustodial parent who holds a release claims the child as a dependent
+and for the CTC, ACTC and ODC (IRC 152(e)(1); Pub. 501 p 13), and must attach
+Form 8332 (152(e)(2)(B)). DF does not support that return
+(`causesNoncustodialParentBenefitSplitKnockout`, line 552): the person is
+eligible for the split, the filer is not the custodial parent, and the other
+parent signed. scope.md section 5.5: "Noncustodial claimants and
+contradictory 8332 answers are knockouts."
+
+```catala
+scope BenefitSplitTest:
+  # IRC 152(e)(1), (2)(B); scope.md 5.5.
+  # DF: /familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout
+  rule causes_noncustodial_parent_benefit_split_knockout under condition
+    eligible_for_benefit_split
+    and not tp_is_custodial_parent
+    and member.answers.which_parent_not_claiming = TheyDid
+  consequence fulfilled
+
+  # CONVENTIONS section 6 (no DF fact; the per-person part of the two
+  # flow.xml knockouts below)
+  rule unsupported under condition
+    contradictory8832_knockout
+    or causes_noncustodial_parent_benefit_split_knockout
+  consequence fulfilled
+```
+
+## The household: every person
+
+The scope `BenefitSplit` applies `BenefitSplitTest` to each member of
+`/familyAndHousehold`, in order. DF's two return-level knockouts
+(`/knockedOutByContradictory8832`, line 513, and
+`/knockedOutByNonCustodialParentBenefitSplit`, line 575, read by `flow.xml`
+lines 68-69 into `/flowIsKnockedOut`) are "the count of persons with the
+per-person knockout is greater than 0". `/contradictory8832TPIsCustodialParentTriggeredKnockout`
+and `/contradictory8832TPNotCustodialParentTriggeredKnockout`
+(lines 479 and 496) count the two contradiction facts without the
+`eligibleForBenefitSplit` condition; they choose the knockout screen's text and are read by no other
+fact, so they are not modelled. Neither are the two `dependentWhoCaused...`
+facts (lines 533 and 598), which name the person for the screen.
+
+```catala-metadata
+declaration scope BenefitSplit:
+  # DF: /familyAndHousehold
+  input members content list of Member
+  # DF: filers.xml /minimumFilerDateOfBirth
+  input minimum_filer_date_of_birth content date
+  # DF: filingStatus.xml /treatAsMFJ
+  input treat_as_mfj content boolean
+
+  # DF: /familyAndHousehold/*/... (one result per member, same order)
+  output results content list of BenefitSplitTest
+  # DF: /knockedOutByContradictory8832
+  output ko_knocked_out_by_contradictory8832 condition
+  # DF: /knockedOutByNonCustodialParentBenefitSplit
+  output ko_knocked_out_by_non_custodial_parent_benefit_split condition
+  # CONVENTIONS section 6: every ko_ of this scope
+  output unsupported condition
+```
+
+```catala
+scope BenefitSplit:
+  definition results equals
+    map each m among members to
+      (output of BenefitSplitTest with {
+         -- member: m
+         -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
+         -- treat_as_mfj: treat_as_mfj })
+
+  # DF: /knockedOutByContradictory8832
+  rule ko_knocked_out_by_contradictory8832 under condition
+    exists r among results such that r.contradictory8832_knockout
+  consequence fulfilled
+
+  # DF: /knockedOutByNonCustodialParentBenefitSplit
+  rule ko_knocked_out_by_non_custodial_parent_benefit_split under condition
+    exists r among results such that
+      r.causes_noncustodial_parent_benefit_split_knockout
+  consequence fulfilled
+
+  # flow.xml lines 68-69
+  rule unsupported under condition
+    ko_knocked_out_by_contradictory8832
+    or ko_knocked_out_by_non_custodial_parent_benefit_split
+  consequence fulfilled
+```
