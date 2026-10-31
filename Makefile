@@ -36,3 +36,9 @@ difftest:  ## run mapped Catala scopes against the oracle, per-scenario pass/fai
 	node difftest/run.mjs --scope $(SCOPE) $(ARGS)
 difftest-selftest:  ## unit tests of the runner itself (no Catala)
 	node --test difftest/selftest.mjs
+
+# W-2 module differential test against oracle/facts.csv (issue #12): regenerates
+# catala/tests/oracle_form_w2s.catala_en and runs clerk test.
+.PHONY: difftest-w2
+difftest-w2:  ## compare Form_w2s with the Direct File oracle
+	python3 oracle/w2_difftest.py
