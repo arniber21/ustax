@@ -2,19 +2,17 @@
 
 Updated by the orchestrator after each merge round. Last update: 2026-11-01 (wave 4).
 
-## Done (merged, verified by orchestrator)
-M0: #5 #6 #7 #8 #9. Spikes: #50 (Std.Http), #55 (Caddy optional, TLS not required for demo).
-M1: #10 rates, #11 std deduction, #12 W-2, #13 interest, #14 Form 1040 spine.
-M2: #15 filers, #16 qualifying child.
-M3: #21 1099-G/PFD, #22 1099-R, #23 SS, #24 adjustments, #25 estimated tax. M5: #35 HSA.
-Lean: #39 money lib, #40 Catala-semantics helpers.
-All Catala modules match the oracle on every non-knocked-out scenario they cover (see PRs for counts).
+## Done (merged, each verified by the orchestrator by rebuilding and rerunning difftests)
+M0: #5 #6 #7 #8 #9. Spikes: #50 (Std.Http), #55 (TLS doc; TLS not in critical path).
+Catala: #10 rates, #11 std ded, #12 W-2, #13 interest, #14 1040 spine, #15 filers, #16 QC, #17 QR, #18 benefit split, #21 1099-G/PFD, #22 1099-R, #23 SS, #24 adjustments, #25 est. payments, #26 EITC, #27 CTC/ODC/ACTC, #29 Saver's, #30 Schedule R, #35 HSA, #36 knockouts A.
+Lean: #39 money lib, #40 helpers, #41 rate schedule (+nonneg/monotone proofs), #42 three-way difftest harness, #43 spine (std ded, W-2, interest, 1040; refund/balance-due exclusivity proven), #51 request parsing/validation (+soundness proof).
+Contract/FE/infra: #49 JSON contract, #74 FE API client, #70 (partial) CI + `make audit` + Comparator in Apple container (`make comparator`).
 
 ## In progress
-#41 Lean rate-schedule pilot; #30 Schedule R; Comparator in Apple container (Refs #70).
+Catala #19 HoH/QSS persons (+ wiring benefit split into QR). Lean #45 income types port. #63 Lean spec file (Opus; human must review the spec). Server vertical slice (#52/#54/#56/#53/#57). FE shell (#73/#75).
 
-## Not yet wired
-Merged modules are NOT yet plugged into Form_1040 slots (21,22,23,24,25,35 and filers/std-deduction wiring); a dedicated integration step is due.
+## Not yet done
+CDCC #28, filing status #20, Sch 2/3 + credit order #31, PTC #32-34, knockouts B/aggregation #37/#38, wiring merged Catala modules into Form_1040, Lean ports #44/#46/#47/#48, FE screens #76-#82, proofs #64-#69, README trusted surface #59/#71, quirk decisions #60, spec reviews #61/#62/#68, final fresh-clone check.
 
 ## DECISIONS NEEDING THE HUMAN (defaults applied; reversible)
 1. **Catala -> Lean strategy (#8): DECIDED by human: option (c)**: write the calculator directly in Lean, keep Catala as readable spec + test oracle, link them by differential testing (docs/catala-to-lean.md). Alternative (b) translator plugin is 50-80h. Part 2 issues (#39-48, #63, #64, #70) need re-scoping from "port" to "implement in Lean, difftest vs Catala". Server runs the Lean calculator.
