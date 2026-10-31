@@ -1,0 +1,21 @@
+docs/direct-file-bugs.md
+  s_3031b504518be3::t_69f847df0580f5 19-20
+STATUS.md
+  s_3031b504518be3::t_4c91675e1b7212 3,5-11,14-17,20,22-23,31-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "85efb3b0a8a1d119bcdc7d414d1eaf172d50b6e1",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
