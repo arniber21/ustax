@@ -534,7 +534,7 @@ scope TestQualifyingChildOfAnother:
 
 ## Divergences from Direct File (CONVENTIONS section 8)
 
-### DF-BUG(19-a): a child the married filer cannot claim does not make them unmarried
+### DF-BUG(19): a child the married filer cannot claim does not make them unmarried
 
 IRC 7703(b)(1); Pub. 501 p 9, Considered Unmarried, test 5. A married filer
 living apart whose only child has no TIN (151(e)) cannot claim the child, so
@@ -558,7 +558,7 @@ scope TestDfBug19aMarriedChildNoTin:
   assertion unmarried.r.hoh_qualifying_person
 ```
 
-### DF-BUG(19-b): a dependent the filer chose not to claim still qualifies
+### DF-BUG(20): a dependent the filer chose not to claim still qualifies
 
 IRC 2(b)(1), 2(a)(1)(B); Pub. 501 p 9, How to file ("If the child who
 qualifies you for this filing status isn't claimed as your dependent ...,
@@ -578,7 +578,7 @@ scope TestDfBug19bUnclaimed:
   assertion c.r.qss_qualifying_person
 ```
 
-### DF-BUG(19-c): the married-child exclusion is only for 152(b)(2) and (b)(3)
+### DF-BUG(21): the married-child exclusion is only for 152(b)(2) and (b)(3)
 
 IRC 2(b)(1)(A)(i)(I)-(II). A married 17-year-old son who did not file a joint
 return and has no TIN: a qualifying person here, not in DF. Known-bad outputs
@@ -615,7 +615,7 @@ scope TestDfBug19cMarriedChild:
   assertion not foreign.r.hoh_qualifying_person
 ```
 
-### DF-BUG(19-d): a qualifying relative on the filer's side of a split
+### DF-BUG(22): a qualifying relative on the filer's side of a split
 
 IRC 2(b)(1)(A)(ii). A married 16-year-old son who filed a joint return (so
 not a qualifying child) and whose custody split lets the filer keep HoH,

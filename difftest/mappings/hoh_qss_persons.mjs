@@ -62,24 +62,24 @@ export default {
   // Places where we follow the law and DF does not (CONVENTIONS section 8, docs/direct-file-bugs.md).
   knownDivergence: [
     {
-      bug: 'DF-BUG(19-a)', scenario: 'mfj-50k-ctc-odc~9d45c664-8966-42e0-a179-4883b593f939', path: P + 'hohQualifyingPerson',
+      bug: 'DF-BUG(19)', scenario: 'mfj-50k-ctc-odc~9d45c664-8966-42e0-a179-4883b593f939', path: P + 'hohQualifyingPerson',
       note: 'married filer (eligibleForMFJ) and a 2-year-old son with tinType none, so not an eligible dependent: ' +
         'IRC 7703(b)(1) needs a child the filer is entitled to claim under 151 (151(e): TIN), so this child ' +
         'cannot make the filer "considered unmarried": we say false, DF true. No tax effect here: the filer ' +
         'files jointly and /filerCouldQualifyForHoh is false (personQualifiesTPforHoH agrees, false).',
     },
     {
-      bug: 'DF-BUG(19-b)', scenario: '(none in the oracle)', path: P + 'hohQualifyingPerson',
+      bug: 'DF-BUG(20)', scenario: '(none in the oracle)', path: P + 'hohQualifyingPerson',
       note: 'an eligible dependent the filer does not claim (tpClaims false): DF requires isClaimedIfClaimable for ' +
         'HoH and QSS; IRC 2(a)(1)(B), 2(b)(1) need only entitlement. We say true, DF false. Also qssQualifyingPerson.',
     },
     {
-      bug: 'DF-BUG(19-c)', scenario: '(none in the oracle)', path: P + 'hohQualifyingPerson',
+      bug: 'DF-BUG(21)', scenario: '(none in the oracle)', path: P + 'hohQualifyingPerson',
       note: 'married qualifying child with no TIN, or on the custodial side of a benefit split: IRC ' +
         '2(b)(1)(A)(i)(II) excludes a married child only for 152(b)(2)/(b)(3). We say true, DF false.',
     },
     {
-      bug: 'DF-BUG(19-d)', scenario: '(none in the oracle)', path: P + 'hohQualifyingPerson',
+      bug: 'DF-BUG(22)', scenario: '(none in the oracle)', path: P + 'hohQualifyingPerson',
       note: 'qualifying relative (not the filer\'s qualifying child) on the filer\'s side of a benefit split: IRC ' +
         '2(b)(1)(A)(ii) needs a dependent the filer may claim. We say false, DF true.',
     },

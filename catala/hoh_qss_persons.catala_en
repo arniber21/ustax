@@ -63,7 +63,7 @@ the entry space when the child is not claimed).
 
 The inputs are complete (CONVENTIONS section 3). Where DF disagrees with the
 statute, the statute wins (CONVENTIONS section 8): four places below, marked
-`# DF-BUG(19-a)` to `# DF-BUG(19-d)`.
+`# DF-BUG(19)` to `# DF-BUG(22)`.
 
 ## Declarations
 
@@ -129,10 +129,10 @@ declaration scope HohQssPersonTest:
   output flow_add_person_keeping_up_parents_home condition
 
   # IRC 7703(b)(1) for this person: a child the filer is entitled to claim
-  # (or would be but for 152(e)). No DF fact; DF-BUG(19-a).
+  # (or would be but for 152(e)). No DF fact; DF-BUG(19).
   output considered_unmarried_child condition
   # IRC 2(b)(1)(A)(i)(I)-(II): the child is not excluded as married. No DF
-  # fact; DF-BUG(19-c).
+  # fact; DF-BUG(21).
   output married_child_not_excluded condition
   # The three branches of DF's /hohQualifyingPerson (no DF fact each; kept
   # apart so each branch sits under its own paragraph of IRC 2(b)(1))
@@ -247,12 +247,12 @@ DF instead requires `eligibleDependentMinusFilerInformation`, which also
 fails when the child has no TIN or when the filer, as custodial parent,
 released the claim (152(e)). Neither is a reason under 152(b)(2) or (b)(3), so
 the statute keeps those married children; Table 4 and footnote 1 agree. This
-is `DF-BUG(19-c)`. (A qualifying child who filed a joint return fails 152(c)(1)(E)
+is `DF-BUG(21)`. (A qualifying child who filed a joint return fails 152(c)(1)(E)
 already, so the first half of the exclusion only matters for clarity.)
 
 ```catala
 scope HohQssPersonTest:
-  # DF-BUG(19-c): DF excludes a married qualifying child unless
+  # DF-BUG(21): DF excludes a married qualifying child unless
   # eligibleDependentMinusFilerInformation, which also needs a TIN and no
   # benefit split. The statute excludes a married child only for 152(b)(2) or
   # (b)(3). IRC 2(b)(1)(A)(i)(I)-(II); Pub 501 p 10 Table 4 and footnote 1.
@@ -375,7 +375,7 @@ of a split is not a dependent the filer may claim, so not a qualifying person
 here. DF admits them. The reachable cases are rare: a child under 18 who
 filed a joint return (no qualifying child, 152(c)(1)(E)), or, on the
 non-parent path, a minor who is older than the filer (152(c)(3)(A)). This is
-`DF-BUG(19-d)`.
+`DF-BUG(22)`.
 
 **DF-BUG(15) and this branch (issue #17's question).** DF's
 `qualifyingRelative` can be true for the filer's own qualifying child. The
@@ -386,7 +386,7 @@ and support tests: the first branch rejects them through
 `eligibleDependentMinusFilerInformation` (false under a split) and the third
 admits them through `tpCanClaimSplitBenefitsHohEitcCdcc`. Here the third
 branch rejects them (not a qualifying relative, DF-BUG(15)) and the first
-admits them (DF-BUG(19-c), whatever their gross income and support). Every
+admits them (DF-BUG(21), whatever their gross income and support). Every
 other qualifying child the third branch admits in DF is admitted by the first
 branch too. So the HoH result is unaffected by DF-BUG(15).
 
@@ -403,7 +403,7 @@ scope HohQssPersonTest:
                    != Q.ResidencyDuration.LessThanSixMonths))
   consequence fulfilled
 
-  # DF-BUG(19-d): DF also admits a qualifying relative the filer cannot claim
+  # DF-BUG(22): DF also admits a qualifying relative the filer cannot claim
   # because of a benefit split (tpCanClaimSplitBenefitsHohEitcCdcc). IRC
   # 2(b)(1)(A)(ii) needs a dependent the filer is entitled to claim. Status:
   # candidate.
@@ -461,7 +461,7 @@ someone's dependent, 152(b)(1); the child fails the citizen or resident test;
 the child has no TIN, 151(e)) passes the first branch when unmarried, so DF
 treats the married filer as unmarried. The statute does not: the child must
 be one "with respect to whom such individual is entitled to a deduction ...
-(or would be so entitled but for section 152(e))". This is `DF-BUG(19-a)`.
+(or would be so entitled but for section 152(e))". This is `DF-BUG(19)`.
 
 Applying the restriction to the qualifying person rather than to the filer is
 DF's (the statute makes the filer unmarried through a 7703(b) child, after
@@ -487,7 +487,7 @@ scope HohQssPersonTest:
     married_hoh_relationship_test
   consequence fulfilled
 
-  # DF-BUG(19-a): DF only checks the relationship. IRC 7703(b)(1) also needs a
+  # DF-BUG(19): DF only checks the relationship. IRC 7703(b)(1) also needs a
   # child "with respect to whom such individual is entitled to a deduction
   # ... under section 151 (or would be so entitled but for section 152(e))";
   # Pub 501 p 9, Considered Unmarried, test 5. Status: candidate. No DF fact.
@@ -516,12 +516,12 @@ file: "If the child who qualifies you for this filing status isn't claimed as
 your dependent in the Dependents section of Form 1040 or 1040-SR, enter the
 child's name in the entry space at the bottom of the Filing Status section."
 A filer who chooses not to list an eligible dependent keeps head of
-household. This is `DF-BUG(19-b)`; it applies to QSS as well (below).
+household. This is `DF-BUG(20)`; it applies to QSS as well (below).
 
 ```catala
 scope HohQssPersonTest:
-  # DF-BUG(19-a) (considered_unmarried_child replaces
-  # marriedHohRelationshipTest) and DF-BUG(19-b) (no isClaimedIfClaimable):
+  # DF-BUG(19) (considered_unmarried_child replaces
+  # marriedHohRelationshipTest) and DF-BUG(20) (no isClaimedIfClaimable):
   # IRC 2(b)(1), 2(c), 7703(b)(1); Pub 501 p 9 "How to file". Status:
   # candidate. IRC 2(b)(1); Pub 501 pp 9-10.
   # DF: /familyAndHousehold/*/hohQualifyingPerson
@@ -585,7 +585,7 @@ filer's dependency (the three disregarded subsections and 152(c)(1)(E), as
 Pub. 501 test 3 says); and the filer is not the custodial parent who released
 the claim (`tpCanClaimSplitBenefitsHohEitcCdcc`: then the filer is not
 "entitled to a deduction", 2(a)(1)(B)(ii), and 2(a) has no "but for 152(e)").
-DF also requires `isClaimedIfClaimable`: `DF-BUG(19-b)`, as for HoH ("whom you
+DF also requires `isClaimedIfClaimable`: `DF-BUG(20)`, as for HoH ("whom you
 can claim as a dependent", not "whom you claim").
 
 The qualifying relative half reads `notQualifyingChildTest`, which here
@@ -599,7 +599,7 @@ scope HohQssPersonTest:
     member.dependent.person.residency_duration = Q.ResidencyDuration.AllYear
   consequence fulfilled
 
-  # DF-BUG(19-b): DF also requires isClaimedIfClaimable. Status: candidate.
+  # DF-BUG(20): DF also requires isClaimedIfClaimable. Status: candidate.
   # IRC 2(a)(1)(B), 152(f)(1)(B); Treas. Reg. 1.2-2(a)(1)(ii); Pub 501 pp
   # 10-11. DF: /familyAndHousehold/*/qssQualifyingPerson
   rule qss_qualifying_person under condition
