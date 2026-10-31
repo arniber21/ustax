@@ -403,7 +403,7 @@ scope QualifyingChildTest:
         and person.date_of_birth < minimum_filer_date_of_birth)
   consequence fulfilled
 
-  # DF-BUG(16-a): DF ANDs the disability answer with
+  # DF-BUG(11): DF ANDs the disability answer with
   # disabilityStatusMayAffectBenefits, which fails a disabled person under 18
   # born on the same day as the oldest filer. IRC 152(c)(3)(B): for a person
   # "permanently and totally disabled ... at any time during such calendar
