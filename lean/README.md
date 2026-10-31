@@ -171,6 +171,37 @@ Not proved: that the JSON reader implements RFC 8259 (tested only), that
 distinct-value checks above), and the 322-scenario oracle conversion (needs a
 converter, left to #52).
 
+## HTTP server (`ServerMain.lean`, `UsTax/Api/{Bridge,Calculate}.lean`, issues #52 to #54, #56, #57)
+
+`lake build ustax-server`; `make server` / `make run` (root `Makefile`). Plain HTTP on `Std.Http`
+(`docs/lean-http-server.md`), env `PORT` (8080), `HOST` (127.0.0.1), `ALLOW_ORIGIN` (comma separated,
+default `http://localhost:5173`). `POST /calculate`, `GET /health`, `GET /version`, `OPTIONS` preflight;
+body cap 256 KiB (413), 415 for a non-JSON content type, 404/405, 422 knockouts, 500 generic.
+
+* `Bridge.lean`: `toForm1040Input : Request → r.Valid → Form1040In`, the one place that knows both
+  vocabularies. Wired: filing status, W-2s (boxes 1 to 13 incl. box 12), 1099-INT, blind / 65 / claimed
+  flags, `filing_details`. `unwiredSections` lists what validates but is not read (1099-G, 1099-MISC,
+  1099-R, SSA-1099, educator and student loan adjustments, estimated payments); the 200 response then
+  carries `warnings` (schema 1.1.0, `docs/api.md` "Warnings").
+* `Calculate.lean`: `calculate : String → Reply`, the whole endpoint minus sockets, with `#guard`s for the
+  $50,000 example, warnings, a knockout and a 400. No tax logic: it calls `Form1040.form1040` and reads
+  the knockout reasons from the same sub-scopes (`FormW2s.formW2s`, `Interest.interest`). Until the
+  `Calculator` scope (#38) exists, `knockoutReasons` is the list of flags `form1040` itself uses plus
+  `HasForeignAccountsOrTrusts` (which `form1040` only passes down); a disagreement with
+  `Form1040Out.unsupported` is `Reply.fault` (HTTP 500).
+* Tests: `make test-server` starts the server and runs `scripts/server_integration.mjs` (every
+  `api/fixtures` entry, error classes, CORS, warnings) and `scripts/server_vs_cli.mjs` (the server against
+  `ustax run Form1040` on an independent re-mapping of about 300 random requests).
+
+**Trusted code added by the server.** `ServerMain.lean` (IO only, no theorem; routing, CORS, body cap,
+content-type check, logging of method, path and status only, generic 500), `Std.Http` and `Std.Async`
+from the Lean toolchain (parser, serializer, libuv sockets), and `Lean.Json` is *not* used (the strict
+reader `Api/Json.lean` is). The server binds to loopback by default and speaks no TLS (`docs/tls.md`).
+Not proved: that the handler maps every `Reply` to the right status line (checked by the integration
+test), and that the exception text never reaches a client (by construction: `handle` discards it).
+`ServerMain` is outside `lean/UsTax`, so `make audit` neither scans nor lints it; the audit's forensics
+step runs with `--roots UsTax` because the extractor cannot import two modules that each define `main`.
+
 ## Pattern for Lean modules (follow this for every later scope)
 
 1. **One Lean file per Catala module**, `UsTax/<Module>.lean`, written by hand

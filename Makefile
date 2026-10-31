@@ -2,14 +2,23 @@
 # Requires opam; run `eval $(opam env --switch=default)` (or your switch) first.
 SRC := $(wildcard catala/*.catala_en catala/tests/*.catala_en)
 
-.PHONY: install check run clean
-install:   ## install the Catala toolchain (catala + clerk) via opam
-	opam install -y catala.1.3.0
-	clerk start
+.PHONY: install check run server test-server clean
+
+# rules.md: `make install && make run` must work from a clean clone. Needs elan and Node >= 18;
+# opam (Catala) is optional. No sudo. See scripts/install.sh.
+install:   ## Lean toolchain (elan, pinned) + lake build + npm ci in web/ + Catala via opam (SKIP_CATALA=1 skips)
+	./scripts/install.sh
+run:       ## build, then start the API on :8080 and the web dev server on :5173 (Ctrl-C stops both)
+	./scripts/run.sh
+server:    ## build and run only the Lean HTTP API (PORT, HOST, ALLOW_ORIGIN; see lean/ServerMain.lean)
+	cd lean && lake build ustax-server
+	PORT=$${PORT:-8080} ALLOW_ORIGIN=$${ALLOW_ORIGIN:-http://localhost:5173} lean/.lake/build/bin/ustax-server
+test-server: ## start the server on :18080, run scripts/server_integration.mjs and server_vs_cli.mjs against it, stop it
+	cd lean && lake build ustax ustax-server
+	./scripts/test_server.sh
 check:     ## type-check every Catala source, then run the #[test] scopes
 	clerk typecheck $(SRC)
 	clerk test
-run: check
 clean:
 	rm -rf _build
 
@@ -20,7 +29,7 @@ lean-build:  ## build the Lean library (core + Batteries + plausible)
 # Audit Lean with for-all-dev/forensics; clone lives in gitignored .forensics-tool/
 forensics:   ## run forensics extractor on lean/, writing forensics-out.json
 	@test -d .forensics-tool || git clone https://github.com/for-all-dev/forensics .forensics-tool
-	cd .forensics-tool/app && bun server.ts $(CURDIR)/lean --dump $(CURDIR)/forensics-out.json
+	cd .forensics-tool/app && bun server.ts $(CURDIR)/lean --roots UsTax --dump $(CURDIR)/forensics-out.json
 
 # lake build + lake check + lake comparator in a Linux container (see docs/comparator.md).
 # Needs Apple's `container` CLI with `container system start` done once. MODE=check|comparator|all.

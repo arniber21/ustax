@@ -32,5 +32,6 @@ import UsTax.Api.Lemmas
 import UsTax.Api.Parse
 import UsTax.Api.Response
 import UsTax.Api.Bridge
+import UsTax.Api.Calculate
 import UsTax.Api.Props
 import UsTax.Api.Tests

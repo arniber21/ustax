@@ -68,7 +68,9 @@ else
   # The upstream server throws ReferenceError ('judging' before initialization)
   # right AFTER writing the dump, so its exit status is meaningless: success
   # means a complete, parseable dump exists.
-  (cd "$FORENSICS_DIR/app" && bun server.ts "$LEAN_DIR" --dump "$DUMP") > "$WORK/forensics.log" 2>&1
+  # --roots UsTax: the exe roots (Main.lean, ServerMain.lean) each define `main`, which the
+  # extractor cannot import into one environment; they hold IO drivers, no theorems.
+  (cd "$FORENSICS_DIR/app" && bun server.ts "$LEAN_DIR" --roots UsTax --dump "$DUMP") > "$WORK/forensics.log" 2>&1
   if [ -s "$DUMP" ] && python3 -I -c 'import json,sys; json.load(open(sys.argv[1]))' "$DUMP" 2>/dev/null; then
     python3 -I "$REPO/scripts/audit_forensics.py" "$DUMP" || fail "forensics high-severity findings"
   else
