@@ -1,0 +1,23 @@
+catala/tests/test_form_w2s.catala_en
+  s_3031b504518be3::t_796a2c060c8658 5-6
+difftest/mappings/form_w2s.mjs
+  s_3031b504518be3::t_309beb2df39235 1-107
+catala/form_w2s.catala_en
+  s_3031b504518be3::t_796a2c060c8658 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8bbdfe2916bac89325cbae4b415f809f30d3510e",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
