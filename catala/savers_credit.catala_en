@@ -1,0 +1,509 @@
+> Module Savers_credit
+
+> Using Types
+> Using Params_2024 as P
+> Using Rounding as R
+
+# Retirement savings contributions credit (the Saver's credit): Form 8880
+
+Direct File module `saversCredits.xml` ("DF" below,
+`../direct-file/direct-file/backend/src/main/resources/tax/saversCredits.xml`,
+1,705 lines). Issue #29, scope.md section 6.4. Law: 26 U.S.C. § 25B
+(`sources/statute/irc-25B.html`), Notice 2023-75 section 3
+(`sources/revproc/n-23-75.pdf` p 3), Form 8880 (2024)
+(`sources/forms-instructions/f8880--2024.pdf` p 1 is the form, p 2 holds the
+instructions and the Credit Limit Worksheet; there is no separate `i8880` for
+2024). Tests are in `catala/tests/test_savers_credit.catala_en`; the oracle
+comparison is `difftest/mappings/savers_credit.mjs`.
+
+## What this module computes, and what it leaves out
+
+- Form 8880 lines 1 to 12 for the primary filer (column (a), "You") and, on
+  a joint return, the secondary filer (column (b), "Your spouse"). The output
+  `qualified_saver_credit_amount` (DF `/qualifiedSaverCreditAmount`, line 12)
+  feeds Schedule 3 line 4 and so Form 1040 line 20.
+- Line 1 (IRA and ABLE contributions) is `$0`: DF holds it at a placeholder
+  zero (`/unfilteredPrimaryFilerIraAndAbleContributions`), and a filer who
+  made IRA contributions is knocked out elsewhere
+  (`income.xml /madeIraContributions`). Out of scope per the issue.
+- Line 2 is the W-2 box 12 elective deferrals, an input from `Form_w2s`
+  (`primary_filer_total_deferrals_and_contributions`,
+  `secondary_filer_total_deferrals_and_contributions`).
+- Line 4 is the 1099-R distributions that count for the credit, an input from
+  `Form1099_rs` (`primary_filer_savers_gross_distributions`,
+  `secondary_filer_savers_gross_distributions`).
+- Line 11 is the Credit Limit Worksheet. Its inputs are Form 1040 line 18
+  (`total_tentative_tax`), the child and dependent care credit and the credit
+  for the elderly or disabled (Schedule R). Schedule 3 lines 1, 2 (CDCC is
+  line 2), 3, 6d and 6l: DF holds lines 1, 3 and 6l at `$0` placeholders
+  (`schedule3.xml`), so they are not inputs here.
+- The three self-reported situations that DF cannot compute (distributions in
+  the last three years, distributions after the year but before the due date,
+  and contributions the filer reports on his own) are knockouts
+  (`ko_savers_credit_knockouts`), as in DF `flow.xml /saversCreditKnockouts`.
+- Wiring (done by the orchestrator, not here): `Filers` supplies
+  `is_under18` and `is_student` per filer (`FilerFacts`),
+  `primary_filer_is_claimed_as_dependent`,
+  `secondary_filer_is_claimed_as_dependent` and `is_mfj_dependent`;
+  `Form_1040` supplies `agi` (line 11) and `total_tentative_tax` (line 18).
+  The `qualified_saver_credit_amount` output feeds the Schedule 3 line 4 slot
+  of the credits step; `unsupported` is part of the return's `unsupported`.
+
+## Declarations
+
+```catala-metadata
+## The decimal amount on Form 8880 line 9. DF: saversCredits.xml
+## /saversCreditMultiplierOptions.
+declaration enumeration SaversCreditMultiplier:
+  -- Fifty
+  -- Twenty
+  -- Ten
+  -- Zero
+
+## The Form 8880 lines for one person (one column of the form). Called once for
+## the primary filer and once for the secondary filer.
+declaration scope SaversColumn:
+  # Form 8880 line 1 (IRA and ABLE contributions), already filtered by eligibility
+  input line1 content money
+  # Form 8880 line 2 (elective deferrals), already filtered by eligibility
+  input line2 content money
+  # Form 8880 line 4 (distributions)
+  input line4 content money
+  # Form 8880 line 3
+  output line3 content money
+  # Form 8880 line 5
+  output line5 content money
+  # Form 8880 line 6
+  output line6 content money
+
+## The whole credit.
+declaration scope SaversCredit:
+  # DF: filingStatus.xml /filingStatus (Writable)
+  input filing_status content Types.FilingStatus
+  # Form 1040 line 11. DF: taxCalculations.xml /agi
+  input agi content money
+  # DF: filers.xml /isMFJDependent
+  input is_mfj_dependent condition
+  # DF: filers.xml /primaryFiler/isUnder18
+  input primary_filer_is_under18 condition
+  # DF: filers.xml /primaryFiler/isStudent (Writable)
+  input primary_filer_is_student condition
+  # DF: filers.xml /primaryFilerIsClaimedAsDependent
+  input primary_filer_is_claimed_as_dependent condition
+  # DF: filers.xml /secondaryFiler/isUnder18
+  input secondary_filer_is_under18 condition
+  # DF: filers.xml /secondaryFiler/isStudent (Writable)
+  input secondary_filer_is_student condition
+  # DF: filers.xml /secondaryFilerIsClaimedAsDependent
+  input secondary_filer_is_claimed_as_dependent condition
+  # DF: formW2s.xml /primaryFilerW2s/*/totalDeferralsAndContributions, summed
+  # (Form_w2s output primary_filer_total_deferrals_and_contributions)
+  input primary_filer_total_deferrals_and_contributions content money
+  # DF: formW2s.xml /secondaryFilerW2s/*/totalDeferralsAndContributions, summed
+  input secondary_filer_total_deferrals_and_contributions content money
+  # DF: form1099Rs.xml /primaryFiler1099RsReportedOnSaversCredit grossDistribution,
+  # summed (Form1099_rs output primary_filer_savers_gross_distributions)
+  input primary_filer_savers_gross_distributions content money
+  # DF: form1099Rs.xml /secondaryFiler1099RsReportedOnSaversCredit, summed
+  input secondary_filer_savers_gross_distributions content money
+  # Form 1040 line 18. DF: taxCalculations.xml /totalTentativeTax
+  input total_tentative_tax content money
+  # DF: cdcc.xml /cdccTotalCredit (Schedule 3 line 2)
+  input cdcc_total_credit content money
+  # DF: elderlyAndDisabled.xml /totalEdc (Schedule 3 line 6d)
+  input total_edc content money
+  # DF: /hasDistributionsInLastThreeYears (Writable)
+  input has_distributions_in_last_three_years condition
+  # DF: /hasCurrentYearDistributions (Writable)
+  input has_current_year_distributions condition
+  # DF: /hasSelfReportedContributions (Writable)
+  input has_self_reported_contributions condition
+
+  # DF: /isFilingStatusMFJ (filingStatus.xml)
+  internal is_filing_status_mfj condition
+  # DF: /isFilingStatusHOH (filingStatus.xml)
+  internal is_filing_status_hoh condition
+  # DF: /filers/*/isEligibleForSaversCredit, primary filer
+  output primary_filer_is_eligible condition
+  # DF: /filers/*/isEligibleForSaversCredit, secondary filer
+  output secondary_filer_is_eligible condition
+  # DF: /secondaryFilerIsEligibleForSaversCredit (MFJ and secondary eligible)
+  output secondary_filer_is_applicable_and_eligible condition
+  # DF: /saversCreditMaxAgiLimit
+  internal savers_credit_max_agi_limit content money
+  # DF: /saversCreditAgiLimitForFiftyPercent
+  internal savers_credit_agi_limit_for_fifty_percent content money
+  # DF: /saversCreditAgiLimitForTwentyPercent
+  internal savers_credit_agi_limit_for_twenty_percent content money
+  # DF: /isAgiEligibleForSaversCredit
+  output is_agi_eligible_for_savers_credit condition
+  # DF: /eligibleForSaversCredit
+  output eligible_for_savers_credit condition
+  # Form 8880 lines 1a and 1b. DF: /primaryFilerIraAndAbleContributions,
+  # /secondaryFilerIraAndAbleContributions
+  output primary_filer_ira_and_able_contributions content money
+  output secondary_filer_ira_and_able_contributions content money
+  # Form 8880 lines 2a and 2b. DF: /primaryFilersDeferralsAndContributions,
+  # /secondaryFilersDeferralsAndContributions
+  output primary_filers_deferrals_and_contributions content money
+  output secondary_filers_deferrals_and_contributions content money
+  # Form 8880 lines 4a and 4b. DF: /primaryFilerGrossDistributions,
+  # /secondaryFilerGrossDistributions
+  output primary_filer_gross_distributions content money
+  output secondary_filer_gross_distributions content money
+  # The column calculations
+  primary_column scope SaversColumn
+  secondary_column scope SaversColumn
+  # Form 8880 lines 3a and 3b. DF: /primaryFilerTotalContributions,
+  # /secondaryFilerTotalContributions
+  output primary_filer_total_contributions content money
+  output secondary_filer_total_contributions content money
+  # Form 8880 lines 5a and 5b. DF: /primaryFilerTotalContributionsLessDistributions,
+  # /secondaryFilerTotalContributionsLessDistributions
+  output primary_filer_total_contributions_less_distributions content money
+  output secondary_filer_total_contributions_less_distributions content money
+  # Form 8880 lines 6a and 6b. DF: /primaryFilerMaxCreditCalc, /secondaryFilerMaxCreditCalc
+  output primary_filer_max_credit_calc content money
+  output secondary_filer_max_credit_calc content money
+  # Form 8880 line 7. DF: /combinedCreditLimit
+  output combined_credit_limit content money
+  # Form 8880 line 9. DF: /saversCreditMultiplier
+  output savers_credit_multiplier content SaversCreditMultiplier
+  # DF: /saversCreditMultiplierAsRational
+  output savers_credit_multiplier_as_rational content decimal
+  # Form 8880 line 10. DF: /ratioedCombinedCreditLimit
+  output ratioed_combined_credit_limit content money
+  # Form 8880 line 11. DF: /limitationBasedOnTaxLiability
+  output limitation_based_on_tax_liability content money
+  # DF: /qualifiedForSaverCreditWoTaxLiability
+  output qualified_for_saver_credit_wo_tax_liability condition
+  # DF: /qualifiedForSaverCredit
+  output qualified_for_saver_credit condition
+  # Form 8880 line 12. DF: /qualifiedSaverCreditAmount
+  output qualified_saver_credit_amount content money
+  # DF: /isReceivingSaversCredit
+  output is_receiving_savers_credit condition
+
+  # Knockout (CONVENTIONS section 6). DF: flow.xml /saversCreditKnockouts
+  output ko_savers_credit_knockouts condition
+  output unsupported condition
+```
+
+## Form 8880, lines 1 to 6 for one person
+
+Form 8880 line 3: "Add lines 1 and 2". Line 5: "Subtract line 4 from line 3. If
+zero or less, enter -0-". Line 6: "In each column, enter the smaller of line 5
+or $2,000". (`f8880--2024.pdf` p 1)
+
+IRC 25B(a): the credit is "the applicable percentage of so much of the
+qualified retirement savings contributions of the eligible individual for the
+taxable year as do not exceed $2,000." IRC 25B(d)(2)(A): the contributions
+"shall be reduced (but not below zero) by the aggregate distributions received
+by the individual during the testing period".
+
+```catala
+scope SaversColumn:
+  # Form 8880 line 3. DF: /primaryFilerTotalContributions (Add)
+  definition line3 equals line1 + line2
+
+  # Form 8880 line 5. DF: /primaryFilerTotalContributionsLessDistributions
+  # (GreaterOf(Subtract, 0))
+  definition line5 equals Money.positive of (line3 - line4)
+
+  # Form 8880 line 6, IRC 25B(a). DF: /primaryFilerMaxCreditCalc (LesserOf)
+  definition line6 equals Money.min of P.savers_contribution_cap, line5
+```
+
+## Who is an eligible individual
+
+IRC 25B(c)(1): "The term "eligible individual" means any individual if such
+individual has attained the age of 18 as of the close of the taxable year."
+25B(c)(2): "The term "eligible individual" shall not include— (A) any
+individual with respect to whom a deduction under section 151 is allowed to
+another taxpayer for a taxable year beginning in the calendar year in which
+such individual's taxable year begins, and (B) any individual who is a student
+(as defined in section 152(f)(2))." Form 8880 p 1: the person "(a) was born
+after January 1, 2007; (b) is claimed as a dependent on someone else's 2024
+tax return; or (c) was a student". The under-18 test uses the day before the
+birthday (`Filers.FilerFacts.is_under18`).
+
+Direct File: `/filers/*/isEligibleForSaversCredit` (`filers.xml` line 5311)
+is the conjunction of those three tests per filer. `/eligibleForSaversCredit`
+(line 212 of the module) adds "We ban an MFJ dependent here, as they have
+opted not to take credits" and the AGI test.
+
+```catala
+scope SaversCredit:
+  definition is_filing_status_mfj equals
+    filing_status = MarriedFilingJointly
+  definition is_filing_status_hoh equals
+    filing_status = HeadOfHousehold
+
+  # IRC 25B(c). DF: filers.xml /filers/*/isEligibleForSaversCredit
+  definition primary_filer_is_eligible equals
+    not primary_filer_is_under18
+    and not primary_filer_is_claimed_as_dependent
+    and not primary_filer_is_student
+  definition secondary_filer_is_eligible equals
+    not secondary_filer_is_under18
+    and not secondary_filer_is_claimed_as_dependent
+    and not secondary_filer_is_student
+
+  # DF: /secondaryFilerIsEligibleForSaversCredit
+  definition secondary_filer_is_applicable_and_eligible equals
+    is_filing_status_mfj and secondary_filer_is_eligible
+```
+
+## The applicable percentage (Form 8880 line 9)
+
+IRC 25B(b)(1): "In the case of a joint return, the applicable percentage is—
+(A) if the adjusted gross income of the taxpayer is not over $30,000, 50
+percent, (B) if ... over $30,000 but not over $32,500, 20 percent, (C) if ...
+over $32,500 but not over $50,000, 10 percent, and (D) if ... over $50,000,
+zero percent." 25B(b)(2): a head of household uses 75 percent and any other
+taxpayer 50 percent of those dollar amounts, "as adjusted under paragraph
+(3)". The TY2024 limits are Notice 2023-75 p 3; Form 8880 line 9 repeats them
+as a table. All bounds are "not over", so AGI equal to a bound stays in the
+better band (single, AGI $23,000 gives 50 percent; $23,001 gives 20 percent).
+
+Direct File: `/saversCreditAgiLimitForFiftyPercent`,
+`/saversCreditAgiLimitForTwentyPercent`, `/saversCreditMaxAgiLimit` and
+`/saversCreditMultiplier`. Surviving spouses and married persons filing
+separately fall in "any other taxpayer".
+
+```catala
+scope SaversCredit:
+  definition savers_credit_agi_limit_for_fifty_percent equals
+    if is_filing_status_mfj then P.savers_agi_limit_50_mfj
+    else if is_filing_status_hoh then P.savers_agi_limit_50_hoh
+    else P.savers_agi_limit_50_other
+
+  definition savers_credit_agi_limit_for_twenty_percent equals
+    if is_filing_status_mfj then P.savers_agi_limit_20_mfj
+    else if is_filing_status_hoh then P.savers_agi_limit_20_hoh
+    else P.savers_agi_limit_20_other
+
+  definition savers_credit_max_agi_limit equals
+    if is_filing_status_mfj then P.savers_agi_limit_10_mfj
+    else if is_filing_status_hoh then P.savers_agi_limit_10_hoh
+    else P.savers_agi_limit_10_other
+
+  # DF: /isHohAgiEligibleForSaversCredit, /isMfjAgiEligibleForSaversCredit,
+  # /isOtherAgiEligibleForSaversCredit, /isAgiEligibleForSaversCredit
+  definition is_agi_eligible_for_savers_credit equals
+    agi <= savers_credit_max_agi_limit
+
+  # Form 8880 line 9, DF: /saversCreditMultiplier
+  definition savers_credit_multiplier equals
+    if agi <= savers_credit_agi_limit_for_fifty_percent then Fifty
+    else if agi <= savers_credit_agi_limit_for_twenty_percent then Twenty
+    else if agi <= savers_credit_max_agi_limit then Ten
+    else Zero
+
+  # DF: /saversCreditMultiplierAsRational
+  definition savers_credit_multiplier_as_rational equals
+    match savers_credit_multiplier with pattern
+    -- Fifty : P.savers_rate_high
+    -- Twenty : P.savers_rate_middle
+    -- Ten : P.savers_rate_low
+    -- Zero : 0%
+```
+
+## Who is eligible, and the two columns
+
+DF `/eligibleForSaversCredit`: not an MFJ dependent; on a joint return either
+filer is eligible, otherwise the primary filer; and the AGI test.
+
+```catala
+scope SaversCredit:
+  # DF: /eligibleForSaversCredit
+  definition eligible_for_savers_credit equals
+    not is_mfj_dependent
+    and (if is_filing_status_mfj
+         then primary_filer_is_eligible or secondary_filer_is_eligible
+         else primary_filer_is_eligible)
+    and is_agi_eligible_for_savers_credit
+
+  # Line 1. IRA and ABLE contributions are out of scope; DF holds the unfiltered
+  # fact at a placeholder $0 ("Implement when we support this").
+  # OUT OF SCOPE: a filer with IRA contributions is knocked out by
+  # income.xml /madeIraContributions (not modelled here).
+  # DF: /primaryFilerIraAndAbleContributions
+  definition primary_filer_ira_and_able_contributions equals $0
+  # DF: /secondaryFilerIraAndAbleContributions
+  definition secondary_filer_ira_and_able_contributions equals $0
+
+  # Line 2. DF: /primaryFilersDeferralsAndContributions rounds the sum of the
+  # W-2 amounts (/unfilteredPrimaryFilersDeferralsAndContributions) and is $0
+  # when the filer is not eligible.
+  definition primary_filers_deferrals_and_contributions equals
+    if primary_filer_is_eligible
+    then R.round_dollar of primary_filer_total_deferrals_and_contributions
+    else $0
+  # DF: /secondaryFilersDeferralsAndContributions
+  definition secondary_filers_deferrals_and_contributions equals
+    if secondary_filer_is_applicable_and_eligible
+    then R.round_dollar of secondary_filer_total_deferrals_and_contributions
+    else $0
+```
+
+### Line 4: distributions
+
+IRC 25B(d)(2)(A) and (B) reduce the contributions by "the aggregate
+distributions received by the individual during the testing period", the
+period "which includes— (i) such taxable year, (ii) the 2 preceding taxable
+years, and (iii) the period after such taxable year and before the due date
+(including extensions)". 25B(d)(2)(D): "any distribution received by the
+spouse of such individual shall be treated as received by such individual if
+such individual and spouse file a joint return for such taxable year and for
+the taxable year during which the spouse receives the distribution."
+
+Form 8880 line 4 (`f8880--2024.pdf` p 1): "If married filing jointly, include
+both spouses' amounts in both columns." Instructions, p 2: "Enter the total
+amount of distributions you, and your spouse if filing jointly, received after
+2021 and before the due date of your 2024 return".
+
+DF reads only the 2024 Forms 1099-R (code 2, 7, 2B, B2, 7B or B7, not a
+military plan: `Form1099_rs`). The earlier years and 2025 distributions are
+self-reported questions that knock the filer out (`ko_savers_credit_knockouts`),
+so the 1099-R sums here are the whole of line 4 for every supported return.
+
+DF-BUG(14): DF's `/primaryFilerSaversEligibleGrossDistributions` and
+`/secondaryFilerSaversEligibleGrossDistributions` are `$0` unless that filer
+is eligible for the credit, and `/primaryFilerGrossDistributions` and
+`/secondaryFilerGrossDistributions` fall back to the filer's own (gated) sum
+when that filer is not eligible. Two effects on a joint return: (1) the column
+of a spouse who is a student, under 18 or claimed as a dependent shows `$0` on
+line 4 (cosmetic: that column's line 2 is `$0` as well); (2) the
+distributions of such a spouse drop out of line 4 of the other spouse, which
+raises the credit. The statute (25B(d)(2)(D)) and the form ("include both
+spouses' amounts in both columns") count the spouse's distributions whether or
+not the spouse is an eligible individual. We follow them: on a joint return
+both columns hold the sum of both spouses' 1099-R amounts. The oracle shows
+effect (1) in two scenarios and no scenario for effect (2).
+The exception on p 2 of the form (the spouses did not file jointly in the year
+of the distribution) is a prior-year situation, which is a knockout.
+
+```catala
+scope SaversCredit:
+  # Form 8880 line 4a. DF: /primaryFilerGrossDistributions
+  # DF-BUG(14): DF drops an ineligible spouse's distributions; IRC
+  # 25B(d)(2)(D) and the form instructions do not.
+  definition primary_filer_gross_distributions equals
+    if is_filing_status_mfj
+    then R.round_dollar of
+           (primary_filer_savers_gross_distributions
+            + secondary_filer_savers_gross_distributions)
+    else R.round_dollar of primary_filer_savers_gross_distributions
+
+  # Form 8880 line 4b. DF: /secondaryFilerGrossDistributions
+  definition secondary_filer_gross_distributions equals
+    if is_filing_status_mfj
+    then R.round_dollar of
+           (primary_filer_savers_gross_distributions
+            + secondary_filer_savers_gross_distributions)
+    else R.round_dollar of secondary_filer_savers_gross_distributions
+```
+
+### Lines 3, 5 and 6
+
+```catala
+scope SaversCredit:
+  definition primary_column.line1 equals primary_filer_ira_and_able_contributions
+  definition primary_column.line2 equals primary_filers_deferrals_and_contributions
+  definition primary_column.line4 equals primary_filer_gross_distributions
+  definition secondary_column.line1 equals secondary_filer_ira_and_able_contributions
+  definition secondary_column.line2 equals secondary_filers_deferrals_and_contributions
+  definition secondary_column.line4 equals secondary_filer_gross_distributions
+
+  definition primary_filer_total_contributions equals primary_column.line3
+  definition secondary_filer_total_contributions equals secondary_column.line3
+  definition primary_filer_total_contributions_less_distributions equals
+    primary_column.line5
+  definition secondary_filer_total_contributions_less_distributions equals
+    secondary_column.line5
+  definition primary_filer_max_credit_calc equals primary_column.line6
+  definition secondary_filer_max_credit_calc equals secondary_column.line6
+
+  # Form 8880 line 7: "Add the amounts on line 6". DF: /combinedCreditLimit
+  definition combined_credit_limit equals
+    primary_filer_max_credit_calc + secondary_filer_max_credit_calc
+```
+
+## Lines 10 to 12: the credit
+
+Form 8880 line 10: "Multiply line 7 by line 9". DF:
+`/ratioedCombinedCreditLimit` is `Round` of the multiplier times line 7
+(whole dollars, ties away from zero; line 7 is whole dollars, so the product
+has at most one decimal place).
+
+Line 11 is the Credit Limit Worksheet (`f8880--2024.pdf` p 2): "1. Enter the
+amount from Form 1040, 1040-SR, or 1040-NR, line 18 ... 2. Enter the total of
+your credits from Schedule 3, lines 1 through 3, 6d, and 6l ... 3. Subtract
+line 2 from line 1. Also enter this amount on Form 8880, line 11. But if zero
+or less, stop; you can't take the credit". Line 12: "Enter the smaller of
+line 10 or line 11". This is the credit order of scope.md section 6.7: CDCC
+(Schedule 3 line 2) and the credit for the elderly or disabled (line 6d)
+first, Saver's next.
+
+Direct File: `/limitationBasedOnTaxLiability` subtracts
+`sched3Line1 + cdccTotalCredit + sched3Line3 + totalEdc + sched3Line6l` from
+`/totalTentativeTax`, with `GreaterOf(..., $0)`. The Schedule 3 lines 1, 3
+and 6l are `$0` placeholders in `schedule3.xml` (foreign tax credit, education
+credits and other credits, none supported), so they are omitted.
+
+```catala
+scope SaversCredit:
+  # Form 8880 line 10. DF: /ratioedCombinedCreditLimit
+  definition ratioed_combined_credit_limit equals
+    R.round_dollar of (combined_credit_limit * savers_credit_multiplier_as_rational)
+
+  # Form 8880 line 11, Credit Limit Worksheet. DF: /limitationBasedOnTaxLiability
+  # (Schedule 3 lines 1, 3 and 6l are $0 placeholders in DF.)
+  definition limitation_based_on_tax_liability equals
+    Money.positive of (total_tentative_tax - (cdcc_total_credit + total_edc))
+
+  # DF: /qualifiedForSaverCreditWoTaxLiability
+  definition qualified_for_saver_credit_wo_tax_liability equals
+    eligible_for_savers_credit and combined_credit_limit > $0
+
+  # DF: /qualifiedForSaverCredit
+  definition qualified_for_saver_credit equals
+    qualified_for_saver_credit_wo_tax_liability
+    and limitation_based_on_tax_liability > $0
+
+  # Form 8880 line 12, limited by the Credit Limit Worksheet (line 11).
+  # DF: /qualifiedSaverCreditAmount
+  definition qualified_saver_credit_amount equals
+    if qualified_for_saver_credit
+    then Money.min of ratioed_combined_credit_limit,
+                      limitation_based_on_tax_liability
+    else $0
+
+  # DF: /isReceivingSaversCredit
+  definition is_receiving_savers_credit equals
+    qualified_saver_credit_amount > $0
+```
+
+## Knockouts
+
+Direct File `flow.xml` `/saversCreditKnockouts` (line 125): "Condition the
+Saver's Credit knockouts on the TP qualifying for the credit": true when
+`/qualifiedForSaverCredit` and any of `/hasDistributionsInLastThreeYears`,
+`/hasCurrentYearDistributions` or `/hasSelfReportedContributions`. These are
+the cases in which line 1 or line 4 would need data DF does not collect.
+(`flow.xml` line 104 feeds this fact into `/flowIsKnockedOut`.)
+
+```catala
+scope SaversCredit:
+  # DF: flow.xml /saversCreditKnockouts
+  rule ko_savers_credit_knockouts under condition
+    qualified_for_saver_credit
+    and (has_distributions_in_last_three_years
+         or has_current_year_distributions
+         or has_self_reported_contributions)
+  consequence fulfilled
+
+  rule unsupported under condition ko_savers_credit_knockouts
+  consequence fulfilled
+```

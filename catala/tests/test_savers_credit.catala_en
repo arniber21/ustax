@@ -1,0 +1,552 @@
+# Tests for the Savers_credit module
+
+Run with `clerk test`. Named scopes with the concrete cases of issue #29,
+worked out by hand from Form 8880 (2024) and its instructions
+(`sources/forms-instructions/f8880--2024.pdf`), IRC 25B and Notice 2023-75
+(single 50 percent up to $23,000, 20 percent up to $25,000, 10 percent up to
+$38,250; head of household $34,500, $37,500, $57,375; joint $46,000, $50,000,
+$76,500). The oracle comparison is `make difftest SCOPE=savers_credit`.
+
+> Using Types
+> Using Savers_credit as S
+
+## Helper: a return with defaults
+
+By default: a single adult filer who is not a student and is not claimed as a
+dependent, AGI $20,000, no spouse amounts, no distributions, and plenty of tax
+(`total_tentative_tax` $10,000, no CDCC, no Schedule R credit). Each test
+overrides what it needs.
+
+```catala
+declaration scope Case:
+  context status content Types.FilingStatus
+  context agi content money
+  context p_deferrals content money
+  context s_deferrals content money
+  context p_dist content money
+  context s_dist content money
+  context p_under18 content boolean
+  context p_student content boolean
+  context p_claimed content boolean
+  context s_under18 content boolean
+  context s_student content boolean
+  context s_claimed content boolean
+  context mfj_dependent content boolean
+  context tax content money
+  context cdcc content money
+  context edc content money
+  context ko_three_years content boolean
+  context ko_current content boolean
+  context ko_contrib content boolean
+  f scope S.SaversCredit
+  output credit content money
+  output line7 content money
+  output line9 content decimal
+  output line10 content money
+  output line11 content money
+  output qualified content boolean
+  output unsupported content boolean
+
+scope Case:
+  definition status equals Types.FilingStatus.Single
+  definition agi equals $20,000
+  definition p_deferrals equals $0
+  definition s_deferrals equals $0
+  definition p_dist equals $0
+  definition s_dist equals $0
+  definition p_under18 equals false
+  definition p_student equals false
+  definition p_claimed equals false
+  definition s_under18 equals false
+  definition s_student equals false
+  definition s_claimed equals false
+  definition mfj_dependent equals false
+  definition tax equals $10,000
+  definition cdcc equals $0
+  definition edc equals $0
+  definition ko_three_years equals false
+  definition ko_current equals false
+  definition ko_contrib equals false
+
+  definition f.filing_status equals status
+  definition f.agi equals agi
+  definition f.is_mfj_dependent equals mfj_dependent
+  definition f.primary_filer_is_under18 equals p_under18
+  definition f.primary_filer_is_student equals p_student
+  definition f.primary_filer_is_claimed_as_dependent equals p_claimed
+  definition f.secondary_filer_is_under18 equals s_under18
+  definition f.secondary_filer_is_student equals s_student
+  definition f.secondary_filer_is_claimed_as_dependent equals s_claimed
+  definition f.primary_filer_total_deferrals_and_contributions equals p_deferrals
+  definition f.secondary_filer_total_deferrals_and_contributions equals s_deferrals
+  definition f.primary_filer_savers_gross_distributions equals p_dist
+  definition f.secondary_filer_savers_gross_distributions equals s_dist
+  definition f.total_tentative_tax equals tax
+  definition f.cdcc_total_credit equals cdcc
+  definition f.total_edc equals edc
+  definition f.has_distributions_in_last_three_years equals ko_three_years
+  definition f.has_current_year_distributions equals ko_current
+  definition f.has_self_reported_contributions equals ko_contrib
+
+  definition credit equals f.qualified_saver_credit_amount
+  definition line7 equals f.combined_credit_limit
+  definition line9 equals f.savers_credit_multiplier_as_rational
+  definition line10 equals f.ratioed_combined_credit_limit
+  definition line11 equals f.limitation_based_on_tax_liability
+  definition qualified equals f.qualified_for_saver_credit
+  definition unsupported equals f.unsupported
+```
+
+## Single, AGI $23,000, $2,000 deferred: 50 percent
+
+AGI is at the top of the 50 percent band ("not over" $23,000). Line 6 is $2,000, line 9 is 0.5, line 10 is $1,000 (the maximum for a single filer).
+
+```catala
+#[test]
+declaration scope TestSingle23000:
+  c scope Case
+
+scope TestSingle23000:
+  definition c.agi equals $23,000
+  definition c.p_deferrals equals $2,000
+  assertion c.credit = $1,000
+  assertion c.line7 = $2,000
+  assertion c.line9 = 50%
+  assertion c.line10 = $1,000
+  assertion c.qualified
+  assertion not c.unsupported
+  # The spec rejects wrong outputs.
+  assertion not (c.credit = $400)
+  assertion not (c.credit = $2,000)
+```
+
+## Single, AGI $23,001: 20 percent
+
+One dollar over the 50 percent bound: line 9 is 0.2 and the credit is $400.
+
+```catala
+#[test]
+declaration scope TestSingle23001:
+  c scope Case
+
+scope TestSingle23001:
+  definition c.agi equals $23,001
+  definition c.p_deferrals equals $2,000
+  assertion c.credit = $400
+  assertion c.line9 = 20%
+  assertion not (c.credit = $1,000)
+```
+
+## Single, AGI $25,001: 10 percent
+
+The 20 percent band ends at $25,000. $25,001 gives 0.1, so $200.
+
+```catala
+#[test]
+declaration scope TestSingle25001:
+  c scope Case
+
+scope TestSingle25001:
+  definition c.agi equals $25,001
+  definition c.p_deferrals equals $2,000
+  assertion c.credit = $200
+  assertion c.line9 = 10%
+```
+
+## Single, AGI $38,250: last dollar of the 10 percent band
+
+Notice 2023-75 and Form 8880: single filers with AGI up to $38,250 get 10 percent.
+
+```catala
+#[test]
+declaration scope TestSingle38250:
+  c scope Case
+
+scope TestSingle38250:
+  definition c.agi equals $38,250
+  definition c.p_deferrals equals $2,000
+  assertion c.credit = $200
+  assertion c.line9 = 10%
+```
+
+## Single, AGI $38,251: no credit
+
+Line 9 is zero: "If line 9 is zero, stop; you can't take this credit."
+
+```catala
+#[test]
+declaration scope TestSingle38251:
+  c scope Case
+
+scope TestSingle38251:
+  definition c.agi equals $38,251
+  definition c.p_deferrals equals $2,000
+  assertion c.credit = $0
+  assertion c.line9 = 0%
+  assertion not c.qualified
+  assertion not (c.credit = $200)
+```
+
+## Married filing separately uses the single bands
+
+Married filing separately and qualifying surviving spouse are in the "single" column of the line 9 table: AGI $24,000 gives 20 percent.
+
+```catala
+#[test]
+declaration scope TestMfs:
+  c scope Case
+
+scope TestMfs:
+  definition c.status equals Types.FilingStatus.MarriedFilingSeparately
+  definition c.agi equals $24,000
+  definition c.p_deferrals equals $1,500
+  assertion c.line9 = 20%
+  assertion c.credit = $300
+```
+
+## Head of household bands
+
+Head of household: 50 percent up to $34,500, 20 percent up to $37,500, 10 percent up to $57,375, zero above. AGI $37,000 with $1,000 deferred gives 0.2 times $1,000 = $200.
+
+```catala
+#[test]
+declaration scope TestHohBands:
+  c scope Case
+
+scope TestHohBands:
+  definition c.status equals Types.FilingStatus.HeadOfHousehold
+  definition c.agi equals $37,000
+  definition c.p_deferrals equals $1,000
+  assertion c.line9 = 20%
+  assertion c.credit = $200
+```
+
+## Head of household, AGI $57,376: no credit
+
+One dollar over the head of household limit.
+
+```catala
+#[test]
+declaration scope TestHoh57376:
+  c scope Case
+
+scope TestHoh57376:
+  definition c.status equals Types.FilingStatus.HeadOfHousehold
+  definition c.agi equals $57,376
+  definition c.p_deferrals equals $2,000
+  assertion c.credit = $0
+```
+
+## Married filing jointly, AGI $46,000, two filers
+
+Each spouse deferred $2,000. Line 6 is $2,000 in each column, line 7 is $4,000, line 9 is 0.5, so the credit is $2,000 (the maximum for a joint return).
+
+```catala
+#[test]
+declaration scope TestMfjTwoFilers46000:
+  c scope Case
+
+scope TestMfjTwoFilers46000:
+  definition c.status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.agi equals $46,000
+  definition c.p_deferrals equals $2,000
+  definition c.s_deferrals equals $2,000
+  assertion c.line7 = $4,000
+  assertion c.line9 = 50%
+  assertion c.line10 = $2,000
+  assertion c.credit = $2,000
+  assertion not (c.credit = $1,000)
+```
+
+## Married filing jointly, AGI $50,000: 20 percent
+
+AGI $50,000 gives 0.2 on line 7 of $3,000 ($2,000 plus $1,000): $600.
+
+```catala
+#[test]
+declaration scope TestMfj50000:
+  c scope Case
+
+scope TestMfj50000:
+  definition c.status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.agi equals $50,000
+  definition c.p_deferrals equals $2,500
+  definition c.s_deferrals equals $1,000
+  assertion c.line7 = $3,000
+  assertion c.credit = $600
+```
+
+## Married filing jointly, AGI $76,501: no credit
+
+Joint limit is $76,500.
+
+```catala
+#[test]
+declaration scope TestMfj76501:
+  c scope Case
+
+scope TestMfj76501:
+  definition c.status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.agi equals $76,501
+  definition c.p_deferrals equals $2,000
+  definition c.s_deferrals equals $2,000
+  assertion c.credit = $0
+```
+
+## Deferrals above $2,000 count only up to $2,000
+
+IRC 25B(a): "so much of the qualified retirement savings contributions ... as do not exceed $2,000". $5,000 deferred, line 6 is $2,000.
+
+```catala
+#[test]
+declaration scope TestDeferralsCapped:
+  c scope Case
+
+scope TestDeferralsCapped:
+  definition c.agi equals $20,000
+  definition c.p_deferrals equals $5,000
+  assertion c.line7 = $2,000
+  assertion c.credit = $1,000
+```
+
+## Contributions are reduced by distributions
+
+Line 3 $2,000, line 4 $1,500, line 5 $500, credit 0.5 times $500 = $250.
+
+```catala
+#[test]
+declaration scope TestDistributionsReduce:
+  c scope Case
+
+scope TestDistributionsReduce:
+  definition c.p_deferrals equals $2,000
+  definition c.p_dist equals $1,500
+  assertion c.line7 = $500
+  assertion c.credit = $250
+  assertion not (c.credit = $1,000)
+```
+
+## Distributions at or above contributions: no credit
+
+Line 5 is not below zero: distributions $3,000 against $2,000 give $0 and line 7 is zero ("If zero, stop").
+
+```catala
+#[test]
+declaration scope TestDistributionsExceed:
+  c scope Case
+
+scope TestDistributionsExceed:
+  definition c.p_deferrals equals $2,000
+  definition c.p_dist equals $3,000
+  assertion c.line7 = $0
+  assertion c.credit = $0
+  assertion not c.qualified
+```
+
+## Joint return: both spouses' distributions in both columns
+
+Form 8880 line 4: "If married filing jointly, include both spouses' amounts in both columns." The primary filer deferred $2,000 and the spouse $1,000; the spouse took a $500 distribution. Column (a) is $1,500, column (b) is $500; line 7 is $2,000; credit 0.5 times $2,000 = $1,000.
+
+```catala
+#[test]
+declaration scope TestMfjDistributionsBothColumns:
+  c scope Case
+
+scope TestMfjDistributionsBothColumns:
+  definition c.status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.agi equals $40,000
+  definition c.p_deferrals equals $2,000
+  definition c.s_deferrals equals $1,000
+  definition c.s_dist equals $500
+  assertion c.line7 = $2,000
+  assertion c.credit = $1,000
+```
+
+## DF-BUG(29-a): an ineligible spouse's distributions still reduce the contributions
+
+The spouse is a full-time student (not an eligible individual) and took a $1,500 distribution; the primary filer deferred $2,000. IRC 25B(d)(2)(D) and the form instructions treat the spouse's distribution as received by the primary filer, so column (a) is $500 and the credit is 0.5 times $500 = $250. Direct File drops the ineligible spouse's distribution and gives $1,000.
+
+```catala
+#[test]
+declaration scope TestMfjIneligibleSpouseDistributions:
+  c scope Case
+
+scope TestMfjIneligibleSpouseDistributions:
+  definition c.status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.agi equals $40,000
+  definition c.p_deferrals equals $2,000
+  definition c.s_student equals true
+  definition c.s_dist equals $1,500
+  assertion c.line7 = $500
+  assertion c.credit = $250
+  assertion not (c.credit = $1,000)
+```
+
+## Under 18: no credit
+
+A filer who is under 18 (born after January 1, 2007) is not an eligible individual (IRC 25B(c)(1)).
+
+```catala
+#[test]
+declaration scope TestUnder18:
+  c scope Case
+
+scope TestUnder18:
+  definition c.p_under18 equals true
+  definition c.p_deferrals equals $2,000
+  assertion c.credit = $0
+  assertion c.line7 = $0
+  assertion not c.qualified
+  assertion not (c.credit = $1,000)
+```
+
+## Student: no credit
+
+IRC 25B(c)(2)(B): a student is not an eligible individual.
+
+```catala
+#[test]
+declaration scope TestStudent:
+  c scope Case
+
+scope TestStudent:
+  definition c.p_student equals true
+  definition c.p_deferrals equals $2,000
+  assertion c.credit = $0
+```
+
+## Claimed as a dependent: no credit
+
+IRC 25B(c)(2)(A).
+
+```catala
+#[test]
+declaration scope TestClaimedAsDependent:
+  c scope Case
+
+scope TestClaimedAsDependent:
+  definition c.p_claimed equals true
+  definition c.p_deferrals equals $2,000
+  assertion c.credit = $0
+```
+
+## Joint return, one spouse a student: only the other spouse's deferrals count
+
+The student spouse's $2,000 does not count (line 2b is $0); the primary filer's $2,000 does. Credit 0.5 times $2,000 = $1,000.
+
+```catala
+#[test]
+declaration scope TestMfjOneSpouseStudent:
+  c scope Case
+
+scope TestMfjOneSpouseStudent:
+  definition c.status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.agi equals $30,000
+  definition c.p_deferrals equals $2,000
+  definition c.s_deferrals equals $2,000
+  definition c.s_student equals true
+  assertion c.line7 = $2,000
+  assertion c.credit = $1,000
+```
+
+## MFJ dependent: no credit
+
+DF `/eligibleForSaversCredit` bans an MFJ dependent (a joint return filed only to claim a refund).
+
+```catala
+#[test]
+declaration scope TestMfjDependent:
+  c scope Case
+
+scope TestMfjDependent:
+  definition c.status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.mfj_dependent equals true
+  definition c.p_deferrals equals $2,000
+  assertion c.credit = $0
+```
+
+## Limited by tax liability
+
+Credit Limit Worksheet: line 18 $1,000, less CDCC $300 and the credit for the elderly or disabled $200, leaves $500 for line 11. The tentative credit is $1,000, so line 12 is $500.
+
+```catala
+#[test]
+declaration scope TestLimitedByTax:
+  c scope Case
+
+scope TestLimitedByTax:
+  definition c.agi equals $20,000
+  definition c.p_deferrals equals $2,000
+  definition c.tax equals $1,000
+  definition c.cdcc equals $300
+  definition c.edc equals $200
+  assertion c.line10 = $1,000
+  assertion c.line11 = $500
+  assertion c.credit = $500
+  assertion not (c.credit = $1,000)
+```
+
+## No tax left after CDCC: no credit
+
+Line 11 is zero or less: "you can't take the credit".
+
+```catala
+#[test]
+declaration scope TestNoTaxLeft:
+  c scope Case
+
+scope TestNoTaxLeft:
+  definition c.p_deferrals equals $2,000
+  definition c.tax equals $400
+  definition c.cdcc equals $400
+  assertion c.line11 = $0
+  assertion c.credit = $0
+  assertion not c.qualified
+  assertion c.line10 = $1,000
+```
+
+## Line 10 rounds to whole dollars
+
+A 10 percent credit on $5 of contributions is $0.50, rounded to $1 (ties away from zero).
+
+```catala
+#[test]
+declaration scope TestRoundHalf:
+  c scope Case
+
+scope TestRoundHalf:
+  definition c.agi equals $30,000
+  definition c.p_deferrals equals $5
+  assertion c.line10 = $1
+```
+
+## Self-reported distributions knock the return out
+
+DF `/saversCreditKnockouts`: the filer qualifies and has distributions in the last three years.
+
+```catala
+#[test]
+declaration scope TestKnockout:
+  c scope Case
+
+scope TestKnockout:
+  definition c.p_deferrals equals $2,000
+  definition c.ko_three_years equals true
+  assertion c.unsupported
+```
+
+## No knockout when the filer does not qualify
+
+The knockout is conditioned on qualifying for the credit (AGI too high).
+
+```catala
+#[test]
+declaration scope TestNoKnockoutWithoutCredit:
+  c scope Case
+
+scope TestNoKnockoutWithoutCredit:
+  definition c.agi equals $90,000
+  definition c.p_deferrals equals $2,000
+  definition c.ko_current equals true
+  assertion not c.unsupported
+```

@@ -236,3 +236,44 @@ declaration edc_agi_limit_married_separate content money equals $12,500
 declaration edc_credit_rate content decimal equals 15%
 declaration edc_agi_reduction_rate content decimal equals 50%
 ```
+
+## Retirement savings contributions credit, IRC 25B (issue #29)
+
+Statute text: `sources/statute/irc-25B.html`. The dollar amounts of 25B(b)(1)
+are inflation adjusted by 25B(b)(3); the TY2024 results are in Notice 2023-75
+section 3 (`sources/revproc/n-23-75.pdf` p 3) and in the table on line 9 of
+Form 8880 (`sources/forms-instructions/f8880--2024.pdf` p 1). Direct File
+`saversCredits.xml` (`/saversCreditAgiLimitForFiftyPercent`,
+`/saversCreditAgiLimitForTwentyPercent`, `/maxIncomeLimitForMFJ`,
+`/maxIncomeLimitForHOH`, `/maxIncomeLimitForOther`) has the same figures.
+
+```catala-metadata
+# IRC 25B(a): contributions "as do not exceed $2,000" (not indexed). Form 8880
+# line 6. DF: /saversMaxCreditLimit.
+declaration savers_contribution_cap content money equals $2,000
+
+# IRC 25B(b)(1)(A) and (b)(3), Notice 2023-75 p 3: joint return, 50 percent
+# if AGI is "not over" $46,000.
+declaration savers_agi_limit_50_mfj content money equals $46,000
+# IRC 25B(b)(1)(B): joint return, 20 percent up to $50,000.
+declaration savers_agi_limit_20_mfj content money equals $50,000
+# IRC 25B(b)(1)(C): joint return, 10 percent up to $76,500.
+declaration savers_agi_limit_10_mfj content money equals $76,500
+
+# IRC 25B(b)(2)(A): head of household, 75 percent of the joint amounts as
+# adjusted. Notice 2023-75 p 3: $34,500, $37,500, $57,375.
+declaration savers_agi_limit_50_hoh content money equals $34,500
+declaration savers_agi_limit_20_hoh content money equals $37,500
+declaration savers_agi_limit_10_hoh content money equals $57,375
+
+# IRC 25B(b)(2)(B): any other taxpayer, 50 percent of the joint amounts as
+# adjusted. Notice 2023-75 p 3: $23,000, $25,000, $38,250.
+declaration savers_agi_limit_50_other content money equals $23,000
+declaration savers_agi_limit_20_other content money equals $25,000
+declaration savers_agi_limit_10_other content money equals $38,250
+
+# IRC 25B(b)(1)(A) to (C): the applicable percentages (not indexed).
+declaration savers_rate_high content decimal equals 50%
+declaration savers_rate_middle content decimal equals 20%
+declaration savers_rate_low content decimal equals 10%
+```
