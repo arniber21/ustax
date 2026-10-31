@@ -1,0 +1,31 @@
+catala/savers_credit.catala_en
+  s_3031b504518be3::t_94b7ee639aa326 55-62,170-173,298-309,459
+  s_3031b504518be3::t_0b84a1be44e58c 1-54,63-154,157-169,174-297,310-372,384-458,460-474,476-509
+  s_3031b504518be3::t_bc6f52f511b7eb 155-156
+  s_3031b504518be3::t_b5b8494ab7fd4a 373-383
+  s_3031b504518be3::t_1f5de97e0501cf 475
+catala/tests/test_savers_credit.catala_en
+  s_3031b504518be3::t_94b7ee639aa326 93
+  s_3031b504518be3::t_9d7de683d557e1 1-92,94-552
+catala/params_2024.catala_en
+  s_3031b504518be3::t_a59672f302bed6 202-242
+difftest/mappings/savers_credit.mjs
+  s_3031b504518be3::t_e15c03a0f0ae6d 1-25,31-98,105-141
+  s_3031b504518be3::t_b5b8494ab7fd4a 26-30,99-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "00f001e102e9ca6d3dcc56b0b57bd4ca9d846fea",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
