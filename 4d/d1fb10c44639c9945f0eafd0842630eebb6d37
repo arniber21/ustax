@@ -1,0 +1,40 @@
+docs/comparator.md
+  s_3031b504518be3::t_c59b571a20d222 212-215
+.github/workflows/ci.yml
+  s_3031b504518be3::t_b5dd6ea0dc3351 1-143
+lean/README.md
+  s_3031b504518be3::t_c59b571a20d222 161-162
+scripts/audit_scan.py
+  s_3031b504518be3::t_8259be158997c4 1-88
+lean/UsTax/Audit.lean
+  s_3031b504518be3::t_c23c71db831a18 44-66,69-88
+  s_3031b504518be3::t_97db37d0caf097 67-68
+scripts/audit.sh
+  s_3031b504518be3::t_28ead858a5d957 1-80
+scripts/audit_negative_control.sh
+  s_3031b504518be3::t_56dd4b4d40ed70 1-53,63-64,66-67,69-73
+  s_3031b504518be3::t_9e24688c19a44d 54-62,65,68
+Makefile
+  s_3031b504518be3::t_66d5426b54c405 7,76-80
+docs/audit.md
+  s_3031b504518be3::t_c59b571a20d222 58-60
+  s_3031b504518be3::t_cd1daf2b175d28 1-57,61-122
+scripts/audit_forensics.py
+  s_3031b504518be3::t_cf74b3d5258525 1-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4dd1fb10c44639c9945f0eafd0842630eebb6d37",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
