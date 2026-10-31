@@ -1,0 +1,21 @@
+README.md
+  s_0d8e6885dfc713::t_b17c16b24f2cf5 13-14
+Makefile
+  s_0d8e6885dfc713::t_b17c16b24f2cf5 2-3,6,8,10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a86c507afe8cfbd58f9d3e08868672b9773182d0",
+  "prompts": {},
+  "sessions": {
+    "s_0d8e6885dfc713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e76ffac-8c18-4392-9af1-e389934a7217",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
