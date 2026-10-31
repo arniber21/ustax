@@ -1,0 +1,23 @@
+catala/tests/test_hoh_qss_persons.catala_en
+  s_3031b504518be3::t_8f9ec2cb73ba53 537,561,581,618
+difftest/mappings/hoh_qss_persons.mjs
+  s_3031b504518be3::t_8f9ec2cb73ba53 65,72,77,82
+catala/hoh_qss_persons.catala_en
+  s_3031b504518be3::t_8f9ec2cb73ba53 66,132,135,250,255,378,389,406,464,490,519,523-524,588,602
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1401f28440d69c14a4fcd29dc2323c99005c29a1",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
