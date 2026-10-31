@@ -277,3 +277,84 @@ declaration savers_rate_high content decimal equals 50%
 declaration savers_rate_middle content decimal equals 20%
 declaration savers_rate_low content decimal equals 10%
 ```
+
+## Earned income credit: the Rev. Proc. 2023-34 § 3.06 table and the EIC Table emulation (issue #26)
+
+IRC 32(b)(1) sets the credit and phase-out percentages; IRC 32(b)(2) and (j)
+index the dollar amounts, and Rev. Proc. 2023-34 § 3.06(1)
+(`sources/revproc/rp-23-34.pdf` pp 8 to 9) gives the 2024 figures: "Number of
+Qualifying Children: One, Two, Three or More, None; Earned Income Amount
+$12,390 $17,400 $17,400 $8,260; Maximum Amount of Credit $4,213 $6,960 $7,830
+$632; Threshold Phaseout Amount (Married Filing Jointly) $29,640 $29,640
+$29,640 $17,250; Completed Phaseout Amount (Married Filing Jointly) $56,004
+$62,688 $66,819 $25,511; Threshold Phaseout Amount (All other filing
+statuses) $22,720 $22,720 $22,720 $10,330; Completed Phaseout Amount (All
+other filing statuses) $49,084 $55,768 $59,899 $18,591". Direct File
+`eitc.xml` carries the same numbers (`/phaseInEndsFor...`, `/eitcPhaseOutThreshold`,
+`/eitcSelfLimitWith...`, `/eitcMfjLimitWith...`).
+
+```catala-metadata
+# IRC 32(b)(1) table, sources/statute/irc-32.html: credit percentage 7.65 (no
+# qualifying child), 34 (1), 40 (2), 45 (3 or more).
+declaration eitc_credit_percentage_0_children content decimal equals 7.65%
+declaration eitc_credit_percentage_1_child content decimal equals 34%
+declaration eitc_credit_percentage_2_children content decimal equals 40%
+declaration eitc_credit_percentage_3_or_more_children content decimal equals 45%
+
+# Same table: phaseout percentage 7.65 (none), 15.98 (1), 21.06 (2 or more).
+declaration eitc_phaseout_percentage_0_children content decimal equals 7.65%
+declaration eitc_phaseout_percentage_1_child content decimal equals 15.98%
+declaration eitc_phaseout_percentage_2_or_more_children content decimal equals 21.06%
+
+# Rev. Proc. 2023-34 § 3.06(1) "Earned Income Amount": none $8,260, one
+# $12,390, two or more $17,400.
+declaration eitc_earned_income_amount_0_children content money equals $8,260
+declaration eitc_earned_income_amount_1_child content money equals $12,390
+declaration eitc_earned_income_amount_2_or_more_children content money equals $17,400
+
+# Rev. Proc. 2023-34 § 3.06(1) "Maximum Amount of Credit": $632, $4,213,
+# $6,960, $7,830. Each is the credit percentage times the earned income amount
+# rounded to the dollar (Direct File computes `Round(rate * amount)`); the
+# tests check this.
+declaration eitc_max_credit_0_children content money equals $632
+declaration eitc_max_credit_1_child content money equals $4,213
+declaration eitc_max_credit_2_children content money equals $6,960
+declaration eitc_max_credit_3_or_more_children content money equals $7,830
+
+# Rev. Proc. 2023-34 § 3.06(1) "Threshold Phaseout Amount (All other filing
+# statuses)": $10,330 with no qualifying child, $22,720 with one or more. The
+# note under the table applies the "all other" column also to "married
+# taxpayers who are not filing a joint return and satisfy the special rules
+# for separated spouses in § 32(d)".
+declaration eitc_phaseout_threshold_other_0_children content money equals $10,330
+declaration eitc_phaseout_threshold_other_1_or_more_children content money equals $22,720
+
+# Same table, "(Married Filing Jointly)": $17,250 and $29,640.
+declaration eitc_phaseout_threshold_joint_0_children content money equals $17,250
+declaration eitc_phaseout_threshold_joint_1_or_more_children content money equals $29,640
+
+# Same table, "Completed Phaseout Amount (All other filing statuses)":
+# $18,591, $49,084, $55,768, $59,899 for none, one, two, three or more.
+declaration eitc_completed_phaseout_other_0_children content money equals $18,591
+declaration eitc_completed_phaseout_other_1_child content money equals $49,084
+declaration eitc_completed_phaseout_other_2_children content money equals $55,768
+declaration eitc_completed_phaseout_other_3_or_more_children content money equals $59,899
+
+# Same table, "Completed Phaseout Amount (Married Filing Jointly)":
+# $25,511, $56,004, $62,688, $66,819.
+declaration eitc_completed_phaseout_joint_0_children content money equals $25,511
+declaration eitc_completed_phaseout_joint_1_child content money equals $56,004
+declaration eitc_completed_phaseout_joint_2_children content money equals $62,688
+declaration eitc_completed_phaseout_joint_3_or_more_children content money equals $66,819
+
+# IRC 32(f)(2): the tables "shall ... have income brackets of not greater than
+# $50 each". The 2024 EIC Table (i1040gi--2024.pdf pp 46 to 56) has rows
+# "At least X, but less than X + $50". Direct File evaluates the formula at the
+# middle of the row: `StepwiseMultiply(x, 50/50) + $25`
+# (eitc.xml /eitcRoundedEarnedIncomeWithoutCombatPay), and decides whether the
+# row reaches the maximum credit at its last whole dollar, `+ $24`
+# (/eitcAmountWithoutCombatPay). The row width is the `50` of the 50/50 rate.
+declaration eitc_table_row_width content integer equals 50
+declaration eitc_table_row_midpoint content money equals $25
+declaration eitc_table_row_last_dollar_offset content money equals $24
+```
