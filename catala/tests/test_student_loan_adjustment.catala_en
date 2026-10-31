@@ -1,0 +1,220 @@
+# Tests for the Student_loan_adjustment module (issue #24)
+
+Run with `clerk test`. Hand-worked TY2024 cases from the Student Loan Interest
+Deduction Worksheet (`i1040gi--2024.pdf` p 94) and Rev. Proc. 2023-34 § 3.30
+(`rp-23-34.pdf` p 16). The oracle comparison is
+`make difftest SCOPE=student_loan_adjustment`; none of the 157 oracle
+scenarios is inside a phase-out range, so the phase-out is tested only here and
+by the Python cross-check recorded in the pull request.
+
+> Using Types
+> Using Student_loan_adjustment as S
+
+## Wrapper with defaults
+
+A wrapper gives each input a default: a single filer with $3,000 of qualifying
+student loan interest, modified AGI of $70,000 (total income $70,000, no other
+adjustments), not claimed as a dependent. Each test states only what it
+changes. The defaults are satisfiable.
+
+```catala
+declaration scope Base:
+  context filing_status content Types.FilingStatus
+  context had_payments condition
+  context loans_qualify condition
+  context interest content money
+  context is_mfj_dependent condition
+  context claimed_as_dependent condition
+  context total_income content money
+  context other_adjustments content money
+  s scope S.StudentLoanAdjustment
+  output adjustment content money
+  output phase_out content money
+  output magi content money
+  output cannot_deduct condition
+
+scope Base:
+  definition filing_status equals Single
+  definition had_payments equals true
+  definition loans_qualify equals true
+  definition interest equals $3,000
+  definition is_mfj_dependent equals false
+  definition claimed_as_dependent equals false
+  definition total_income equals $70,000
+  definition other_adjustments equals $0
+  definition s.filing_status equals filing_status
+  definition s.had_student_loan_interest_payments equals had_payments
+  definition s.student_loans_qualify equals loans_qualify
+  definition s.student_loan_interest_amount equals interest
+  definition s.is_mfj_dependent equals is_mfj_dependent
+  definition s.either_filer_is_claimed_as_dependent equals claimed_as_dependent
+  definition s.total_income equals total_income
+  definition s.adjustments_to_income_excluding_student_loan_interest
+    equals other_adjustments
+  definition adjustment equals s.student_loan_interest_adjustment_amount
+  definition phase_out equals s.student_loan_amount_phase_out_amount
+  definition magi equals s.magi_for_student_loan_interest_deduction
+  definition cannot_deduct equals s.cannot_deduct_student_loan_interest
+```
+
+## Acceptance cases
+
+- $3,000 interest at MAGI $70,000, single: capped at $2,500, below the $80,000
+  start, so $2,500.
+- Single at MAGI $87,500: excess $7,500 over $15,000 is exactly one half
+  (the ratio 0.500), so the phase-out is $1,250 and
+  the deduction $1,250. The exact fraction gives the same.
+- MFS: $0. MAGI $95,001 single: $0. MAGI $95,000 single: $0 (fully phased out,
+  ratio 1.000). MFJ at MAGI $180,000: half of $2,500.
+
+```catala
+#[test]
+declaration scope TestStudentLoanCases:
+  output ok condition
+  below_range scope Base
+  half_single scope Base
+  mfs scope Base
+  just_over scope Base
+  at_end scope Base
+  half_mfj scope Base
+  at_start scope Base
+  mfj_below scope Base
+  other_adj scope Base
+
+scope TestStudentLoanCases:
+  rule ok fulfilled
+  # defaults: single, interest $3,000, income $70,000
+  definition half_single.total_income equals $87,500
+  definition mfs.filing_status equals MarriedFilingSeparately
+  definition just_over.total_income equals $95,001
+  definition at_end.total_income equals $95,000
+  definition half_mfj.filing_status equals MarriedFilingJointly
+  definition half_mfj.total_income equals $180,000
+  definition at_start.total_income equals $80,000
+  definition mfj_below.filing_status equals MarriedFilingJointly
+  definition mfj_below.total_income equals $165,000
+  # MAGI is total income less the other adjustments: $90,000 - $2,500 = $87,500
+  definition other_adj.total_income equals $90,000
+  definition other_adj.other_adjustments equals $2,500
+  assertion below_range.adjustment = $2,500
+  assertion half_single.phase_out = $1,250.00
+  assertion half_single.adjustment = $1,250
+  assertion mfs.adjustment = $0
+  assertion mfs.cannot_deduct
+  assertion just_over.adjustment = $0
+  assertion just_over.cannot_deduct
+  assertion at_end.adjustment = $0
+  assertion not at_end.cannot_deduct
+  assertion half_mfj.adjustment = $1,250
+  assertion at_start.adjustment = $2,500
+  assertion mfj_below.adjustment = $2,500
+  assertion other_adj.magi = $87,500
+  assertion other_adj.adjustment = $1,250
+```
+
+## DF-BUG(7): the exact fraction versus Direct File's three-decimal ratio
+
+At MAGI $85,000 single the excess is $5,000 and the exact ratio is
+0.33333...: the phase-out is $833.33 and the deduction
+$2,500 - $833.33 = $1,666.67, which rounds to $1,667. Direct File rounds the
+ratio to 0.333 and gets a phase-out of $832.50, deduction $1,668. The module
+follows the statute (CONVENTIONS section 8); `df_phase_out_amount` reproduces
+the Direct File number so the divergence is visible.
+
+A tie case: for a joint return an excess of $15 over $165,000 gives
+`10 x 15 / 30,000 = 0.005`, which `HALF_EVEN` rounds to 0.00, so Direct File
+keeps the whole $2,500; the exact ratio 0.0005 gives $2,498.75, i.e. $2,499.
+
+```catala
+#[test]
+declaration scope TestThreeDecimalRatio:
+  output ok condition
+  third scope Base
+  mfj_tie scope Base
+
+scope TestThreeDecimalRatio:
+  rule ok fulfilled
+  definition third.total_income equals $85,000
+  definition mfj_tie.filing_status equals MarriedFilingJointly
+  definition mfj_tie.total_income equals $165,015
+  assertion third.phase_out = $833.33
+  assertion third.adjustment = $1,667
+  assertion S.exact_phase_out_amount of $5,000, $15,000, $2,500 = $833.33
+  assertion S.df_phase_out_amount of $5,000, $15,000, $2,500 = $832.50
+  assertion third.adjustment - $1,667 = $0
+  # Direct File would give $1,668 here
+  assertion not (third.adjustment = $1,668)
+  assertion mfj_tie.adjustment = $2,499
+  assertion S.df_phase_out_amount of $15, $30,000, $2,500 = $0.00
+  assertion S.round_half_even_cents of 0.005 = $0.00
+  assertion S.round_half_even_cents of 0.015 = $0.02
+  assertion S.round_half_even_cents of 0.025 = $0.02
+  assertion S.round_half_even_cents of 0.035 = $0.04
+  assertion S.round_half_even_cents of 0.0049 = $0.00
+  assertion S.round_half_even_cents of 0.0051 = $0.01
+  assertion S.round_half_even_cents of 1.0 = $1.00
+  assertion S.round_half_even_cents of (0.0 - 0.005) = $0.00
+  assertion S.round_half_even_cents of (0.0 - 0.015) = (-$0.02)
+```
+
+## Eligibility
+
+Claimed as a dependent, loans that do not qualify, no payments, and an MFJ
+dependent each give $0. A qualifying MFJ filer with $500 of interest keeps it.
+
+```catala
+#[test]
+declaration scope TestStudentLoanZero:
+  output ok condition
+  claimed scope Base
+  not_qualifying scope Base
+  no_payments scope Base
+  mfj_dep scope Base
+  small scope Base
+  mfj_keeps scope Base
+
+scope TestStudentLoanZero:
+  rule ok fulfilled
+  definition claimed.claimed_as_dependent equals true
+  definition not_qualifying.loans_qualify equals false
+  # the amount box is filled in but the filer says there were no payments
+  # (oracle ptc-no-aptc-negative-magi)
+  definition no_payments.had_payments equals false
+  definition mfj_dep.filing_status equals MarriedFilingJointly
+  definition mfj_dep.is_mfj_dependent equals true
+  definition small.interest equals $75
+  definition mfj_keeps.filing_status equals MarriedFilingJointly
+  definition mfj_keeps.interest equals $500
+  assertion claimed.adjustment = $0
+  assertion not_qualifying.adjustment = $0
+  assertion no_payments.adjustment = $0
+  assertion not no_payments.cannot_deduct
+  assertion mfj_dep.adjustment = $0
+  assertion small.adjustment = $75
+  assertion mfj_keeps.adjustment = $500
+```
+
+## The spec rejects bad outputs
+
+At MAGI $87,500 single the specification gives $1,250, so the capped $2,500
+(phase-out forgotten) and $0 are rejected; likewise MFS must not get any
+deduction and MAGI $95,001 must not get $2,500.
+
+```catala
+#[test]
+declaration scope TestStudentLoanRejectsBad:
+  output ok condition
+  half_single scope Base
+  mfs scope Base
+  over scope Base
+
+scope TestStudentLoanRejectsBad:
+  rule ok fulfilled
+  definition half_single.total_income equals $87,500
+  definition mfs.filing_status equals MarriedFilingSeparately
+  definition over.total_income equals $95,001
+  assertion not (half_single.adjustment = $2,500)
+  assertion not (half_single.adjustment = $0)
+  assertion not (mfs.adjustment = $2,500)
+  assertion not (over.adjustment = $2,500)
+```
