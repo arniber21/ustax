@@ -1,0 +1,38 @@
+lean/UsTax.lean
+  s_3031b504518be3::t_058fa631c63bcb 7-10
+lean/UsTax/HelpersProps.lean
+  s_3031b504518be3::t_70e9dae06a3fce 38
+  s_3031b504518be3::t_bbf730f644a64c 1-37,39-48
+lean/UsTax/Defaults.lean
+  s_3031b504518be3::t_5357e74de5f68b 143
+  s_3031b504518be3::t_192c7d5857e3bf 144,149
+  s_3031b504518be3::t_19c46bead40843 32-38
+  s_3031b504518be3::t_6b1acd9736d8ed 1-31,39-142,145-148,150-162
+  s_3031b504518be3::t_732bbd7a210158 163-165
+lean/UsTax/Lists.lean
+  s_3031b504518be3::t_5357e74de5f68b 65,121,130
+  s_3031b504518be3::t_365013020dba6d 1-64,66-120,122-129,131-141
+  s_3031b504518be3::t_732bbd7a210158 142-145
+lean/UsTax/Date.lean
+  s_3031b504518be3::t_453568948a53ed 55-58,76-77,79-81
+  s_3031b504518be3::t_5df2f065c2dc1a 1-54,59-75,84-112,115-122,126,128-129,137-149,153-170
+  s_3031b504518be3::t_3418fbbd1b5931 78,82-83,136
+  s_3031b504518be3::t_ee61ba2e08bd51 113-114,123-125,127,130-135,150-152
+  s_3031b504518be3::t_732bbd7a210158 171-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24864b1ca5c2421bb9262904381cd1fa877a6506",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
