@@ -1,0 +1,69 @@
+lean/UsTax/Api/Bridge.lean
+  s_3031b504518be3::t_2475dd3cb24332 2,5,8-10,16-26,35-168
+  s_3031b504518be3::t_3bbb94b8d71ea6 169
+scripts/audit.sh
+  s_3031b504518be3::t_0b21f5a618bf02 71-73
+api/fixtures/version.response.json
+  s_3031b504518be3::t_067bba42b5be9d 3
+scripts/server_integration.mjs
+  s_3031b504518be3::t_81f23829033fc3 1-137
+lean/UsTax/Api/Response.lean
+  s_3031b504518be3::t_e6a777a83fbb30 121
+scripts/server_vs_cli.mjs
+  s_3031b504518be3::t_c325a089a35eb6 66,104
+  s_3031b504518be3::t_aa318c2c6c78e3 1-65,67-103,105-143
+web/src/api/types.gen.ts
+  s_3031b504518be3::t_f468dadc95165e 322-327,354-363
+  s_3031b504518be3::t_256fa859083af4 364
+api/examples/knocked-out-bond-interest.request.json
+  s_3031b504518be3::t_af0c2e42b8d3ee 17
+docs/api.md
+  s_3031b504518be3::t_8ddf906bd25409 4,150-158
+  s_3031b504518be3::t_7e4ee7d589a9b6 249
+  s_3031b504518be3::t_ba2242f517e393 159
+api/schema.json
+  s_3031b504518be3::t_8ddf906bd25409 324-336
+lean/UsTax/Api/Calculate.lean
+  s_3031b504518be3::t_425f4679f7d185 1-165,193
+  s_3031b504518be3::t_7f5393be410cd0 166-192
+scripts/install.sh
+  s_3031b504518be3::t_ca06650666d628 1-35
+scripts/test_server.sh
+  s_3031b504518be3::t_ad40f4187b3401 22-31
+  s_3031b504518be3::t_5376ba7ed8e8c1 1-21
+Makefile
+  s_3031b504518be3::t_7d792384ea8ad2 32
+  s_3031b504518be3::t_fbf47108da2021 16-17
+  s_3031b504518be3::t_ba278e08bf2b41 5-15,18
+lean/UsTax/Api/Error.lean
+  s_3031b504518be3::t_4e6b1a1bbb205d 51-52
+lean/README.md
+  s_3031b504518be3::t_038a195a9a169c 174-203
+  s_3031b504518be3::t_4b9f2ac0174e95 173
+scripts/run.sh
+  s_3031b504518be3::t_047a2d81ca0da0 1-52
+README.md
+  s_3031b504518be3::t_2b073c85c88289 16
+lean/ServerMain.lean
+  s_3031b504518be3::t_2a28242bfcf773 1-181
+lean/lakefile.toml
+  s_3031b504518be3::t_9394e3ac697799 24-28
+lean/UsTax.lean
+  s_3031b504518be3::t_53bd34f21f02be 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d70079b73fffc228b251927b04a323f57e775007",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
