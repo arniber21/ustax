@@ -102,6 +102,33 @@ Trusted for this scope: the Lean kernel and the definitions on the spec surface
 `taxOnIncome`, `taxTableIncome`, `pctOf`, the code itself and the `Money`
 primitives it uses). The agreement with Catala is by testing, not proof.
 
+## Calculator spine (issue #43)
+
+Hand-translations (strategy (c)) of four Catala modules; each file has a
+Catala <-> Lean name table and every assertion of the matching
+`catala/tests/test_*.catala_en` is a `#guard`.
+
+- `UsTax/Params2024.lean`: the `Params_2024` figures the spine uses.
+- `UsTax/StandardDeduction.lean`: scopes `Age65DayBeforeBirthday` and
+  `StandardDeduction` (Form 1040 line 12). The age rules of
+  `catala/filers.catala_en` (`completed_years`, day-before-birthday) are
+  `UsTax/Date.lean`.
+- `UsTax/FormW2s.lean`: `FormW2Item` and `FormW2s` (lines 1a, 25a, combat pay,
+  W-2 knockouts). `FormW2`'s boxes default to `$0` so tests name only what they fill.
+- `UsTax/Interest.lean`: `InterestReportFacts` and `Interest` (lines 2a, 2b,
+  25b part, Schedule B quirk Q-R1, knockouts).
+- `UsTax/Form1040.lean`: scope `Form1040`. The plug-in slots (Catala `context ... equals $0`)
+  are `Form1040In` fields **with default `0`/`false`**, so a later module plugs in by
+  setting its field. `unsupported` is the Catala knockout union.
+- `UsTax/Form1040/Props.lean` (plausible, run before proving) and
+  `UsTax/Form1040/Lemmas.lean`: for every input, `overpayment = 0 ∨ balanceDue = 0`
+  (refund and balance due exclusive, issue #65), both nonnegative, line 15 nonnegative.
+  Axioms: `propext`, `Classical.choice`, `Quot.sound`.
+- `UsTax/Cli.lean` registers `Age65DayBeforeBirthday`, `StandardDeduction`, `FormW2s`,
+  `Interest`, `Form1040`. `make lean-difftest SCOPE=<standard_deduction|form_w2s|interest|form_1040|form_1040_plugged>`.
+  `difftest/mappings/interest.mjs` is new (oracle `/interestIncome`, `/taxExemptInterest`,
+  `/requiresScheduleB`; `unsupported` and `total_tax_withheld` are Lean = Catala only).
+
 ## Pattern for Lean modules (follow this for every later scope)
 
 1. **One Lean file per Catala module**, `UsTax/<Module>.lean`, written by hand

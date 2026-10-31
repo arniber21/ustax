@@ -14,4 +14,11 @@ import UsTax.TaxRates.Spec
 import UsTax.TaxRates.Lemmas
 import UsTax.TaxRates.Props
 import UsTax.TaxRates.TaxTable
+import UsTax.Params2024
+import UsTax.StandardDeduction
+import UsTax.FormW2s
+import UsTax.Interest
+import UsTax.Form1040
+import UsTax.Form1040.Props
+import UsTax.Form1040.Lemmas
 import UsTax.Cli

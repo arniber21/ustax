@@ -39,7 +39,7 @@ const INTEREST_MONEY = {
   writableBondPremiumOnTaxExemptBond: 'writable_bond_premium_on_tax_exempt_bond',
   writableStateTaxWithheld: 'writable_state_tax_withheld',
 };
-const interestReports = (facts) =>
+export const interestReports = (facts) =>
   collectionIds(facts, '/interestReports').map((id) => {
     const pre = `/interestReports/#${id}/`;
     const filerIsPrimary = val(facts, `/filers/#${val(facts, pre + 'filer')}/isPrimaryFiler`) === 'true';

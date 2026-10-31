@@ -8,6 +8,30 @@ enumeration cases in lower camel case, so a Catala JSON input value
 
 namespace UsTax
 
+/-- Catala `Types.FilerRole`: which of the (at most two) filers an item belongs to
+(`catala/types.catala_en`, section "Filer role"). -/
+inductive FilerRole where
+  /-- The first filer. -/
+  | primaryFiler
+  /-- The spouse on a joint return. -/
+  | secondaryFiler
+  deriving DecidableEq, Repr, Inhabited
+
+namespace FilerRole
+
+/-- The Catala case name. -/
+def catalaName : FilerRole → String
+  | primaryFiler => "PrimaryFiler"
+  | secondaryFiler => "SecondaryFiler"
+
+/-- Parse a Catala case name. -/
+def ofString? : String → Option FilerRole
+  | "PrimaryFiler" => some primaryFiler
+  | "SecondaryFiler" => some secondaryFiler
+  | _ => none
+
+end FilerRole
+
 /-- Catala `Types.FilingStatus` (Direct File `/filingStatus`, IRC § 1 and § 2). -/
 inductive FilingStatus where
   /-- Single (§ 1(c)). -/
