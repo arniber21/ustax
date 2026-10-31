@@ -1,0 +1,19 @@
+scope.md
+  s_0d8e6885dfc713::t_6adab35f06e242 1-402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "83d80e252baa6570951f8cfbb9a145e0fd5f6427",
+  "prompts": {},
+  "sessions": {
+    "s_0d8e6885dfc713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e76ffac-8c18-4392-9af1-e389934a7217",
+        "model": "unknown"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
