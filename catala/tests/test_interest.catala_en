@@ -1,0 +1,556 @@
+# Tests for the Interest module
+
+Run with `clerk test`. Numbers are worked out by hand from
+`catala/interest.catala_en` and checked against Direct File where an oracle
+scenario exists (`catala/tests/oracle_interest.catala_en`).
+
+> Using Interest
+> Using Types
+
+## Helper: a report with only box 1 filled in
+
+```catala
+declaration scope Box1Report:
+  input amount content money
+  output report content Interest.InterestReport
+
+scope Box1Report:
+  definition report equals
+    Interest.InterestReport {
+      -- filer: Types.FilerRole.PrimaryFiler
+      -- has_1099: true
+      -- no_1099_amount: $0
+      -- writable_1099_amount: amount
+      -- writable_early_withdrawl_penalty_amount: $0
+      -- writable_interest_on_government_bonds: $0
+      -- writable_tax_withheld: $0
+      -- writable_foreign_tax_paid: $0
+      -- writable_tax_exempt_interest: $0
+      -- writable_specified_private_activity_bond_interest: $0
+      -- writable_market_discount: $0
+      -- writable_bond_premium: $0
+      -- writable_bond_premium_on_treasury_obligations: $0
+      -- writable_bond_premium_on_tax_exempt_bond: $0
+      -- state_is_different_state: false
+      -- writable_state_tax_withheld: $0
+      -- facta_filing_required: false
+    }
+```
+
+## Schedule B threshold and the rounding branch
+
+Three reports of $500.49, $500.49 and $499.02 total exactly $1,500.00, which
+is not over $1,500: no Schedule B, so line 2b is the exact sum rounded once.
+The per-item rounded amounts ($500, $500, $499) would give $1,499 instead.
+
+```catala
+#[test]
+declaration scope TestTotal1500NoScheduleBRoundsRawSum:
+  output ok condition
+  r1 scope Box1Report
+  r2 scope Box1Report
+  r3 scope Box1Report
+  i scope Interest.Interest
+
+scope TestTotal1500NoScheduleBRoundsRawSum:
+  rule ok fulfilled
+  definition r1.amount equals $500.49
+  definition r2.amount equals $500.49
+  definition r3.amount equals $499.02
+  definition i.interest_reports equals [r1.report; r2.report; r3.report]
+  definition i.has_foreign_accounts_or_trusts equals false
+  definition i.filing_status equals Types.FilingStatus.Single
+  definition i.agi equals $0
+  definition i.flow_has_seen_deductions equals false
+  assertion not i.requires_schedule_b
+  assertion i.interest_income = $1,500
+  # the per-item branch would have given $1,499
+  assertion i.interest_income != $1,499
+  assertion not i.unsupported
+```
+
+Three reports of $500.51 total $1,501.53, which is over $1,500: Schedule B,
+so line 2b is the sum of the per-item rounded amounts, $501 each, $1,503.
+Rounding the raw sum once would give $1,502 (the quirk Q-R1 difference).
+
+```catala
+#[test]
+declaration scope TestTotal1501ScheduleBSumsPerItemRounded:
+  output ok condition
+  r1 scope Box1Report
+  r2 scope Box1Report
+  r3 scope Box1Report
+  i scope Interest.Interest
+
+scope TestTotal1501ScheduleBSumsPerItemRounded:
+  rule ok fulfilled
+  definition r1.amount equals $500.51
+  definition r2.amount equals $500.51
+  definition r3.amount equals $500.51
+  definition i.interest_reports equals [r1.report; r2.report; r3.report]
+  definition i.has_foreign_accounts_or_trusts equals false
+  definition i.filing_status equals Types.FilingStatus.Single
+  definition i.agi equals $0
+  definition i.flow_has_seen_deductions equals false
+  assertion i.requires_schedule_b
+  assertion i.interest_income = $1,503
+  # known-bad outputs are rejected: the raw-sum rounding and the raw sum
+  assertion i.interest_income != $1,502
+  assertion i.interest_income != $1,501.53
+```
+
+Foreign accounts or trusts require Schedule B whatever the amount: $10 of
+interest, Schedule B required, line 2b $10.
+
+```catala
+#[test]
+declaration scope TestForeignAccountsWith10RequiresScheduleB:
+  output ok condition
+  r1 scope Box1Report
+  i scope Interest.Interest
+
+scope TestForeignAccountsWith10RequiresScheduleB:
+  rule ok fulfilled
+  definition r1.amount equals $10
+  definition i.interest_reports equals [r1.report]
+  definition i.has_foreign_accounts_or_trusts equals true
+  definition i.filing_status equals Types.FilingStatus.Single
+  definition i.agi equals $0
+  definition i.flow_has_seen_deductions equals false
+  assertion i.requires_schedule_b
+  assertion i.interest_income = $10
+```
+
+No reports at all: nothing required, zeros.
+
+```catala
+#[test]
+declaration scope TestNoReports:
+  output ok condition
+  i scope Interest.Interest
+
+scope TestNoReports:
+  rule ok fulfilled
+  definition i.interest_reports equals []
+  definition i.has_foreign_accounts_or_trusts equals false
+  definition i.filing_status equals Types.FilingStatus.Single
+  definition i.agi equals $0
+  definition i.flow_has_seen_deductions equals false
+  assertion not i.requires_schedule_b
+  assertion i.interest_income = $0
+  assertion i.tax_exempt_interest = $0
+  assertion i.total_tax_withheld = $0
+  assertion not i.has_interest_income
+  assertion not i.unsupported
+```
+
+## Box 3, no-1099 interest, tax-exempt interest and withholding
+
+A report with a 1099-INT adds box 3 to box 1 and counts box 8 and box 4. A
+report without a 1099-INT uses only its own amount and ignores boxes 3, 4, 6
+and 8.
+
+```catala
+#[test]
+declaration scope TestBoxesAndNo1099:
+  output ok condition
+  i scope Interest.Interest
+
+scope TestBoxesAndNo1099:
+  rule ok fulfilled
+  definition i.interest_reports equals
+    [ Interest.InterestReport {
+        -- filer: Types.FilerRole.PrimaryFiler
+        -- has_1099: true
+        -- no_1099_amount: $999
+        -- writable_1099_amount: $100.20
+        -- writable_early_withdrawl_penalty_amount: $0
+        -- writable_interest_on_government_bonds: $50.40
+        -- writable_tax_withheld: $12.50
+        -- writable_foreign_tax_paid: $0
+        -- writable_tax_exempt_interest: $20.50
+        -- writable_specified_private_activity_bond_interest: $0
+        -- writable_market_discount: $0
+        -- writable_bond_premium: $0
+        -- writable_bond_premium_on_treasury_obligations: $0
+        -- writable_bond_premium_on_tax_exempt_bond: $0
+        -- state_is_different_state: false
+        -- writable_state_tax_withheld: $0
+        -- facta_filing_required: false
+      };
+      Interest.InterestReport {
+        -- filer: Types.FilerRole.PrimaryFiler
+        -- has_1099: false
+        -- no_1099_amount: $30.10
+        -- writable_1099_amount: $7
+        -- writable_early_withdrawl_penalty_amount: $0
+        -- writable_interest_on_government_bonds: $7
+        -- writable_tax_withheld: $7
+        -- writable_foreign_tax_paid: $7
+        -- writable_tax_exempt_interest: $7
+        -- writable_specified_private_activity_bond_interest: $0
+        -- writable_market_discount: $0
+        -- writable_bond_premium: $0
+        -- writable_bond_premium_on_treasury_obligations: $0
+        -- writable_bond_premium_on_tax_exempt_bond: $0
+        -- state_is_different_state: false
+        -- writable_state_tax_withheld: $0
+        -- facta_filing_required: false
+      } ]
+  definition i.has_foreign_accounts_or_trusts equals false
+  definition i.filing_status equals Types.FilingStatus.Single
+  definition i.agi equals $0
+  definition i.flow_has_seen_deductions equals false
+  # not over $1,500: raw sum 100.20 + 50.40 + 30.10 = 180.70, rounded $181
+  assertion not i.requires_schedule_b
+  assertion i.interest_income = $181
+  # line 2a: only the first report's box 8, $20.50 rounds to $21
+  assertion i.tax_exempt_interest = $21
+  # line 25b part: box 4 $12.50 rounds to $13, the second report gives $0
+  assertion i.total_tax_withheld = $13
+  # the first report has box 8 different from $0, so the filer is knocked out
+  assertion i.ko_flow_knockout_tax_exempt_interest
+  assertion i.unsupported
+```
+
+## Knockouts
+
+One test per knockout. Each report is the same except for the field named.
+
+```catala
+declaration scope KnockoutCase:
+  input penalty content money
+  input bonds content money
+  input foreign_tax content money
+  input state_tax content money
+  input different_state content boolean
+  input facta content boolean
+  input interest content money
+  input status content Types.FilingStatus
+  input agi_in content money
+  input seen_deductions content boolean
+  output result content Interest.Interest
+
+scope KnockoutCase:
+  definition result equals
+    output of Interest.Interest with {
+      -- interest_reports:
+        [ Interest.InterestReport {
+          -- filer: Types.FilerRole.PrimaryFiler
+          -- has_1099: true
+          -- no_1099_amount: $0
+          -- writable_1099_amount: interest
+          -- writable_early_withdrawl_penalty_amount: penalty
+          -- writable_interest_on_government_bonds: $0
+          -- writable_tax_withheld: $0
+          -- writable_foreign_tax_paid: foreign_tax
+          -- writable_tax_exempt_interest: $0
+          -- writable_specified_private_activity_bond_interest: bonds
+          -- writable_market_discount: $0
+          -- writable_bond_premium: $0
+          -- writable_bond_premium_on_treasury_obligations: $0
+          -- writable_bond_premium_on_tax_exempt_bond: $0
+          -- state_is_different_state: different_state
+          -- writable_state_tax_withheld: state_tax
+          -- facta_filing_required: facta
+        } ]
+      -- has_foreign_accounts_or_trusts: false
+      -- filing_status: status
+      -- agi: agi_in
+      -- flow_has_seen_deductions: seen_deductions
+    }
+```
+
+```catala
+#[test]
+declaration scope TestKnockoutEarlyWithdrawlPenalty:
+  output ok condition
+  k scope KnockoutCase
+
+scope TestKnockoutEarlyWithdrawlPenalty:
+  rule ok fulfilled
+  definition k.penalty equals $5
+  definition k.bonds equals $0
+  definition k.foreign_tax equals $0
+  definition k.state_tax equals $0
+  definition k.different_state equals false
+  definition k.facta equals false
+  definition k.interest equals $100
+  definition k.status equals Types.FilingStatus.Single
+  definition k.agi_in equals $50,000
+  definition k.seen_deductions equals true
+  assertion k.result.ko_flow_knockout_has_early_withdrawl_penalty
+  assertion k.result.unsupported
+  assertion not k.result.ko_flow_knockout_has_bonds
+```
+
+```catala
+#[test]
+declaration scope TestKnockoutBonds:
+  output ok condition
+  k scope KnockoutCase
+
+scope TestKnockoutBonds:
+  rule ok fulfilled
+  definition k.penalty equals $0
+  definition k.bonds equals $1
+  definition k.foreign_tax equals $0
+  definition k.state_tax equals $0
+  definition k.different_state equals false
+  definition k.facta equals false
+  definition k.interest equals $100
+  definition k.status equals Types.FilingStatus.Single
+  definition k.agi_in equals $50,000
+  definition k.seen_deductions equals true
+  assertion k.result.ko_flow_knockout_has_bonds
+  assertion k.result.unsupported
+```
+
+```catala
+#[test]
+declaration scope TestKnockoutForeignTax:
+  output ok condition
+  k scope KnockoutCase
+
+scope TestKnockoutForeignTax:
+  rule ok fulfilled
+  definition k.penalty equals $0
+  definition k.bonds equals $0
+  definition k.foreign_tax equals $2
+  definition k.state_tax equals $0
+  definition k.different_state equals false
+  definition k.facta equals false
+  definition k.interest equals $100
+  definition k.status equals Types.FilingStatus.Single
+  definition k.agi_in equals $50,000
+  definition k.seen_deductions equals true
+  assertion k.result.ko_flow_knockout_has_foreign_tax_paid
+  assertion k.result.unsupported
+```
+
+```catala
+#[test]
+declaration scope TestKnockoutStateTaxAndDifferentState:
+  output ok condition
+  k scope KnockoutCase
+  k2 scope KnockoutCase
+
+scope TestKnockoutStateTaxAndDifferentState:
+  rule ok fulfilled
+  definition k.penalty equals $0
+  definition k.bonds equals $0
+  definition k.foreign_tax equals $0
+  definition k.state_tax equals $3
+  definition k.different_state equals false
+  definition k.facta equals false
+  definition k.interest equals $100
+  definition k.status equals Types.FilingStatus.Single
+  definition k.agi_in equals $50,000
+  definition k.seen_deductions equals true
+  assertion k.result.ko_flow_knockout_state_tax_withheld
+  assertion not k.result.ko_flow_knockout_withholding_unsupported_state
+  assertion k.result.unsupported
+  definition k2.penalty equals $0
+  definition k2.bonds equals $0
+  definition k2.foreign_tax equals $0
+  definition k2.state_tax equals $0
+  definition k2.different_state equals true
+  definition k2.facta equals false
+  definition k2.interest equals $100
+  definition k2.status equals Types.FilingStatus.Single
+  definition k2.agi_in equals $50,000
+  definition k2.seen_deductions equals true
+  assertion k2.result.ko_flow_knockout_withholding_unsupported_state
+  assertion not k2.result.ko_flow_knockout_state_tax_withheld
+  assertion k2.result.unsupported
+```
+
+```catala
+#[test]
+declaration scope TestKnockoutFacta:
+  output ok condition
+  k scope KnockoutCase
+
+scope TestKnockoutFacta:
+  rule ok fulfilled
+  definition k.penalty equals $0
+  definition k.bonds equals $0
+  definition k.foreign_tax equals $0
+  definition k.state_tax equals $0
+  definition k.different_state equals false
+  definition k.facta equals true
+  definition k.interest equals $100
+  definition k.status equals Types.FilingStatus.Single
+  definition k.agi_in equals $50,000
+  definition k.seen_deductions equals true
+  assertion k.result.ko_has_required_facta_filings
+  assertion k.result.unsupported
+```
+
+A clean filer is not knocked out (the hypotheses of the knockout tests are
+satisfiable, and the spec rejects them only when a trigger is present).
+
+```catala
+#[test]
+declaration scope TestNoKnockout:
+  output ok condition
+  k scope KnockoutCase
+
+scope TestNoKnockout:
+  rule ok fulfilled
+  definition k.penalty equals $0
+  definition k.bonds equals $0
+  definition k.foreign_tax equals $0
+  definition k.state_tax equals $0
+  definition k.different_state equals false
+  definition k.facta equals false
+  definition k.interest equals $100
+  definition k.status equals Types.FilingStatus.Single
+  definition k.agi_in equals $50,000
+  definition k.seen_deductions equals true
+  assertion not k.result.unsupported
+```
+
+## AGI thresholds (NIIT-style knockouts)
+
+IRC 1411(b): $200,000 (single, head of household), $250,000 (joint,
+qualifying surviving spouse), $125,000 (separate). The knockout needs interest
+income above $0, AGI strictly above the threshold, and the deductions screens
+seen.
+
+```catala
+#[test]
+declaration scope TestNiitThresholds:
+  output ok condition
+  s_at scope KnockoutCase
+  s_over scope KnockoutCase
+  s_unseen scope KnockoutCase
+  j_over scope KnockoutCase
+  j_at scope KnockoutCase
+  m_over scope KnockoutCase
+  m_at scope KnockoutCase
+  h_over scope KnockoutCase
+  q_over scope KnockoutCase
+  s_nointerest scope KnockoutCase
+
+scope TestNiitThresholds:
+  rule ok fulfilled
+  # single, AGI exactly at the threshold: not over, no knockout
+  definition s_at.penalty equals $0
+  definition s_at.bonds equals $0
+  definition s_at.foreign_tax equals $0
+  definition s_at.state_tax equals $0
+  definition s_at.different_state equals false
+  definition s_at.facta equals false
+  definition s_at.status equals Types.FilingStatus.Single
+  definition s_at.agi_in equals $200,000
+  definition s_at.interest equals $100
+  definition s_at.seen_deductions equals true
+  # single, $1 over: knocked out
+  definition s_over.penalty equals $0
+  definition s_over.bonds equals $0
+  definition s_over.foreign_tax equals $0
+  definition s_over.state_tax equals $0
+  definition s_over.different_state equals false
+  definition s_over.facta equals false
+  definition s_over.status equals Types.FilingStatus.Single
+  definition s_over.agi_in equals $200,001
+  definition s_over.interest equals $100
+  definition s_over.seen_deductions equals true
+  # same but deductions not yet seen: not knocked out
+  definition s_unseen.penalty equals $0
+  definition s_unseen.bonds equals $0
+  definition s_unseen.foreign_tax equals $0
+  definition s_unseen.state_tax equals $0
+  definition s_unseen.different_state equals false
+  definition s_unseen.facta equals false
+  definition s_unseen.status equals Types.FilingStatus.Single
+  definition s_unseen.agi_in equals $200,001
+  definition s_unseen.interest equals $100
+  definition s_unseen.seen_deductions equals false
+  # MFJ
+  definition j_over.penalty equals $0
+  definition j_over.bonds equals $0
+  definition j_over.foreign_tax equals $0
+  definition j_over.state_tax equals $0
+  definition j_over.different_state equals false
+  definition j_over.facta equals false
+  definition j_over.status equals Types.FilingStatus.MarriedFilingJointly
+  definition j_over.agi_in equals $250,001
+  definition j_over.interest equals $100
+  definition j_over.seen_deductions equals true
+  definition j_at.penalty equals $0
+  definition j_at.bonds equals $0
+  definition j_at.foreign_tax equals $0
+  definition j_at.state_tax equals $0
+  definition j_at.different_state equals false
+  definition j_at.facta equals false
+  definition j_at.status equals Types.FilingStatus.MarriedFilingJointly
+  definition j_at.agi_in equals $250,000
+  definition j_at.interest equals $100
+  definition j_at.seen_deductions equals true
+  # MFS
+  definition m_over.penalty equals $0
+  definition m_over.bonds equals $0
+  definition m_over.foreign_tax equals $0
+  definition m_over.state_tax equals $0
+  definition m_over.different_state equals false
+  definition m_over.facta equals false
+  definition m_over.status equals Types.FilingStatus.MarriedFilingSeparately
+  definition m_over.agi_in equals $125,001
+  definition m_over.interest equals $100
+  definition m_over.seen_deductions equals true
+  definition m_at.penalty equals $0
+  definition m_at.bonds equals $0
+  definition m_at.foreign_tax equals $0
+  definition m_at.state_tax equals $0
+  definition m_at.different_state equals false
+  definition m_at.facta equals false
+  definition m_at.status equals Types.FilingStatus.MarriedFilingSeparately
+  definition m_at.agi_in equals $125,000
+  definition m_at.interest equals $100
+  definition m_at.seen_deductions equals true
+  # head of household uses the single threshold, QSS the joint one
+  definition h_over.penalty equals $0
+  definition h_over.bonds equals $0
+  definition h_over.foreign_tax equals $0
+  definition h_over.state_tax equals $0
+  definition h_over.different_state equals false
+  definition h_over.facta equals false
+  definition h_over.status equals Types.FilingStatus.HeadOfHousehold
+  definition h_over.agi_in equals $200,001
+  definition h_over.interest equals $100
+  definition h_over.seen_deductions equals true
+  definition q_over.penalty equals $0
+  definition q_over.bonds equals $0
+  definition q_over.foreign_tax equals $0
+  definition q_over.state_tax equals $0
+  definition q_over.different_state equals false
+  definition q_over.facta equals false
+  definition q_over.status equals Types.FilingStatus.QualifyingSurvivingSpouse
+  definition q_over.agi_in equals $250,001
+  definition q_over.interest equals $100
+  definition q_over.seen_deductions equals true
+  # no interest income: no knockout whatever the AGI
+  definition s_nointerest.penalty equals $0
+  definition s_nointerest.bonds equals $0
+  definition s_nointerest.foreign_tax equals $0
+  definition s_nointerest.state_tax equals $0
+  definition s_nointerest.different_state equals false
+  definition s_nointerest.facta equals false
+  definition s_nointerest.status equals Types.FilingStatus.Single
+  definition s_nointerest.agi_in equals $900,000
+  definition s_nointerest.interest equals $0
+  definition s_nointerest.seen_deductions equals true
+  assertion not s_at.result.unsupported
+  assertion s_over.result.ko_has_interest_income_and_agi_above_threshold_for_single_or_hoh
+  assertion s_over.result.unsupported
+  assertion not s_unseen.result.unsupported
+  assertion j_over.result.ko_has_interest_income_and_agi_above_threshold_for_mfj_or_qss
+  assertion not j_at.result.unsupported
+  assertion m_over.result.ko_has_interest_income_and_agi_above_threshold_for_mfs
+  assertion not m_at.result.unsupported
+  assertion h_over.result.ko_has_interest_income_and_agi_above_threshold_for_single_or_hoh
+  assertion q_over.result.ko_has_interest_income_and_agi_above_threshold_for_mfj_or_qss
+  assertion not s_nointerest.result.unsupported
+```
