@@ -425,7 +425,7 @@ scope TestDisabledAdultChild:
   assertion s.tp_can_claim_split_benefits_hoh_eitc_cdcc
 ```
 
-### Multiple support agreement: the split does not apply (DF-BUG(18-a))
+### Multiple support agreement: the split does not apply (DF-BUG(18))
 
 IRC 152(e)(5): "This subsection shall not apply in any case where over
 one-half of the support of the child is treated as having been received from

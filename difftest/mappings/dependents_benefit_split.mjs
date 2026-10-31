@@ -8,7 +8,7 @@
 // Defaults for answers DF never asked (each is read by DF only behind an All/Any whose value is already
 // decided by an answered fact, or the derived fact that reads it is not Complete and so not compared):
 //   the boolean answers: false; whichParentNotClaiming: nobodyDid; nightsWithTpVsOtherParent: less;
-//   parentalSituation: other. multipleSupportAgreement is not a DF fact (DF-BUG(18-a)): false.
+//   parentalSituation: other. multipleSupportAgreement is not a DF fact (DF-BUG(18)): false.
 // parentalSituation: five DF scenarios hold the value `writableLivedApartLastSixMonths`, which is not an
 // option of /parentalSituationOptions (a stale option name in the scenario files). DF's engine compares
 // the string, so NotEqual(.., other) is true for it; it is mapped to LivedApartLastSixMonths.
@@ -89,7 +89,7 @@ export default {
   // Places where we follow the law and DF does not (CONVENTIONS section 8, docs/direct-file-bugs.md).
   knownDivergence: [
     {
-      bug: 'DF-BUG(18-a)', scenario: '(none in the oracle)', path: P + 'eligibleForBenefitSplit',
+      bug: 'DF-BUG(18)', scenario: '(none in the oracle)', path: P + 'eligibleForBenefitSplit',
       note: 'a multiple support agreement (IRC 152(d)(3)) is in effect: IRC 152(e)(5) turns the split off; ' +
         'DF never asks and splits. No DF return has the input, so no oracle value changes.',
     },

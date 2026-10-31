@@ -47,7 +47,7 @@ The inputs are complete (CONVENTIONS section 3). DF asks most of the questions
 below only on one path (parent or non-parent) and only after the earlier
 answers allow the split. They are still inputs here; every rule below is the
 DF rule, which already ignores an answer off its path, except where marked
-`# DF-BUG(18-a)` (the multiple support agreement exception, IRC 152(e)(5)).
+`# DF-BUG(18)` (the multiple support agreement exception, IRC 152(e)(5)).
 
 Not here, on purpose: a noncustodial parent claiming the child (a DF
 knockout, below), the pre-1985 decrees of IRC 152(e)(3) (see section (3)
@@ -131,7 +131,7 @@ declaration structure BenefitSplitAnswers:
   # biological or adoptive parent pay for more than half of <child>'s total
   # support?")
   data parental_support content boolean
-  # No DF fact (DF-BUG(18-a)): over one-half of the child's support is treated
+  # No DF fact (DF-BUG(18)): over one-half of the child's support is treated
   # as received from a taxpayer under a multiple support agreement (IRC
   # 152(d)(3), Form 2120). DF never asks; its value is false for every DF
   # return.
@@ -185,7 +185,7 @@ declaration scope BenefitSplitTest:
   output parents_are_divorced_separated_or_living_apart condition
   # DF: /familyAndHousehold/*/tpIsCustodialParent
   output tp_is_custodial_parent condition
-  # IRC 152(e)(5) (no DF fact; DF-BUG(18-a))
+  # IRC 152(e)(5) (no DF fact; DF-BUG(18))
   output section_152e_applies_despite_support_agreements condition
   # The two branches of DF's /familyAndHousehold/*/eligibleForBenefitSplit
   # (no DF fact each; kept apart so each branch sits under its own law)
@@ -464,7 +464,7 @@ value changes.
 
 ```catala
 scope BenefitSplitTest:
-  # DF-BUG(18-a): DF never asks about a multiple support agreement and applies
+  # DF-BUG(18): DF never asks about a multiple support agreement and applies
   # the benefit split regardless. IRC 152(e)(5); Treas. Reg. 1.152-4(b)(2)(ii);
   # Form 8332 p 2 "Exception". Status: candidate. No oracle value changes.
   # IRC 152(e)(5) (no DF fact)
