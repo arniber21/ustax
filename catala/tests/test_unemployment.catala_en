@@ -1,0 +1,234 @@
+# Tests for the Unemployment module (Form 1099-G)
+
+Run with `clerk test`. Named scopes with the concrete cases of issue #21,
+worked out by hand from `catala/unemployment.catala_en`. The oracle comparison
+is `make difftest SCOPE=unemployment`.
+
+> Using Unemployment
+> Using Types
+
+## Helper: a Form 1099-G
+
+```catala
+declaration scope MkG:
+  input amount content money
+  input repaid_in_year content money
+  input repaid_before content money
+  input withheld content money
+  input different_state content boolean
+  output form content Unemployment.Form1099G
+
+scope MkG:
+  definition form equals
+    Unemployment.Form1099G {
+      -- filer: Types.FilerRole.PrimaryFiler
+      -- amount: amount
+      -- writable_amount_paid_back_for_benefits_in_tax_year: repaid_in_year
+      -- writable_amount_paid_back_for_benefits_before_tax_year: repaid_before
+      -- writable_federal_tax_withheld: withheld
+      -- state_is_different_state: different_state
+    }
+```
+
+## Box 1 = 5,000 with 1,200 repaid in the year gives 3,800
+
+```catala
+#[test]
+declaration scope TestRepaidInYearIsSubtracted:
+  output ok condition
+  g scope MkG
+  u scope Unemployment.Unemployment
+
+scope TestRepaidInYearIsSubtracted:
+  definition g.amount equals $5,000
+  definition g.repaid_in_year equals $1,200
+  definition g.repaid_before equals $0
+  definition g.withheld equals $0
+  definition g.different_state equals false
+  definition u.form_1099gs equals [g.form]
+  assertion u.unemployment_compensation = $3,800
+  assertion u.unemployment_comp_repaid_amt = $1,200
+  assertion u.received_unemployment_compensation
+  assertion not u.unsupported
+  # known-bad outputs are rejected
+  assertion u.unemployment_compensation != $5,000
+  assertion u.unemployment_compensation != $6,200
+  rule ok fulfilled
+```
+
+## Repayment above box 1 clamps to box 1
+
+```catala
+#[test]
+declaration scope TestRepaymentClampsToBox1:
+  output ok condition
+  g scope MkG
+  u scope Unemployment.Unemployment
+
+scope TestRepaymentClampsToBox1:
+  definition g.amount equals $2,000
+  definition g.repaid_in_year equals $2,500
+  definition g.repaid_before equals $0
+  definition g.withheld equals $0
+  definition g.different_state equals false
+  definition u.form_1099gs equals [g.form]
+  assertion u.unemployment_compensation = $0
+  assertion u.unemployment_comp_repaid_amt = $2,000
+  assertion u.unemployment_compensation >= $0
+  rule ok fulfilled
+```
+
+## Rounding: the nets are added with cents, the sum is rounded once
+
+Two forms of $100.40 and $100.40 total $200.80, which rounds to $201; rounding
+each net first would give $200.
+
+```catala
+#[test]
+declaration scope TestSumRoundedOnce:
+  output ok condition
+  g1 scope MkG
+  g2 scope MkG
+  u scope Unemployment.Unemployment
+
+scope TestSumRoundedOnce:
+  definition g1.amount equals $100.40
+  definition g1.repaid_in_year equals $0
+  definition g1.repaid_before equals $0
+  definition g1.withheld equals $0
+  definition g1.different_state equals false
+  definition g2.amount equals $100.40
+  definition g2.repaid_in_year equals $0
+  definition g2.repaid_before equals $0
+  definition g2.withheld equals $0
+  definition g2.different_state equals false
+  definition u.form_1099gs equals [g1.form; g2.form]
+  assertion u.unemployment_compensation = $201
+  assertion u.unemployment_compensation != $200
+  rule ok fulfilled
+```
+
+## Withholding flows to line 25b, rounded per form
+
+Box 4 of $50.40 and $50.40 gives $50 + $50 = $100 (per-form rounding), not the
+rounded sum $101.
+
+```catala
+#[test]
+declaration scope TestWithholdingRoundedPerForm:
+  output ok condition
+  g1 scope MkG
+  g2 scope MkG
+  u scope Unemployment.Unemployment
+
+scope TestWithholdingRoundedPerForm:
+  definition g1.amount equals $1,000
+  definition g1.repaid_in_year equals $0
+  definition g1.repaid_before equals $0
+  definition g1.withheld equals $50.40
+  definition g1.different_state equals false
+  definition g2.amount equals $1,000
+  definition g2.repaid_in_year equals $0
+  definition g2.repaid_before equals $0
+  definition g2.withheld equals $50.40
+  definition g2.different_state equals false
+  definition u.form_1099gs equals [g1.form; g2.form]
+  assertion u.form_1099g_federal_tax_withheld = $100
+  assertion u.form_1099g_federal_tax_withheld != $101
+  rule ok fulfilled
+```
+
+## Knockout: prior-year repayment above $3,000
+
+Exactly $3,000 is allowed; $3,000.01 and a total over two forms are not. An
+in-year repayment never triggers it.
+
+```catala
+#[test]
+declaration scope TestRepayAt3000IsAllowed:
+  output ok condition
+  g scope MkG
+  u scope Unemployment.Unemployment
+
+scope TestRepayAt3000IsAllowed:
+  definition g.amount equals $10,000
+  definition g.repaid_in_year equals $0
+  definition g.repaid_before equals $3,000
+  definition g.withheld equals $0
+  definition g.different_state equals false
+  definition u.form_1099gs equals [g.form]
+  assertion not u.ko_flow_knockout1099_g_repay_too_high
+  assertion not u.unsupported
+  assertion u.total_amount_paid_back_for_benefits_before_tax_year = $3,000
+  rule ok fulfilled
+
+#[test]
+declaration scope TestRepayAbove3000IsKnockedOut:
+  output ok condition
+  g scope MkG
+  u scope Unemployment.Unemployment
+
+scope TestRepayAbove3000IsKnockedOut:
+  definition g.amount equals $10,000
+  definition g.repaid_in_year equals $0
+  definition g.repaid_before equals $3,000.01
+  definition g.withheld equals $0
+  definition g.different_state equals false
+  definition u.form_1099gs equals [g.form]
+  assertion u.ko_flow_knockout1099_g_repay_too_high
+  assertion u.unsupported
+  rule ok fulfilled
+
+#[test]
+declaration scope TestRepayTotalOverTwoFormsIsKnockedOut:
+  output ok condition
+  g1 scope MkG
+  g2 scope MkG
+  u scope Unemployment.Unemployment
+
+scope TestRepayTotalOverTwoFormsIsKnockedOut:
+  definition g1.amount equals $10,000
+  definition g1.repaid_in_year equals $0
+  definition g1.repaid_before equals $2,000
+  definition g1.withheld equals $0
+  definition g1.different_state equals false
+  definition g2.amount equals $10,000
+  definition g2.repaid_in_year equals $9,000
+  definition g2.repaid_before equals $1,500
+  definition g2.withheld equals $0
+  definition g2.different_state equals false
+  definition u.form_1099gs equals [g1.form; g2.form]
+  assertion u.ko_flow_knockout1099_g_repay_too_high
+  assertion u.unsupported
+  rule ok fulfilled
+
+#[test]
+declaration scope TestDifferentStateIsKnockedOut:
+  output ok condition
+  g scope MkG
+  u scope Unemployment.Unemployment
+
+scope TestDifferentStateIsKnockedOut:
+  definition g.amount equals $1,000
+  definition g.repaid_in_year equals $0
+  definition g.repaid_before equals $0
+  definition g.withheld equals $0
+  definition g.different_state equals true
+  definition u.form_1099gs equals [g.form]
+  assertion u.ko_flow_knockout_unemployment_compensation_unsupported_state
+  assertion not u.ko_flow_knockout1099_g_repay_too_high
+  assertion u.unsupported
+  rule ok fulfilled
+
+#[test]
+declaration scope TestNoForms:
+  output ok condition
+  u scope Unemployment.Unemployment
+
+scope TestNoForms:
+  definition u.form_1099gs equals []
+  assertion u.unemployment_compensation = $0
+  assertion not u.received_unemployment_compensation
+  assertion not u.unsupported
+  rule ok fulfilled
+```

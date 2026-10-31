@@ -1,0 +1,31 @@
+# Form 1040 line 25b: the 1099-G and 1099-MISC terms (difftest scaffold)
+
+> Using Unemployment
+> Using Form1099_misc
+
+This scope exists for `make difftest SCOPE=line25b_1099g_misc` and as the
+reference for the wiring that the orchestrator adds to `Form1040`. DF
+`taxCalculations.xml /form1099Withholding` (line 25b) adds the 1099-INT, SSA,
+1099-G, 1099-MISC and 1099-R withholding. `Form1040` receives the 1099-INT
+part from `Interest` and everything else through its slot
+`other_1099_withholding`; this module pair's share of that slot is the sum
+below.
+
+```catala
+declaration scope Line25bFrom1099GAndMisc:
+  input form_1099gs content list of Unemployment.Form1099G
+  input form_1099miscs content list of Form1099_misc.Form1099Misc
+  # The terms of line 25b that other modules compute (1099-INT, SSA, 1099-R).
+  input other_terms content money
+  g scope Unemployment.Unemployment
+  m scope Form1099_misc.Form1099Miscs
+  output form_1099_withholding content money
+
+scope Line25bFrom1099GAndMisc:
+  definition g.form_1099gs equals form_1099gs
+  definition m.form_1099miscs equals form_1099miscs
+  definition form_1099_withholding equals
+    other_terms
+    + g.form_1099g_federal_tax_withheld
+    + m.form_1099_misc_federal_income_tax_withheld
+```
