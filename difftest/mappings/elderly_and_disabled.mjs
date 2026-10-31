@@ -8,11 +8,13 @@
 // Worksheet line 3 = /totalTentativeTax - /cdccTotalCredit (DF's Schedule 3 lines 1 and 6l are
 // placeholders at $0, elderlyAndDisabled.xml /edcTaxLiabilityLimitCalc).
 //
-// knownDivergence DF-BUG(7): DF adds 1040 line 5a - 5b (return of cost and rollovers) to Schedule R line
+// knownDivergence DF-BUG(13): DF adds 1040 line 5a - 5b (return of cost and rollovers) to Schedule R line
 // 13b; the statute and instructions exclude it (see the module). Every output that line 13b feeds is listed;
 // a check that fails in a scenario where DF's line 13b differs from the self-reported amount is reported as
 // "diverge" (not a pass), a check that fails elsewhere is a plain failure.
-import { collectionIds, parseMoney } from '../lib.mjs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { collectionIds, parseMoney, loadOracle } from '../lib.mjs';
 
 const val = (f, p) => { const r = f.get(p); return r && r.completeness !== 'Incomplete' ? r.value : undefined; };
 const cents = (f, p) => { const v = val(f, p); return v === undefined || v === '' ? 0n : parseMoney(v); };
@@ -66,12 +68,19 @@ function selfReported(f) {
   return c >= 0n ? ((c + 50n) / 100n) * 100n : -(((-c + 50n) / 100n) * 100n);
 }
 
-// DF line 13b differs from the self-reported amount: the 5a - 5b part is non-zero (DF-BUG(7)).
-const bug7 = (f) => cents(f, '/edcNonTaxableIncomeNotIncludingSocialSecurityAndRrb') !== selfReported(f);
-const BUG7_PATHS = [
+// DF line 13b differs from the self-reported amount: the 5a - 5b part is non-zero (DF-BUG(13)).
+const bug13 = (f) => cents(f, '/edcNonTaxableIncomeNotIncludingSocialSecurityAndRrb') !== selfReported(f);
+const BUG13_PATHS = [
   '/edcNonTaxableIncomeNotIncludingSocialSecurityAndRrb', '/edcTotalNonTaxableAmount', '/edcAdjustedCreditAmount',
   '/edcNetCreditAmount', '/netEdcAmount', '/totalEdc', '/isReceivingEdc',
 ];
+// One entry per (scenario, output line 13b feeds) for every scenario where DF's line 13b has the 5a - 5b part.
+// The runner turns a failing check on a listed entry into a reported divergence; a listed check that passes
+// stays a pass, and any other failure stays a failure.
+const oracleFile = resolve(dirname(fileURLToPath(import.meta.url)), '../../oracle/facts.csv');
+export const knownDivergence = [...loadOracle(oracleFile)].filter(([, f]) => bug13(f)).flatMap(([scenario]) =>
+  BUG13_PATHS.map((path) => ({ scenario, path, bug: 'DF-BUG(13)',
+    note: 'DF adds 1040 line 5a - 5b (cost recovery, rollovers) to Schedule R line 13b; IRC 22(c)(3) and i1040sr p R-5 exclude it' })));
 
 const money = (oracle, catala) => ({ oracle, catala, type: 'money' });
 
@@ -113,5 +122,5 @@ export default {
     money('/totalEdc', 'total_edc'),
     { oracle: '/isReceivingEdc', catala: 'is_receiving_edc', type: 'bool' },
   ],
-  knownDivergence: BUG7_PATHS.map((oracle) => ({ oracle, bug: 'DF-BUG(7)', when: bug7 })),
+  knownDivergence,
 };

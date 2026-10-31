@@ -27,7 +27,7 @@ and DF takes it as answers kept for the return records, so it is not modelled.
 Nonresident aliens are knocked out elsewhere (IRC 22(f)). This module has no
 knockout of its own: DF's `elderlyAndDisabled.xml` defines none.
 
-**Direct File bug found, `DF-BUG(7)`** (number tentative, see the PR): DF adds the
+**Direct File bug found, `DF-BUG(13)`** (number tentative, see the PR): DF adds the
 nontaxable part of pensions and annuities on 1040 line 5a minus line 5b
 (`income.xml` `/nonTaxablePensionsAndAnnuities`) to Schedule R line 13b. The
 statute and the instructions exclude it. See line 13b below.
@@ -384,7 +384,7 @@ is excluded from income under any provision of federal law other than the
 Internal Revenue Code. Don't include amounts that are treated as a return of your
 cost of a pension or annuity" (p R-5). Line 13c "Add lines 13a and 13b".
 
-`DF-BUG(7)`: DF line 13b is `/edcSelfReportedNonTaxablePaymentAmount` plus
+`DF-BUG(13)`: DF line 13b is `/edcSelfReportedNonTaxablePaymentAmount` plus
 `/nonTaxablePensionsAndAnnuities`, which is 1040 line 5a minus line 5b
 (`income.xml` line 652, `elderlyAndDisabled.xml` fact
 `/edcNonTaxableIncomeNotIncludingSocialSecurityAndRrb`). Within Direct File's
@@ -402,7 +402,7 @@ scope ScheduleR:
     non_taxable_social_security_benefits
 
   # Schedule R line 13b; IRC 22(c)(3)(A)(i)(III), (ii).
-  # DF-BUG(7): DF also adds 1040 line 5a - line 5b (cost recovery and rollovers
+  # DF-BUG(13): DF also adds 1040 line 5a - line 5b (cost recovery and rollovers
   # under Code sections 72 and 402). The law excludes them, so we do not.
   # DF: /edcNonTaxableIncomeNotIncludingSocialSecurityAndRrb
   definition edc_non_taxable_income_not_including_social_security_and_rrb equals
