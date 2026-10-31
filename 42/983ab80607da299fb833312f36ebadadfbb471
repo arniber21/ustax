@@ -1,0 +1,16 @@
+CLAUDE.md
+  h_fd1310f1be831a 1-157
+rules.md
+  h_fd1310f1be831a 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "42983ab80607da299fb833312f36ebadadfbb471",
+  "prompts": {},
+  "humans": {
+    "h_fd1310f1be831a": {
+      "author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
