@@ -1,0 +1,534 @@
+# Tests for the Form_1040 module
+
+Run with `clerk test`. Named scopes with the concrete numbers of issue #14, worked
+out by hand from the TY2024 rate schedules (Rev. Proc. 2023-34) and the Direct
+File definitions quoted in `catala/form_1040.catala_en`. The oracle comparison
+is `make difftest SCOPE=form_1040` (and `form_1040_plugged`).
+
+> Using Types
+> Using Form_w2s as W
+> Using Interest as I
+> Using Form_1040 as F
+
+## Helpers
+
+`MkW2` builds a Form W-2 whose only filled boxes are box 1 (wages), box 2
+(federal withholding) and the statutory-employee box; every other box is `$0`.
+`MkInterest` builds a Form 1099-INT with box 1, box 4 (withholding) and box 8
+(tax-exempt interest).
+
+```catala
+declaration scope MkW2:
+  context filer content Types.FilerRole
+  context wages content money
+  context withholding content money
+  context statutory_employee content boolean
+  output w2 content W.FormW2
+
+scope MkW2:
+  definition filer equals Types.FilerRole.PrimaryFiler
+  definition wages equals $0
+  definition withholding equals $0
+  definition statutory_employee equals false
+  definition w2 equals W.FormW2 {
+    -- filer: filer
+    -- writable_wages: wages
+    -- writable_federal_withholding: withholding
+    -- writable_oasdi_wages: $0
+    -- writable_oasdi_withholding: $0
+    -- writable_medicare_wages: $0
+    -- writable_medicare_withholding: $0
+    -- writable_allocated_tips: $0
+    -- writable_dependent_care_benefits: $0
+    -- writable_non_qualified_plans: $0
+    -- uncollected_oasdi_tax_on_tips: $0
+    -- uncollected_medicare_tax_on_tips: $0
+    -- taxable_life_insurance_over_50k: $0
+    -- deferrals_401k: $0
+    -- deferrals_403b: $0
+    -- sarsep_deferrals: $0
+    -- deferrals_457b: $0
+    -- deferrals_501c18: $0
+    -- nontaxable_sick_pay: $0
+    -- golden_parachute_excise_tax: $0
+    -- expense_reimbursements: $0
+    -- uncollected_oasdi_tax_on_life_insurance_over_50k: $0
+    -- uncollected_medicare_tax_on_life_insurance_over_50k: $0
+    -- armed_forces_moving_expenses: $0
+    -- writable_combat_pay: $0
+    -- archer_msa_contributions: $0
+    -- simple_contributions: $0
+    -- adoption_benefits: $0
+    -- nso_income: $0
+    -- employer_hsa_contributions: $0
+    -- deferrals_409a: $0
+    -- nqdc_deferrals: $0
+    -- roth401k_contributions: $0
+    -- roth403b_contributions: $0
+    -- health_coverage_cost: $0
+    -- roth457b_contributions: $0
+    -- qsehra_benefits: $0
+    -- income_83i: $0
+    -- deferrals_83i: $0
+    -- non_taxable_medicaid_waiver_payments: $0
+    -- plan_457b_is_governmental: false
+    -- statutory_employee: statutory_employee
+    -- third_party_sick_pay: false
+  }
+
+declaration scope MkInterest:
+  context box1 content money
+  context withheld content money
+  context exempt content money
+  context bonds content money
+  output report content I.InterestReport
+
+scope MkInterest:
+  definition box1 equals $0
+  definition withheld equals $0
+  definition exempt equals $0
+  definition bonds equals $0
+  definition report equals I.InterestReport {
+    -- filer: Types.FilerRole.PrimaryFiler
+    -- has_1099: true
+    -- no_1099_amount: $0
+    -- writable_1099_amount: box1
+    -- writable_early_withdrawl_penalty_amount: $0
+    -- writable_interest_on_government_bonds: bonds
+    -- writable_tax_withheld: withheld
+    -- writable_foreign_tax_paid: $0
+    -- writable_tax_exempt_interest: exempt
+    -- writable_specified_private_activity_bond_interest: $0
+    -- writable_market_discount: $0
+    -- writable_bond_premium: $0
+    -- writable_bond_premium_on_treasury_obligations: $0
+    -- writable_bond_premium_on_tax_exempt_bond: $0
+    -- state_is_different_state: false
+    -- writable_state_tax_withheld: $0
+    -- facta_filing_required: false
+  }
+```
+
+`Run1040` calls `Form1040` with a single filer, no dependents, standard
+deduction only, every slot at its default, and exposes the scalars the tests
+read. A test overrides only what it changes, so the hypotheses are explicit and
+satisfiable.
+
+```catala
+declaration scope Run1040:
+  context filing_status content Types.FilingStatus
+  context w2s content list of W.FormW2
+  context interest_reports content list of I.InterestReport
+  context agi_taxable_dependent_care content money
+  context unemployment_compensation content money
+  context educator_expenses_adjustment content money
+  context student_loan_interest_adjustment_amount content money
+  context hsa_total_deductible_amount content money
+  context total_additional_taxes_owed content money
+  context total_ctc_and_odc content money
+  context line8_of_schedule3 content money
+  context estimated_and_from_last_year content money
+  context earned_income_credit content money
+  context additional_ctc content money
+  context other_payments_and_refundable_credits_total content money
+  form scope F.Form1040
+  output wages content money
+  output employer_income_subtotal content money
+  output interest_income content money
+  output total_income content money
+  output adjustments_to_income content money
+  output agi content money
+  output standard_or_itemized_deductions content money
+  output taxable_income content money
+  output tentative_tax_from_taxable_income content money
+  output total_tentative_tax content money
+  output non_refundable_credits content money
+  output tax_less_non_refundable_credits content money
+  output line21_of_schedule2 content money
+  output total_tax content money
+  output total_withholding content money
+  output total_other_payments_refundable_credits content money
+  output total_payments content money
+  output overpayment content money
+  output balance_due content money
+  output unsupported condition
+
+scope Run1040:
+  definition filing_status equals Types.FilingStatus.Single
+  definition w2s equals []
+  definition interest_reports equals []
+  definition agi_taxable_dependent_care equals $0
+  definition unemployment_compensation equals $0
+  definition educator_expenses_adjustment equals $0
+  definition student_loan_interest_adjustment_amount equals $0
+  definition hsa_total_deductible_amount equals $0
+  definition total_additional_taxes_owed equals $0
+  definition total_ctc_and_odc equals $0
+  definition line8_of_schedule3 equals $0
+  definition estimated_and_from_last_year equals $0
+  definition earned_income_credit equals $0
+  definition additional_ctc equals $0
+  definition other_payments_and_refundable_credits_total equals $0
+
+  definition form.filing_status equals filing_status
+  definition form.w2s equals w2s
+  definition form.interest_reports equals interest_reports
+  definition form.has_foreign_accounts_or_trusts equals false
+  definition form.combat_pay_election equals W.CombatPayElection.NoCombatPay
+  definition form.primary_filer_can_be_claimed equals false
+  definition form.secondary_filer_can_be_claimed equals false
+  definition form.treat_as_mfs equals (filing_status = Types.FilingStatus.MarriedFilingSeparately)
+  definition form.primary_filer_is_blind equals false
+  definition form.primary_filer_age65_or_older equals false
+  definition form.secondary_filer_is_blind equals false
+  definition form.secondary_filer_age65_or_older equals false
+  definition form.is_widowed_in_tax_year equals false
+  definition form.mfj_deceased_spouse_reached_age65 equals false
+  definition form.mfs_spouse_65_or_older equals false
+  definition form.mfs_spouse_provides_no_benefits equals false
+  definition form.treat_filers_as_dependents equals false
+  definition form.taxable_dependent_care equals agi_taxable_dependent_care
+  definition form.unemployment_compensation equals unemployment_compensation
+  definition form.educator_expenses_adjustment equals educator_expenses_adjustment
+  definition form.student_loan_interest_adjustment_amount equals student_loan_interest_adjustment_amount
+  definition form.hsa_total_deductible_amount equals hsa_total_deductible_amount
+  definition form.total_additional_taxes_owed equals total_additional_taxes_owed
+  definition form.total_ctc_and_odc equals total_ctc_and_odc
+  definition form.line8_of_schedule3 equals line8_of_schedule3
+  definition form.estimated_and_from_last_year equals estimated_and_from_last_year
+  definition form.earned_income_credit equals earned_income_credit
+  definition form.additional_ctc equals additional_ctc
+  definition form.other_payments_and_refundable_credits_total equals other_payments_and_refundable_credits_total
+
+  definition wages equals form.wages
+  definition employer_income_subtotal equals form.employer_income_subtotal
+  definition interest_income equals form.interest_income
+  definition total_income equals form.total_income
+  definition adjustments_to_income equals form.adjustments_to_income
+  definition agi equals form.agi
+  definition standard_or_itemized_deductions equals form.standard_or_itemized_deductions
+  definition taxable_income equals form.taxable_income
+  definition tentative_tax_from_taxable_income equals form.tentative_tax_from_taxable_income
+  definition total_tentative_tax equals form.total_tentative_tax
+  definition non_refundable_credits equals form.non_refundable_credits
+  definition tax_less_non_refundable_credits equals form.tax_less_non_refundable_credits
+  definition line21_of_schedule2 equals form.line21_of_schedule2
+  definition total_tax equals form.total_tax
+  definition total_withholding equals form.total_withholding
+  definition total_other_payments_refundable_credits equals form.total_other_payments_refundable_credits
+  definition total_payments equals form.total_payments
+  definition overpayment equals form.overpayment
+  definition balance_due equals form.balance_due
+  definition unsupported equals form.unsupported
+```
+
+## Single filer, one W-2 of $50,000 (issue #14 acceptance test)
+
+Line 1a, 1z, 9, 11: $50,000. Line 12: $14,600. Line 15: $50,000 - $14,600 =
+$35,400. Line 16: Tax Table row $35,400 to $35,450, midpoint $35,425; Single
+schedule: $1,160 + 12% of ($35,425 - $11,600) = $1,160 + $2,859 = $4,019.
+With no withholding the whole tax is owed (line 37).
+
+```catala
+#[test]
+declaration scope TestSingle50k:
+  w scope MkW2
+  r scope Run1040
+
+scope TestSingle50k:
+  definition w.wages equals $50,000
+  definition r.w2s equals [w.w2]
+  assertion r.wages = $50,000
+  assertion r.employer_income_subtotal = $50,000
+  assertion r.total_income = $50,000
+  assertion r.adjustments_to_income = $0
+  assertion r.agi = $50,000
+  assertion r.standard_or_itemized_deductions = $14,600
+  assertion r.taxable_income = $35,400
+  assertion r.tentative_tax_from_taxable_income = $4,019
+  assertion r.total_tentative_tax = $4,019
+  assertion r.non_refundable_credits = $0
+  assertion r.total_tax = $4,019
+  assertion r.total_payments = $0
+  assertion r.overpayment = $0
+  assertion r.balance_due = $4,019
+  assertion not r.unsupported
+```
+
+## Refund when withholding exceeds tax, balance due otherwise
+
+Same return with $5,000 withheld: line 33 = $5,000, line 34 = $5,000 - $4,019
+= $981, line 37 = $0. With $3,000 withheld: line 37 = $1,019, line 34 = $0.
+With exactly $4,019 withheld both are $0. In all three, at most one of
+`overpayment` and `balance_due` is non-zero.
+
+```catala
+#[test]
+declaration scope TestRefundAndBalanceDue:
+  w_refund scope MkW2
+  w_owe scope MkW2
+  w_even scope MkW2
+  refund scope Run1040
+  owe scope Run1040
+  even scope Run1040
+
+scope TestRefundAndBalanceDue:
+  definition w_refund.wages equals $50,000
+  definition w_refund.withholding equals $5,000
+  definition refund.w2s equals [w_refund.w2]
+  definition w_owe.wages equals $50,000
+  definition w_owe.withholding equals $3,000
+  definition owe.w2s equals [w_owe.w2]
+  definition w_even.wages equals $50,000
+  definition w_even.withholding equals $4,019
+  definition even.w2s equals [w_even.w2]
+
+  assertion refund.total_withholding = $5,000
+  assertion refund.total_payments = $5,000
+  assertion refund.overpayment = $981
+  assertion refund.balance_due = $0
+
+  assertion owe.total_payments = $3,000
+  assertion owe.overpayment = $0
+  assertion owe.balance_due = $1,019
+
+  assertion even.overpayment = $0
+  assertion even.balance_due = $0
+
+  assertion refund.overpayment = $0 or refund.balance_due = $0
+  assertion owe.overpayment = $0 or owe.balance_due = $0
+  assertion even.overpayment = $0 or even.balance_due = $0
+```
+
+## W-2 plus interest
+
+One 1099-INT with box 1 $1,000 and box 4 $100 withheld. Line 2b $1,000, line
+9 $51,000, taxable income $36,400, Tax Table midpoint $36,425, tax $1,160 +
+12% of $24,825 = $4,139 (this is the oracle scenario `single-50k`). Line 25b is
+the interest withholding, $100.
+
+```catala
+#[test]
+declaration scope TestW2PlusInterest:
+  w scope MkW2
+  i scope MkInterest
+  r scope Run1040
+
+scope TestW2PlusInterest:
+  definition w.wages equals $50,000
+  definition i.box1 equals $1,000
+  definition i.withheld equals $100
+  definition r.w2s equals [w.w2]
+  definition r.interest_reports equals [i.report]
+  assertion r.interest_income = $1,000
+  assertion r.total_income = $51,000
+  assertion r.agi = $51,000
+  assertion r.taxable_income = $36,400
+  assertion r.tentative_tax_from_taxable_income = $4,139
+  assertion r.total_tax = $4,139
+  assertion r.total_withholding = $100
+  assertion r.balance_due = $4,039
+  assertion r.overpayment = $0
+  assertion not r.unsupported
+```
+
+## Married filing jointly, two W-2s
+
+Primary $40,000 and secondary $30,000: line 1a $70,000. Standard deduction
+$29,200, taxable income $40,800, midpoint $40,825, MFJ schedule: $2,320 + 12%
+of ($40,825 - $23,200) = $2,320 + $2,115 = $4,435.
+
+```catala
+#[test]
+declaration scope TestMfjTwoW2s:
+  a scope MkW2
+  b scope MkW2
+  r scope Run1040
+
+scope TestMfjTwoW2s:
+  definition a.wages equals $40,000
+  definition b.wages equals $30,000
+  definition b.filer equals Types.FilerRole.SecondaryFiler
+  definition r.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition r.w2s equals [a.w2; b.w2]
+  assertion r.wages = $70,000
+  assertion r.agi = $70,000
+  assertion r.standard_or_itemized_deductions = $29,200
+  assertion r.taxable_income = $40,800
+  assertion r.total_tax = $4,435
+```
+
+## Taxable income is never negative
+
+A $10,000 W-2 is below the $14,600 standard deduction: line 15 is $0 ("If
+zero or less, enter -0-"), tax is $0, and the $500 withheld is refunded.
+
+```catala
+#[test]
+declaration scope TestTaxableIncomeFloor:
+  w scope MkW2
+  r scope Run1040
+
+scope TestTaxableIncomeFloor:
+  definition w.wages equals $10,000
+  definition w.withholding equals $500
+  definition r.w2s equals [w.w2]
+  assertion r.taxable_income = $0
+  assertion r.total_tax = $0
+  assertion r.overpayment = $500
+  assertion r.balance_due = $0
+```
+
+## Plug-in slots
+
+Adjustments (educator $300, student loan $2,500, HSA $700 = $3,500): AGI
+$46,500, taxable income $31,900, midpoint $31,925, tax $1,160 + 12% of $20,325
+= $3,599.
+
+Credits: $2,000 child tax credit plus $500 from Schedule 3 reduce the tax of
+$4,019 by $2,500 to $1,519. Payments: $1,000 withheld, $400 estimated, EITC
+$300, additional child tax credit $200, line 31 $100: line 32 = $600, line 33
+= $2,000, overpayment = $2,000 - $1,519 = $481.
+
+Credits above the tax cannot make line 22 negative. Line 17 (Schedule 2
+line 3) adds to the tentative tax: $4,019 + $109 = $4,128.
+
+```catala
+#[test]
+declaration scope TestSlots:
+  w scope MkW2
+  adj scope Run1040
+  cred scope Run1040
+  over scope Run1040
+  sch2 scope Run1040
+
+scope TestSlots:
+  definition w.wages equals $50,000
+  definition w.withholding equals $1,000
+
+  definition adj.w2s equals [w.w2]
+  definition adj.educator_expenses_adjustment equals $300
+  definition adj.student_loan_interest_adjustment_amount equals $2,500
+  definition adj.hsa_total_deductible_amount equals $700
+  assertion adj.adjustments_to_income = $3,500
+  assertion adj.agi = $46,500
+  assertion adj.taxable_income = $31,900
+  assertion adj.total_tax = $3,599
+
+  definition cred.w2s equals [w.w2]
+  definition cred.total_ctc_and_odc equals $2,000
+  definition cred.line8_of_schedule3 equals $500
+  definition cred.estimated_and_from_last_year equals $400
+  definition cred.earned_income_credit equals $300
+  definition cred.additional_ctc equals $200
+  definition cred.other_payments_and_refundable_credits_total equals $100
+  assertion cred.non_refundable_credits = $2,500
+  assertion cred.tax_less_non_refundable_credits = $1,519
+  assertion cred.total_tax = $1,519
+  assertion cred.total_other_payments_refundable_credits = $600
+  assertion cred.total_payments = $2,000
+  assertion cred.overpayment = $481
+  assertion cred.balance_due = $0
+
+  definition over.w2s equals [w.w2]
+  definition over.total_ctc_and_odc equals $5,000
+  assertion over.tax_less_non_refundable_credits = $0
+  assertion over.total_tax = $0
+
+  definition sch2.w2s equals [w.w2]
+  definition sch2.total_additional_taxes_owed equals $109
+  assertion sch2.total_tentative_tax = $4,128
+  assertion sch2.total_tax = $4,128
+```
+
+## QUIRK(Q3): Schedule 2 line 21 is defined but not added to total tax
+
+DF's `/line21OfSchedule2` is `$0` and `/totalTax` is just line 22. The form
+adds line 23; the two agree while line 23 is `$0`, the only value it has.
+
+```catala
+#[test]
+declaration scope TestLine23NotAdded:
+  w scope MkW2
+  r scope Run1040
+
+scope TestLine23NotAdded:
+  definition w.wages equals $50,000
+  definition r.w2s equals [w.w2]
+  assertion r.line21_of_schedule2 = $0
+  assertion r.total_tax = r.tax_less_non_refundable_credits
+```
+
+## Knockouts are aggregated into `unsupported`
+
+- A statutory-employee W-2 (W-2 module knockout).
+- Tax-exempt interest, box 8 (interest module knockout).
+- Interest income with AGI above the $200,000 single threshold (the interest
+  knockout that needs line 11, computed by the second `Interest` instance).
+- No income, payments or credits at all (`knockoutHasNoPaymentsOrCredits`).
+
+```catala
+#[test]
+declaration scope TestUnsupported:
+  w_stat scope MkW2
+  w_big scope MkW2
+  w_ok scope MkW2
+  i_exempt scope MkInterest
+  i_ok scope MkInterest
+  stat scope Run1040
+  exempt scope Run1040
+  rich scope Run1040
+  empty scope Run1040
+  fine scope Run1040
+
+scope TestUnsupported:
+  definition w_stat.wages equals $50,000
+  definition w_stat.statutory_employee equals true
+  definition stat.w2s equals [w_stat.w2]
+  assertion stat.unsupported
+
+  definition w_ok.wages equals $50,000
+  definition i_exempt.box1 equals $1,000
+  definition i_exempt.exempt equals $5
+  definition exempt.w2s equals [w_ok.w2]
+  definition exempt.interest_reports equals [i_exempt.report]
+  assertion exempt.unsupported
+
+  definition w_big.wages equals $250,000
+  definition i_ok.box1 equals $1,000
+  definition rich.w2s equals [w_big.w2]
+  definition rich.interest_reports equals [i_ok.report]
+  assertion rich.agi = $251,000
+  assertion rich.unsupported
+
+  assertion empty.total_income = $0
+  assertion empty.unsupported
+
+  definition fine.w2s equals [w_ok.w2]
+  definition fine.interest_reports equals [i_ok.report]
+  assertion not fine.unsupported
+```
+
+## The spec rejects bad outputs
+
+Known-wrong results for the $50,000 single return, each of which must differ
+from the computed value: forgetting the standard deduction (taxable income
+$50,000), taxing gross wages (midpoint $50,025: $5,426 + 22% of $2,875 = $6,058.50, $6,059), and reporting both
+a refund and a balance due.
+
+```catala
+#[test]
+declaration scope TestRejectsBadOutputs:
+  w scope MkW2
+  r scope Run1040
+
+scope TestRejectsBadOutputs:
+  definition w.wages equals $50,000
+  definition w.withholding equals $3,000
+  definition r.w2s equals [w.w2]
+  assertion not (r.taxable_income = $50,000)
+  assertion not (r.total_tax = $6,059)
+  assertion not (r.overpayment > $0 and r.balance_due > $0)
+  assertion not (r.total_tax = r.tentative_tax_from_taxable_income + $1)
+  assertion r.balance_due = r.total_tax - r.total_payments
+```
