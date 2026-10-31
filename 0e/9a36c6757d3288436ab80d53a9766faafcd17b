@@ -1,0 +1,35 @@
+Makefile
+  s_3031b504518be3::t_c5539ae843bf27 29-37
+catala/DIFFTEST.md
+  s_3031b504518be3::t_5f8c586cbf32a0 1-64
+difftest/lib.mjs
+  s_3031b504518be3::t_59314f552cce80 1-188
+difftest/mappings/smoke.mjs
+  s_3031b504518be3::t_8580b1e559e593 1-25
+catala/difftest_smoke.catala_en
+  s_3031b504518be3::t_beb4f7b30e9f3e 19
+  s_3031b504518be3::t_ca6a8ffe568d45 1-14,20
+  s_3031b504518be3::t_8f75b93b0712cd 15-18
+difftest/run.mjs
+  s_3031b504518be3::t_cac335537173a1 1-68,70-87,89-106
+  s_3031b504518be3::t_79eea50257cbaf 69
+  s_3031b504518be3::t_63893baa8f73b4 88
+difftest/selftest.mjs
+  s_3031b504518be3::t_21ff25cef91d68 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0e9a36c6757d3288436ab80d53a9766faafcd17b",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
