@@ -1,0 +1,583 @@
+> Module Elderly_and_disabled
+
+> Using Types
+> Using Params_2024 as P
+> Using Rounding as R
+
+# Credit for the elderly or the disabled (Schedule R)
+
+Direct File module `elderlyAndDisabled.xml`
+(`../direct-file/direct-file/backend/src/main/resources/tax/elderlyAndDisabled.xml`,
+"DF" below, 1810 lines), scope.md section 6.5, issue #30. Tests:
+`catala/tests/test_elderly_and_disabled.catala_en`. Oracle comparison:
+`difftest/mappings/elderly_and_disabled.mjs`
+(`make difftest SCOPE=elderly_and_disabled`).
+
+Law and forms (all under `sources/`): IRC 22 (`statute/irc-22.html`), Schedule R
+(`forms-instructions/f1040sr--2024.pdf` pp 1-2) and its instructions
+(`forms-instructions/i1040sr--2024.pdf` pp R-1 to R-7).
+
+The credit is non-refundable, so it is limited by the tax left after the credits
+applied before it (CONVENTIONS.md section 7, stage 5: CDCC first, then Schedule
+R). That remaining tax is the input `credit_limit_worksheet_line_3`, filled by
+the 1040 wiring step. Inputs follow CONVENTIONS.md section 3 (complete).
+
+Scope limits: the physician's statement (Schedule R Part II) changes no number,
+and DF takes it as answers kept for the return records, so it is not modelled.
+Nonresident aliens are knocked out elsewhere (IRC 22(f)). This module has no
+knockout of its own: DF's `elderlyAndDisabled.xml` defines none.
+
+**Direct File bug found, `DF-BUG(13)`** (number tentative, see the PR): DF adds the
+nontaxable part of pensions and annuities on 1040 line 5a minus line 5b
+(`income.xml` `/nonTaxablePensionsAndAnnuities`) to Schedule R line 13b. The
+statute and the instructions exclude it. See line 13b below.
+
+## Declarations
+
+```catala-metadata
+## Answers about disability for one filer. DF asks these only of a filer under
+## 65 (and of the secondary filer only on a joint return); the caller sends
+## the answers anyway and the rules ignore them when they do not apply.
+declaration structure DisabilityAnswers:
+  # DF: /filers/*/isRetOnPermOrTotalDisability
+  data is_retired_on_perm_or_total_disability content boolean
+  # DF: /filers/*/employerHasMandatoryRetirementAge
+  data employer_has_mandatory_retirement_age content boolean
+  # DF: /filers/*/hasMetEmployerMandatoryRetirementAge
+  data has_met_employer_mandatory_retirement_age content boolean
+  # DF: /filers/*/arePaymentsTaxDisabilityIncome
+  data are_payments_taxable_disability_income content boolean
+  # DF: /filers/*/writableTotalTaxableDisabilityAmount
+  data writable_total_taxable_disability_amount content money
+  # DF: formW2s.xml /primaryFilerHasW2WagesGreaterThan0 or
+  # /secondaryFilerHasW2WagesGreaterThan0 (wages > 0 for this filer)
+  data has_w2_wages content boolean
+
+## One filer's disability facts. Called once for each filer.
+declaration scope EdcFiler:
+  # DF: /filers/*/isPrimaryFilerOrMfjAndEither
+  input counts_for_return condition
+  # DF: /maybeEligibleForCreditForElderlyAndDisabled
+  input maybe_eligible_for_credit condition
+  # DF: /filers/*/age65OrOlder (filers.xml)
+  input age65_or_older condition
+  input answers content DisabilityAnswers
+
+  # DF: /filers/*/hasDisabilityIncome
+  output has_disability_income condition
+  # DF: /filers/*/hasTaxableDisabilityPaymentsAndRetOnDisability
+  output has_taxable_disability_payments condition
+  # DF: /filers/*/totalTaxableDisabilityAmount
+  output total_taxable_disability_amount content money
+  # DF: /filers/*/isMaybeQualifiedforEdcThroughDisability
+  output is_qualified_through_disability condition
+
+## Schedule R for the return.
+declaration scope ScheduleR:
+  # DF: filingStatus.xml /filingStatus
+  input filing_status content Types.FilingStatus
+  # DF: filers.xml /livedApartAllYear (only read for MFS)
+  input lived_apart_all_year condition
+  # DF: filers.xml /primaryFiler/age65OrOlder
+  input primary_age65_or_older condition
+  # DF: filers.xml /secondaryFiler/age65OrOlder (read only on a joint return)
+  input secondary_age65_or_older condition
+  input primary_answers content DisabilityAnswers
+  input secondary_answers content DisabilityAnswers
+  # DF: taxCalculations.xml /agi, Form 1040 line 11 (Schedule R line 14)
+  input agi content money
+  # DF: socialSecurity.xml /nonTaxableSocialSecurityBenefits (Social_security
+  # scope output non_taxable_benefits), Schedule R line 13a
+  input non_taxable_social_security_benefits content money
+  # DF: /edcSelfReportedNonTaxablePaymentAmount, line 13b: nontaxable
+  # veterans' pensions and other benefits excluded under non-Code law, as the
+  # filer reports them (DF gates it on its own yes/no question, then rounds)
+  input self_reported_non_taxable_payments content money
+  # Credit Limit Worksheet line 3 (i1040sr--2024.pdf p R-5): Form 1040 line 18
+  # minus Schedule 3 lines 1, 2 and 6l. DF: /edcTaxLiabilityLimitCalc
+  input credit_limit_worksheet_line_3 content money
+
+  primary scope EdcFiler
+  secondary scope EdcFiler
+
+  # DF: filingStatus.xml /isFilingStatusMFJ (derived from filing_status)
+  internal is_mfj condition
+  internal is_mfs condition
+  internal is_single_hoh_qss condition
+  # The two filers' ages, with the secondary one counted only when joint
+  internal primary_is_65 condition
+  internal secondary_is_65 condition
+  # DF: /filersQualifiedForEdcThroughDisability, as a count
+  internal number_qualified_through_disability content integer
+  # DF: /mfjAndOnlyOneQualfiedForEdc
+  internal mfj_and_only_one_qualified condition
+  # DF: /edcRelaxedAgiLimit
+  internal relaxed_agi_limit content money
+  # DF: /edcRelaxedNontaxableLimit
+  internal relaxed_non_taxable_limit content money
+  # DF: /atLeastOneTpIsUnder65 (filers.xml)
+  internal at_least_one_tp_is_under_65 condition
+  # DF: /maybeEligibleForCreditForElderlyAndDisabled
+  internal maybe_eligible_for_credit condition
+
+  # Part I boxes. DF: /edcLine1 ... /edcLine9
+  output edc_line1 condition
+  output edc_line2 condition
+  output edc_line3 condition
+  output edc_line4 condition
+  output edc_line5 condition
+  output edc_line6 condition
+  output edc_line7 condition
+  output edc_line8 condition
+  output edc_line9 condition
+
+  # Part III
+  # DF: /edcFilingStatusAmt, line 10
+  output edc_filing_status_amt content money
+  # DF: /statusBasedDisabilityIncome, line 11
+  output status_based_disability_income content money
+  # DF: /lesserOfFilingStatusAmountAndTaxableDisabilityIncome, line 12
+  output lesser_of_filing_status_amount_and_taxable_disability_income content money
+  # DF: /edcNonTaxableSocialSecurityAndRailroadBenefits, line 13a
+  output edc_non_taxable_social_security_and_railroad_benefits content money
+  # DF: /edcNonTaxableIncomeNotIncludingSocialSecurityAndRrb, line 13b
+  output edc_non_taxable_income_not_including_social_security_and_rrb content money
+  # DF: /edcTotalNonTaxableAmount, line 13c
+  output edc_total_non_taxable_amount content money
+  # DF: /edcExemptionAmount, line 15 (no box checked: $0, DF leaves it unset)
+  output edc_exemption_amount content money
+  # DF: /edcMagi, line 16
+  output edc_magi content money
+  # DF: /edcHalfMagi, line 17
+  output edc_half_magi content money
+  # DF: /edcAdjustedCreditAmount, line 18
+  output edc_adjusted_credit_amount content money
+  # DF: /edcNetCreditAmount, line 19
+  output edc_net_credit_amount content money
+  # DF: /netEdcAmount, line 20
+  output net_edc_amount content money
+  # DF: /edcTaxLiabilityLimit, line 21
+  output edc_tax_liability_limit content money
+  # DF: /totalEdc, line 22: Schedule 3 line 6d
+  output total_edc content money
+
+  # Eligibility. DF: /edcAgiLimitBasedOnQualified
+  output edc_agi_limit content money
+  # DF: /edcNonTaxableLimitBasedOnQualified
+  output edc_non_taxable_limit content money
+  # DF: /isQualifiedForEdcBasedOnAgeOrDisability
+  output is_qualified_based_on_age_or_disability condition
+  # DF: /qualifiedForCreditForElderlyAndDisabled
+  output qualified_for_credit_for_elderly_and_disabled condition
+  # DF: /isReceivingEdc
+  output is_receiving_edc condition
+```
+
+## IRC 22(b): qualified individual, disability limb
+
+"(b) ... the term 'qualified individual' means any individual— (1) who has
+attained age 65 before the close of the taxable year, or (2) who retired on
+disability before the close of the taxable year and who, when he retired, was
+permanently and totally disabled."
+
+The instructions add what the form needs (`i1040sr--2024.pdf` p R-1): a filer
+under 65 "can qualify for the credit only if you are retired on permanent and
+total disability, have taxable disability income, and as of January 1, 2024,
+had not reached mandatory retirement age". "Disability income must ... be
+included in your income as wages (or payments instead of wages) for the time you
+are absent from work" (p R-3). DF can only hold such income in a W-2, so it asks
+about disability only of a filer with W-2 wages above zero (`/filers/*/
+maybeEligibleForDisabilityCredit`), reproduced by `has_w2_wages`. That is a
+limit of what the return can contain, not a different reading of the law.
+
+```catala
+scope EdcFiler:
+  # IRC 22(b)(2); i1040sr--2024.pdf p R-1, R-3.
+  # DF: elderlyAndDisabled.xml /filers/*/hasDisabilityIncome
+  # (DF asks the disability questions only when the credit may apply at all:
+  # `/filers/*/maybeEligibleForDisabilityCredit` includes the "maybe eligible"
+  # fact, so the boxes below stay unchecked for a return with no tax to offset.)
+  definition has_disability_income equals
+    counts_for_return
+    and maybe_eligible_for_credit
+    and (not age65_or_older)
+    and answers.has_w2_wages
+    and answers.is_retired_on_perm_or_total_disability
+    and ((not answers.employer_has_mandatory_retirement_age)
+         or (not answers.has_met_employer_mandatory_retirement_age))
+
+  # DF: /filers/*/hasTaxableDisabilityPaymentsAndRetOnDisability
+  definition has_taxable_disability_payments equals
+    has_disability_income and answers.are_payments_taxable_disability_income
+
+  # IRC 22(c)(2)(B)(iii): "disability income". DF: /filers/*/totalTaxableDisabilityAmount
+  definition total_taxable_disability_amount equals
+    if has_taxable_disability_payments
+    then answers.writable_total_taxable_disability_amount
+    else $0
+
+  # DF: /filers/*/isMaybeQualifiedforEdcThroughDisability: the filer has
+  # taxable disability income, which must be more than zero
+  definition is_qualified_through_disability equals
+    has_taxable_disability_payments and total_taxable_disability_amount != $0
+```
+
+## Part I: the box for filing status and age
+
+Schedule R Part I (`f1040sr--2024.pdf` p 1): Single, head of household or
+qualifying surviving spouse: box 1 "You were 65 or older", box 2 "You were under
+65 and you retired on permanent and total disability". Married filing jointly:
+box 3 both spouses 65 or older; box 4 both under 65, only one retired on
+permanent and total disability; box 5 both under 65, both retired on disability;
+box 6 one spouse 65 or older, the other under 65 and retired on disability; box 7
+one spouse 65 or older, the other under 65 and not retired on disability.
+Married filing separately: box 8 "65 or older and you lived apart from your
+spouse for all of 2024", box 9 "under 65, retired on permanent and total
+disability, and you lived apart from your spouse for all of 2024".
+
+IRC 22(e)(1): "Except in the case of a husband and wife who live apart at all
+times during the taxable year, if the taxpayer is married at the close of the
+taxable year, the credit provided by this section shall be allowed only if the
+taxpayer and his spouse file a joint return for the taxable year." A married
+filer filing separately and not living apart therefore gets no credit; this
+module checks that in the eligibility rules, as DF does in
+`/maybeEligibleForCreditForElderlyAndDisabledWoTaxLiability`.
+
+```catala
+scope ScheduleR:
+  definition is_mfj equals filing_status = MarriedFilingJointly
+  definition is_mfs equals filing_status = MarriedFilingSeparately
+  definition is_single_hoh_qss equals
+    not (is_mfj or is_mfs)
+
+  definition primary.counts_for_return equals true
+  definition primary.maybe_eligible_for_credit equals maybe_eligible_for_credit
+  definition secondary.maybe_eligible_for_credit equals maybe_eligible_for_credit
+  definition primary.age65_or_older equals primary_age65_or_older
+  definition primary.answers equals primary_answers
+  definition secondary.counts_for_return equals is_mfj
+  definition secondary.age65_or_older equals secondary_age65_or_older
+  definition secondary.answers equals secondary_answers
+
+  # DF: /primaryFiler/age65OrOlder, /secondaryFiler/age65OrOlder; the
+  # secondary filer exists only on a joint return
+  definition primary_is_65 equals primary_age65_or_older
+  definition secondary_is_65 equals is_mfj and secondary_age65_or_older
+
+  # DF: CollectionSize of /filersQualifiedForEdcThroughDisability
+  definition number_qualified_through_disability equals
+    (if primary.is_qualified_through_disability then 1 else 0)
+    + (if secondary.is_qualified_through_disability then 1 else 0)
+
+  # DF: /edcLine1
+  definition edc_line1 equals is_single_hoh_qss and primary_is_65
+  # DF: /edcLine2
+  definition edc_line2 equals
+    is_single_hoh_qss and primary.is_qualified_through_disability
+  # DF: /edcLine3
+  definition edc_line3 equals is_mfj and primary_is_65 and secondary_is_65
+  # DF: /edcLine4
+  definition edc_line4 equals
+    is_mfj and (not primary_is_65) and (not secondary_is_65)
+    and number_qualified_through_disability = 1
+  # DF: /edcLine5
+  definition edc_line5 equals
+    is_mfj and (not primary_is_65) and (not secondary_is_65)
+    and number_qualified_through_disability = 2
+  # DF: /edcLine6. One spouse is 65 or older, the other is under 65 and retired
+  # on disability with taxable disability income
+  definition edc_line6 equals
+    is_mfj and
+    ((primary_is_65 and (not secondary_is_65)
+      and secondary.is_qualified_through_disability)
+     or (secondary_is_65 and (not primary_is_65)
+         and primary.is_qualified_through_disability))
+  # DF: /edcLine7. One spouse is 65 or older, the other is under 65 and not
+  # retired on disability
+  definition edc_line7 equals
+    is_mfj and
+    ((primary_is_65 and (not secondary_is_65)
+      and (not secondary.is_qualified_through_disability))
+     or (secondary_is_65 and (not primary_is_65)
+         and (not primary.is_qualified_through_disability)))
+  # DF: /edcLine8
+  definition edc_line8 equals is_mfs and primary_is_65
+  # DF: /edcLine9
+  definition edc_line9 equals
+    is_mfs and (not primary_is_65) and primary.is_qualified_through_disability
+```
+
+## IRC 22(c)(2): initial amount, Schedule R lines 10 to 12
+
+"(2) Initial amount (A) In general Except as provided in subparagraph (B), the
+initial amount shall be— (i) $5,000 in the case of a single individual, or a
+joint return where only one spouse is a qualified individual, (ii) $7,500 in
+the case of a joint return where both spouses are qualified individuals, or
+(iii) $3,750 in the case of a married individual filing a separate return."
+
+"(B) ... (i) In the case of a qualified individual who has not attained age 65
+before the close of the taxable year ... the initial amount shall not exceed the
+disability income for the taxable year. (ii) ... (I) if both spouses have not
+attained age 65 before the close of the taxable year, the initial amount shall
+not exceed the sum of such spouses' disability income, or (II) if one spouse has
+attained age 65 before the close of the taxable year, the initial amount shall
+not exceed the sum of $5,000 plus the disability income for the taxable year of
+the spouse who has not attained age 65."
+
+Schedule R line 10 (`f1040sr--2024.pdf` p 2): box 1, 2, 4 or 7 $5,000; box 3, 5
+or 6 $7,500; box 8 or 9 $3,750. Line 11: box 6, "$5,000 to the taxable
+disability income of the spouse who was under age 65"; box 2, 4 or 9 "your
+taxable disability income"; box 5, "your taxable disability income to your
+spouse's". Line 12: "If you completed line 11, enter the smaller of line 10 or
+line 11. All others, enter the amount from line 10."
+
+```catala
+scope ScheduleR:
+  # Schedule R line 10. DF: /edcFilingStatusAmt ($0 when no box is checked)
+  definition edc_filing_status_amt equals
+    if edc_line1 or edc_line2 or edc_line4 or edc_line7
+    then P.edc_initial_amount_single_or_one_qualified
+    else if edc_line3 or edc_line5 or edc_line6
+    then P.edc_initial_amount_joint_both_qualified
+    else if edc_line8 or edc_line9
+    then P.edc_initial_amount_married_separate
+    else $0
+
+  # Schedule R line 11. DF: /statusBasedDisabilityIncome
+  definition status_based_disability_income equals
+    if edc_line6 then
+      (if primary.is_qualified_through_disability
+       then primary.total_taxable_disability_amount + P.edc_initial_amount_single_or_one_qualified
+       else secondary.total_taxable_disability_amount + P.edc_initial_amount_single_or_one_qualified)
+    else if edc_line2 or edc_line9 then primary.total_taxable_disability_amount
+    else if edc_line4 then
+      (if primary.is_qualified_through_disability
+       then primary.total_taxable_disability_amount
+       else secondary.total_taxable_disability_amount)
+    else if edc_line5 then
+      primary.total_taxable_disability_amount + secondary.total_taxable_disability_amount
+    else $0
+
+  # Schedule R line 12. DF: /lesserOfFilingStatusAmountAndTaxableDisabilityIncome
+  definition lesser_of_filing_status_amount_and_taxable_disability_income equals
+    if number_qualified_through_disability > 0
+    then Money.min of edc_filing_status_amt, status_based_disability_income
+    else edc_filing_status_amt
+```
+
+## IRC 22(c)(3): reduction for nontaxable pensions, Schedule R line 13
+
+"(3) Reduction (A) In general The reduction under this paragraph is an amount
+equal to the sum of the amounts received by the individual (or, in the case of a
+joint return, by either spouse) as a pension or annuity or as a disability
+benefit— (i) which is excluded from gross income and payable under— (I) title II
+of the Social Security Act, (II) the Railroad Retirement Act of 1974, or (III) a
+law administered by the Department of Veterans Affairs, or (ii) which is
+excluded from gross income under any provision of law not contained in this
+title."
+
+Line 13a is the nontaxable social security (and tier 1 railroad) benefits, "the
+difference between the amounts entered on Form 1040 or 1040-SR, line 6a and line
+6b" (`i1040sr--2024.pdf` p R-4). Line 13b: "Veterans' pensions (but not military
+disability pensions)" and "Any other pension, annuity, or disability benefit that
+is excluded from income under any provision of federal law other than the
+Internal Revenue Code. Don't include amounts that are treated as a return of your
+cost of a pension or annuity" (p R-5). Line 13c "Add lines 13a and 13b".
+
+`DF-BUG(13)`: DF line 13b is `/edcSelfReportedNonTaxablePaymentAmount` plus
+`/nonTaxablePensionsAndAnnuities`, which is 1040 line 5a minus line 5b
+(`income.xml` line 652, `elderlyAndDisabled.xml` fact
+`/edcNonTaxableIncomeNotIncludingSocialSecurityAndRrb`). Within Direct File's
+supported 1099-R codes (2, 7, G, H) that difference is a return of the filer's
+cost (excluded by IRC 72, "contained in this title") or a direct rollover (IRC
+402(c), also "this title"). Both are outside IRC 22(c)(3)(A) and are excluded by
+the sentence quoted from the instructions. DF over-reduces the credit. We follow
+the statute: line 13b is the self-reported figure only. The difftest mapping
+lists the 1040-line-5 scenarios as a known divergence.
+
+```catala
+scope ScheduleR:
+  # Schedule R line 13a; IRC 22(c)(3)(A)(i). DF: /edcNonTaxableSocialSecurityAndRailroadBenefits
+  definition edc_non_taxable_social_security_and_railroad_benefits equals
+    non_taxable_social_security_benefits
+
+  # Schedule R line 13b; IRC 22(c)(3)(A)(i)(III), (ii).
+  # DF-BUG(13): DF also adds 1040 line 5a - line 5b (cost recovery and rollovers
+  # under Code sections 72 and 402). The law excludes them, so we do not.
+  # DF: /edcNonTaxableIncomeNotIncludingSocialSecurityAndRrb
+  definition edc_non_taxable_income_not_including_social_security_and_rrb equals
+    self_reported_non_taxable_payments
+
+  # Schedule R line 13c. DF: /edcTotalNonTaxableAmount (Round, floor at $0)
+  definition edc_total_non_taxable_amount equals
+    R.round_dollar of (Money.positive of
+      (edc_non_taxable_social_security_and_railroad_benefits
+       + edc_non_taxable_income_not_including_social_security_and_rrb))
+```
+
+## IRC 22(d): adjusted gross income limitation, lines 14 to 18
+
+"(d) ... If the adjusted gross income of the taxpayer exceeds— (1) $7,500 in the
+case of a single individual, (2) $10,000 in the case of a joint return, or (3)
+$5,000 in the case of a married individual filing a separate return, the section
+22 amount shall be reduced by one-half of the excess of the adjusted gross income
+over $7,500, $10,000, or $5,000, as the case may be."
+
+Schedule R lines 15 to 18 (`f1040sr--2024.pdf` p 2): line 15 is $7,500 for box 1
+or 2, $10,000 for box 3, 4, 5, 6 or 7, $5,000 for box 8 or 9. Line 16 "Subtract
+line 15 from line 14. If zero or less, enter -0-"; line 17 "one-half of line 16";
+line 18 "Add lines 13c and 17". DF rounds the result of lines 16 and 17
+(`/edcMagi`, `/edcHalfMagi`), and the 1040 instructions round to whole dollars,
+so a half dollar rounds up.
+
+```catala
+scope ScheduleR:
+  # Schedule R line 15. DF: /edcExemptionAmount
+  definition edc_exemption_amount equals
+    if edc_line8 or edc_line9 then P.edc_agi_threshold_married_separate
+    else if edc_line1 or edc_line2 then P.edc_agi_threshold_single
+    else if edc_line3 or edc_line4 or edc_line5 or edc_line6 or edc_line7
+    then P.edc_agi_threshold_joint
+    else $0
+
+  # Schedule R line 16. DF: /edcMagi
+  definition edc_magi equals
+    R.round_dollar of (Money.positive of (agi - edc_exemption_amount))
+
+  # Schedule R line 17. DF: /edcHalfMagi
+  definition edc_half_magi equals
+    R.round_dollar of (edc_magi * P.edc_agi_reduction_rate)
+
+  # Schedule R line 18. DF: /edcAdjustedCreditAmount
+  definition edc_adjusted_credit_amount equals
+    edc_total_non_taxable_amount + edc_half_magi
+```
+
+## IRC 22(a): the credit, lines 19 to 22
+
+"(a) General rule In the case of a qualified individual, there shall be allowed as
+a credit against the tax imposed by this chapter for the taxable year an amount
+equal to 15 percent of such individual's section 22 amount for such taxable
+year."
+
+Line 19: "Subtract line 18 from line 12. If zero or less, stop; you can't take the
+credit." Line 20: "Multiply line 19 by 15% (0.15)." Line 21: the Credit Limit
+Worksheet (`i1040sr--2024.pdf` p R-5): "1. Enter the amount from Form 1040 or
+1040-SR, line 18. 2. Enter the amount from Schedule 3 (Form 1040), lines 1, 2,
+and 6l. 3. Subtract line 2 from line 1. Enter this amount on Schedule R (Form
+1040), line 21. But if zero or less, STOP; you can't take this credit." Line 22:
+"Enter the smaller of line 20 or line 21."
+
+DF does the 15% step in `/netEdcAmount` (the fact the survey missed): `Round`
+of line 19 times 15/100, to the whole dollar (ties up). Example from the
+instructions, Jesse (p R-5): line 19 is $500, line 20 is $75, limit $51, credit
+$51.
+
+```catala
+scope ScheduleR:
+  # Schedule R line 19. DF: /edcNetCreditAmount (and /hasEdcNetCreditAmount)
+  definition edc_net_credit_amount equals
+    Money.positive of
+      (lesser_of_filing_status_amount_and_taxable_disability_income
+       - edc_adjusted_credit_amount)
+
+  # Schedule R line 20. DF: /netEdcAmount
+  definition net_edc_amount equals
+    R.round_dollar of (edc_net_credit_amount * P.edc_credit_rate)
+
+  # Schedule R line 21. DF: /edcTaxLiabilityLimit
+  definition edc_tax_liability_limit equals
+    Money.positive of credit_limit_worksheet_line_3
+```
+
+## Who may take the credit
+
+Table 1 of the instructions (`i1040sr--2024.pdf` p R-7): "you generally CAN'T take
+the credit if" Form 1040 line 11 is "$17,500 or more" (single, head of household,
+qualifying surviving spouse), "$20,000 or more" (joint, only one spouse is a
+qualified individual), "$25,000 or more" (joint, both are), "$12,500 or more"
+(married filing separately and lived apart all year), "OR the total of your
+nontaxable social security and other nontaxable pension(s) ... is equal to or more
+than" $5,000, $5,000, $7,500 and $3,750 respectively. Both tests are strict
+(`<`), as in DF `/isQualifiedForEdcBasedOnAgiLimit` and
+`/isQualifiedForEdcBasedOnNonTaxablePayments`.
+
+DF's `/qualifiedForCreditForElderlyAndDisabled` is the conjunction of: tax
+liability above zero, `/maybeEligibleForCreditForElderlyAndDisabled` (a first
+screen that DF applies before it asks the disability questions: the "relaxed"
+AGI and nontaxable limits that hold whether or not both spouses qualify, the
+married-filing-separately living-apart rule, and age 65 or W-2 wages), the age or
+disability test, the exact AGI limit and the exact nontaxable limit with a
+positive line 19. The screen never rejects anything the exact tests accept, so it
+changes no credit; it does decide whether the Part I boxes for a disabled filer are
+checked, which the oracle exposes, so it is reproduced.
+
+```catala
+scope ScheduleR:
+  definition relaxed_agi_limit equals
+    if is_mfj then P.edc_agi_limit_joint_both_qualified
+    else if is_mfs then P.edc_agi_limit_married_separate
+    else P.edc_agi_limit_single_hoh_qss
+  definition relaxed_non_taxable_limit equals
+    if is_mfj then P.edc_initial_amount_joint_both_qualified
+    else if is_mfs then P.edc_initial_amount_married_separate
+    else P.edc_initial_amount_single_or_one_qualified
+  definition at_least_one_tp_is_under_65 equals
+    if is_mfj then (not primary_age65_or_older) or (not secondary_age65_or_older)
+    else not primary_age65_or_older
+
+  # DF: /maybeEligibleForCreditForElderlyAndDisabled and ...WoTaxLiability.
+  # Total W-2 wages above zero is "some filer has W-2 wages" (DF /wages > 0).
+  definition maybe_eligible_for_credit equals
+    credit_limit_worksheet_line_3 > $0
+    and (primary_is_65 or secondary_is_65
+         or (at_least_one_tp_is_under_65
+             and (primary_answers.has_w2_wages or secondary_answers.has_w2_wages)))
+    and agi < relaxed_agi_limit
+    and non_taxable_social_security_benefits < relaxed_non_taxable_limit
+    and ((not is_mfs) or lived_apart_all_year)
+
+  # DF: /filersQualifiedForEdcThroughDisability plus /atLeastOneTpIs65OrOlder
+  definition is_qualified_based_on_age_or_disability equals
+    primary_is_65 or secondary_is_65 or number_qualified_through_disability > 0
+
+  # DF: /mfjAndOnlyOneQualfiedForEdc: exactly one spouse is 65 or older or
+  # qualifies through disability
+  definition mfj_and_only_one_qualified equals
+    is_mfj
+    and ((if primary_is_65 or primary.is_qualified_through_disability then 1 else 0)
+         + (if secondary_is_65 or secondary.is_qualified_through_disability then 1 else 0)) = 1
+
+  # Table 1, AGI column. DF: /edcAgiLimitBasedOnQualified
+  definition edc_agi_limit equals
+    if mfj_and_only_one_qualified then P.edc_agi_limit_joint_one_qualified
+    else if is_mfj then P.edc_agi_limit_joint_both_qualified
+    else if is_mfs then P.edc_agi_limit_married_separate
+    else P.edc_agi_limit_single_hoh_qss
+
+  # Table 1, nontaxable column. DF: /edcNonTaxableLimitBasedOnQualified
+  definition edc_non_taxable_limit equals
+    if mfj_and_only_one_qualified then P.edc_initial_amount_single_or_one_qualified
+    else if is_mfj then P.edc_initial_amount_joint_both_qualified
+    else if is_mfs then P.edc_initial_amount_married_separate
+    else P.edc_initial_amount_single_or_one_qualified
+
+  # IRC 22(e)(1); DF: /qualifiedForCreditForElderlyAndDisabled
+  definition qualified_for_credit_for_elderly_and_disabled equals
+    edc_tax_liability_limit > $0
+    and maybe_eligible_for_credit
+    and is_qualified_based_on_age_or_disability
+    and agi < edc_agi_limit
+    and edc_net_credit_amount > $0
+    and edc_total_non_taxable_amount < edc_non_taxable_limit
+
+  # Schedule R line 22; Schedule 3 line 6d. DF: /totalEdc
+  definition total_edc equals
+    if qualified_for_credit_for_elderly_and_disabled
+    then Money.min of net_edc_amount, edc_tax_liability_limit
+    else $0
+
+  # DF: /isReceivingEdc
+  definition is_receiving_edc equals
+    qualified_for_credit_for_elderly_and_disabled and total_edc > $0
+```
