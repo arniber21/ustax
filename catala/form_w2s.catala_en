@@ -1,0 +1,907 @@
+> Module Form_w2s
+> Using Types
+> Using Params_2024 as P
+> Using Rounding as R
+
+# Form W-2: wages, withholding, Medicare and social security checks
+
+Catala module for Direct File `formW2s.xml` (issue #12, `scope.md` section
+3.2). It computes what the rest of the return reads from the filer's Forms
+W-2: Form 1040 line 1a (wages), line 25a (federal income tax withheld), the
+social security and Medicare tax withheld used by Schedule 8812, Form 8880
+line 2 deferrals, nontaxable combat pay (code Q), employer HSA contributions
+(code W) and the knockout conditions that send W-2 shapes Direct File does
+not support out of scope.
+
+Conventions: `catala/CONVENTIONS.md`. Every dollar amount a W-2 carries is an
+`input` here (complete inputs, section 3 of the conventions: an empty box is an
+explicit `$0`). A Direct File `Round` is `R.round_dollar` and is applied
+exactly where the XML applies it (per-item rounding, section 4, rule 2).
+
+Oracle: `oracle/facts.csv` rows `/wages`, `/formW2Withholding`,
+`/socialSecurityTaxesWithheld`, `/allCombatPay`, `/combatPayAmount`, compared
+by `make difftest SCOPE=form_w2s` (mapping `difftest/mappings/form_w2s.mjs`).
+
+## Facts skipped
+
+Not modelled, because they are MeF export helpers, screen-flow state or state
+tax inputs (conventions section 2, last rows; the state-return facts are out of
+scope in issue #12):
+
+- Every `...Needed` fact (for example `/formW2s/*/457bDeferralsNeeded`,
+  `combatPayNeeded`) and every `...Rounded` fact whose only reader is the MeF
+  export. The `...Rounded` facts that feed a tax figure (Form 8880 line 2, code
+  W) are reproduced as inline `R.round_dollar` calls.
+- Identity and address facts: `tin`, `usedTin`, `flowFilerTinIsSsn`, `ein`,
+  `employerName`, `writableEmployerNameLine2`, `employerAddress`, `suffix`,
+  `addressMatchesReturn`, `addressOverride`, `address`.
+- Screen state and validation: `hasSeenLastAvailableScreen`, `isComplete`,
+  `formW2sIsDone`, `primaryFilerHasIncompleteFormW2s`,
+  `secondaryFilerHasIncompleteFormW2s`, `hasW2ValidationErrors`,
+  `hasInputBox12Codes`, `writableHasBox12Codes`, `hasBox12Codes`,
+  `writableBox12Code`, `nonstandardOrCorrectedChoice`, `isCorrected`,
+  `isNonstandard`, `standardOrNonStandardCd`, `w2NonstandardCorrectedOptions`,
+  `oneAndOnlyW2`, `filersHaveExactlyOneW2` (read only by the CDCC provider
+  screens), `xmlHasW2s`, `hasW2s` (only decides whether MeF attaches W-2
+  records), `w2MinAmount`, `formW2WithAllocatedTips`, `formW2WithBox12Knockout`,
+  `formW2sWithBox12KnockoutCodes`.
+- Box 7 social security tips (`writableOasdiTips`, `oasdiTips`): no tax figure
+  in scope reads it.
+- Box 13 `retirementPlan`: no tax figure reads it.
+- Box 14 and boxes 15 to 20 (state and local): `box14*`, `BOX14_*`,
+  `hasRRTACodesInBox14`, `flowKnockoutHasRRTACodesInBox14NotInNY`,
+  `hasABox14NYRRTAValueWeKnockout`, `knockoutBox14NYRRTACode`, the
+  `414H`/`ERS`/`NYSERS`/... code facts, `state`, `stateWages`,
+  `stateWithholding`, `localWages`, `localWithholding`, `locality`,
+  `flowKnockoutBox15IncomeFromDifferentState`, `knockoutYonkersPartYear`,
+  `partYearYonkersResident`, `flowStateToolNeedsBox14`, `hasStateWagesWithoutStateCode`,
+  `box17GreaterThanBox16`, `box19GreaterThanBox18`. These belong to the state
+  knockout issues (#36, #37).
+- `hasQsehra`: read only by `ptc.xml` and left to the PTC issues (#32 to #34).
+  The raw box 12 amount `qsehra_benefits` (code FF) is an input field so they
+  can read it.
+- Imported W-2 variants (`imported*`, `isImported`): `imported.xml` is not
+  modelled (conventions section 9).
+
+## Shapes
+
+```catala-metadata
+# The "Form W-2 box 12 code" options of `/w2Box12CodeOptions` are the
+# `code_...` fields of `FormW2` below. A Catala identifier cannot start with a
+# digit, so DF names such as `401kDeferrals` become `deferrals_401k`
+# (`403bDeferrals` -> `deferrals_403b`, `457bDeferrals` -> `deferrals_457b`,
+# `501c18Deferrals` -> `deferrals_501c18`, `409aDeferrals` -> `deferrals_409a`,
+# `83iIncome` -> `income_83i`, `83iDeferrals` -> `deferrals_83i`,
+# `457bIsGovernmentalPlan` -> `plan_457b_is_governmental`).
+
+## One Form W-2 as the filer typed it.
+## DF: the `/formW2s` collection. Every box is a `writable...` fact in DF.
+declaration structure FormW2:
+  # DF: /formW2s/*/filer
+  data filer content Types.FilerRole
+  # Box 1. DF: /formW2s/*/writableWages
+  data writable_wages content money
+  # Box 2. DF: /formW2s/*/writableFederalWithholding
+  data writable_federal_withholding content money
+  # Box 3. DF: /formW2s/*/writableOasdiWages
+  data writable_oasdi_wages content money
+  # Box 4. DF: /formW2s/*/writableOasdiWithholding
+  data writable_oasdi_withholding content money
+  # Box 5. DF: /formW2s/*/writableMedicareWages
+  data writable_medicare_wages content money
+  # Box 6. DF: /formW2s/*/writableMedicareWithholding
+  data writable_medicare_withholding content money
+  # Box 8. DF: /formW2s/*/writableAllocatedTips
+  data writable_allocated_tips content money
+  # Box 10. DF: /formW2s/*/writableDependentCareBenefits
+  data writable_dependent_care_benefits content money
+  # Box 11. DF: /formW2s/*/writableNonQualifiedPlans
+  data writable_non_qualified_plans content money
+  # Box 12, one field per code.
+  # A. DF: uncollectedOasdiTaxOnTips
+  data uncollected_oasdi_tax_on_tips content money
+  # B. DF: uncollectedMedicareTaxOnTips
+  data uncollected_medicare_tax_on_tips content money
+  # C. DF: taxableLifeInsuranceOver50k
+  data taxable_life_insurance_over_50k content money
+  # D. DF: 401kDeferrals
+  data deferrals_401k content money
+  # E. DF: 403bDeferrals
+  data deferrals_403b content money
+  # F. DF: sarsepDeferrals
+  data sarsep_deferrals content money
+  # G. DF: 457bDeferrals
+  data deferrals_457b content money
+  # H. DF: 501c18Deferrals
+  data deferrals_501c18 content money
+  # J. DF: nontaxableSickPay
+  data nontaxable_sick_pay content money
+  # K. DF: goldenParachuteExciseTax
+  data golden_parachute_excise_tax content money
+  # L. DF: expenseReimbursements
+  data expense_reimbursements content money
+  # M. DF: uncollectedOasdiTaxOnLifeInsuranceOver50k
+  data uncollected_oasdi_tax_on_life_insurance_over_50k content money
+  # N. DF: uncollectedMedicareTaxOnLifeInsuranceOver50k
+  data uncollected_medicare_tax_on_life_insurance_over_50k content money
+  # P. DF: armedForcesMovingExpenses
+  data armed_forces_moving_expenses content money
+  # Q. DF: writableCombatPay
+  data writable_combat_pay content money
+  # R. DF: archerMsaContributions
+  data archer_msa_contributions content money
+  # S. DF: simpleContributions
+  data simple_contributions content money
+  # T. DF: adoptionBenefits
+  data adoption_benefits content money
+  # V. DF: nsoIncome
+  data nso_income content money
+  # W. DF: employerHsaContributions
+  data employer_hsa_contributions content money
+  # Y. DF: 409aDeferrals
+  data deferrals_409a content money
+  # Z. DF: nqdcDeferrals
+  data nqdc_deferrals content money
+  # AA. DF: roth401kContributions
+  data roth401k_contributions content money
+  # BB. DF: roth403bContributions
+  data roth403b_contributions content money
+  # DD. DF: healthCoverageCost
+  data health_coverage_cost content money
+  # EE. DF: roth457bContributions
+  data roth457b_contributions content money
+  # FF. DF: qsehraBenefits
+  data qsehra_benefits content money
+  # GG. DF: 83iIncome
+  data income_83i content money
+  # HH. DF: 83iDeferrals
+  data deferrals_83i content money
+  # II. DF: nonTaxableMedicaidWaiverPayments
+  data non_taxable_medicaid_waiver_payments content money
+  # Answer to "is this a governmental 457(b) plan?", asked only when code G is
+  # present. DF: /formW2s/*/457bIsGovernmentalPlan
+  data plan_457b_is_governmental content boolean
+  # Box 13. DF: /formW2s/*/statutoryEmployee
+  data statutory_employee content boolean
+  # Box 13. DF: /formW2s/*/thirdPartySickPay
+  data third_party_sick_pay content boolean
+
+## How the filer elects to treat nontaxable combat pay (Form 1040 line 1i and
+## the earned income credit). DF: `/combatPayElection` (`eitc.xml`) with the
+## options of `/combatPayOptions` (`constants.xml` lines 837 to 880). The
+## options DF offers depend on who has combat pay; this module accepts any
+## value and applies the same six cases as `/combatPayAmount`.
+declaration enumeration CombatPayElection:
+  -- NoCombatPay
+  -- UsePrimaryCombatPay
+  -- UseSpouseCombatPay
+  -- UseBothCombatPay
+  -- UsePrimaryNotSpouseCombatPay
+  -- UseSpouseNotPrimaryCombatPay
+```
+
+## Per-item facts (`/formW2s/*/...`)
+
+Form 1040 line 1a: "Total amount from Form(s) W-2, box 1"
+(`sources/forms-instructions/f1040--2024.pdf` p 1). Instructions, "Line 1a",
+`sources/forms-instructions/i1040gi--2024.pdf` p 23: "Enter the total amount
+from Form(s) W-2, box 1. If a joint return, also include your spouse's income
+from Form(s) W-2, box 1."
+
+Instructions for line 25a (`i1040gi--2024.pdf` p 37): "Add the amounts shown as
+federal income tax withheld on your Form(s) W-2. Enter the total on line 25a.
+The amount withheld should be shown in box 2 of Form W-2."
+
+The scope `FormW2Item` below computes the derived facts of one W-2. The
+collection scope `FormW2s` maps it over the list.
+
+```catala-metadata
+## The derived facts of a single Form W-2 and the checks that read it.
+declaration scope FormW2Item:
+  input w2 content FormW2
+  # Echo of `w2.filer`, so a list of results can be filtered by filer.
+  output filer content Types.FilerRole
+  # DF: /formW2s/*/wages (box 1, rounded)
+  output wages content money
+  # DF: /formW2s/*/federalWithholding (box 2, rounded)
+  output federal_withholding content money
+  # DF: /formW2s/*/oasdiWages (box 3, rounded)
+  output oasdi_wages content money
+  # DF: /formW2s/*/oasdiWagesForKnockoutCalculation
+  output oasdi_wages_for_knockout_calculation content money
+  # DF: /formW2s/*/oasdiWithholding (box 4, rounded)
+  output oasdi_withholding content money
+  # DF: /formW2s/*/medicareWages (box 5, rounded)
+  output medicare_wages content money
+  # DF: /formW2s/*/medicareWithholding (box 6, rounded)
+  output medicare_withholding content money
+  # DF: /formW2s/*/allocatedTips (box 8, rounded)
+  output allocated_tips content money
+  # DF: /formW2s/*/dependentCareBenefits (box 10, not rounded)
+  output dependent_care_benefits content money
+  # DF: /formW2s/*/nonQualifiedPlans (box 11, rounded)
+  output non_qualified_plans content money
+  # DF: /formW2s/*/combatPay (box 12 code Q, rounded)
+  output combat_pay content money
+  # DF: /formW2s/*/employerHsaContributionsRounded (box 12 code W)
+  output employer_hsa_contributions_rounded content money
+  # DF: /formW2s/*/totalDeferralsAndContributions (Form 8880 line 2)
+  output total_deferrals_and_contributions content money
+  # DF: /formW2s/*/causesAllocatedTipsKO
+  output causes_allocated_tips_ko condition
+  # DF: /formW2s/*/causesNonQualifiedPlansKO
+  output causes_non_qualified_plans_ko condition
+  # DF: /formW2s/*/hasBox12KnockoutCode (via /formW2s/*/knockoutBox12Code)
+  output has_box12_knockout_code condition
+```
+
+### Box amounts
+
+DF rounds each dollar box on its own (`Round` around the `Switch`), so a W-2
+with $30,000.40 in box 1 reports $30,000. `writableDependentCareBenefits` is
+the one box DF does not round per item (`/formW2s/*/dependentCareBenefits`
+has no `Round`); the sum over the filer's W-2s is rounded instead
+(`/primaryFilerDependentCareBenefits`).
+
+```catala
+scope FormW2Item:
+  definition filer equals w2.filer
+
+  # QUIRK(Q-R1): per-item rounding. Form 1040 instructions p 23 say to add the
+  # cents and round the total; DF rounds each W-2 first. Decision: reproduce
+  # (CONVENTIONS section 4 rule 2, issue #60).
+  # DF: formW2s.xml /formW2s/*/wages
+  definition wages equals R.round_dollar of w2.writable_wages
+  # DF: formW2s.xml /formW2s/*/federalWithholding
+  definition federal_withholding equals
+    R.round_dollar of w2.writable_federal_withholding
+  # DF: formW2s.xml /formW2s/*/oasdiWages
+  definition oasdi_wages equals R.round_dollar of w2.writable_oasdi_wages
+  # DF: formW2s.xml /formW2s/*/oasdiWithholding
+  definition oasdi_withholding equals
+    R.round_dollar of w2.writable_oasdi_withholding
+  # DF: formW2s.xml /formW2s/*/medicareWages
+  definition medicare_wages equals R.round_dollar of w2.writable_medicare_wages
+  # DF: formW2s.xml /formW2s/*/medicareWithholding
+  definition medicare_withholding equals
+    R.round_dollar of w2.writable_medicare_withholding
+  # DF: formW2s.xml /formW2s/*/allocatedTips
+  definition allocated_tips equals R.round_dollar of w2.writable_allocated_tips
+  # DF: formW2s.xml /formW2s/*/dependentCareBenefits (no Round)
+  definition dependent_care_benefits equals w2.writable_dependent_care_benefits
+  # DF: formW2s.xml /formW2s/*/nonQualifiedPlans
+  definition non_qualified_plans equals
+    R.round_dollar of w2.writable_non_qualified_plans
+  # Box 12 code Q. DF: formW2s.xml /formW2s/*/combatPay
+  definition combat_pay equals R.round_dollar of w2.writable_combat_pay
+  # Box 12 code W. DF: formW2s.xml /formW2s/*/employerHsaContributionsRounded
+  definition employer_hsa_contributions_rounded equals
+    R.round_dollar of w2.employer_hsa_contributions
+```
+
+### Social security wage base across W-2s
+
+Pub. 15 (2024), `sources/pubs/p15--2024.pdf` p 2: "The social security wage
+base limit is $168,600." A filer with several employers can have more than that
+withheld, and is then owed a refund of the excess (Schedule 3 line 11,
+"Excess social security and tier 1 RRTA tax withheld",
+`sources/forms-instructions/f1040s3--2024.pdf` p 1), which Direct File does not
+support (`ko_any_filer_exceeds_max_oasdi_wages` below). To avoid knocking out a
+filer with many W-2s that each have small social security wages, DF counts at
+most the wage base from each W-2.
+
+```catala
+scope FormW2Item:
+  # DF: formW2s.xml /formW2s/*/oasdiWagesForKnockoutCalculation
+  # (LesserOf of oasdiWages and /maxOasdiWagesOnMultipleW2sForOnePerson)
+  definition oasdi_wages_for_knockout_calculation equals
+    Money.min of oasdi_wages, P.oasdi_wage_base
+```
+
+### Form 8880 line 2: deferrals and contributions
+
+Form 8880 line 2, `sources/forms-instructions/f8880--2024.pdf` p 1:
+"Elective deferrals to a 401(k) or other qualified employer plan, voluntary
+employee contributions, and 501(c)(18)(D) plan contributions for 2024 (see
+instructions)". The instructions (same file, p 2) say "Include on line 2 any of
+the following amounts. Elective deferrals (including designated Roth
+contributions under section 402A, if applicable) to a 401(k), 403(b),
+governmental 457(b), SEP, SIMPLE, or to the federal TSP. Voluntary employee
+contributions to a qualified retirement plan, as defined in section 4974(c)
+(including the federal TSP). Contributions to a 501(c)(18)(D) plan. These
+amounts may be shown in box 12 of your Form(s) W-2 for 2024."
+
+Direct File adds up these box 12 codes, each rounded on its own: D (401(k)),
+E (403(b)), F (SARSEP), G (457(b), only when the plan is governmental),
+H (501(c)(18)(D)), S (SIMPLE), AA (Roth 401(k)), BB (Roth 403(b)), EE (Roth
+457(b)). The 457(b) test is the answer to "is this a governmental plan?", which
+is what separates code G amounts that count (governmental 457(b)) from those
+that do not (a tax-exempt organization's 457(b) is not an eligible plan for the
+credit).
+
+```catala
+scope FormW2Item:
+  # DF: formW2s.xml /formW2s/*/totalDeferralsAndContributions, a sum of the
+  # /formW2s/*/normalizedRounded...Deferrals/Contributions facts; with complete
+  # inputs each of those is the rounded box 12 amount.
+  definition total_deferrals_and_contributions equals
+    (R.round_dollar of w2.deferrals_401k)
+    + (R.round_dollar of w2.deferrals_403b)
+    + (R.round_dollar of w2.sarsep_deferrals)
+    # Only include code G if it is a governmental 457(b) plan.
+    + (if w2.plan_457b_is_governmental
+       then R.round_dollar of w2.deferrals_457b
+       else $0)
+    + (R.round_dollar of w2.deferrals_501c18)
+    + (R.round_dollar of w2.simple_contributions)
+    + (R.round_dollar of w2.roth401k_contributions)
+    + (R.round_dollar of w2.roth403b_contributions)
+    + (R.round_dollar of w2.roth457b_contributions)
+```
+
+### Knockouts on one W-2
+
+Direct File stops at W-2 shapes it cannot compute. Each condition is an
+`output` and is gathered into `FormW2s.unsupported` below
+(conventions section 6).
+
+Box 8, allocated tips. 1040 instructions, "Tip Income Not Reported on Line 1a"
+(`i1040gi--2024.pdf` p 23): "This should include any tip income you didn't
+report to your employer and any allocated tips shown in box 8 on your Form(s)
+W-2 unless you can prove that your unreported tips are less than the amount in
+box 8." That needs Form 4137, which is not supported.
+
+Box 11, nonqualified plans: distributions from a nonqualified deferred
+compensation plan are taxed through the pension lines; DF does not support
+them.
+
+Box 12: DF knocks out the filer when any of codes A, B, F, J, K, L, M, N, P,
+R, T, Z or II has a value above zero. Note the test uses the unrounded box
+amount: `$0.40` is above zero. Codes C, D, E, G, H, Q, S, V, W, Y, AA, BB, DD,
+EE, FF, GG and HH never knock out. The list is the `Switch` in
+`/formW2s/*/knockoutBox12Code` (`formW2s.xml` lines 2807 to 3093).
+
+```catala
+scope FormW2Item:
+  # DF: formW2s.xml /formW2s/*/causesAllocatedTipsKO
+  rule causes_allocated_tips_ko under condition allocated_tips > $0
+  consequence fulfilled
+
+  # DF: formW2s.xml /formW2s/*/causesNonQualifiedPlansKO
+  rule causes_non_qualified_plans_ko under condition non_qualified_plans > $0
+  consequence fulfilled
+
+  # DF: formW2s.xml /formW2s/*/hasBox12KnockoutCode, which is IsComplete of
+  # /formW2s/*/knockoutBox12Code; that Switch is complete exactly when one of
+  # the 13 listed codes is above $0.
+  rule has_box12_knockout_code under condition
+    w2.uncollected_oasdi_tax_on_tips > $0                              # A
+    or w2.uncollected_medicare_tax_on_tips > $0                        # B
+    or w2.sarsep_deferrals > $0                                        # F
+    or w2.nontaxable_sick_pay > $0                                     # J
+    or w2.golden_parachute_excise_tax > $0                             # K
+    or w2.expense_reimbursements > $0                                  # L
+    or w2.uncollected_oasdi_tax_on_life_insurance_over_50k > $0        # M
+    or w2.uncollected_medicare_tax_on_life_insurance_over_50k > $0     # N
+    or w2.armed_forces_moving_expenses > $0                            # P
+    or w2.archer_msa_contributions > $0                                # R
+    or w2.adoption_benefits > $0                                       # T
+    or w2.nqdc_deferrals > $0                                          # Z
+    or w2.non_taxable_medicaid_waiver_payments > $0                    # II
+  consequence fulfilled
+```
+
+## All Forms W-2 of the return
+
+```catala-metadata
+## The Forms W-2 of the return and everything derived from the whole list.
+declaration scope FormW2s:
+  ## DF: /formW2s
+  input w2s content list of FormW2
+  ## DF: /filingStatus
+  input filing_status content Types.FilingStatus
+  ## DF: /filers/<primary>/canBeClaimed
+  input primary_filer_can_be_claimed condition
+  ## DF: /filers/<secondary>/canBeClaimed. Ignored when there is no secondary
+  ## filer.
+  input secondary_filer_can_be_claimed condition
+  ## DF: /combatPayElection (`eitc.xml`)
+  input combat_pay_election content CombatPayElection
+
+  internal items content list of FormW2Item
+  internal primary_items content list of FormW2Item
+  internal secondary_items content list of FormW2Item
+  # DF: filingStatus.xml /isFilingStatusMFJ
+  internal is_filing_status_mfj condition
+  # DF: filingStatus.xml /isFilingStatusMFS
+  internal is_filing_status_mfs condition
+
+  # Form 1040 lines 1a and 25a
+  # DF: /wages
+  output wages content money
+  # DF: /formW2Withholding
+  output form_w2_withholding content money
+  # DF: /socialSecurityTaxesWithheld
+  output social_security_taxes_withheld content money
+
+  # Per filer wages (earned income for CDCC, elderly or disabled credit)
+  # DF: /primaryFilerWages
+  output primary_filer_wages content money
+  # DF: /secondaryFilerWages
+  output secondary_filer_wages content money
+  # DF: /primaryFilerHasW2WagesGreaterThan0
+  output primary_filer_has_w2_wages_greater_than_0 condition
+  # DF: /secondaryFilerHasW2WagesGreaterThan0
+  output secondary_filer_has_w2_wages_greater_than_0 condition
+
+  # Dependent care benefits (box 10), for Form 2441
+  # DF: /primaryFilerDependentCareBenefits
+  output primary_filer_dependent_care_benefits content money
+  # DF: /secondaryFilerDependentCareBenefits
+  output secondary_filer_dependent_care_benefits content money
+
+  # Form 8880 line 2 (before the Saver's credit eligibility filter and rounding
+  # that `saversCredits.xml` applies)
+  # DF: sum of /primaryFilerW2s/*/totalDeferralsAndContributions
+  output primary_filer_total_deferrals_and_contributions content money
+  # DF: sum of /secondaryFilerW2s/*/totalDeferralsAndContributions
+  output secondary_filer_total_deferrals_and_contributions content money
+
+  # HSA, box 12 code W
+  # DF: /primaryFilerTotalHsaContributionsFromW2s
+  output primary_filer_total_hsa_contributions_from_w2s content money
+  # DF: /secondaryFilerTotalHsaContributionsFromW2s
+  output secondary_filer_total_hsa_contributions_from_w2s content money
+  # DF: /hasPrimaryFilerHsaContributionsFromW2s
+  output has_primary_filer_hsa_contributions_from_w2s condition
+  # DF: /hasSecondaryFilerHsaContributionsFromW2s
+  output has_secondary_filer_hsa_contributions_from_w2s condition
+  # DF: /totalHsaContributionsOnW2s
+  output total_hsa_contributions_on_w2s content money
+  # DF: /hasHsaContributionsOnW2
+  output has_hsa_contributions_on_w2 condition
+
+  # Nontaxable combat pay, box 12 code Q
+  # DF: /primaryFilerCombatPay
+  output primary_filer_combat_pay content money
+  # DF: /MFJSpouseCombatPay
+  output mfj_spouse_combat_pay content money
+  # DF: /primaryFilerHasCombatPay
+  output primary_filer_has_combat_pay condition
+  # DF: /MFJSpouseHasCombatPay
+  output mfj_spouse_has_combat_pay condition
+  # DF: /someFilerHasCombatPay
+  output some_filer_has_combat_pay condition
+  # DF: /onlyOneFilerHasCombatPay
+  output only_one_filer_has_combat_pay condition
+  # DF: /onlyPrimaryFilerHasCombatPay
+  output only_primary_filer_has_combat_pay condition
+  # DF: /onlyMFJSpouseHasCombatPay
+  output only_mfj_spouse_has_combat_pay condition
+  # DF: /bothFilersHasCombatPay
+  output both_filers_has_combat_pay condition
+  # DF: /bothFilersCombatPay
+  output both_filers_combat_pay content money
+  # Form 1040 line 1i. DF: /combatPayAmount
+  output combat_pay_amount content money
+  # Schedule 8812 line 18b. DF: /allCombatPay
+  output all_combat_pay content money
+
+  # Medicare wages
+  # DF: /formW2totalMedicareWages
+  output form_w2_total_medicare_wages content money
+  # DF: /primaryFilerMedicareWages
+  output primary_filer_medicare_wages content money
+  # DF: /secondaryFilerMedicareWages
+  output secondary_filer_medicare_wages content money
+  # DF: /maxMedicareWagesForAnyFilerOnReturn
+  output max_medicare_wages_for_any_filer_on_return content money
+  # DF: /medicareWagesAdditionalTaxThreshhold
+  output medicare_wages_additional_tax_threshold content money
+  # DF: /anyFilerExceedsEligibleForMedicareWagesCredit
+  output any_filer_exceeds_eligible_for_medicare_wages_credit condition
+  # DF: /anyFilerRequiredToPayExtraMedicareTax
+  output any_filer_required_to_pay_extra_medicare_tax condition
+
+  # Social security wages across W-2s of one filer
+  # DF: /primaryFilerW2sCount
+  output primary_filer_w2s_count content integer
+  # DF: /secondaryFilerW2sCount
+  output secondary_filer_w2s_count content integer
+  # DF: /primaryFilerTotalOasdiWagesForKnockout
+  output primary_filer_total_oasdi_wages_for_knockout content money
+  # DF: /secondaryFilerTotalOasdiWagesForKnockout
+  output secondary_filer_total_oasdi_wages_for_knockout content money
+  # DF: /primaryFilerExceedsMaxOasdiWages
+  output primary_filer_exceeds_max_oasdi_wages condition
+  # DF: /secondaryFilerExceedsMaxOasdiWages
+  output secondary_filer_exceeds_max_oasdi_wages condition
+
+  # Knockouts, conventions section 6
+  # DF: /flowKnockoutAllocatedTips
+  output ko_flow_knockout_allocated_tips condition
+  # DF: /flowKnockoutStatutoryEmployee
+  output ko_flow_knockout_statutory_employee condition
+  # DF: /flowKnockoutThirdPartySickPay
+  output ko_flow_knockout_third_party_sick_pay condition
+  # DF: /flowKnockoutNonQualifiedPlans
+  output ko_flow_knockout_non_qualified_plans condition
+  # DF: /knockoutForBox12Value
+  output ko_knockout_for_box12_value condition
+  # DF: /knockoutForBox12Dependency
+  output ko_knockout_for_box12_dependency condition
+  # DF: /knockoutMedicareWages
+  output ko_knockout_medicare_wages condition
+  # DF: /anyFilerExceedsMaxOasdiWages
+  output ko_any_filer_exceeds_max_oasdi_wages condition
+  output unsupported condition
+```
+
+### Setup
+
+`/primaryFilerW2s` and `/secondaryFilerW2s` are filters of `/formW2s` by the
+`filer` reference (`/formW2s/*/belongsToPrimaryFiler`,
+`/formW2s/*/belongsToSecondaryFiler`).
+
+```catala
+scope FormW2s:
+  definition items equals
+    map each w among w2s to (output of FormW2Item with { -- w2: w })
+  definition primary_items equals
+    list of x among items such that x.filer = Types.FilerRole.PrimaryFiler
+  definition secondary_items equals
+    list of x among items such that x.filer = Types.FilerRole.SecondaryFiler
+  definition is_filing_status_mfj equals
+    filing_status = Types.FilingStatus.MarriedFilingJointly
+  definition is_filing_status_mfs equals
+    filing_status = Types.FilingStatus.MarriedFilingSeparately
+```
+
+### Form 1040 lines 1a and 25a and the Schedule 8812 social security taxes
+
+DF sums the already rounded items and rounds the sum again (a no-op on whole
+dollars, kept so the definition mirrors the XML): `/wages`,
+`/formW2Withholding`.
+
+`/socialSecurityTaxesWithheld` is "the amount of social security and medicare
+tax withheld, as defined by §24(d)(2)". 26 U.S.C. § 24(d)(2)(A)
+(`sources/statute/irc-24.html`): "The term "social security taxes" means, with
+respect to any taxpayer for any taxable year (i) the amount of the taxes
+imposed by sections 3101 and 3201(a) on amounts received by the taxpayer during
+the calendar year in which the taxable year begins". Section 3101 is the
+employee's share of social security (box 4) and Medicare (box 6). Section
+24(d)(2)(B) excludes taxes for which the taxpayer is entitled to a special
+refund under section 6413(c) (the excess over the wage base), a case DF turns
+into a knockout instead (`ko_any_filer_exceeds_max_oasdi_wages`).
+
+```catala
+scope FormW2s:
+  # Form 1040 line 1a, f1040--2024.pdf p 1.
+  # DF: formW2s.xml /wages
+  definition wages equals
+    R.round_dollar of (Money.sum of (map each x among items to x.wages))
+  # Form 1040 line 25a, f1040--2024.pdf p 2.
+  # DF: formW2s.xml /formW2Withholding
+  definition form_w2_withholding equals
+    R.round_dollar of
+      (Money.sum of (map each x among items to x.federal_withholding))
+  # IRC 24(d)(2)(A)(i). DF: formW2s.xml /socialSecurityTaxesWithheld
+  definition social_security_taxes_withheld equals
+    R.round_dollar of
+      ((Money.sum of (map each x among items to x.oasdi_withholding))
+       + (Money.sum of (map each x among items to x.medicare_withholding)))
+```
+
+### Per-filer wages, dependent care benefits, deferrals and HSA
+
+```catala
+scope FormW2s:
+  # DF: formW2s.xml /primaryFilerWages
+  definition primary_filer_wages equals
+    Money.sum of (map each x among primary_items to x.wages)
+  # DF: formW2s.xml /secondaryFilerWages
+  definition secondary_filer_wages equals
+    Money.sum of (map each x among secondary_items to x.wages)
+  # DF: formW2s.xml /primaryFilerHasW2WagesGreaterThan0
+  rule primary_filer_has_w2_wages_greater_than_0 under condition
+    primary_filer_wages > $0
+  consequence fulfilled
+  # DF: formW2s.xml /secondaryFilerHasW2WagesGreaterThan0
+  rule secondary_filer_has_w2_wages_greater_than_0 under condition
+    secondary_filer_wages > $0
+  consequence fulfilled
+
+  # DF: formW2s.xml /primaryFilerDependentCareBenefits (Round of the sum)
+  definition primary_filer_dependent_care_benefits equals
+    R.round_dollar of
+      (Money.sum of (map each x among primary_items to x.dependent_care_benefits))
+  # DF: formW2s.xml /secondaryFilerDependentCareBenefits (Round of the sum)
+  definition secondary_filer_dependent_care_benefits equals
+    R.round_dollar of
+      (Money.sum of
+        (map each x among secondary_items to x.dependent_care_benefits))
+
+  # Form 8880 line 2a (you) and 2b (your spouse).
+  # DF: saversCredits.xml /unfilteredPrimaryFilersDeferralsAndContributions
+  # rounds this sum; every item is already whole dollars, so the sum is too.
+  definition primary_filer_total_deferrals_and_contributions equals
+    Money.sum of
+      (map each x among primary_items to x.total_deferrals_and_contributions)
+  definition secondary_filer_total_deferrals_and_contributions equals
+    Money.sum of
+      (map each x among secondary_items to x.total_deferrals_and_contributions)
+
+  # DF: formW2s.xml /primaryFilerTotalHsaContributionsFromW2s
+  definition primary_filer_total_hsa_contributions_from_w2s equals
+    Money.sum of
+      (map each x among primary_items to
+        (R.round_dollar of x.employer_hsa_contributions_rounded))
+  # DF: formW2s.xml /secondaryFilerTotalHsaContributionsFromW2s
+  definition secondary_filer_total_hsa_contributions_from_w2s equals
+    Money.sum of
+      (map each x among secondary_items to x.employer_hsa_contributions_rounded)
+  # DF: formW2s.xml /hasPrimaryFilerHsaContributionsFromW2s
+  rule has_primary_filer_hsa_contributions_from_w2s under condition
+    primary_filer_total_hsa_contributions_from_w2s > $0
+  consequence fulfilled
+  # DF: formW2s.xml /hasSecondaryFilerHsaContributionsFromW2s
+  rule has_secondary_filer_hsa_contributions_from_w2s under condition
+    secondary_filer_total_hsa_contributions_from_w2s > $0
+  consequence fulfilled
+  # DF: formW2s.xml /totalHsaContributionsOnW2s (the spouse counts only if MFJ)
+  definition total_hsa_contributions_on_w2s equals
+    if is_filing_status_mfj
+    then primary_filer_total_hsa_contributions_from_w2s
+         + secondary_filer_total_hsa_contributions_from_w2s
+    else primary_filer_total_hsa_contributions_from_w2s
+  # DF: formW2s.xml /hasHsaContributionsOnW2
+  rule has_hsa_contributions_on_w2 under condition
+    total_hsa_contributions_on_w2s > $0
+  consequence fulfilled
+```
+
+### Nontaxable combat pay
+
+1040 instructions, "Nontaxable Combat Pay" (`i1040gi--2024.pdf` p 25 to 26):
+the filer may elect to include nontaxable combat pay in earned income for the
+earned income credit and the credit for child and dependent care expenses, and
+reports the elected amount on line 1i. Code Q of box 12 reports it. On a joint
+return each spouse decides separately, so the combat pay is kept per filer.
+
+`/combatPayAmount` picks the amounts by `/combatPayElection`. No election (or
+"noCombatPay") gives `$0`. An election for a spouse who has no combat pay is
+not one of the options DF offers (`/combatPayOptions`), and falls to `$0`
+here as it does in the XML.
+
+```catala
+scope FormW2s:
+  # DF: formW2s.xml /primaryFilerCombatPay
+  definition primary_filer_combat_pay equals
+    Money.sum of (map each x among primary_items to x.combat_pay)
+  # DF: formW2s.xml /MFJSpouseCombatPay (zero unless MFJ)
+  definition mfj_spouse_combat_pay equals
+    if is_filing_status_mfj
+    then Money.sum of (map each x among secondary_items to x.combat_pay)
+    else $0
+  # DF: formW2s.xml /primaryFilerHasCombatPay
+  rule primary_filer_has_combat_pay under condition primary_filer_combat_pay > $0
+  consequence fulfilled
+  # DF: formW2s.xml /MFJSpouseHasCombatPay
+  rule mfj_spouse_has_combat_pay under condition mfj_spouse_combat_pay > $0
+  consequence fulfilled
+  # DF: formW2s.xml /someFilerHasCombatPay
+  rule some_filer_has_combat_pay under condition
+    mfj_spouse_has_combat_pay or primary_filer_has_combat_pay
+  consequence fulfilled
+  # DF: formW2s.xml /onlyOneFilerHasCombatPay
+  rule only_one_filer_has_combat_pay under condition
+    ((not is_filing_status_mfj) and primary_filer_has_combat_pay)
+    or (is_filing_status_mfj and mfj_spouse_has_combat_pay
+        and (not primary_filer_has_combat_pay))
+    or (is_filing_status_mfj and (not mfj_spouse_has_combat_pay)
+        and primary_filer_has_combat_pay)
+  consequence fulfilled
+  # DF: formW2s.xml /onlyPrimaryFilerHasCombatPay
+  rule only_primary_filer_has_combat_pay under condition
+    primary_filer_has_combat_pay and (not mfj_spouse_has_combat_pay)
+  consequence fulfilled
+  # DF: formW2s.xml /onlyMFJSpouseHasCombatPay
+  rule only_mfj_spouse_has_combat_pay under condition
+    mfj_spouse_has_combat_pay and (not primary_filer_has_combat_pay)
+  consequence fulfilled
+  # DF: formW2s.xml /bothFilersHasCombatPay
+  rule both_filers_has_combat_pay under condition
+    mfj_spouse_has_combat_pay and primary_filer_has_combat_pay
+  consequence fulfilled
+  # DF: formW2s.xml /bothFilersCombatPay
+  definition both_filers_combat_pay equals
+    primary_filer_combat_pay + mfj_spouse_combat_pay
+
+  # Form 1040 line 1i. DF: formW2s.xml /combatPayAmount (Round of a Switch of
+  # six cases; the default case is $0).
+  definition combat_pay_amount equals
+    R.round_dollar of
+      (if only_primary_filer_has_combat_pay
+          and combat_pay_election = UsePrimaryCombatPay
+       then primary_filer_combat_pay
+       else if only_mfj_spouse_has_combat_pay
+          and combat_pay_election = UseSpouseCombatPay
+       then mfj_spouse_combat_pay
+       else if both_filers_has_combat_pay
+          and combat_pay_election = UseBothCombatPay
+       then mfj_spouse_combat_pay + primary_filer_combat_pay
+       else if both_filers_has_combat_pay
+          and combat_pay_election = UsePrimaryNotSpouseCombatPay
+       then primary_filer_combat_pay
+       else if both_filers_has_combat_pay
+          and combat_pay_election = UseSpouseNotPrimaryCombatPay
+       then mfj_spouse_combat_pay
+       else $0)
+
+  # Schedule 8812 line 18b: all nontaxable combat pay of every W-2, whoever the
+  # filer is. DF: formW2s.xml /allCombatPay
+  definition all_combat_pay equals
+    R.round_dollar of (Money.sum of (map each x among items to x.combat_pay))
+```
+
+### Medicare wages and Form 8959
+
+Form 8959 (Additional Medicare Tax), Part I (`sources/forms-instructions/f8959--2024.pdf`
+p 1): "1 Medicare wages and tips from Form W-2, box 5. If you have more than one
+Form W-2, enter the total of the amounts from box 5. ... 5 Enter the following
+amount for your filing status: Married filing jointly $250,000; Married filing
+separately $125,000; Single, Head of household, or Qualifying surviving spouse
+$200,000. 6 Subtract line 5 from line 4. ... 7 Additional Medicare Tax on
+Medicare wages. Multiply line 6 by 0.9% (0.009)."
+
+Direct File does not compute Form 8959. It knocks the filer out as soon as the
+Form 8959 threshold for the filing status is passed
+(`/knockoutMedicareWages`). In a joint return a spouse with more than $200,000
+of Medicare wages is also a knockout, even if the couple's total is below
+$250,000: that spouse owes Additional Medicare Tax withholding at the employer
+level (`/anyFilerExceedsEligibleForMedicareWagesCredit`).
+
+Both comparisons are strict ("greater than"), so exactly the threshold is not
+a knockout.
+
+```catala
+scope FormW2s:
+  # DF: formW2s.xml /formW2totalMedicareWages
+  definition form_w2_total_medicare_wages equals
+    Money.sum of (map each x among items to x.medicare_wages)
+  # DF: formW2s.xml /primaryFilerMedicareWages
+  definition primary_filer_medicare_wages equals
+    Money.sum of (map each x among primary_items to x.medicare_wages)
+  # DF: formW2s.xml /secondaryFilerMedicareWages
+  definition secondary_filer_medicare_wages equals
+    Money.sum of (map each x among secondary_items to x.medicare_wages)
+  # DF: formW2s.xml /maxMedicareWagesForAnyFilerOnReturn (GreaterOf)
+  definition max_medicare_wages_for_any_filer_on_return equals
+    Money.max of primary_filer_medicare_wages, secondary_filer_medicare_wages
+
+  # Form 8959 line 5. DF: formW2s.xml /medicareWagesAdditionalTaxThreshhold
+  definition medicare_wages_additional_tax_threshold equals
+    if is_filing_status_mfs then P.additional_medicare_tax_threshold_married_separate
+    else if is_filing_status_mfj then P.additional_medicare_tax_threshold_joint
+    else P.additional_medicare_tax_threshold_other
+
+  # DF: formW2s.xml /anyFilerExceedsEligibleForMedicareWagesCredit
+  rule any_filer_exceeds_eligible_for_medicare_wages_credit under condition
+    is_filing_status_mfj
+    and (primary_filer_medicare_wages > P.medicare_wages_individual_limit
+         or secondary_filer_medicare_wages > P.medicare_wages_individual_limit)
+  consequence fulfilled
+
+  # Form 8959 would be required. DF: formW2s.xml /knockoutMedicareWages
+  rule ko_knockout_medicare_wages under condition
+    any_filer_exceeds_eligible_for_medicare_wages_credit
+    or form_w2_total_medicare_wages > medicare_wages_additional_tax_threshold
+  consequence fulfilled
+
+  # DF: formW2s.xml /anyFilerRequiredToPayExtraMedicareTax. With complete
+  # inputs, the `Not(IsComplete) or Not(...)` second operand reduces to the
+  # negation of the credit test.
+  rule any_filer_required_to_pay_extra_medicare_tax under condition
+    ko_knockout_medicare_wages
+    and (not any_filer_exceeds_eligible_for_medicare_wages_credit)
+  consequence fulfilled
+```
+
+### Social security wage base across W-2s
+
+Several employers each withhold social security tax on the first $168,600 of
+pay (`P.oasdi_wage_base`, Pub. 15 p 2). A filer with more than one W-2 whose
+combined social security wages pass the wage base may have had too much
+withheld, and claims the excess on Schedule 3 line 11. DF does not support
+that. The test is per filer (a spouse's W-2s do not count against the
+primary filer) and needs at least two W-2s for that filer.
+
+```catala
+scope FormW2s:
+  # DF: formW2s.xml /primaryFilerW2sCount
+  definition primary_filer_w2s_count equals number of primary_items
+  # DF: formW2s.xml /secondaryFilerW2sCount
+  definition secondary_filer_w2s_count equals number of secondary_items
+  # DF: formW2s.xml /primaryFilerTotalOasdiWagesForKnockout
+  definition primary_filer_total_oasdi_wages_for_knockout equals
+    Money.sum of
+      (map each x among primary_items to x.oasdi_wages_for_knockout_calculation)
+  # DF: formW2s.xml /secondaryFilerTotalOasdiWagesForKnockout
+  definition secondary_filer_total_oasdi_wages_for_knockout equals
+    Money.sum of
+      (map each x among secondary_items to x.oasdi_wages_for_knockout_calculation)
+  # DF: formW2s.xml /primaryFilerExceedsMaxOasdiWages
+  rule primary_filer_exceeds_max_oasdi_wages under condition
+    primary_filer_w2s_count > 1
+    and primary_filer_total_oasdi_wages_for_knockout > P.oasdi_wage_base
+  consequence fulfilled
+  # DF: formW2s.xml /secondaryFilerExceedsMaxOasdiWages
+  rule secondary_filer_exceeds_max_oasdi_wages under condition
+    secondary_filer_w2s_count > 1
+    and secondary_filer_total_oasdi_wages_for_knockout > P.oasdi_wage_base
+  consequence fulfilled
+  # DF: formW2s.xml /anyFilerExceedsMaxOasdiWages
+  rule ko_any_filer_exceeds_max_oasdi_wages under condition
+    primary_filer_exceeds_max_oasdi_wages
+    or secondary_filer_exceeds_max_oasdi_wages
+  consequence fulfilled
+```
+
+### Other knockouts
+
+Box 13 statutory employee and third-party sick pay: both need forms DF does
+not provide (Schedule C for a statutory employee; third-party sick pay
+changes who owes the payroll tax). Box 12 code W with a filer who can be
+claimed as a dependent: an HSA contribution on a dependent's W-2 is not
+supported.
+
+```catala
+scope FormW2s:
+  # DF: formW2s.xml /flowKnockoutAllocatedTips
+  rule ko_flow_knockout_allocated_tips under condition
+    exists x among items such that x.causes_allocated_tips_ko
+  consequence fulfilled
+  # DF: formW2s.xml /flowKnockoutStatutoryEmployee
+  rule ko_flow_knockout_statutory_employee under condition
+    exists w among w2s such that w.statutory_employee
+  consequence fulfilled
+  # DF: formW2s.xml /flowKnockoutThirdPartySickPay
+  rule ko_flow_knockout_third_party_sick_pay under condition
+    exists w among w2s such that w.third_party_sick_pay
+  consequence fulfilled
+  # DF: formW2s.xml /flowKnockoutNonQualifiedPlans
+  rule ko_flow_knockout_non_qualified_plans under condition
+    exists x among items such that x.causes_non_qualified_plans_ko
+  consequence fulfilled
+  # DF: formW2s.xml /knockoutForBox12Value
+  rule ko_knockout_for_box12_value under condition
+    exists x among items such that x.has_box12_knockout_code
+  consequence fulfilled
+  # DF: formW2s.xml /knockoutForBox12Dependency, via
+  # /formW2s/*/hasBox12HsaContributionsAndDependent: the W-2's filer can be
+  # claimed, and code W is present and above $0 (rounded).
+  rule ko_knockout_for_box12_dependency under condition
+    exists x among items such that
+      x.employer_hsa_contributions_rounded > $0
+      and ((x.filer = Types.FilerRole.PrimaryFiler and primary_filer_can_be_claimed)
+           or (x.filer = Types.FilerRole.SecondaryFiler and secondary_filer_can_be_claimed))
+  consequence fulfilled
+
+  # One place that lists every knockout of this module (conventions section 6).
+  # The `flow.xml` entries are knockoutForBox12Value, knockoutForBox12Dependency,
+  # flowKnockoutAllocatedTips, flowKnockoutStatutoryEmployee,
+  # flowKnockoutThirdPartySickPay, flowKnockoutNonQualifiedPlans,
+  # knockoutMedicareWages, anyFilerExceedsMaxOasdiWages. The state-related
+  # entries of `flow.xml` (box 15, box 14 New York RRTA, Yonkers) are not part
+  # of this module.
+  rule unsupported under condition
+    ko_knockout_for_box12_value
+    or ko_knockout_for_box12_dependency
+    or ko_flow_knockout_allocated_tips
+    or ko_flow_knockout_statutory_employee
+    or ko_flow_knockout_third_party_sick_pay
+    or ko_flow_knockout_non_qualified_plans
+    or ko_knockout_medicare_wages
+    or ko_any_filer_exceeds_max_oasdi_wages
+  consequence fulfilled
+```

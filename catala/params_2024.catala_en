@@ -145,6 +145,25 @@ declaration hsa_limit_family content money equals $8,300
 declaration hsa_catch_up_55 content money equals $1,000
 ```
 
+## Additional Medicare Tax thresholds (W-2 knockout, issue #12)
+
+Form 8959 line 5, `sources/forms-instructions/f8959--2024.pdf` p 1: "Enter
+the following amount for your filing status: Married filing jointly $250,000,
+Married filing separately $125,000, Single, Head of household, or Qualifying
+surviving spouse $200,000". Direct File `formW2s.xml` `/maxMFJMedicareWages`,
+`/maxMFSMedicareWages`, `/maxNonMFSorMFJMedicareWages`.
+
+```catala-metadata
+declaration additional_medicare_tax_threshold_joint content money equals $250,000
+declaration additional_medicare_tax_threshold_married_separate content money equals $125,000
+declaration additional_medicare_tax_threshold_other content money equals $200,000
+
+# Same Form 8959 line 5 amount for "Single, Head of household, or Qualifying
+# surviving spouse". Direct File `/maxIndividualMedicareWages` ($200,000) is the
+# limit it applies to each spouse of a joint return separately.
+declaration medicare_wages_individual_limit content money equals $200,000
+```
+
 ## Income-side thresholds
 
 ```catala-metadata
