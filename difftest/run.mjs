@@ -43,7 +43,8 @@ for (const name of names) {
 
   for (const [scenario, facts] of oracle) {
     if (only && scenario !== only) continue;
-    if (isKnockedOut(facts)) { c.knockedOut.push(scenario); continue; }
+    // A mapping with `includeKnockedOut: true` (knockout aggregation, #36) also runs the knocked-out scenarios.
+    if (isKnockedOut(facts) && !mapping.includeKnockedOut) { c.knockedOut.push(scenario); continue; }
     const applies = mapping.appliesTo(facts);
     if (applies !== true) { c.outOfScope.push(`${scenario} (${applies})`); continue; }
     c.scenarios++;

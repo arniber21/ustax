@@ -76,3 +76,12 @@ want checked (for example `/agi`, `/totalIncome`); each becomes one fact check p
 - `form_1040_unplugged` (`reportOnly`: excluded from `SCOPE=all`, never sets the exit code): all 157
   scenarios with the slots at `$0`. Its failures are exactly the scenarios the strict scope skips; they go
   away as the later modules are wired in.
+
+## Knockout aggregation (issue #36)
+
+`knockouts_income` (scope `KnockoutsIncome`, `catala/knockouts_income.catala_en`) compares the income/HSA/process
+`unsupported_income_or_hsa` with `/flowIsKnockedOut` on all 161 scenarios. Two optional mapping flags support it:
+`includeKnockedOut: true` (also run the scenarios the oracle marks knocked out) and, on an output,
+`placeholderFalse: true` (a Placeholder `false` is checked as an expected `false`; it means "not knocked out",
+`oracle/README.md`). Result: 157/157 checks pass; the 4 knocked-out scenarios are DF-BUG-8 and are listed as
+`knownDivergence`. `docs/knockout-inventory.md` lists every `flow.xml` member and its status.
