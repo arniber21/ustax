@@ -1,0 +1,27 @@
+difftest/mappings/ctc_odc_household.mjs
+  s_3031b504518be3::t_c3cf3e75e12288 16,55,82
+catala/tests/test_ctc_odc.catala_en
+  s_3031b504518be3::t_c3cf3e75e12288 14,80-96,103-104,273-274,295-296
+difftest/mappings/ctc_odc_person.mjs
+  s_3031b504518be3::t_c3cf3e75e12288 32
+catala/tests/difftest_ctc_odc.catala_en
+  s_3031b504518be3::t_c3cf3e75e12288 23,59-60
+catala/ctc_odc.catala_en
+  s_3031b504518be3::t_c3cf3e75e12288 106-108,128-129,275-276,295-296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a7de1cba93643c74a7a9c7d054c20fdcf54d094",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
