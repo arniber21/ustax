@@ -20,8 +20,7 @@ exactly where the XML applies it (per-item rounding, section 4, rule 2).
 
 Oracle: `oracle/facts.csv` rows `/wages`, `/formW2Withholding`,
 `/socialSecurityTaxesWithheld`, `/allCombatPay`, `/combatPayAmount`, compared
-by `oracle/w2_difftest.py` and the generated
-`catala/tests/oracle_form_w2s.catala_en`.
+by `make difftest SCOPE=form_w2s` (mapping `difftest/mappings/form_w2s.mjs`).
 
 ## Facts skipped
 
