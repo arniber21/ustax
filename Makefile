@@ -27,3 +27,12 @@ forensics:   ## run forensics extractor on lean/, writing forensics-out.json
 .PHONY: oracle
 oracle:    ## regenerate oracle/facts.csv from the Direct File scenarios
 	cd oracle && npm ci --ignore-scripts --no-audit --no-fund && node generate.mjs
+
+# Differential tests: Catala scope outputs vs oracle/facts.csv (see catala/DIFFTEST.md).
+# `make difftest SCOPE=smoke` (default) or SCOPE=all; extra flags via ARGS=--verbose.
+SCOPE ?= smoke
+.PHONY: difftest difftest-selftest
+difftest:  ## run mapped Catala scopes against the oracle, per-scenario pass/fail
+	node difftest/run.mjs --scope $(SCOPE) $(ARGS)
+difftest-selftest:  ## unit tests of the runner itself (no Catala)
+	node --test difftest/selftest.mjs
