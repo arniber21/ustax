@@ -129,7 +129,7 @@ const dictionary = sfg.FactDictionaryFactory.fromConfig(sfg.FactDictionaryConfig
 
 // ---------- which facts to read ----------
 // Derived per-person facts (familyAndHousehold.xml, dependentsRelationship.xml). Add more here as
-// later household modules (#17, #18) need them.
+// later household modules (#17, #18, #19) need them; append only, so existing rows never change.
 const PERSON_FACTS = [
   'relationship', 'age', 'ageAtFirstHalfOfYear', 'qcRelationshipTest', 'studentStatusMayAffectBenefits',
   'isAStudentUnder24', 'disabilityStatusMayAffectBenefits', 'ageTest', 'residencyTest', 'jointReturn',
@@ -151,6 +151,10 @@ const PERSON_FACTS = [
   'eligibleForBenefitSplit', 'reachedNonParentalBenefitSplit',
   // Issue #27: CTC and ODC per person.
   'ssnValidForEmployment', 'eligibleCtc', 'eligibleOdc',
+  // Issue #19: HoH and QSS qualifying persons (familyAndHousehold.xml, dependentsRelationship.xml).
+  'marriedHohRelationshipTest', 'qssPersonResidencyTest', 'isBiologicalAdoptedFosterOrStepchild',
+  'flowAddPersonKeepingUpHome', 'flowAddPersonKeepingUpParentsHome', 'hohQualifyingPerson', 'qssQualifyingPerson',
+  'personQualifiesTPforHoH', 'personQualifiesTPforQss',
 ];
 const SCENARIO_FACTS = [
   '/flowIsKnockedOut', '/minimumFilerDateOfBirth', '/treatAsMFJ',
@@ -158,6 +162,11 @@ const SCENARIO_FACTS = [
   '/treatFilersAsDependents', '/eitherFilerUSCitizenOrNational',
   // Issue #18: the household benefit-split knockouts (dependentsBenefitSplit.xml, read by flow.xml).
   '/knockedOutByContradictory8832', '/knockedOutByNonCustodialParentBenefitSplit',
+  // Issue #19: filers.xml and filingStatus.xml facts read by the HoH and QSS person tests, and the
+  // household HoH/QSS facts of familyAndHousehold.xml and filingStatus.xml.
+  '/eligibleForMFJ', '/filerCouldQualifyForHoh', '/filerCouldQualifyForQss', '/mfsFilerCouldBeConsiderUnmarriedForCdcc',
+  '/hasHohQualifyingParent', '/hasHohQualifyingChild', '/qssQualifyingClaimedDependentCount', '/eligibleForHoh',
+  '/eligibleForQss',
 ];
 const known = new Set(wrapped.map((f) => f.path));
 for (const f of PERSON_FACTS) {
