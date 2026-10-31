@@ -99,6 +99,7 @@ knows both.
   (`filer_not_allowed`); at most one `SecondaryFiler` and one `PrimaryFiler` filer object, and no
   `filers.secondary` unless joint; dates must exist (`invalid_date`); lists hold at most 20 items
   (`too_many_items`); box 12 codes are the letters in the schema.
+- Implemented in Lean (#51, `lean/UsTax/Api`, spec `Request.Valid`); `make api-conformance` cross-checks it against this schema. The Lean reader is stricter than ajv in three documented ways: integer-valued float literals (`100.0`, `1e2`) are `not_integer`, duplicate object keys are `invalid_json`, and `SecondaryFiler`/impossible dates are refused (the schema cannot express them). Shape problems (phase 1) are reported before range/size/role problems (phase 2); a body with both shows the shape problems first.
 - Duplicate persons (`duplicate_person`) apply once the household section lands.
 - The body cap is 256 KiB: the server catches the `readAll` failure and answers 413.
 

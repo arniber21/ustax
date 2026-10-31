@@ -129,6 +129,48 @@ Catala <-> Lean name table and every assertion of the matching
   `difftest/mappings/interest.mjs` is new (oracle `/interestIncome`, `/taxExemptInterest`,
   `/requiresScheduleB`; `unsupported` and `total_tax_withheld` are Lean = Catala only).
 
+## Request parsing and validation (`UsTax/Api/*.lean`, issue #51)
+
+Turns an untrusted `POST /calculate` body into a typed `Request`, or the 400
+`ErrorResponse` of `docs/api.md`. Total functions only, no `partial`.
+
+- `Json.lean`: strict JSON reader (`parseJson`) and `J.render`. Not
+  `Lean.Json.parse`, because the contract needs integer literals told apart
+  from `100.0` / `1e2` (money is rejected as `not_integer`), duplicate keys
+  rejected and a nesting limit (32). Fuel-based, structural.
+- `Types.lean`: the typed request, field for field with `$defs/CalculateRequest`
+  (money `Int` cents, absent box 0, absent flag false). `moneyFields` lists every
+  money box.
+- `Decode.lean`: phase 1 (shape: types, enums, required, unknown fields,
+  integer-ness), accumulating every problem. Unknown fields are found as "keys
+  no accessor read", so a field cannot be dropped silently.
+- `Spec.lean`: **the specification**, `Request.Valid` (caps `|n| <= 10^13`,
+  `NonNegMoney` vs signed, list sizes 20/4/4, `SecondaryFiler` only on joint
+  returns, real dates), with named examples. Review this file.
+- `Validate.lean`: phase 2, `Request.validate : List FieldError` with paths.
+- `Lemmas.lean`: `validate_eq_nil_iff` (so `Valid` is decidable),
+  `validate_sound`; `Parse.lean`: `parseRequest_sound` (**every accepted request
+  is `Valid`**), `parseRequest_error_status` (every failure is a 400), `parseBody`
+  (415, 413, UTF-8). This is the seed of issue #69.
+- `Response.lean`: `CalculateSuccess`, `CalculateUnsupported`, health and version
+  serialisation. `Bridge.lean`: the documented, not yet written
+  `toForm1040Input` (fill when #43 merges).
+- `Props.lean` (plausible, before the lemmas) and `Tests.lean` (55 table-driven
+  bodies, accepted-value checks, the 400 fixtures byte for byte, responses).
+- `ustax api-parse` (stdin lines to `status TAB body`) and
+  `scripts/api_conformance.mjs` (`make api-conformance`): the Lean validator vs
+  `api/schema.json` via ajv on all examples, fixtures and about 900 generated
+  mutants. Lean must be stricter than the schema only for integer-valued float
+  literals, cross-field roles and impossible dates, and the script checks that.
+
+Trusted for this layer: `Json.lean` (it parses untrusted bytes), the
+definitions on `#spec_surface UsTax.Api.parseRequest_sound` (`Request.Valid` and
+what it mentions), the Lean kernel. The ajv script is untrusted test code.
+Not proved: that the JSON reader implements RFC 8259 (tested only), that
+`Decode` reads each key into the field of the same name (tested by the
+distinct-value checks above), and the 322-scenario oracle conversion (needs a
+converter, left to #52).
+
 ## Pattern for Lean modules (follow this for every later scope)
 
 1. **One Lean file per Catala module**, `UsTax/<Module>.lean`, written by hand
