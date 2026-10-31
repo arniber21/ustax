@@ -36,3 +36,13 @@ difftest:  ## run mapped Catala scopes against the oracle, per-scenario pass/fai
 	node difftest/run.mjs --scope $(SCOPE) $(ARGS)
 difftest-selftest:  ## unit tests of the runner itself (no Catala)
 	node --test difftest/selftest.mjs
+
+# --- TLS (see docs/tls.md): Caddy terminates HTTPS, Lean server stays on plain loopback HTTP ---
+# Requires `caddy` on PATH (brew install caddy); not installed by `make install`.
+.PHONY: tls tls-trust tls-check
+tls:       ## HTTPS front for the Lean server: https://localhost:8443 -> 127.0.0.1:8080
+	caddy run --config deploy/Caddyfile --adapter caddyfile
+tls-trust: ## one-time: trust Caddy's local CA so browsers/curl accept the dev cert
+	caddy trust
+tls-check: ## validate deploy/Caddyfile syntax
+	caddy validate --config deploy/Caddyfile --adapter caddyfile

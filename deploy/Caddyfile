@@ -1,0 +1,41 @@
+# TLS terminator for the ustax Lean server (see docs/tls.md, issue #55).
+# Caddy speaks HTTPS to clients and plain HTTP/1.1 to the Lean process on loopback.
+#
+# Dev:  `make tls` (runs `caddy run --config deploy/Caddyfile`); `make tls-trust` once
+#       to install Caddy's local CA so browsers accept the cert.
+# Prod: set SITE_ADDRESS=ustax.example.com, HTTP_PORT=80, HTTPS_PORT=443; Caddy then
+#       obtains a public certificate automatically.
+#
+# Environment (all optional):
+#   SITE_ADDRESS  host name to serve               (default: localhost)
+#   UPSTREAM      Lean server host:port            (default: 127.0.0.1:8080)
+#   HTTP_PORT     plain-HTTP port, redirect only   (default: 8088)
+#   HTTPS_PORT    HTTPS port                       (default: 8443)
+{
+	http_port  {$HTTP_PORT:8088}
+	https_port {$HTTPS_PORT:8443}
+}
+
+{$SITE_ADDRESS:localhost} {
+	# For localhost / IP / .local names Caddy issues from its own local CA
+	# (self-signed root). For public DNS names it uses ACME.
+	# tls internal    # uncomment to force the local CA for a non-localhost name
+
+	# Plain HTTP on HTTP_PORT is answered with a 308 redirect to HTTPS automatically
+	# (Caddy's default for any site with a host name).
+
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	# CORS is NOT handled here: the Lean server owns it (#54), so headers are not
+	# duplicated. Caddy passes OPTIONS preflights through untouched.
+	request_body {
+		max_size 1MB
+	}
+	reverse_proxy {$UPSTREAM:127.0.0.1:8080}
+}
