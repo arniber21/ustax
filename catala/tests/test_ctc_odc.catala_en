@@ -11,6 +11,7 @@ produced. The oracle comparison is `make difftest SCOPE=ctc_odc`,
 > Using Types
 > Using Qualifying_child as Q
 > Using Qualifying_relative as R
+> Using Dependents_benefit_split as B
 > Using Eitc as E
 > Using Ctc_odc as C
 
@@ -76,16 +77,31 @@ scope MkChild:
            -- writable_us_resident: us_resident
            -- writable_us_national: false
            -- writable_canada_mexico_resident: canada_mexico_resident
-           -- tp_claims: tp_claims
-           -- tp_can_claim_split_benefits_hoh_eitc_cdcc: false
-           -- disqualified_due_to_parental_custody: false } }
+           -- tp_claims: tp_claims }
+      -- split: B.BenefitSplitAnswers {
+           -- has_other_biological_or_adoptive_parent: false
+           -- non_parental_some_parent_not_claiming: false
+           -- which_parent_not_claiming: B.WrittenDeclaration.NobodyDid
+           -- in_parents_custody: false
+           -- lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months:
+                false
+           -- biological_or_adoptive_parents_living: false
+           -- nights_with_tp_vs_other_parent: B.NightsComparison.Less
+           -- tp_agi_higher_than_other_parent: false
+           -- parents_meet_reqs_rule_for_children_of_divorced_parents: false
+           -- special_rule_child_used_by_custodial_parent_as_qp: false
+           -- special_rule_agi_test: false
+           -- parental_situation: B.ParentalSituation.Other
+           -- parental_support: false
+           -- multiple_support_agreement: false } }
     -- ssn_employment_validity: ssn_employment_validity }
   definition result equals
     output of C.CtcOdcPersonTest with {
       -- household_member: household_member
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
 ```
 
 ## Per-person tests (IRC 24(c), (h)(4), (h)(7))
@@ -254,7 +270,8 @@ scope TestHouseholdCounts:
             itin.household_member]
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: false
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion h.ctc_eligible_dependents = 2
   assertion h.odc_eligible_dependents = 2
 ```
@@ -275,7 +292,8 @@ scope TestHouseholdFilerIsDependent:
       -- household_members: [a.household_member]
       -- minimum_filer_date_of_birth: |1985-06-15|
       -- treat_filers_as_dependents: true
-      -- either_filer_us_citizen_or_national: true }
+      -- either_filer_us_citizen_or_national: true
+      -- treat_as_mfj: false }
   assertion h.ctc_eligible_dependents = 0
   assertion h.odc_eligible_dependents = 0
 ```

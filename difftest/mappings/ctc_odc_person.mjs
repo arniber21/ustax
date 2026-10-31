@@ -29,6 +29,7 @@ export default {
     minimum_filer_date_of_birth: (f) => f.get('/minimumFilerDateOfBirth').value,
     treat_filers_as_dependents: (f) => sbool(f, '/treatFilersAsDependents'),
     either_filer_us_citizen_or_national: (f) => sbool(f, '/eitherFilerUSCitizenOrNational'),
+    treat_as_mfj: (f) => sbool(f, '/treatAsMFJ'),
   },
   outputs: [
     b('ssnValidForEmployment', 'ssn_valid_for_employment'),

@@ -13,6 +13,7 @@
 import { collectionIds, loadOracle } from '../lib.mjs';
 import { person } from './qualifying_child.mjs';
 import { answers } from './qualifying_relative.mjs';
+import { splitAnswers } from './dependents_benefit_split.mjs';
 import { scheduleInputs } from './ctc_odc.mjs';
 
 const P = '/familyAndHousehold/*/';
@@ -51,7 +52,7 @@ function members(f) {
 
 export function householdMember(pf) {
   return {
-    member: { person: person(pf), answers: answers(pf) },
+    member: { person: person(pf), answers: answers(pf), split: splitAnswers(pf) },
     ssn_employment_validity: upper(pf.get(P + 'ssnEmploymentValidity')?.value || 'neither'),
   };
 }
@@ -78,6 +79,7 @@ export default {
     minimum_filer_date_of_birth: filerFact('/minimumFilerDateOfBirth', '1980-01-01'),
     treat_filers_as_dependents: filerFact('/treatFilersAsDependents', false),
     either_filer_us_citizen_or_national: filerFact('/eitherFilerUSCitizenOrNational', true),
+    treat_as_mfj: filerFact('/treatAsMFJ', false),
     ...scheduleInputs,
   },
   outputs: [

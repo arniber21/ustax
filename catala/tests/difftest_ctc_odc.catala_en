@@ -20,6 +20,7 @@ declaration scope CtcOdcFromHousehold:
   input minimum_filer_date_of_birth content date
   input treat_filers_as_dependents content boolean
   input either_filer_us_citizen_or_national content boolean
+  input treat_as_mfj content boolean
   # ---- Ctc_odc.Schedule8812 inputs other than the two counts ----
   input filing_status content Types.FilingStatus
   input agi content money
@@ -55,7 +56,8 @@ scope CtcOdcFromHousehold:
       -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
       -- treat_filers_as_dependents: treat_filers_as_dependents
       -- either_filer_us_citizen_or_national:
-           either_filer_us_citizen_or_national }
+           either_filer_us_citizen_or_national
+      -- treat_as_mfj: treat_as_mfj }
   definition schedule equals
     output of C.Schedule8812 with {
       -- ctc_eligible_dependents: household.ctc_eligible_dependents
