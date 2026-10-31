@@ -1,0 +1,287 @@
+> Module Social_security
+
+> Using Types
+> Using Params_2024 as P
+> Using Rounding as R
+
+# Social Security benefits (Form 1040 lines 6a and 6b)
+
+Direct File module `socialSecurity.xml`
+(`../direct-file/direct-file/backend/src/main/resources/tax/socialSecurity.xml`,
+"DF" below), scope.md section 3.5, issue #23. Tests:
+`catala/tests/test_social_security.catala_en`. Oracle comparison:
+`difftest/mappings/social_security.mjs` (`make difftest SCOPE=social_security`).
+
+Inputs follow `catala/CONVENTIONS.md` section 3 (complete). The income
+components of worksheet line 3 come from other modules (W-2, interest,
+dividends, IRA, pensions, capital gains, other income); the orchestrator wires
+them into this scope later, so they are plain inputs here.
+
+Out of scope (knockouts, `catala/CONVENTIONS.md` section 6): the lump-sum
+election (DF `/socialSecurityLumpSum` is hard-wired `False`; Pub. 915 "Lump-Sum
+Election") and a net repayment over $3,000 (IRC 1341, DF
+`/socialSecurityBenefitsAreLossGreaterThan3k`). The second one is reported by
+the output `repayment_over_3k` so that the knockouts module can use it.
+
+## 26 U.S.C. § 86
+
+### (a) In general
+
+"(1) ... gross income for the taxable year of any taxpayer described in
+subsection (b) (notwithstanding section 207 of the Social Security Act)
+includes social security benefits in an amount equal to the lesser of— (A)
+one-half of the social security benefits received during the taxable year, or
+(B) one-half of the excess described in subsection (b)(1)."
+(`sources/statute/irc-86.html`)
+
+"(2) ... the amount included in gross income under this section shall be equal
+to the lesser of— (A) the sum of— (i) 85 percent of such excess, plus (ii) the
+lesser of the amount determined under paragraph (1) or an amount equal to
+one-half of the difference between the adjusted base amount and the base
+amount of the taxpayer, or (B) 85 percent of the social security benefits
+received during the taxable year."
+
+### (b) Taxpayers to whom subsection (a) applies
+
+"(1) A taxpayer is described in this subsection if— (A) the sum of— (i) the
+modified adjusted gross income of the taxpayer for the taxable year, plus (ii)
+one-half of the social security benefits received during the taxable year,
+exceeds (B) the base amount." "(2) ... the term 'modified adjusted gross
+income' means adjusted gross income— (A) determined without regard to this
+section and sections 85(c), 135, 137, 221, 911, 931, and 933, and (B)
+increased by the amount of interest received or accrued by the taxpayer during
+the taxable year which is exempt from tax."
+
+### (c) Base amount and adjusted base amount
+
+"(1) ... the term 'base amount' means— (A) ... $25,000, (B) $32,000 in the
+case of a joint return, and (C) zero in the case of a taxpayer who— (i) is
+married as of the close of the taxable year (within the meaning of section
+7703) but does not file a joint return for such year, and (ii) does not live
+apart from his spouse at all times during the taxable year." "(2) ... the term
+'adjusted base amount' means— (A) ... $34,000, (B) $44,000 in the case of a
+joint return, and (C) zero in the case of a taxpayer described in paragraph
+(1)(C)."
+
+With base and adjusted base both zero, § 86(a)(2)(A) gives 85 percent of the
+whole excess, capped by (B) at 85 percent of the benefits. The worksheet
+shortcut is "multiply line 7 by 85%".
+
+### (d) Social security benefit
+
+"(2)(A) ... the amount of social security benefits received during any taxable
+year shall be reduced by any repayment made by the taxpayer during the taxable
+year of a social security benefit previously received by the taxpayer". This
+is why net benefits (SSA-1099 / RRB-1099 box 5) can be negative.
+
+## Form 1040 instructions: Social Security Benefits Worksheet, lines 6a and 6b
+
+`sources/forms-instructions/i1040gi--2024.pdf` p 32. Pub. 915 has a similar
+worksheet with different line numbers; DF uses the one in the 1040
+instructions and so does this module. Lines:
+
+- 1. "Enter the total amount from box 5 of all your Forms SSA-1099 and
+  RRB-1099. Also enter this amount on Form 1040 or 1040-SR, line 6a."
+- 2. "Multiply line 1 by 50% (0.50)".
+- 3. "Combine the amounts from Form 1040 or 1040-SR, lines 1z, 2b, 3b, 4b, 5b,
+  7, and 8".
+- 4. "Enter the amount, if any, from Form 1040 or 1040-SR, line 2a".
+- 5. "Combine lines 2, 3, and 4".
+- 6. "Enter the total of the amounts from Schedule 1, lines 11 through 20, and
+  23 and 25".
+- 7. "Is the amount on line 6 less than the amount on line 5? No. None of your
+  social security benefits are taxable. Enter -0- ... Yes. Subtract line 6
+  from line 5".
+- 8. "Married filing jointly, enter $32,000; Single, head of household,
+  qualifying surviving spouse, or married filing separately and you lived
+  apart from your spouse for all of 2024, enter $25,000; Married filing
+  separately and you lived with your spouse at any time in 2024, skip lines 8
+  through 15; multiply line 7 by 85% (0.85) and enter the result on line 16.
+  Then, go to line 17".
+- 9. "Is the amount on line 8 less than the amount on line 7? No. None of your
+  social security benefits are taxable. Yes. Subtract line 8 from line 7".
+- 10. "Enter $12,000 if married filing jointly; $9,000 if single, head of
+  household, qualifying surviving spouse, or married filing separately and you
+  lived apart from your spouse for all of 2024".
+- 11. "Subtract line 10 from line 9. If zero or less, enter -0-".
+- 12. "Enter the smaller of line 9 or line 10".
+- 13. "Enter one-half of line 12".
+- 14. "Enter the smaller of line 2 or line 13".
+- 15. "Multiply line 11 by 85% (0.85). If line 11 is zero, enter -0-".
+- 16. "Add lines 14 and 15".
+- 17. "Multiply line 1 by 85% (0.85)".
+- 18. "Taxable social security benefits. Enter the smaller of line 16 or line
+  17. Also enter this amount on Form 1040 or 1040-SR, line 6b".
+
+The "D" next to "benefits" on line 6a (MFS, lived apart all year) is the
+output `benefit_code_d` (DF `/xmlSocialSecurityBenefitCode`).
+
+## The scope
+
+The worksheet rates are 50 percent and 85 percent (§ 86(a)(1) and (a)(2)).
+They are declared here because only this module uses them.
+
+```catala-metadata
+## § 86(a)(1): one-half. Worksheet lines 2 and 13.
+declaration ss_half content decimal equals 0.50
+
+## § 86(a)(2): 85 percent. Worksheet lines 15, 16 (MFS shortcut) and 17.
+declaration ss_eighty_five_percent content decimal equals 0.85
+
+## Inputs and outputs of the worksheet. Names carry the worksheet line.
+declaration scope SocialSecurity:
+  # DF: /socialSecurityReports/*/netBenefits, one element per SSA-1099 or
+  # RRB-1099 (box 5 of either form; negative when repayments exceed benefits)
+  input report_net_benefits content list of money
+  # DF: filingStatus module /isFilingStatusMFJ, /isFilingStatusMFS
+  input filing_status content Types.FilingStatus
+  # DF: filers.xml /livedApartAllYear (only read for MFS)
+  input lived_apart_all_year condition
+  # DF: /employerIncomeSubtotal, 1040 line 1z
+  input line_1z content money
+  # DF: interest.xml /interestIncome, 1040 line 2b
+  input line_2b content money
+  # DF: interest.xml /taxExemptInterest, 1040 line 2a (worksheet line 4)
+  input line_2a content money
+  # DF: income.xml /ordinaryDividends, 1040 line 3b
+  input line_3b content money
+  # DF: income.xml /taxableIraDistributions, 1040 line 4b
+  input line_4b content money
+  # DF: income.xml /taxablePensionsAndAnnuities, 1040 line 5b
+  input line_5b content money
+  # DF: income.xml /capitalGainsOrLosses, 1040 line 7
+  input line_7_capital_gains content money
+  # DF: income.xml /otherIncome, 1040 line 8
+  input line_8_other_income content money
+  # DF: taxCalculations.xml /adjustmentsToIncomeExcludingStudentLoanInterest,
+  # worksheet line 6 (Schedule 1 lines 11 to 20, 23, 25)
+  input adjustments_excluding_student_loan_interest content money
+
+  # DF: /socialSecurityBenefits, 1040 line 6a, worksheet line 1
+  output line_6a content money
+  # DF: /socialSecurityBenefitsWkshtLine3
+  output wksht_line_3 content money
+  # DF: /socialSecurityBenefitsWkshtLine7
+  output wksht_line_7 content money
+  # DF: /socialSecurityBenefitsWkshtLine8
+  output wksht_line_8 content money
+  # DF: /socialSecurityBenefitsWkshtLine9
+  output wksht_line_9 content money
+  # DF: /socialSecurityBenefitsWkshtLine10
+  output wksht_line_10 content money
+  # DF: /socialSecurityBenefitsWkshtLine11
+  output wksht_line_11 content money
+  # DF: /socialSecurityBenefitsWkshtLine16
+  output wksht_line_16 content money
+  # DF: /taxableSocialSecurityBenefits, 1040 line 6b, worksheet line 18
+  output line_6b content money
+  # DF: /nonTaxableSocialSecurityBenefits (Schedule R line 13a)
+  output non_taxable_benefits content money
+  # DF: /hasSocialSecurityBenefits
+  output has_benefits condition
+  # DF: /xmlSocialSecurityBenefitCode = "D"
+  output benefit_code_d condition
+  # DF: /socialSecurityBenefitsAreLossGreaterThan3k, without the screen-done flag
+  output repayment_over_3k condition
+```
+
+## Line 1 and line 6a
+
+DF `/socialSecurityBenefits` is `Round(sum of netBenefits)`.
+
+```catala
+scope SocialSecurity:
+  # Worksheet line 1; DF: socialSecurity.xml /socialSecurityBenefits
+  definition line_6a equals R.round_dollar of (Money.sum of report_net_benefits)
+
+  # DF: /hasSocialSecurityBenefits
+  definition has_benefits equals line_6a > $0
+
+  # DF: /xmlSocialSecurityBenefitCode (case 1, the only case)
+  definition benefit_code_d equals
+    has_benefits and filing_status = MarriedFilingSeparately and lived_apart_all_year
+
+  # IRC 1341(a)(3) via P.claim_of_right_threshold; DF: ...AreLossGreaterThan3k
+  definition repayment_over_3k equals line_6a < - P.claim_of_right_threshold
+```
+
+## Lines 3 to 7
+
+```catala
+scope SocialSecurity:
+  # Worksheet line 3; DF: /socialSecurityBenefitsWkshtLine3. No rounding in DF:
+  # each addend is already a whole-dollar figure.
+  definition wksht_line_3 equals
+    line_1z + line_2b + line_3b + line_4b + line_5b
+    + line_7_capital_gains + line_8_other_income
+
+  # Worksheet lines 2 to 7, DF: /socialSecurityBenefitsWkshtLine7. Line 5 =
+  # 0.50 * line 1 + line 3 + line 4 (2a); line 6 is the adjustments. "If line
+  # 6 is not less than line 5, enter -0-" is `GreaterOf(..., 0)`. DF does not
+  # round the 50% product to the dollar (it is rounded to the cent), only
+  # the final line 18.
+  definition wksht_line_7 equals
+    Money.positive of
+      ((line_6a * ss_half) + wksht_line_3 + line_2a
+       - adjustments_excluding_student_loan_interest)
+```
+
+## Lines 8 to 16
+
+Line 8 is the § 86(c)(1) base amount: $32,000 for a joint return, else
+$25,000. The case "MFS and lived with spouse" (base amount zero, § 86(c)(1)(C))
+is handled in line 16, as the worksheet does ("skip lines 8 through 15"). The
+DF fact for line 8 does not look at it, so neither does `wksht_line_8`.
+
+```catala
+scope SocialSecurity:
+  # Worksheet line 8; DF: /socialSecurityBenefitsWkshtLine8
+  definition wksht_line_8 equals
+    if filing_status = MarriedFilingJointly
+    then P.ss_base_amount_joint
+    else P.ss_base_amount_other
+
+  # Worksheet line 9; DF: /socialSecurityBenefitsWkshtLine9 (may be negative;
+  # DF only uses it after the line-9 early return)
+  definition wksht_line_9 equals wksht_line_7 - wksht_line_8
+
+  # Worksheet line 10; DF: /socialSecurityBenefitsWkshtLine10
+  definition wksht_line_10 equals
+    if filing_status = MarriedFilingJointly
+    then P.ss_adjusted_base_gap_joint
+    else P.ss_adjusted_base_gap_other
+
+  # Worksheet line 11; DF: /socialSecurityBenefitsWkshtLine11
+  definition wksht_line_11 equals
+    Money.positive of (wksht_line_9 - wksht_line_10)
+
+  # Worksheet lines 8 (MFS shortcut), 9 (early return), 12 to 16;
+  # DF: /socialSecurityBenefitsWkshtLine16. Case order is DF's.
+  definition wksht_line_16 equals
+    if filing_status = MarriedFilingSeparately and not lived_apart_all_year
+    then wksht_line_7 * ss_eighty_five_percent
+    else if wksht_line_7 < wksht_line_8
+    then $0
+    else
+      # line 15 + line 14, where line 14 = min(line 2, 0.50 * line 12)
+      (wksht_line_11 * ss_eighty_five_percent)
+      + Money.min of
+          (line_6a * ss_half),
+          ((Money.min of wksht_line_9, wksht_line_10) * ss_half)
+```
+
+## Lines 17 and 18
+
+```catala
+scope SocialSecurity:
+  # Worksheet lines 17 and 18; DF: /taxableSocialSecurityBenefits. Net
+  # benefits below zero give zero; otherwise Round(min(line 16, 0.85 * line 1)).
+  definition line_6b equals
+    if line_6a < $0
+    then $0
+    else R.round_dollar of
+      (Money.min of wksht_line_16, (line_6a * ss_eighty_five_percent))
+
+  # DF: /nonTaxableSocialSecurityBenefits = benefits - taxable benefits
+  definition non_taxable_benefits equals line_6a - line_6b
+```
