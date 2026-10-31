@@ -1,0 +1,126 @@
+docs/api.md
+  s_3031b504518be3::t_1c40e6ffa5cba1 1-257
+api/fixtures/error-400-negative-wages.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-14
+api/examples/refund-single-w2-50k.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-28
+api/scripts/gen-reasons.mjs
+  s_3031b504518be3::t_a10f368d01b101 34
+  s_3031b504518be3::t_041bfa2ced0b3a 1-33,35-66
+api/package.json
+  s_3031b504518be3::t_f3c37f86ccf5d9 1-8
+api/fixtures/error-400-unsupported-tax-year.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-14
+api/fixtures/error-400-negative-wages.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-11
+api/examples/refund-single-w2-50k.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-12
+api/fixtures/error-500-internal.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-7
+api/fixtures/refund-below-standard-deduction.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-12
+api/fixtures/refund-below-standard-deduction.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-28
+Makefile
+  s_3031b504518be3::t_c09f94c4f67733 38-45
+api/fixtures/error-404-not-found.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-7
+api/examples/balance-due-single-w2-50k.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-28
+api/examples/mfj-two-w2s.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-28
+api/fixtures/knocked-out-foreign-accounts.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-15
+api/examples/qss-w2-80k.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-28
+api/fixtures/knocked-out-foreign-accounts.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-12
+api/examples/knocked-out-bond-interest.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-20
+api/examples/hoh-w2-60k.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-12
+api/examples/mfs-w2-40k.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-28
+api/schema.json
+  s_3031b504518be3::t_75cc9f42b553e1 1-404
+api/examples/single-w2-50k.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-28
+api/fixtures/version.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-6
+api/examples/balance-due-single-w2-50k.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-12
+api/examples/single-w2-and-interest.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-19
+api/fixtures/error-413-payload-too-large.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-7
+api/fixtures/manifest.json
+  s_3031b504518be3::t_7fc8974e5027aa 1-203
+  s_3031b504518be3::t_e8a20f1a86d491 204-205
+api/fixtures/error-400-secondary-filer-on-single.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-14
+api/examples/hoh-w2-60k.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-28
+api/fixtures/error-400-invalid-json.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-7
+api/fixtures/error-400-money-not-integer.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-14
+api/fixtures/error-415-unsupported-media-type.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-7
+api/fixtures/error-400-unknown-field.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-6
+api/fixtures/error-405-method-not-allowed.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-7
+api/examples/mfj-two-w2s.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-15
+api/examples/knocked-out-bond-interest.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-12
+api/fixtures/error-400-unsupported-tax-year.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-5
+api/examples/single-w2-and-interest.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-28
+api/scripts/check.mjs
+  s_3031b504518be3::t_ad539302c7803f 1-88
+api/examples/qss-w2-80k.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-12
+api/examples/single-w2-50k.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-11
+api/line-catalog.json
+  s_3031b504518be3::t_7fc8974e5027aa 1-157
+api/fixtures/health.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-3
+api/fixtures/knocked-out-multiple-reasons.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-25
+api/examples/mfs-w2-40k.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-12
+api/fixtures/knocked-out-multiple-reasons.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-14,20-27
+  s_3031b504518be3::t_d1e7cccc8b8302 15-19
+api/fixtures/error-400-money-not-integer.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-11
+api/fixtures/error-400-secondary-filer-on-single.request.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-11
+api/fixtures/error-400-unknown-field.response.json
+  s_3031b504518be3::t_ec46d66ca288c0 1-14
+.gitignore
+  s_3031b504518be3::t_0951729a0b10c0 10
+api/knockout-reasons.json
+  s_3031b504518be3::t_ace8ea6c582b02 1-707
+api/package-lock.json
+  s_3031b504518be3::t_808367f8367e46 1-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "716a0bca5e7049ae0c4d9e700fe2d283cedaf568",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
