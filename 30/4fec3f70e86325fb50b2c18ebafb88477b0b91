@@ -1,0 +1,81 @@
+.claude/worktrees/agent-a21b54917dd043714
+  s_3031b504518be3::t_7aee3749ee66a5 1
+.claude/worktrees/agent-a280af4ad8cc1db96
+  s_3031b504518be3::t_a91fa7370e9d23 1
+.claude/worktrees/agent-a2b0e242d7d286450
+  s_3031b504518be3::t_5ce17884d79785 1
+.claude/worktrees/agent-a369bc5fd78a28155
+  s_3031b504518be3::t_7ec9cf392c471e 1
+.claude/worktrees/agent-a4a1051ef067cbcc7
+  s_3031b504518be3::t_5162d2e896d7b1 1
+.claude/worktrees/agent-a4be2f282f94033d1
+  s_3031b504518be3::t_9bf533bfe3715a 1
+.claude/worktrees/agent-a586c9a9d5f95aa7c
+  s_3031b504518be3::t_1614f6f4b776b9 1
+.claude/worktrees/agent-a86246461c79c8b7f
+  s_3031b504518be3::t_ec7eb8f3167df7 1
+.claude/worktrees/agent-a8890d29683977630
+  s_3031b504518be3::t_ef6f0c02bb1989 1
+.claude/worktrees/agent-a8d67bd764840861b
+  s_3031b504518be3::t_61f19e93a85989 1
+.claude/worktrees/agent-a9ae04368603d91ac
+  s_3031b504518be3::t_08cfc7bcec0bea 1
+.claude/worktrees/agent-aa9284cb52d77353a
+  s_3031b504518be3::t_c0fb22865e5928 1
+.claude/worktrees/agent-ab11fb0dbc2910423
+  s_3031b504518be3::t_0185a85591b138 1
+.claude/worktrees/agent-ab86cc64caec8f070
+  s_3031b504518be3::t_46b67afc5b8f8d 1
+.claude/worktrees/agent-ab9e54875ad4746f7
+  s_3031b504518be3::t_9532df2bb40d82 1
+.claude/worktrees/agent-abaadf8abde0cbfee
+  s_3031b504518be3::t_4e1c09965d08a4 1
+.claude/worktrees/agent-ad718678e92fb4ec2
+  s_3031b504518be3::t_9c48e846a0cc04 1
+.claude/worktrees/agent-af57c0931379bf8bd
+  s_3031b504518be3::t_a8d17a4a46405e 1
+.claude/worktrees/agent-af7d4e915c2061bc0
+  s_3031b504518be3::t_d10009c958b250 1
+.claude/worktrees/agent-afb424524c9da9ee4
+  s_3031b504518be3::t_343ce929b72a5f 1
+catala/CONVENTIONS.md
+  s_3031b504518be3::t_9f5e02ee7dead8 270-287
+docs/direct-file-bugs.md
+  s_3031b504518be3::t_b7dd18398aab1e 1-16
+.claude/worktrees/agent-a2c94582fc8b110b9
+  s_5abd05558452ae::t_33a546bf91d366 1
+.claude/worktrees/agent-a3642e52348e0181c
+  s_78a73307ab2b55::t_347eb3069cfdf4 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "304fec3f70e86325fb50b2c18ebafb88477b0b91",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    },
+    "s_5abd05558452ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad718678e92fb4ec2",
+        "model": "unknown"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    },
+    "s_78a73307ab2b55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3642e52348e0181c",
+        "model": "unknown"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
