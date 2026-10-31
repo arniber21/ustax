@@ -1,0 +1,28 @@
+catala/tests/gen_oracle_interest.py
+  s_3031b504518be3::t_14ccf83b005eee 1-139
+catala/tests/test_interest.catala_en
+  s_3031b504518be3::t_6690927121fc40 232,235-261,282-284,305-306,327-328,350-352,363-365,386-387,411,545-555
+  s_3031b504518be3::t_76e00703353a72 1-52,54-82,84-109,111-129,131-156,158-231,233-234,262-281,285-304,307-326,329-349,353-362,366-385,388-410,412-544,556
+  s_3031b504518be3::t_5f32ddff421d42 53,83,110,130,157
+catala/tests/oracle_interest.catala_en
+  s_3031b504518be3::t_2b4b7c7cfc9f86 1-5415
+catala/interest.catala_en
+  s_3031b504518be3::t_aa76fadaf63e56 1-21,24-160,162-437
+  s_3031b504518be3::t_03a3f5d4868d0e 22-23,161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "350a09ba08a2ded5b88e67749e7ad9d6786c8699",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
