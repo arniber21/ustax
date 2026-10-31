@@ -1,0 +1,89 @@
+> Module Types
+
+# Shared types
+
+Types used by more than one module. No tax rule lives here. See
+`catala/CONVENTIONS.md` for the naming and mapping conventions.
+
+## Filing status
+
+26 U.S.C. § 1(a) to (d) sets four rate schedules: married individuals filing
+joint returns and surviving spouses (§ 1(a)), heads of households (§ 1(b)),
+unmarried individuals (§ 1(c)) and married individuals filing separate returns
+(§ 1(d)). Surviving spouse is defined in § 2(a) and head of household in § 2(b)
+(`sources/statute/irc-1.html`, `sources/statute/irc-2.html`). Form 1040 for
+2024 calls the § 2(a) status "Qualifying surviving spouse (QSS)"
+(`sources/forms-instructions/f1040--2024.pdf` p 1).
+
+Direct File: the writable fact `/filingStatus` (`filingStatus.xml`, fact
+`/filingStatus`) takes one of the five options listed in `/filingStatusOptions`
+(`filingStatus.xml` lines 5-50): `marriedFilingJointly`,
+`marriedFilingSeparately`, `single`, `headOfHousehold`,
+`qualifiedSurvivingSpouse`. The constructors below map one to one, in the
+same order as the Form 1040 checkboxes.
+
+```catala-metadata
+## The filing status checked on Form 1040, page 1.
+declaration enumeration FilingStatus:
+  -- Single
+  -- MarriedFilingJointly
+  -- MarriedFilingSeparately
+  -- HeadOfHousehold
+  -- QualifyingSurvivingSpouse
+```
+
+## Filer role
+
+Direct File keeps one or two filers in the `/filers` collection
+(`filers.xml`, fact `/filers`), with `isPrimaryFiler` marking the first.
+Per-filer items (W-2s, 1099s, HSA contributions) carry a `*/filer` reference
+so MFJ amounts can be split per spouse (scope.md section 3.1). In Catala,
+per-filer items carry a `FilerRole` field instead of a reference.
+
+```catala-metadata
+## Which of the (at most two) filers an item belongs to.
+declaration enumeration FilerRole:
+  -- PrimaryFiler
+  -- SecondaryFiler
+```
+
+## State of residence (scope only)
+
+Direct File only accepts filers from the states in `/scopedStateOptions`
+(`constants.xml` lines 327-360). `MoreThanOne` and `NoneOfThese` are the two
+knockout options in that list, and Louisiana is deliberately commented out.
+This enum is the full list as re-read on 2026-10-31 (scope.md section 11,
+item 11). Federal tax does not otherwise depend on the state; the knockout
+rules that use it belong to the knockout issues, not here.
+
+```catala-metadata
+## Where the filer lived in the tax year, as Direct File asks it.
+declaration enumeration ScopedState:
+  -- MoreThanOne
+  -- AK
+  -- AZ
+  -- CA
+  -- CT
+  -- FL
+  -- ID
+  -- IL
+  -- KS
+  -- ME
+  -- MD
+  -- MA
+  -- NV
+  -- NH
+  -- NJ
+  -- NM
+  -- NY
+  -- NC
+  -- OR
+  -- PA
+  -- SD
+  -- TN
+  -- TX
+  -- WA
+  -- WI
+  -- WY
+  -- NoneOfThese
+```

@@ -1,0 +1,104 @@
+> Module Rounding
+
+# Money and rounding helpers
+
+The arithmetic operators of the Direct File fact graph that have no single
+Catala built-in, written once here so every module rounds the same way. The
+policy for when to call them is in `catala/CONVENTIONS.md`, section "Money
+and rounding". Tests: `catala/tests/test_rounding.catala_en`.
+
+Catala `money` is an integer number of cents. `money * decimal` and
+`money of decimal` round to the nearest cent, half away from zero
+(Catala runtime `catala_runtime.ml`, `money_of_decimal`). Catala `decimal` is
+an exact rational, so arithmetic on `decimal` never rounds.
+
+References to the reference engine are to
+`../direct-file/direct-file/fact-graph-scala/shared/src/main/scala/gov/irs/factgraph/`.
+
+## Round: half up to the whole dollar
+
+Direct File `Round` (`compnodes/Round.scala`) calls `Dollar.round`
+(`types/Dollar.scala`): `x.setScale(0, RoundingMode.HALF_UP)`. Java `HALF_UP`
+rounds ties away from zero, so $2.50 gives $3 and -$0.50 gives -$1. Catala
+`round of <money>` is also half away from zero, so it is the same function on
+every input, negative amounts included.
+
+The same rule is the IRS instruction for whole-dollar amounts (Form 1040
+instructions, "Rounding Off to Whole Dollars",
+`sources/forms-instructions/i1040gi--2024.pdf` p 23): "To round, drop amounts
+under 50 cents and increase amounts from 50 to 99 cents to the next dollar. For
+example, $1.39 becomes $1 and $2.50 becomes $3."
+
+The same paragraph goes on: "If you have to add two or more amounts to figure
+the amount to enter on a line, include cents when adding the amounts and round
+off only the total." Direct File rounds each item before summing instead; see
+the per-item rounding rule in `catala/CONVENTIONS.md`.
+
+```catala-metadata
+## Direct File `Round`: nearest whole dollar, ties away from zero.
+declaration round_dollar content money
+  depends on amount content money
+  equals round of amount
+```
+
+## Rounding an exact product once
+
+`round_dollar of (m * r)` rounds twice: first to the cent (the `money *
+decimal` product), then to the dollar. A product such as $1,115.4958 becomes
+$1,115.50 and then $1,116, while rounding the exact value once gives $1,115.
+Direct File does the same double rounding (its `Dollar * Rational` product is
+stored at two decimals, `compnodes/Multiply.scala` and `types/Dollar.scala`),
+and `ptc.xml` `/ptcAnnualContributionAmount` works around it with
+`TruncateCents`. Use `round_dollar_exact` only where the convention file says
+the statute is followed instead of the reference.
+
+```catala-metadata
+## Rounds `amount * rate` to the nearest whole dollar (ties away from zero),
+## computing the product exactly first, with no rounding to the cent.
+declaration round_dollar_exact content money
+  depends on
+    amount content money,
+    rate content decimal
+  equals
+    $1 * (round of ((amount / $1) * rate))
+```
+
+## TruncateCents
+
+Direct File `TruncateCents` (`compnodes/TruncateCents.scala`) takes a
+`Rational` (an exact fraction) and keeps two decimals with
+`RoundingMode.DOWN`, which is toward zero: 1.239 gives 1.23 and -1.239 gives
+-1.23. Its only uses are in `ptc.xml` (`/householdIncomeAsPercent`,
+`/ptcAnnualContributionAmount`). In Catala the input is a `decimal` and the
+result is `money`.
+
+```catala-metadata
+## Direct File `TruncateCents`: drops digits after the cent, toward zero.
+declaration truncate_cents content money
+  depends on value content decimal
+  equals $0.01 * (Decimal.truncate of (value * 100.0))
+```
+
+## StepwiseMultiply
+
+Direct File `StepwiseMultiply` (`compnodes/StepwiseMultiply.scala`) computes
+`Dollar(x.intValue / rate.denominator * rate.numerator)`: it drops the cents
+of `x` (toward zero), divides by the denominator with integer division
+(toward zero), then multiplies by the numerator. With rate 50/50 this is the
+bottom of the $50 Tax Table or EIC Table row that contains `x` (scope.md
+sections 2.1 and 6.2); with 1000/1000 it is the bottom of the $1,000 step
+(Schedule 8812 line 10).
+
+```catala-metadata
+## Direct File `StepwiseMultiply` of `amount` by the rational
+## `numerator / denominator`. `denominator` must not be 0.
+declaration stepwise_multiply content money
+  depends on
+    amount content money,
+    numerator content integer,
+    denominator content integer
+  equals
+    let whole_dollars equals (Money.truncate of amount) / $1 in
+    $1 * ((Decimal.truncate of (whole_dollars / (decimal of denominator)))
+          * (decimal of numerator))
+```
