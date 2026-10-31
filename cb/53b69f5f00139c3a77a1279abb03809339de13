@@ -1,0 +1,50 @@
+docs/spike/lean/Spike/RateA.lean
+  s_3031b504518be3::t_9cc1efae9079b9 1-91
+docs/spike/ocaml/driver.ml
+  s_3031b504518be3::t_9cc1efae9079b9 1,4-20
+  s_3031b504518be3::t_00b4bb21803fd2 2-3
+docs/spike/plugin/dune-project
+  s_3031b504518be3::t_9cc1efae9079b9 1
+docs/spike/catala/tests/test_spike_rate.catala_en
+  s_3031b504518be3::t_00b4bb21803fd2 1-27
+docs/spike/lean/Main.lean
+  s_3031b504518be3::t_9cc1efae9079b9 1-18
+docs/spike/lean/Probe.lean
+  s_3031b504518be3::t_9cc1efae9079b9 1-34
+docs/spike/lean/Spike/Runtime.lean
+  s_3031b504518be3::t_9cc1efae9079b9 1-93
+docs/spike/plugin/dune
+  s_3031b504518be3::t_9cc1efae9079b9 1-5
+docs/spike/catala/spike_rate.catala_en
+  s_3031b504518be3::t_00b4bb21803fd2 1-89
+docs/spike/lean/lean-toolchain
+  s_3031b504518be3::t_9cc1efae9079b9 1
+docs/spike/ocaml/rt.ml
+  s_3031b504518be3::t_9cc1efae9079b9 1-20
+docs/spike/lean/Refine.lean
+  s_3031b504518be3::t_9cc1efae9079b9 1-121
+docs/spike/lean/lakefile.toml
+  s_3031b504518be3::t_9cc1efae9079b9 1-9
+docs/catala-to-lean.md
+  s_3031b504518be3::t_7a5f2d4fca7fcf 1-181
+docs/spike/lean/Spike/RateC.lean
+  s_3031b504518be3::t_9cc1efae9079b9 1-70
+docs/spike/plugin/lean_spike.ml
+  s_3031b504518be3::t_9cc1efae9079b9 1-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cb53b69f5f00139c3a77a1279abb03809339de13",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
