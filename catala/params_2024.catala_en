@@ -1,0 +1,182 @@
+> Module Params_2024
+
+# Tax year 2024 parameters
+
+Every inflation-adjusted or fixed dollar amount and rate used by more than one
+rule lives here, one declaration per figure, each with its source. Page numbers
+are PDF page indexes (first page = 1) of the files under `sources/`, as in
+`sources/INDEX.md`. Each value was checked against the official figure in
+`sources/VERIFICATION.md` on 2026-10-31 and equals the value hard-coded in the
+Direct File XML (`../direct-file/direct-file/backend/src/main/resources/tax/`,
+file named per item).
+
+Rules (who gets which amount) do not live here; they live in the module for
+their topic. Later modules add figures to this file, with the same citation
+format. The rate schedules (#10), EITC table (#26), Saver's credit bands (#29),
+Schedule R amounts (#30) and PTC tables (#32) are added by those issues.
+
+## Standard deduction (IRC 63(c), Rev. Proc. 2023-34 § 3.15)
+
+Rev. Proc. 2023-34 § 3.15(1), `sources/revproc/rp-23-34.pdf` p 12. Direct File
+`standardDeduction.xml`.
+
+```catala-metadata
+# Rev. Proc. 2023-34 §3.15(1) table, rp-23-34.pdf p 12: "Married Individuals
+# Filing Joint Returns and Surviving Spouses (§ 1(j)(2)(A)) $29,200".
+declaration std_deduction_joint_or_surviving_spouse content money equals $29,200
+
+# Same table: "Heads of Households (§ 1(j)(2)(B)) $21,900".
+declaration std_deduction_head_of_household content money equals $21,900
+
+# Same table: "Unmarried Individuals (other than Surviving Spouses and Heads of
+# Households) (§ 1(j)(2)(C)) $14,600".
+declaration std_deduction_unmarried content money equals $14,600
+
+# Same table: "Married Individuals Filing Separate Returns (§ 1(j)(2)(D)) $14,600".
+declaration std_deduction_married_separate content money equals $14,600
+
+# Rev. Proc. 2023-34 §3.15(2), rp-23-34.pdf p 12: dependent's standard deduction
+# "cannot exceed the greater of (1) $1,300, or (2) the sum of $450 and the
+# individual's earned income".
+declaration std_deduction_dependent_floor content money equals $1,300
+declaration std_deduction_dependent_earned_income_addition content money equals $450
+
+# Rev. Proc. 2023-34 §3.15(3), rp-23-34.pdf p 12: additional amount for the aged
+# or the blind is $1,550, "increased to $1,950 if the individual is also
+# unmarried and not a surviving spouse". Also i1040gi--2024.pdf p 34.
+declaration std_deduction_additional_married content money equals $1,550
+declaration std_deduction_additional_unmarried content money equals $1,950
+```
+
+## Dependents (IRC 152(d)(1)(B))
+
+```catala-metadata
+# Rev. Proc. 2023-34 §3.24, rp-23-34.pdf p 14: "the exemption amount referenced
+# in § 152(d)(1)(B) is $5,050". Direct File familyAndHousehold.xml
+# /grossIncomeLimit (line 2664, TaxYear 2024) uses 5,050; its description
+# "Rev Proc .24 Gross Income Limitation for a Qualifying Relative" names
+# section .24 of the revenue procedure, i.e. this §3.24, not Rev. Proc. 2024-40.
+declaration qualifying_relative_gross_income_limit content money equals $5,050
+```
+
+## Child tax credit and credit for other dependents (IRC 24)
+
+Statute text: `sources/statute/irc-24.html`. Direct File `ctcOdc.xml`.
+
+```catala-metadata
+# IRC 24(h)(2): subsection (a) applied by substituting "$2,000" for "$1,000".
+declaration ctc_per_qualifying_child content money equals $2,000
+
+# IRC 24(h)(4)(A): "increased by $500 for each dependent ... other than a
+# qualifying child".
+declaration odc_per_other_dependent content money equals $500
+
+# IRC 24(h)(3): threshold amount "$400,000 in the case of a joint return
+# ($200,000 in any other case)".
+declaration ctc_phaseout_threshold_joint content money equals $400,000
+declaration ctc_phaseout_threshold_other content money equals $200,000
+
+# IRC 24(b)(1): reduced "by $50 for each $1,000 (or fraction thereof)".
+declaration ctc_phaseout_reduction_per_step content money equals $50
+declaration ctc_phaseout_step content money equals $1,000
+
+# Rev. Proc. 2023-34 §3.05, rp-23-34.pdf p 8: refundable portion per qualifying
+# child (IRC 24(h)(5), $1,400 indexed) is $1,700.
+declaration actc_per_qualifying_child_cap content money equals $1,700
+
+# IRC 24(h)(6): (d)(1)(B)(i) applied by substituting "$2,500" for "$3,000";
+# rate 15% from IRC 24(d)(1)(B)(i). Schedule 8812 lines 19-20,
+# f1040s8--2024.pdf p 2.
+declaration actc_earned_income_floor content money equals $2,500
+declaration actc_earned_income_rate content decimal equals 15%
+```
+
+## Earned income credit (IRC 32)
+
+```catala-metadata
+# Rev. Proc. 2023-34 §3.06(2), rp-23-34.pdf p 9: credit denied if aggregate
+# disqualified income "exceeds $11,600". Direct File eitc.xml.
+declaration eitc_investment_income_limit content money equals $11,600
+```
+
+## Child and dependent care (IRC 21, IRC 129)
+
+Direct File `cdcc.xml`.
+
+```catala-metadata
+# IRC 21(c)(1)-(2) (sources/statute/irc-21.html): "$3,000 if there is 1
+# qualifying individual"; "$6,000 if there are 2 or more".
+declaration cdcc_expense_cap_one_person content money equals $3,000
+declaration cdcc_expense_cap_two_or_more content money equals $6,000
+
+# IRC 129(a)(2)(A) (sources/statute/irc-129.html): "shall not exceed $5,000
+# ($2,500 in the case of a separate return by a married individual)".
+declaration dependent_care_exclusion_cap content money equals $5,000
+declaration dependent_care_exclusion_cap_married_separate content money equals $2,500
+```
+
+## Adjustments (Schedule 1 Part II)
+
+```catala-metadata
+# Rev. Proc. 2023-34 §3.13, rp-23-34.pdf p 11: educator expense limit $300
+# (IRC 62(a)(2)(D)). Direct File educatorAdjustment.xml.
+declaration educator_expense_cap_per_educator content money equals $300
+
+# IRC 221(b)(1) (sources/statute/irc-221.html): "shall not exceed $2,500".
+# Direct File studentLoanAdjustment.xml.
+declaration student_loan_interest_cap content money equals $2,500
+
+# Rev. Proc. 2023-34 §3.30, rp-23-34.pdf p 16: phase-out "begins for taxpayers
+# with modified adjusted gross income in excess of $80,000 ($165,000 for joint
+# returns), and is completely phased out ... $95,000 or more ($195,000 or more
+# for joint returns)".
+declaration student_loan_phaseout_start_other content money equals $80,000
+declaration student_loan_phaseout_start_joint content money equals $165,000
+declaration student_loan_phaseout_end_other content money equals $95,000
+declaration student_loan_phaseout_end_joint content money equals $195,000
+
+# Rev. Proc. 2023-23, rp-23-23.pdf p 2: HSA annual limitation $4,150 self-only,
+# $8,300 family. Direct File hsa.xml / constants.xml.
+declaration hsa_limit_self_only content money equals $4,150
+declaration hsa_limit_family content money equals $8,300
+
+# IRC 223(b)(3)(B) (sources/statute/irc-223.html): additional contribution
+# amount for age 55 or older is $1,000 (not indexed). i8889--2024.pdf p 4.
+declaration hsa_catch_up_55 content money equals $1,000
+```
+
+## Income-side thresholds
+
+```catala-metadata
+# Pub 15 (2024), p15--2024.pdf p 2: "The social security wage base limit is
+# $168,600." Direct File formW2s.xml.
+declaration oasdi_wage_base content money equals $168,600
+
+# Schedule B, f1040sb--2024.pdf p 1: "If line 4 is over $1,500, you must
+# complete Part III." Direct File interest.xml /requiresScheduleB.
+declaration schedule_b_interest_threshold content money equals $1,500
+
+# IRC 86(c)(1) (sources/statute/irc-86.html): base amount "$25,000" or
+# "$32,000 in the case of a joint return". 1040 instructions Social Security
+# Benefits Worksheet line 8, i1040gi--2024.pdf p 32. Direct File socialSecurity.xml.
+declaration ss_base_amount_other content money equals $25,000
+declaration ss_base_amount_joint content money equals $32,000
+
+# Same worksheet, line 10, i1040gi--2024.pdf p 32: "Enter $12,000 if married
+# filing jointly; $9,000 if single, ...". Equal to the IRC 86(c)(2) adjusted
+# base amounts ($44,000, $34,000) minus the 86(c)(1) base amounts.
+declaration ss_adjusted_base_gap_other content money equals $9,000
+declaration ss_adjusted_base_gap_joint content money equals $12,000
+
+# IRC 1411(b) (sources/statute/irc-1411.html): threshold "$250,000" for a joint
+# return or surviving spouse, half of that for married filing separately,
+# "$200,000" in any other case. Direct File interest.xml (NIIT knockout).
+declaration niit_threshold_joint_or_surviving_spouse content money equals $250,000
+declaration niit_threshold_married_separate content money equals $125,000
+declaration niit_threshold_other content money equals $200,000
+
+# IRC 1341(a)(3) (sources/statute/irc-1341.html): claim-of-right relief applies
+# if the deduction "exceeds $3,000". Direct File uses it as the 1099-G and
+# SSA-1099 repayment knockout threshold (unemployment.xml, socialSecurity.xml).
+declaration claim_of_right_threshold content money equals $3,000
+```

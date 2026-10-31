@@ -6,6 +6,7 @@ by the IRS Direct File source release.
 
 - `scope.md`: survey of what Direct File covers, and how to formalize it.
 - `catala/`: Catala sources (currently only a toolchain smoke test).
+- [`catala/CONVENTIONS.md`](catala/CONVENTIONS.md): Catala conventions (naming, money and rounding, complete-inputs policy, knockouts, quirk policy).
 
 Sibling project: catax.
 
