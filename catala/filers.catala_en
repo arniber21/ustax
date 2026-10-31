@@ -1,0 +1,1104 @@
+> Module Filers
+
+> Using Types
+> Using Standard_deduction as SD
+
+# Filers: age, marital status, residency, dependency of the filers
+
+Direct File module `filers.xml` ("DF" below,
+`../direct-file/direct-file/backend/src/main/resources/tax/filers.xml`, 5,544
+lines) plus the spouse facts in `filers.xml` lines 3270 to 4480. Issue #15,
+scope.md section 5.1. Tests are in `catala/tests/test_filers.catala_en`; the
+oracle comparison is `difftest/mappings/filers.mjs`.
+
+Not modelled here, on purpose (issue #15 "Out of scope", CONVENTIONS section 2):
+names, TIN and SSN validity, identity PINs, address, phone, e-mail, MeF and PDF
+helper facts (`...Xml`, `...Indicator`, `mefFullName`, ...), the state-scoping
+facts (`/flowKnockoutUnsupportedState`, `/hasIncomeInScope`, the W-2 and
+1099-INT state options; owner #36), the per-filer student and disabled flags
+and the Credit for the Elderly or Disabled helpers (owner #30), the Saver's
+Credit and CDCC per-filer facts (owners #29, #28), and `/MFSSpouseFilingReturn`
+(deprecated in DF; the spec uses `/MFSSpouseFilingReturnDerived`).
+
+The inputs are complete (`catala/CONVENTIONS.md` section 3). A DF `Writable`
+fact that the questionnaire only asks under some condition (for example
+`/spouseLivedTogetherMonths`, asked only if the spouses did not live together
+all year) is still an input here; its value is read only where DF reads it.
+The filing status is an input (CONVENTIONS section 7), so `treat_as_mfj` and
+the facts that depend on it need no second pass.
+
+Two filers at most. `primary_filer` is the filer with `isPrimaryFiler`,
+`secondary_filer` the other one (DF `/primaryFiler`, `/secondaryFiler`). For a
+return that is not joint the secondary entry carries whatever answers DF has;
+every rule that reads it is guarded by the filing status, as in DF.
+
+## Declarations
+
+```catala-metadata
+## The marital status the primary filer tells Direct File. DF:
+## filers.xml /maritalStatusOptions. `NeverMarried` is DF `single`.
+declaration enumeration MaritalStatus:
+  -- NeverMarried
+  -- Married
+  -- Divorced
+  -- Widowed
+
+## When the widowed filer's spouse died. DF: filers.xml /yearOfSpouseDeathOptions.
+## Only read when the marital status is `Widowed`; a filer who is not widowed
+## is never asked, and the value then does not matter.
+declaration enumeration YearOfSpouseDeath:
+  -- DiedInTaxYear
+  -- DiedTaxYearMinusOne
+  -- DiedTaxYearMinusTwo
+  -- DiedBeforeTaxYearMinusTwo
+
+## How long the spouses lived together. DF: filers.xml
+## /spouseLivedTogetherMonthsOptions. Only read when the spouses did not live
+## together all year.
+declaration enumeration SpouseLivedTogetherMonths:
+  -- LivedApartAllYear
+  -- LivedTogetherSixMonthsOrLess
+  -- LivedTogetherMoreThanSixMonths
+
+## The `Writable` answers DF keeps per filer (collection `/filers/*`).
+## Only the answers that feed tax rules are kept (see the list of omitted
+## facts at the top of this file).
+declaration structure FilerAnswers:
+  # DF: /filers/*/dateOfBirth
+  data date_of_birth content date
+  # DF: /filers/*/isBlind
+  data is_blind content boolean
+  # DF: /filers/*/canBeClaimed
+  data can_be_claimed content boolean
+  # DF: /filers/*/willBeClaimed
+  data will_be_claimed content boolean
+  # DF: /filers/*/potentialClaimerMustFile
+  data potential_claimer_must_file content boolean
+  # DF: /filers/*/potentialClaimerDidFile
+  data potential_claimer_did_file content boolean
+  # DF: /filers/*/isUsCitizenFullYear
+  data is_us_citizen_full_year content boolean
+  # DF: /filers/*/writableCitizenAtEndOfTaxYear
+  data writable_citizen_at_end_of_tax_year content boolean
+  # DF: /filers/*/writableIsNoncitizenResidentFullYear
+  data writable_is_noncitizen_resident_full_year content boolean
+  # DF: /filers/*/writableIsNational
+  data writable_is_national content boolean
+
+## The tax year. DF: constants.xml /taxYear (`<Int>2024</Int>`).
+declaration tax_year content integer equals 2024
+
+## Ages used by the rules below, all fixed by statute or by a DF product
+## decision (none is inflation indexed).
+## IRC 63(f)(1): "attained age 65". IRC 32(c)(1)(A)(ii)(II): "age 25 but not
+## attained age 65". DF /filers/*/age55OrOlder (age 55, Form 8880 / retirement
+## helpers) and /filers/*/isUnder18 (Saver's Credit, IRC 25B(c)(2)(C)).
+declaration senior_age content integer equals 65
+declaration eitc_minimum_age content integer equals 25
+declaration eitc_maximum_age content integer equals 64
+declaration age_55 content integer equals 55
+declaration adult_age content integer equals 18
+## DF product decision: filers.xml /flowKnockoutFilerAgeYoungerThan16. There is
+## no statute for the number 16; Direct File does not serve filers under 16.
+declaration minimum_supported_filer_age content integer equals 16
+
+## Completed years from `start_date` to `end_date` (the later one): the year
+## difference, less one if `end_date` falls before the anniversary of
+## `start_date` in its year. Used for the age of a spouse who died during the
+## year. DF writes the same comparison out by month and day
+## (filers.xml /secondaryFilerAgeDayBeforeDeath, line 3457).
+declaration completed_years content integer
+  depends on start_date content date, end_date content date equals
+  (Date.get_year of end_date - Date.get_year of start_date) -
+  (if (Date.get_month of end_date < Date.get_month of start_date)
+      or (Date.get_month of end_date = Date.get_month of start_date
+          and Date.get_day of end_date < Date.get_day of start_date)
+   then 1 else 0)
+```
+
+## Age of one filer
+
+### Age 65 and the day before the birthday
+
+Pub. 501 (2024), `sources/pubs/p501--2024.pdf` p 3: "A person is considered to
+reach age 65 on the day before the person's 65th birthday." For a filer born
+on January 1, 1960, that is December 31, 2024, so the filer is 65 at the end of
+2024; for a filer born on January 2, 1960, it is January 1, 2025, so they are
+not. DF counts the birthday as the day before the date of birth
+(`/filers/*/dayBeforeDateOfBirth`, line 357) and subtracts years only:
+`/filers/*/ageCalculatedDayBeforeDOB` = tax year minus the year of that day
+(line 371), and `/filers/*/age` = tax year minus the year of birth (line 411).
+Both are the age on December 31 of the tax year.
+
+### Age for the Earned Income Credit without a qualifying child
+
+IRC 32(c)(1)(A)(ii)(II): "such individual (or, if the individual is married,
+either the individual or the individual's spouse) has attained age 25 but not
+attained age 65 before the close of the taxable year". Pub. 596 (2024),
+`sources/pubs/p596--2024.pdf` p 16, Rule 11: "You meet the age test if you were
+born after December 31, 1959, and before January 2, 2000." and "Your spouse is
+considered to reach age 25 on the day before their 25th birthday. However, the
+rule for reaching age 65 is different; your spouse reaches age 65 on their 65th
+birthday." The minimum age (25) therefore uses the day before the birthday
+and the maximum age (64 or younger) uses the actual birthday. DF
+`/filers/*/ageForSelfOnlyEitcLimits` (line 786) implements this: the day-before
+age if that age is 25, otherwise the plain age.
+
+For a spouse who died in the tax year, Pub. 596 p 16: "A taxpayer who died in
+2024 meets the age test if the taxpayer was at least age 25 but under age 65 at
+the time of death." The 25 is reached on the day before the 25th birthday
+(`/secondaryFilerAgeDayBeforeDeath`, line 3457) and the 65 on the 65th birthday
+(`/secondaryFilerAgeDayOfDeath`, line 3558).
+
+For the standard deduction, Pub. 501 p 3: "Even if the taxpayer was born before
+January 2, 1960, the taxpayer isn't considered 65 or older at the end of 2024
+unless the taxpayer was 65 or older at the time of death." That is the age at
+death, with the day before the birthday: `/MFJDeceasedSpouseReachedAge65ForStandardD`
+(line 3659).
+
+```catala-metadata
+declaration scope FilerFacts:
+  # DF: /filers/*/dateOfBirth
+  input date_of_birth content date
+  # True for the secondary filer when the spouse died in the tax year
+  # (DF: /isWidowedInTaxYear and /filers/*/isSecondaryFiler).
+  input is_deceased_in_tax_year condition
+  # DF: /secondaryFilerDateOfDeath. Read only if `is_deceased_in_tax_year`.
+  input date_of_death content date
+  # DF: /filers/*/isUsCitizenFullYear
+  input is_us_citizen_full_year condition
+  # DF: /filers/*/writableCitizenAtEndOfTaxYear
+  input writable_citizen_at_end_of_tax_year condition
+  # DF: /filers/*/writableIsNoncitizenResidentFullYear
+  input writable_is_noncitizen_resident_full_year condition
+  # DF: /filers/*/writableIsNational
+  input writable_is_national condition
+
+  # DF: /filers/*/dayBeforeDateOfBirth
+  internal day_before_date_of_birth content date
+  # DF: /filers/*/age
+  output age content integer
+  # DF: /filers/*/ageCalculatedDayBeforeDOB
+  output age_calculated_day_before_dob content integer
+  # DF: /filers/*/age65OrOlder
+  output age65_or_older condition
+  # DF: /filers/*/age55OrOlder
+  output age55_or_older condition
+  # DF: /filers/*/youngerThan16
+  output younger_than16 condition
+  # DF: /filers/*/isUnder18
+  output is_under18 condition
+  # DF: /secondaryFilerAgeDayBeforeDeath (meaningful only if deceased)
+  internal age_day_before_death content integer
+  # DF: /secondaryFilerAgeDayOfDeath (meaningful only if deceased)
+  internal age_day_of_death content integer
+  # DF: /MFJDeceasedSpouseReachedAge65ForStandardD (false if not deceased)
+  output reached_age65_at_death condition
+  # DF: /filers/*/ageForSelfOnlyEitcLimits
+  output age_for_self_only_eitc_limits content integer
+  # DF: /filers/*/age25OrOlderForEitc
+  output age25_or_older_for_eitc condition
+  # DF: /filers/*/age64OrYoungerForEitc
+  output age64_or_younger_for_eitc condition
+
+  # DF: /filers/*/citizenAtEndOfTaxYear
+  output citizen_at_end_of_tax_year condition
+  # DF: /filers/*/isNoncitizenResidentFullYear
+  output is_noncitizen_resident_full_year condition
+  # DF: /filers/*/isNational
+  output is_national condition
+  # DF: /filers/*/isCitizenOrNational
+  output is_citizen_or_national condition
+  # DF: /primaryFilerIsCitizenOrRAAllYear, /secondaryFilerIsCitizenOrRAAllYear
+  output is_citizen_or_ra_all_year condition
+  # DF: /primaryFilerIsCitizenOrNational, /secondaryFilerIsCitizenOrNational
+  output is_citizen_or_national_for_return condition
+```
+
+```catala
+scope FilerFacts:
+  # DF: /filers/*/dayBeforeDateOfBirth
+  definition day_before_date_of_birth equals date_of_birth - 1 day
+
+  # DF: /filers/*/age = taxYear - year(dateOfBirth)
+  definition age equals tax_year - Date.get_year of date_of_birth
+
+  # DF: /filers/*/ageCalculatedDayBeforeDOB = taxYear - year(dayBeforeDateOfBirth)
+  definition age_calculated_day_before_dob equals
+    tax_year - Date.get_year of day_before_date_of_birth
+
+  # IRC 63(f)(1)(A); Pub 501 p 3. DF: /filers/*/age65OrOlder
+  definition age65_or_older equals age_calculated_day_before_dob >= senior_age
+
+  # DF: /filers/*/age55OrOlder
+  definition age55_or_older equals age >= age_55
+
+  # DF: /filers/*/youngerThan16
+  definition younger_than16 equals age < minimum_supported_filer_age
+
+  # DF: /filers/*/isUnder18 (day-before-birthday age, IRC 25B(c)(2)(C))
+  definition is_under18 equals age_calculated_day_before_dob < adult_age
+
+  # Pub 596 p 16. DF: /secondaryFilerAgeDayBeforeDeath
+  definition age_day_before_death equals
+    completed_years of day_before_date_of_birth, date_of_death
+
+  # Pub 596 p 16. DF: /secondaryFilerAgeDayOfDeath
+  definition age_day_of_death equals completed_years of date_of_birth, date_of_death
+
+  # Pub 501 p 3. DF: /MFJDeceasedSpouseReachedAge65ForStandardD
+  definition reached_age65_at_death equals
+    is_deceased_in_tax_year and age_day_before_death >= senior_age
+
+  # Pub 596 p 16. DF: /filers/*/ageForSelfOnlyEitcLimits, case by case in
+  # the order of the DF switch.
+  definition age_for_self_only_eitc_limits equals
+    if is_deceased_in_tax_year and age = eitc_minimum_age
+    then age_day_before_death
+    else if is_deceased_in_tax_year
+    then age_day_of_death
+    else if age_calculated_day_before_dob = eitc_minimum_age
+    then age_calculated_day_before_dob
+    else age
+
+  # IRC 32(c)(1)(A)(ii)(II). DF: /filers/*/age25OrOlderForEitc
+  definition age25_or_older_for_eitc equals
+    age_for_self_only_eitc_limits >= eitc_minimum_age
+
+  # IRC 32(c)(1)(A)(ii)(II). DF: /filers/*/age64OrYoungerForEitc
+  definition age64_or_younger_for_eitc equals
+    age_for_self_only_eitc_limits <= eitc_maximum_age
+
+  # DF: /filers/*/citizenAtEndOfTaxYear
+  definition citizen_at_end_of_tax_year equals
+    (not is_us_citizen_full_year) and writable_citizen_at_end_of_tax_year
+
+  # DF: /filers/*/isNoncitizenResidentFullYear
+  definition is_noncitizen_resident_full_year equals
+    (not is_us_citizen_full_year) and (not citizen_at_end_of_tax_year)
+    and writable_is_noncitizen_resident_full_year
+
+  # DF: /filers/*/isNational
+  definition is_national equals
+    (not is_us_citizen_full_year) and (not citizen_at_end_of_tax_year)
+    and is_noncitizen_resident_full_year and writable_is_national
+
+  # DF: /filers/*/isCitizenOrNational
+  definition is_citizen_or_national equals
+    is_us_citizen_full_year or is_noncitizen_resident_full_year or is_national
+
+  # DF: /primaryFilerIsCitizenOrRAAllYear
+  definition is_citizen_or_ra_all_year equals
+    is_noncitizen_resident_full_year or is_us_citizen_full_year
+    or citizen_at_end_of_tax_year
+
+  # DF: /primaryFilerIsCitizenOrNational
+  definition is_citizen_or_national_for_return equals
+    is_us_citizen_full_year or citizen_at_end_of_tax_year or is_national
+```
+
+## The filers of the return
+
+### Marital status
+
+IRC 7703(a): "(1) the determination of whether an individual is married shall
+be made as of the close of his taxable year; except that if his spouse dies
+during his taxable year such determination shall be made as of the time of such
+death; and (2) an individual legally separated from his spouse under a decree
+of divorce or of separate maintenance shall not be considered as married."
+(`sources/statute/irc-7703.html`.) DF asks the primary filer for the marital
+status (`/maritalStatus`, line 4196) and, for a widowed filer, the year of the
+death (`/yearOfSpouseDeath`, line 4464). A filer who is married or was widowed
+in the tax year may file as married (`filingStatus.xml` `/maritalStatusAllowsFilingMarried`).
+
+### Joint returns and the spouse's residency
+
+IRC 6013(a)(1): "no joint return shall be made if either the husband or wife at
+any time during the taxable year is a nonresident alien". IRC 6013(g)(1)-(2)
+lets a nonresident alien married to a citizen or resident elect to be treated
+as a resident. DF `/secondaryFilerResidencyEligibleForMFJ` (line 3881): the
+spouse was a citizen all year, a citizen at the end of the year (having started
+the year as a resident), or a noncitizen resident the whole year (which
+includes the 6013(g) election).
+
+### Lived apart
+
+IRC 7703(b)(3): "during the last 6 months of the taxable year, such
+individual's spouse is not a member of such household, such individual shall
+not be considered as married." Direct File derives the answer from three
+questions (`/livedTogetherAllYearWithSpouse`, `/spouseLivedTogetherMonths`,
+`/writableLivedApartLastSixMonths`, lines 3963 to 4102). The child and
+support tests of 7703(b)(1)-(2) are in the household modules (#19), not here.
+
+### Claimed as a dependent
+
+IRC 63(c)(5) and Pub. 501 p 3 limit the standard deduction of "an individual
+with respect to whom a deduction under section 151 is allowable to another
+taxpayer". Direct File does not decide that from a second return (quirk Q6 in
+CONVENTIONS section 8): it asks whether someone can claim the filer
+(`canBeClaimed`), whether they expect to be claimed (`willBeClaimed`) and
+whether the person who could claim them must file or filed for more than a
+refund (`potentialClaimerMustFile`, `potentialClaimerDidFile`,
+`primaryFilerPotentialClaimerFiledOnlyForRefund`).
+`/treatFilersAsDependents` (line 1441) is true when the filers are treated as
+dependents: they then get the reduced standard deduction and cannot claim
+dependents, CTC or ODC. For a joint return the couple is treated as
+dependents only if one spouse can be claimed, the couple is not required to
+file, and they chose to file for a refund only (`/isMFJDependent`, line 1510).
+
+Direct File's `Placeholder` for `/taxpayerCannotBeClaimed` (false) is the
+engine default for an incomplete input and is not modelled (inputs are complete).
+
+### Knockouts
+
+scope.md section 9 item 1, and `flow.xml` lines 14 to 20 (`/flowIsKnockedOut`).
+The six knockouts of `filers.xml` are: filer under 16, spouse itemizes,
+primary-filer residency, unsupported state, registered domestic partnership,
+community property. The state one (`/flowKnockoutUnsupportedState`) belongs to
+the state-scoping issue and is not modelled here (listed at the top of this
+file). The other five are `ko_` conditions below.
+
+```catala-metadata
+declaration scope Filers:
+  # DF: filingStatus.xml /filingStatus (Writable)
+  input filing_status content Types.FilingStatus
+  # DF: /maritalStatus
+  input marital_status content MaritalStatus
+  # DF: /yearOfSpouseDeath
+  input year_of_spouse_death content YearOfSpouseDeath
+  # DF: /primaryFiler/* (the filer with isPrimaryFiler)
+  input primary_filer content FilerAnswers
+  # DF: /secondaryFiler/*
+  input secondary_filer content FilerAnswers
+  # DF: /secondaryFilerDateOfDeath. Read only if the spouse died in the tax year.
+  input secondary_filer_date_of_death content date
+  # DF: /primaryFilerPotentialClaimerFiledOnlyForRefund
+  input primary_filer_potential_claimer_filed_only_for_refund condition
+  # DF: /MFJRequiredToFile
+  input mfj_required_to_file condition
+  # DF: /MFJDependentsFilingForCredits
+  input mfj_dependents_filing_for_credits condition
+  # DF: /livedTogetherAllYearWithSpouse
+  input lived_together_all_year_with_spouse condition
+  # DF: /spouseLivedTogetherMonths
+  input spouse_lived_together_months content SpouseLivedTogetherMonths
+  # DF: /writableLivedApartLastSixMonths
+  input writable_lived_apart_last_six_months condition
+  # DF: /writableSeparationAgreement
+  input writable_separation_agreement condition
+  # DF: /canFileJointlyYearOfSpouseDeath
+  input can_file_jointly_year_of_spouse_death condition
+  # DF: /inRegisteredDomesticPartnership
+  input in_registered_domestic_partnership condition
+  # DF: /filerResidenceAndIncomeState
+  input filer_residence_and_income_state content Types.ScopedState
+  # DF: /spouseItemizes
+  input spouse_itemizes condition
+  # DF: /MFSLivingSpouseFilingReturn
+  input mfs_living_spouse_filing_return condition
+  # DF: /MFSDeceasedSpouseFilingReturn
+  input mfs_deceased_spouse_filing_return condition
+  # DF: /MFSSpouseHasGrossIncome
+  input mfs_spouse_has_gross_income condition
+  # DF: filingStatus.xml /eligibleForHoh. Computed by the household and
+  # filing-status modules (#19, #20), which run after this one (CONVENTIONS
+  # section 7, stage 3); only the community-property knockout reads it here.
+  input eligible_for_hoh condition
+
+  primary_facts scope FilerFacts
+  secondary_facts scope FilerFacts
+
+  # Marital status
+  # DF: /isMarried
+  output is_married condition
+  # DF: /isSingle
+  output is_single condition
+  # DF: /isWidowed
+  output is_widowed condition
+  # DF: /isWidowedInTaxYear
+  output is_widowed_in_tax_year condition
+  # DF: /widowedBeforeTaxYearMinusTwo
+  output widowed_before_tax_year_minus_two condition
+  # DF: /widowedCouldQualifyForQSS
+  output widowed_could_qualify_for_qss condition
+  # DF: /filerCouldQualifyForQss
+  output filer_could_qualify_for_qss condition
+
+  # Filing status basics (DF: filingStatus.xml; CONVENTIONS section 7, stage 1)
+  # DF: filingStatus.xml /isFilingStatusMFJ
+  output is_filing_status_mfj condition
+  # DF: filingStatus.xml /maritalStatusAllowsFilingMarried
+  internal marital_status_allows_filing_married condition
+  # DF: /secondaryFilerResidencyEligibleForMFJ
+  output secondary_filer_residency_eligible_for_mfj condition
+  # DF: filingStatus.xml /eligibleForMFJ
+  output eligible_for_mfj condition
+  # DF: filingStatus.xml /eligibleForMFS
+  output eligible_for_mfs condition
+  # DF: filingStatus.xml /eligibleForSingle
+  output eligible_for_single condition
+  # DF: filingStatus.xml /treatAsMFJ
+  output treat_as_mfj condition
+  # DF: filingStatus.xml /treatAsMFS
+  output treat_as_mfs condition
+  # DF: filingStatus.xml /treatAsHoh
+  internal treat_as_hoh condition
+
+  # Lived apart
+  # DF: /livedTogetherSixMonthsOrLess
+  internal lived_together_six_months_or_less condition
+  # DF: /livedTogetherMoreThanSixMonths
+  internal lived_together_more_than_six_months condition
+  # DF: /livedApartAllYear
+  output lived_apart_all_year condition
+  # DF: /livedApartLastSixMonths
+  output lived_apart_last_six_months condition
+  # DF: /separationAgreement
+  output separation_agreement condition
+  # DF: /specialRuleForSeparatedSpouses
+  output special_rule_for_separated_spouses condition
+  # DF: /filerCouldQualifyForHoh
+  output filer_could_qualify_for_hoh condition
+  # DF: /mfsFilerCouldBeConsiderUnmarriedForCdcc
+  output mfs_filer_could_be_considered_unmarried_for_cdcc condition
+  # DF: /filersCouldQualifyForCdcc
+  output filers_could_qualify_for_cdcc condition
+
+  # Ages of both filers
+  # DF: /primaryFiler/age
+  output primary_filer_age content integer
+  # DF: /secondaryFiler/age
+  output secondary_filer_age content integer
+  # DF: /primaryFiler/age65OrOlder
+  output primary_filer_age65_or_older condition
+  # DF: /secondaryFiler/age65OrOlder
+  output secondary_filer_age65_or_older condition
+  # DF: /primaryFiler/age25OrOlderForEitc
+  output primary_filer_age25_or_older_for_eitc condition
+  # DF: /secondaryFiler/age25OrOlderForEitc
+  output secondary_filer_age25_or_older_for_eitc condition
+  # DF: /primaryFiler/age64OrYoungerForEitc
+  output primary_filer_age64_or_younger_for_eitc condition
+  # DF: /secondaryFiler/age64OrYoungerForEitc
+  output secondary_filer_age64_or_younger_for_eitc condition
+  # DF: /MFJDeceasedSpouseReachedAge65ForStandardD
+  output mfj_deceased_spouse_reached_age65_for_standard_d condition
+  # DF: /atLeastOneTpIs65OrOlder
+  output at_least_one_tp_is_65_or_older condition
+  # DF: /atLeastOneTpIsUnder65
+  output at_least_one_tp_is_under_65 condition
+  # DF: /xmlOver65SRIndicator (1040-SR)
+  output xml_over65_sr_indicator condition
+  # DF: /minimumFilerDateOfBirth (date of birth of the oldest filer)
+  output minimum_filer_date_of_birth content date
+
+  # Citizenship and residency
+  # DF: /filersUSCitizenOrRAAllYear
+  output filers_us_citizen_or_ra_all_year condition
+  # DF: /eitherFilerUSCitizenOrNational
+  output either_filer_us_citizen_or_national condition
+  # DF: /allEligibleFilersAreUSCitizensOrNationals
+  output all_eligible_filers_are_us_citizens_or_nationals condition
+  # DF: /isSecondaryFilerNra
+  output is_secondary_filer_nra condition
+
+  # Claimed as a dependent
+  # DF: /primaryFilerCouldBeDependentAndClaimerIsRequiredToFileOrFilingForCredits
+  output primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits condition
+  # DF: /notMfjAndPrimaryFilerCouldBeDependentAndClaimerIsRequiredToFileOrFilingForCredits
+  output not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits condition
+  # DF: /eitherFilerCanBeClaimed
+  output either_filer_can_be_claimed condition
+  # DF: /MFJClaimingRefundOnly
+  output mfj_claiming_refund_only condition
+  # DF: /MFJNotRequiredToFileAndEitherFilerCanBeClaimed
+  output mfj_not_required_to_file_and_either_filer_can_be_claimed condition
+  # DF: /flowMFJSpouseFilingRequirementSubsection
+  internal flow_mfj_spouse_filing_requirement_subsection condition
+  # DF: /isMFJDependent
+  output is_mfj_dependent condition
+  # DF: /taxpayerCannotBeClaimed
+  output taxpayer_cannot_be_claimed condition
+  # DF: /primaryFilerIsClaimedAsDependent
+  output primary_filer_is_claimed_as_dependent condition
+  # DF: /secondaryFilerIsClaimedAsDependent
+  output secondary_filer_is_claimed_as_dependent condition
+  # DF: /eitherFilerIsClaimedAsDependent
+  output either_filer_is_claimed_as_dependent condition
+  # DF: /treatFilersAsDependents
+  output treat_filers_as_dependents condition
+  # DF: /filersCouldntBeDependents
+  output filers_couldnt_be_dependents condition
+  # DF: /primarySomeoneCanClaimForTaxBenefits (Form 1040 dependent checkbox)
+  output primary_some_one_can_claim_for_tax_benefits condition
+  # DF: /secondarySomeoneCanClaimForTaxBenefits
+  output secondary_some_one_can_claim_for_tax_benefits condition
+  # DF: /isSpouseExempt
+  output is_spouse_exempt condition
+
+  # MFS spouse (standard deduction inputs)
+  # DF: /MFSSpouseFilingReturnDerived
+  internal mfs_spouse_filing_return_derived condition
+  # DF: /MFSSpouseProvidesNoBenefits
+  output mfs_spouse_provides_no_benefits condition
+
+  # Knockouts (CONVENTIONS section 6)
+  # DF: /livesInCommunityPropertyState
+  internal lives_in_community_property_state condition
+  # DF: /checkForRegisteredDomesticPartner
+  internal check_for_registered_domestic_partner condition
+  # DF: /flowKnockoutFilerAgeYoungerThan16
+  output ko_flow_knockout_filer_age_younger_than16 condition
+  # DF: /spouseItemizesKnockout
+  output ko_spouse_itemizes_knockout condition
+  # DF: /primaryFilerResidencyKnockout
+  output ko_primary_filer_residency_knockout condition
+  # DF: /flowKnockoutHasApplicableRegisteredDomesticPartnership
+  output ko_flow_knockout_has_applicable_registered_domestic_partnership condition
+  # DF: /knockoutSubjectToCommunityPropertyLaws
+  output ko_knockout_subject_to_community_property_laws condition
+  # The knockouts of this module, listed in one place (CONVENTIONS section 6).
+  output unsupported condition
+```
+
+### Sub-scope wiring
+
+```catala
+scope Filers:
+  definition primary_facts.date_of_birth equals primary_filer.date_of_birth
+  definition primary_facts.is_deceased_in_tax_year equals false
+  definition primary_facts.date_of_death equals secondary_filer_date_of_death
+  definition primary_facts.is_us_citizen_full_year equals
+    primary_filer.is_us_citizen_full_year
+  definition primary_facts.writable_citizen_at_end_of_tax_year equals
+    primary_filer.writable_citizen_at_end_of_tax_year
+  definition primary_facts.writable_is_noncitizen_resident_full_year equals
+    primary_filer.writable_is_noncitizen_resident_full_year
+  definition primary_facts.writable_is_national equals
+    primary_filer.writable_is_national
+
+  definition secondary_facts.date_of_birth equals secondary_filer.date_of_birth
+  definition secondary_facts.is_deceased_in_tax_year equals is_widowed_in_tax_year
+  definition secondary_facts.date_of_death equals secondary_filer_date_of_death
+  definition secondary_facts.is_us_citizen_full_year equals
+    secondary_filer.is_us_citizen_full_year
+  definition secondary_facts.writable_citizen_at_end_of_tax_year equals
+    secondary_filer.writable_citizen_at_end_of_tax_year
+  definition secondary_facts.writable_is_noncitizen_resident_full_year equals
+    secondary_filer.writable_is_noncitizen_resident_full_year
+  definition secondary_facts.writable_is_national equals
+    secondary_filer.writable_is_national
+
+  definition primary_filer_age equals primary_facts.age
+  definition secondary_filer_age equals secondary_facts.age
+  definition primary_filer_age65_or_older equals primary_facts.age65_or_older
+  definition secondary_filer_age65_or_older equals secondary_facts.age65_or_older
+  definition primary_filer_age25_or_older_for_eitc equals
+    primary_facts.age25_or_older_for_eitc
+  definition secondary_filer_age25_or_older_for_eitc equals
+    secondary_facts.age25_or_older_for_eitc
+  definition primary_filer_age64_or_younger_for_eitc equals
+    primary_facts.age64_or_younger_for_eitc
+  definition secondary_filer_age64_or_younger_for_eitc equals
+    secondary_facts.age64_or_younger_for_eitc
+  definition mfj_deceased_spouse_reached_age65_for_standard_d equals
+    secondary_facts.reached_age65_at_death
+```
+
+### Marital status rules
+
+```catala
+scope Filers:
+  # DF: /isMarried
+  definition is_married equals marital_status = Married
+  # DF: /isSingle
+  definition is_single equals marital_status = NeverMarried
+  # DF: /isWidowed
+  definition is_widowed equals marital_status = Widowed
+
+  # IRC 7703(a)(1). DF: /isWidowedInTaxYear
+  definition is_widowed_in_tax_year equals
+    is_widowed and year_of_spouse_death = DiedInTaxYear
+
+  # DF: /widowedBeforeTaxYearMinusTwo
+  definition widowed_before_tax_year_minus_two equals
+    is_widowed and year_of_spouse_death = DiedBeforeTaxYearMinusTwo
+
+  # IRC 2(a): a surviving spouse is a widow(er) in the two years after the death.
+  # DF: /widowedCouldQualifyForQSS
+  definition widowed_could_qualify_for_qss equals
+    is_widowed and (year_of_spouse_death = DiedTaxYearMinusOne
+                    or year_of_spouse_death = DiedTaxYearMinusTwo)
+
+  # DF: /filerCouldQualifyForQss
+  definition filer_could_qualify_for_qss equals
+    widowed_could_qualify_for_qss and can_file_jointly_year_of_spouse_death
+```
+
+### Filing status basics
+
+Stage 1 of CONVENTIONS section 7. `eligible_for_mfj` reads only marital and
+residency facts, so it is computed here; the household-dependent
+`eligible_for_hoh`, `eligible_for_qss` and the final check are stage 3 (#20).
+
+```catala
+scope Filers:
+  # DF: filingStatus.xml /isFilingStatusMFJ
+  definition is_filing_status_mfj equals filing_status = MarriedFilingJointly
+
+  # IRC 7703(a). DF: filingStatus.xml /maritalStatusAllowsFilingMarried
+  definition marital_status_allows_filing_married equals
+    is_married or is_widowed_in_tax_year
+
+  # IRC 6013(a)(1), (g). DF: /secondaryFilerResidencyEligibleForMFJ
+  definition secondary_filer_residency_eligible_for_mfj equals
+    secondary_filer.is_us_citizen_full_year
+    or secondary_facts.citizen_at_end_of_tax_year
+    or secondary_facts.is_noncitizen_resident_full_year
+
+  # DF: filingStatus.xml /eligibleForMFJ
+  definition eligible_for_mfj equals
+    marital_status_allows_filing_married
+    and secondary_filer_residency_eligible_for_mfj
+
+  # DF: filingStatus.xml /eligibleForMFS
+  definition eligible_for_mfs equals marital_status_allows_filing_married
+
+  # DF: filingStatus.xml /eligibleForSingle
+  definition eligible_for_single equals not marital_status_allows_filing_married
+
+  # DF: filingStatus.xml /treatAsMFJ (the filing status is complete, so only
+  # the first branch of the DF `Any` applies)
+  definition treat_as_mfj equals is_filing_status_mfj and eligible_for_mfj
+
+  # DF: filingStatus.xml /treatAsMFS
+  definition treat_as_mfs equals filing_status = MarriedFilingSeparately
+
+  # DF: filingStatus.xml /treatAsHoh
+  definition treat_as_hoh equals filing_status = HeadOfHousehold
+```
+
+### Lived apart rules
+
+```catala
+scope Filers:
+  # DF: /livedTogetherSixMonthsOrLess
+  definition lived_together_six_months_or_less equals
+    (not lived_together_all_year_with_spouse)
+    and spouse_lived_together_months = LivedTogetherSixMonthsOrLess
+
+  # DF: /livedTogetherMoreThanSixMonths
+  definition lived_together_more_than_six_months equals
+    (not lived_together_all_year_with_spouse)
+    and spouse_lived_together_months = LivedTogetherMoreThanSixMonths
+
+  # DF: /livedApartAllYear
+  definition lived_apart_all_year equals
+    (not lived_together_all_year_with_spouse)
+    and spouse_lived_together_months = LivedApartAllYear
+
+  # IRC 7703(b)(3). DF: /livedApartLastSixMonths (the DF switch in order; the
+  # three cases cover every complete input, the last `else` is never reached)
+  definition lived_apart_last_six_months equals
+    if lived_together_more_than_six_months or lived_together_all_year_with_spouse
+    then false
+    else if lived_apart_all_year then true
+    else if lived_together_six_months_or_less
+    then writable_lived_apart_last_six_months
+    else false
+
+  # DF: /separationAgreement
+  definition separation_agreement equals
+    if lived_together_all_year_with_spouse then false
+    else writable_separation_agreement
+
+  # DF: /specialRuleForSeparatedSpouses
+  definition special_rule_for_separated_spouses equals
+    lived_apart_last_six_months or separation_agreement
+
+  # DF: /filerCouldQualifyForHoh. Uses eligible_for_mfj, not eligible_for_hoh
+  # (CONVENTIONS section 7, stage 1).
+  definition filer_could_qualify_for_hoh equals
+    (not eligible_for_mfj) or (eligible_for_mfj and lived_apart_last_six_months)
+
+  # Form 2441 instructions: an MFS filer is considered unmarried if they
+  # "lived apart from your spouse during the last 6 months". The per-qualifying-person
+  # requirements are in #28. DF: /mfsFilerCouldBeConsiderUnmarriedForCdcc
+  definition mfs_filer_could_be_considered_unmarried_for_cdcc equals
+    treat_as_mfs and lived_apart_last_six_months
+
+  # DF: /filersCouldQualifyForCdcc
+  definition filers_could_qualify_for_cdcc equals
+    if treat_as_mfs then mfs_filer_could_be_considered_unmarried_for_cdcc
+    else true
+```
+
+### Ages of both filers
+
+```catala
+scope Filers:
+  # DF: /atLeastOneTpIs65OrOlder
+  definition at_least_one_tp_is_65_or_older equals
+    if is_filing_status_mfj
+    then primary_filer_age65_or_older or secondary_filer_age65_or_older
+    else primary_filer_age65_or_older
+
+  # DF: /atLeastOneTpIsUnder65
+  definition at_least_one_tp_is_under_65 equals
+    if is_filing_status_mfj
+    then (not primary_filer_age65_or_older) or (not secondary_filer_age65_or_older)
+    else not primary_filer_age65_or_older
+
+  # DF: /xmlOver65SRIndicator
+  definition xml_over65_sr_indicator equals
+    primary_filer_age65_or_older
+    or (is_filing_status_mfj and secondary_filer_age65_or_older)
+
+  # "for purposes of the age test for qualifying children" (IRC 152(c)(3)).
+  # DF: /minimumFilerDateOfBirth. The secondary date of birth is complete
+  # whenever the return is joint.
+  definition minimum_filer_date_of_birth equals
+    if treat_as_mfj and secondary_filer.date_of_birth < primary_filer.date_of_birth
+    then secondary_filer.date_of_birth
+    else primary_filer.date_of_birth
+```
+
+### Citizenship and residency rules
+
+```catala
+scope Filers:
+  # DF: /filersUSCitizenOrRAAllYear
+  definition filers_us_citizen_or_ra_all_year equals
+    if treat_as_mfj
+    then primary_facts.is_citizen_or_ra_all_year and secondary_facts.is_citizen_or_ra_all_year
+    else primary_facts.is_citizen_or_ra_all_year
+
+  # DF: /eitherFilerUSCitizenOrNational
+  definition either_filer_us_citizen_or_national equals
+    if treat_as_mfj
+    then primary_facts.is_citizen_or_national_for_return
+         or secondary_facts.is_citizen_or_national_for_return
+    else primary_facts.is_citizen_or_national_for_return
+
+  # DF: /allEligibleFilersAreUSCitizensOrNationals
+  definition all_eligible_filers_are_us_citizens_or_nationals equals
+    if treat_as_mfj
+    then primary_facts.is_citizen_or_national_for_return
+         and secondary_facts.is_citizen_or_national_for_return
+    else primary_facts.is_citizen_or_national_for_return
+
+  # DF: /isSecondaryFilerNra
+  definition is_secondary_filer_nra equals not secondary_facts.is_citizen_or_ra_all_year
+```
+
+### Dependency rules
+
+```catala
+scope Filers:
+  # DF: /primaryFilerCouldBeDependentAndClaimerIsRequiredToFileOrFilingForCredits
+  definition primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits equals
+    primary_filer.can_be_claimed
+    and (primary_filer.potential_claimer_must_file
+         or ((not primary_filer.potential_claimer_must_file)
+             and primary_filer.potential_claimer_did_file
+             and not primary_filer_potential_claimer_filed_only_for_refund))
+
+  # DF: /notMfjAndPrimaryFilerCouldBeDependent...
+  definition not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits equals
+    (not is_filing_status_mfj)
+    and primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits
+
+  # DF: /eitherFilerCanBeClaimed
+  definition either_filer_can_be_claimed equals
+    primary_filer.can_be_claimed or secondary_filer.can_be_claimed
+
+  # DF: /MFJClaimingRefundOnly
+  definition mfj_claiming_refund_only equals not mfj_dependents_filing_for_credits
+
+  # DF: /MFJNotRequiredToFileAndEitherFilerCanBeClaimed
+  definition mfj_not_required_to_file_and_either_filer_can_be_claimed equals
+    (not mfj_required_to_file) and either_filer_can_be_claimed
+
+  # DF: /flowMFJSpouseFilingRequirementSubsection
+  definition flow_mfj_spouse_filing_requirement_subsection equals
+    secondary_filer.can_be_claimed
+    or ((not secondary_filer.can_be_claimed)
+        and primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits)
+
+  # Pub 501 (2024) p 3, joint return test for dependents. DF: /isMFJDependent
+  definition is_mfj_dependent equals
+    treat_as_mfj
+    and flow_mfj_spouse_filing_requirement_subsection
+    and (not mfj_required_to_file)
+    and mfj_claiming_refund_only
+
+  # DF: /taxpayerCannotBeClaimed
+  definition taxpayer_cannot_be_claimed equals
+    treat_as_mfj
+    and flow_mfj_spouse_filing_requirement_subsection
+    and (not mfj_required_to_file)
+    and (not mfj_claiming_refund_only)
+
+  # DF: /primaryFilerIsClaimedAsDependent
+  definition primary_filer_is_claimed_as_dependent equals
+    primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits
+    and primary_filer.will_be_claimed
+    and not taxpayer_cannot_be_claimed
+
+  # DF: /secondaryFilerIsClaimedAsDependent
+  definition secondary_filer_is_claimed_as_dependent equals
+    treat_as_mfj
+    and (not mfj_required_to_file)
+    and secondary_filer.can_be_claimed
+    and secondary_filer.will_be_claimed
+    and not taxpayer_cannot_be_claimed
+
+  # DF: /eitherFilerIsClaimedAsDependent
+  definition either_filer_is_claimed_as_dependent equals
+    primary_filer_is_claimed_as_dependent or secondary_filer_is_claimed_as_dependent
+
+  # IRC 63(c)(5); Pub 501 p 3. DF: /treatFilersAsDependents. The filing
+  # status is complete, so /isMFJDependent is complete too.
+  definition treat_filers_as_dependents equals
+    if treat_as_mfj then is_mfj_dependent
+    else primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits
+
+  # DF: /filersCouldntBeDependents
+  definition filers_couldnt_be_dependents equals
+    if treat_as_mfj then not is_mfj_dependent
+    else not primary_filer.can_be_claimed
+
+  # DF: /primarySomeoneCanClaimForTaxBenefits
+  definition primary_some_one_can_claim_for_tax_benefits equals
+    (is_filing_status_mfj and is_mfj_dependent
+     and primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits)
+    or not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits
+
+  # DF: /secondarySomeoneCanClaimForTaxBenefits
+  definition secondary_some_one_can_claim_for_tax_benefits equals
+    is_filing_status_mfj and is_mfj_dependent and secondary_filer.can_be_claimed
+
+  # DF: /isSpouseExempt
+  definition is_spouse_exempt equals
+    (not secondary_filer.can_be_claimed) and is_filing_status_mfj
+```
+
+### MFS spouse
+
+Pub. 501 (2024): a married person filing separately may claim the spouse's
+additional standard deduction only if the spouse has no gross income, is not
+filing a return and cannot be claimed as a dependent. DF encodes the negation
+as `/MFSSpouseProvidesNoBenefits` (line 3837).
+
+```catala
+scope Filers:
+  # DF: /MFSSpouseFilingReturnDerived. A widowed filer is asked about a
+  # return filed for the deceased spouse, anyone else about the living spouse.
+  definition mfs_spouse_filing_return_derived equals
+    if is_widowed then mfs_deceased_spouse_filing_return
+    else mfs_living_spouse_filing_return
+
+  # DF: /MFSSpouseProvidesNoBenefits
+  definition mfs_spouse_provides_no_benefits equals
+    mfs_spouse_filing_return_derived
+    or mfs_spouse_has_gross_income
+    or secondary_filer.can_be_claimed
+```
+
+### Knockout rules
+
+```catala
+scope Filers:
+  # DF: /livesInCommunityPropertyState. Arizona, California, Idaho, Nevada,
+  # New Mexico, Texas, Washington and Wisconsin. Louisiana is commented out in
+  # the DF XML (and is not a scoped state). Tennessee and South Dakota, which
+  # have elective community property, are excluded as the DF description says.
+  definition lives_in_community_property_state equals
+    filer_residence_and_income_state = AZ
+    or filer_residence_and_income_state = CA
+    or filer_residence_and_income_state = ID
+    or filer_residence_and_income_state = NM
+    or filer_residence_and_income_state = NV
+    or filer_residence_and_income_state = TX
+    or filer_residence_and_income_state = WA
+    or filer_residence_and_income_state = WI
+
+  # DF: /checkForRegisteredDomesticPartner
+  definition check_for_registered_domestic_partner equals
+    lives_in_community_property_state
+    and (marital_status = NeverMarried or marital_status = Divorced
+         or marital_status = Widowed)
+
+  # DF: /flowKnockoutFilerAgeYoungerThan16. A young secondary filer only
+  # matters for a joint return; Direct File does not offer such a couple MFS.
+  rule ko_flow_knockout_filer_age_younger_than16
+    under condition
+      primary_facts.younger_than16
+      or (secondary_facts.younger_than16 and treat_as_mfj)
+    consequence fulfilled
+
+  # DF: /spouseItemizesKnockout
+  rule ko_spouse_itemizes_knockout
+    under condition spouse_itemizes and mfs_spouse_filing_return_derived
+    consequence fulfilled
+
+  # DF: /primaryFilerResidencyKnockout
+  rule ko_primary_filer_residency_knockout
+    under condition
+      (not primary_filer.is_us_citizen_full_year)
+      and (not primary_facts.citizen_at_end_of_tax_year)
+      and (not primary_facts.is_noncitizen_resident_full_year)
+    consequence fulfilled
+
+  # DF: /flowKnockoutHasApplicableRegisteredDomesticPartnership
+  rule ko_flow_knockout_has_applicable_registered_domestic_partnership
+    under condition
+      check_for_registered_domestic_partner and in_registered_domestic_partnership
+    consequence fulfilled
+
+  # DF: /knockoutSubjectToCommunityPropertyLaws
+  rule ko_knockout_subject_to_community_property_laws
+    under condition
+      lives_in_community_property_state
+      and ((is_married and (not eligible_for_mfj) and (not eligible_for_hoh))
+           or treat_as_mfs
+           or (treat_as_hoh and marital_status = Married))
+    consequence fulfilled
+
+  # The set listed in flow.xml lines 14 to 20 that belongs to this module,
+  # except /flowKnockoutUnsupportedState (state scoping, #36).
+  rule unsupported
+    under condition
+      ko_flow_knockout_filer_age_younger_than16
+      or ko_spouse_itemizes_knockout
+      or ko_primary_filer_residency_knockout
+      or ko_flow_knockout_has_applicable_registered_domestic_partnership
+      or ko_knockout_subject_to_community_property_laws
+    consequence fulfilled
+```
+
+## Wiring into the standard deduction
+
+Issue #15: "Wires `age65OrOlder`/dependency flags into the standard-deduction
+scope inputs." `FilersStandardDeduction` runs `Filers` and feeds
+`Standard_deduction.StandardDeduction` with its outputs. It exists so that the
+chain from dates of birth to Form 1040 line 12 is one testable scope (and one
+differential test against `/standardDeduction`); the return scope (#14) makes
+the same two calls. Only `employer_income_subtotal` (DF income.xml, the earned
+income of the dependent minimum) and `mfs_spouse_65_or_older` (a `Writable`
+of filers.xml) are added to the inputs of `Filers`.
+
+```catala-metadata
+declaration scope FilersStandardDeduction:
+  input filing_status content Types.FilingStatus
+  input marital_status content MaritalStatus
+  input year_of_spouse_death content YearOfSpouseDeath
+  input primary_filer content FilerAnswers
+  input secondary_filer content FilerAnswers
+  input secondary_filer_date_of_death content date
+  input primary_filer_potential_claimer_filed_only_for_refund condition
+  input mfj_required_to_file condition
+  input mfj_dependents_filing_for_credits condition
+  input lived_together_all_year_with_spouse condition
+  input spouse_lived_together_months content SpouseLivedTogetherMonths
+  input writable_lived_apart_last_six_months condition
+  input writable_separation_agreement condition
+  input can_file_jointly_year_of_spouse_death condition
+  input in_registered_domestic_partnership condition
+  input filer_residence_and_income_state content Types.ScopedState
+  input spouse_itemizes condition
+  input mfs_living_spouse_filing_return condition
+  input mfs_deceased_spouse_filing_return condition
+  input mfs_spouse_has_gross_income condition
+  input eligible_for_hoh condition
+  # DF: filers.xml /MFSSpouse65OrOlder (Writable)
+  input mfs_spouse_65_or_older condition
+  # DF: income.xml /employerIncomeSubtotal
+  input employer_income_subtotal content money
+
+  filers scope Filers
+  standard_deduction_scope scope SD.StandardDeduction
+
+  # DF: standardDeduction.xml /standardDeduction; Form 1040 line 12
+  output standard_deduction content money
+  # DF: standardDeduction.xml /additionalStandardDeductionItems
+  output additional_standard_deduction_items content integer
+  # DF: standardDeduction.xml /isSpouse65OrOlder
+  output is_spouse_65_or_older condition
+  # DF: filers.xml /secondaryFilerIsBlindIndicatorXml
+  output secondary_filer_is_blind_indicator_xml condition
+  # DF: filers.xml /xmlOver65SRIndicator, /primarySomeoneCanClaimForTaxBenefits,
+  # /secondarySomeoneCanClaimForTaxBenefits (Form 1040 header checkboxes), passed
+  # through for the oracle comparison
+  output xml_over65_sr_indicator condition
+  output primary_some_one_can_claim_for_tax_benefits condition
+  output secondary_some_one_can_claim_for_tax_benefits condition
+  # Same as filers.unsupported
+  output unsupported condition
+```
+
+```catala
+scope FilersStandardDeduction:
+  definition filers.filing_status equals filing_status
+  definition filers.marital_status equals marital_status
+  definition filers.year_of_spouse_death equals year_of_spouse_death
+  definition filers.primary_filer equals primary_filer
+  definition filers.secondary_filer equals secondary_filer
+  definition filers.secondary_filer_date_of_death equals secondary_filer_date_of_death
+  definition filers.primary_filer_potential_claimer_filed_only_for_refund equals
+    primary_filer_potential_claimer_filed_only_for_refund
+  definition filers.mfj_required_to_file equals mfj_required_to_file
+  definition filers.mfj_dependents_filing_for_credits equals mfj_dependents_filing_for_credits
+  definition filers.lived_together_all_year_with_spouse equals
+    lived_together_all_year_with_spouse
+  definition filers.spouse_lived_together_months equals spouse_lived_together_months
+  definition filers.writable_lived_apart_last_six_months equals
+    writable_lived_apart_last_six_months
+  definition filers.writable_separation_agreement equals writable_separation_agreement
+  definition filers.can_file_jointly_year_of_spouse_death equals
+    can_file_jointly_year_of_spouse_death
+  definition filers.in_registered_domestic_partnership equals
+    in_registered_domestic_partnership
+  definition filers.filer_residence_and_income_state equals filer_residence_and_income_state
+  definition filers.spouse_itemizes equals spouse_itemizes
+  definition filers.mfs_living_spouse_filing_return equals mfs_living_spouse_filing_return
+  definition filers.mfs_deceased_spouse_filing_return equals
+    mfs_deceased_spouse_filing_return
+  definition filers.mfs_spouse_has_gross_income equals mfs_spouse_has_gross_income
+  definition filers.eligible_for_hoh equals eligible_for_hoh
+
+  definition standard_deduction_scope.filing_status equals filing_status
+  definition standard_deduction_scope.treat_as_mfs equals filers.treat_as_mfs
+  definition standard_deduction_scope.primary_filer_is_blind equals primary_filer.is_blind
+  definition standard_deduction_scope.primary_filer_age65_or_older equals
+    filers.primary_filer_age65_or_older
+  definition standard_deduction_scope.secondary_filer_is_blind equals
+    secondary_filer.is_blind
+  definition standard_deduction_scope.secondary_filer_age65_or_older equals
+    filers.secondary_filer_age65_or_older
+  definition standard_deduction_scope.is_widowed_in_tax_year equals
+    filers.is_widowed_in_tax_year
+  definition standard_deduction_scope.mfj_deceased_spouse_reached_age65 equals
+    filers.mfj_deceased_spouse_reached_age65_for_standard_d
+  definition standard_deduction_scope.mfs_spouse_65_or_older equals mfs_spouse_65_or_older
+  definition standard_deduction_scope.mfs_spouse_provides_no_benefits equals
+    filers.mfs_spouse_provides_no_benefits
+  definition standard_deduction_scope.treat_filers_as_dependents equals
+    filers.treat_filers_as_dependents
+  definition standard_deduction_scope.employer_income_subtotal equals
+    employer_income_subtotal
+
+  definition standard_deduction equals standard_deduction_scope.standard_deduction
+  definition additional_standard_deduction_items equals
+    standard_deduction_scope.additional_standard_deduction_items
+  definition is_spouse_65_or_older equals standard_deduction_scope.is_spouse_65_or_older
+  definition secondary_filer_is_blind_indicator_xml equals
+    standard_deduction_scope.is_spouse_info_applicable_for_standard_deductions
+    and secondary_filer.is_blind
+  definition xml_over65_sr_indicator equals filers.xml_over65_sr_indicator
+  definition primary_some_one_can_claim_for_tax_benefits equals
+    filers.primary_some_one_can_claim_for_tax_benefits
+  definition secondary_some_one_can_claim_for_tax_benefits equals
+    filers.secondary_some_one_can_claim_for_tax_benefits
+  definition unsupported equals filers.unsupported
+```

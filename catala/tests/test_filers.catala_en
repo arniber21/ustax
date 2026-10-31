@@ -1,0 +1,701 @@
+# Tests for the Filers module
+
+Run with `clerk test`. Cases are worked by hand from the statute and the IRS
+publications cited in `catala/filers.catala_en`; the oracle comparison against
+Direct File is `make difftest SCOPE=filers`.
+
+> Using Types
+> Using Filers as F
+
+## A baseline return that each test changes in a few places
+
+`Case` is one complete, satisfiable set of inputs: a single filer born
+1985-06-15, a US citizen, not claimed by anyone, living in Florida, with a
+second filer entry that carries plain citizen answers. Every input is a
+`context` variable with a default, so a test overrides only what it tests.
+`Case` feeds the same inputs to `Filers` and to `FilersStandardDeduction`.
+
+```catala
+declaration scope Case:
+  context filing_status content Types.FilingStatus
+  context marital_status content F.MaritalStatus
+  context year_of_spouse_death content F.YearOfSpouseDeath
+  context primary_dob content date
+  context secondary_dob content date
+  context secondary_date_of_death content date
+  context primary_blind content boolean
+  context secondary_blind content boolean
+  context primary_can_be_claimed content boolean
+  context primary_will_be_claimed content boolean
+  context primary_claimer_must_file content boolean
+  context primary_claimer_did_file content boolean
+  context secondary_can_be_claimed content boolean
+  context secondary_will_be_claimed content boolean
+  context primary_is_citizen content boolean
+  context secondary_is_citizen content boolean
+  context claimer_filed_only_for_refund condition
+  context mfj_required_to_file condition
+  context mfj_dependents_filing_for_credits condition
+  context lived_together_all_year condition
+  context lived_together_months content F.SpouseLivedTogetherMonths
+  context lived_apart_last_six_months condition
+  context separation_agreement condition
+  context can_file_jointly_year_of_spouse_death condition
+  context in_registered_domestic_partnership condition
+  context residence_state content Types.ScopedState
+  context spouse_itemizes condition
+  context mfs_living_spouse_filing_return condition
+  context mfs_deceased_spouse_filing_return condition
+  context mfs_spouse_has_gross_income condition
+  context eligible_for_hoh condition
+  context mfs_spouse_65_or_older condition
+  context employer_income_subtotal content money
+
+  internal primary_answers content F.FilerAnswers
+  internal secondary_answers content F.FilerAnswers
+  filers scope F.Filers
+  fsd scope F.FilersStandardDeduction
+
+  output primary_age content integer
+  output primary_age65 condition
+  output secondary_age65 condition
+  output primary_age25_for_eitc condition
+  output primary_age64_for_eitc condition
+  output secondary_age25_for_eitc condition
+  output secondary_age64_for_eitc condition
+  output deceased_spouse_reached_age65 condition
+  output treat_filers_as_dependents condition
+  output is_mfj_dependent condition
+  output taxpayer_cannot_be_claimed condition
+  output treat_as_mfj condition
+  output eligible_for_mfj condition
+  output lived_apart_last_six condition
+  output special_rule_for_separated_spouses condition
+  output filer_could_qualify_for_hoh condition
+  output minimum_filer_date_of_birth content date
+  output unsupported condition
+  output ko_under16 condition
+  output ko_community_property condition
+  output ko_domestic_partner condition
+  output ko_residency condition
+  output ko_spouse_itemizes condition
+  output standard_deduction content money
+
+scope Case:
+  definition filing_status equals Single
+  definition marital_status equals NeverMarried
+  definition year_of_spouse_death equals DiedBeforeTaxYearMinusTwo
+  definition primary_dob equals |1985-06-15|
+  definition secondary_dob equals |1985-06-15|
+  definition secondary_date_of_death equals |2024-12-31|
+  definition primary_blind equals false
+  definition secondary_blind equals false
+  definition primary_can_be_claimed equals false
+  definition primary_will_be_claimed equals false
+  definition primary_claimer_must_file equals false
+  definition primary_claimer_did_file equals false
+  definition secondary_can_be_claimed equals false
+  definition secondary_will_be_claimed equals false
+  definition primary_is_citizen equals true
+  definition secondary_is_citizen equals true
+  definition claimer_filed_only_for_refund equals false
+  definition mfj_required_to_file equals true
+  definition mfj_dependents_filing_for_credits equals false
+  definition lived_together_all_year equals true
+  definition lived_together_months equals LivedApartAllYear
+  definition lived_apart_last_six_months equals false
+  definition separation_agreement equals false
+  definition can_file_jointly_year_of_spouse_death equals false
+  definition in_registered_domestic_partnership equals false
+  definition residence_state equals FL
+  definition spouse_itemizes equals false
+  definition mfs_living_spouse_filing_return equals false
+  definition mfs_deceased_spouse_filing_return equals false
+  definition mfs_spouse_has_gross_income equals false
+  definition eligible_for_hoh equals false
+  definition mfs_spouse_65_or_older equals false
+  definition employer_income_subtotal equals $50,000
+
+  definition filers.filing_status equals filing_status
+  definition filers.marital_status equals marital_status
+  definition filers.year_of_spouse_death equals year_of_spouse_death
+  definition primary_answers equals
+    F.FilerAnswers {
+      -- date_of_birth: primary_dob
+      -- is_blind: primary_blind
+      -- can_be_claimed: primary_can_be_claimed
+      -- will_be_claimed: primary_will_be_claimed
+      -- potential_claimer_must_file: primary_claimer_must_file
+      -- potential_claimer_did_file: primary_claimer_did_file
+      -- is_us_citizen_full_year: primary_is_citizen
+      -- writable_citizen_at_end_of_tax_year: false
+      -- writable_is_noncitizen_resident_full_year: false
+      -- writable_is_national: false
+    }
+  definition secondary_answers equals
+    F.FilerAnswers {
+      -- date_of_birth: secondary_dob
+      -- is_blind: secondary_blind
+      -- can_be_claimed: secondary_can_be_claimed
+      -- will_be_claimed: secondary_will_be_claimed
+      -- potential_claimer_must_file: false
+      -- potential_claimer_did_file: false
+      -- is_us_citizen_full_year: secondary_is_citizen
+      -- writable_citizen_at_end_of_tax_year: false
+      -- writable_is_noncitizen_resident_full_year: false
+      -- writable_is_national: false
+    }
+  definition filers.primary_filer equals primary_answers
+  definition filers.secondary_filer equals secondary_answers
+  definition filers.secondary_filer_date_of_death equals secondary_date_of_death
+  definition filers.primary_filer_potential_claimer_filed_only_for_refund equals
+    claimer_filed_only_for_refund
+  definition filers.mfj_required_to_file equals mfj_required_to_file
+  definition filers.mfj_dependents_filing_for_credits equals
+    mfj_dependents_filing_for_credits
+  definition filers.lived_together_all_year_with_spouse equals lived_together_all_year
+  definition filers.spouse_lived_together_months equals lived_together_months
+  definition filers.writable_lived_apart_last_six_months equals
+    lived_apart_last_six_months
+  definition filers.writable_separation_agreement equals separation_agreement
+  definition filers.can_file_jointly_year_of_spouse_death equals
+    can_file_jointly_year_of_spouse_death
+  definition filers.in_registered_domestic_partnership equals
+    in_registered_domestic_partnership
+  definition filers.filer_residence_and_income_state equals residence_state
+  definition filers.spouse_itemizes equals spouse_itemizes
+  definition filers.mfs_living_spouse_filing_return equals mfs_living_spouse_filing_return
+  definition filers.mfs_deceased_spouse_filing_return equals
+    mfs_deceased_spouse_filing_return
+  definition filers.mfs_spouse_has_gross_income equals mfs_spouse_has_gross_income
+  definition filers.eligible_for_hoh equals eligible_for_hoh
+
+  definition fsd.filing_status equals filing_status
+  definition fsd.marital_status equals marital_status
+  definition fsd.year_of_spouse_death equals year_of_spouse_death
+  definition fsd.primary_filer equals primary_answers
+  definition fsd.secondary_filer equals secondary_answers
+  definition fsd.secondary_filer_date_of_death equals secondary_date_of_death
+  definition fsd.primary_filer_potential_claimer_filed_only_for_refund equals
+    claimer_filed_only_for_refund
+  definition fsd.mfj_required_to_file equals mfj_required_to_file
+  definition fsd.mfj_dependents_filing_for_credits equals
+    mfj_dependents_filing_for_credits
+  definition fsd.lived_together_all_year_with_spouse equals lived_together_all_year
+  definition fsd.spouse_lived_together_months equals lived_together_months
+  definition fsd.writable_lived_apart_last_six_months equals
+    lived_apart_last_six_months
+  definition fsd.writable_separation_agreement equals separation_agreement
+  definition fsd.can_file_jointly_year_of_spouse_death equals
+    can_file_jointly_year_of_spouse_death
+  definition fsd.in_registered_domestic_partnership equals
+    in_registered_domestic_partnership
+  definition fsd.filer_residence_and_income_state equals residence_state
+  definition fsd.spouse_itemizes equals spouse_itemizes
+  definition fsd.mfs_living_spouse_filing_return equals mfs_living_spouse_filing_return
+  definition fsd.mfs_deceased_spouse_filing_return equals
+    mfs_deceased_spouse_filing_return
+  definition fsd.mfs_spouse_has_gross_income equals mfs_spouse_has_gross_income
+  definition fsd.eligible_for_hoh equals eligible_for_hoh
+  definition fsd.mfs_spouse_65_or_older equals mfs_spouse_65_or_older
+  definition fsd.employer_income_subtotal equals employer_income_subtotal
+
+  definition primary_age equals filers.primary_filer_age
+  definition primary_age65 equals filers.primary_filer_age65_or_older
+  definition secondary_age65 equals filers.secondary_filer_age65_or_older
+  definition primary_age25_for_eitc equals filers.primary_filer_age25_or_older_for_eitc
+  definition primary_age64_for_eitc equals filers.primary_filer_age64_or_younger_for_eitc
+  definition secondary_age25_for_eitc equals filers.secondary_filer_age25_or_older_for_eitc
+  definition secondary_age64_for_eitc equals filers.secondary_filer_age64_or_younger_for_eitc
+  definition deceased_spouse_reached_age65 equals
+    filers.mfj_deceased_spouse_reached_age65_for_standard_d
+  definition treat_filers_as_dependents equals filers.treat_filers_as_dependents
+  definition is_mfj_dependent equals filers.is_mfj_dependent
+  definition taxpayer_cannot_be_claimed equals filers.taxpayer_cannot_be_claimed
+  definition treat_as_mfj equals filers.treat_as_mfj
+  definition eligible_for_mfj equals filers.eligible_for_mfj
+  definition lived_apart_last_six equals filers.lived_apart_last_six_months
+  definition special_rule_for_separated_spouses equals
+    filers.special_rule_for_separated_spouses
+  definition filer_could_qualify_for_hoh equals filers.filer_could_qualify_for_hoh
+  definition minimum_filer_date_of_birth equals filers.minimum_filer_date_of_birth
+  definition unsupported equals filers.unsupported
+  definition ko_under16 equals filers.ko_flow_knockout_filer_age_younger_than16
+  definition ko_community_property equals
+    filers.ko_knockout_subject_to_community_property_laws
+  definition ko_domestic_partner equals
+    filers.ko_flow_knockout_has_applicable_registered_domestic_partnership
+  definition ko_residency equals filers.ko_primary_filer_residency_knockout
+  definition ko_spouse_itemizes equals filers.ko_spouse_itemizes_knockout
+  definition standard_deduction equals fsd.standard_deduction
+```
+
+## Age 65: the day before the birthday
+
+Pub. 501 (2024) p 3: "A person is considered to reach age 65 on the day before
+the person's 65th birthday." Born 1960-01-01: reaches 65 on 2024-12-31, so
+65 or older for TY2024. Born 1960-01-02: reaches 65 on 2025-01-01, so not.
+Born 1959-12-31: 65 on 2024-12-30, so yes.
+
+The plain age of the person born 1960-01-01 is 64. A rule that used the plain
+age (`primary_age >= 65`) would give the wrong answer, and the last assertion
+rejects it.
+
+```catala
+#[test]
+declaration scope TestAge65:
+  output ok condition
+  jan1 scope Case
+  jan2 scope Case
+  dec31 scope Case
+
+scope TestAge65:
+  rule ok fulfilled
+  definition jan1.primary_dob equals |1960-01-01|
+  definition jan2.primary_dob equals |1960-01-02|
+  definition dec31.primary_dob equals |1959-12-31|
+  assertion jan1.primary_age65
+  assertion not jan2.primary_age65
+  assertion dec31.primary_age65
+  assertion jan1.primary_age = 64
+  assertion jan2.primary_age = 64
+  assertion dec31.primary_age = 65
+  # Known-bad output: the plain-age rule disagrees with the spec for Jan 1, 1960.
+  assertion jan1.primary_age65 != (jan1.primary_age >= 65)
+```
+
+An independent reference for the same rule, the Pub. 501 wording "65th birthday
+on or before January 1 of the following year" (DF `/filers/*/age65OrOlder`
+description, `filers.xml` line 648), checked on dates around the boundary.
+
+```catala
+declaration scope Pub501Age65:
+  input date_of_birth content date
+  output is_65 condition
+
+scope Pub501Age65:
+  definition is_65 equals date_of_birth + 65 year <= |2025-01-01|
+
+#[test]
+declaration scope TestAge65Reference:
+  output ok condition
+  a scope Case
+  b scope Case
+  c scope Case
+  d scope Case
+  e scope Case
+  ra scope Pub501Age65
+  rb scope Pub501Age65
+  rc scope Pub501Age65
+  rd scope Pub501Age65
+  re scope Pub501Age65
+
+scope TestAge65Reference:
+  rule ok fulfilled
+  definition a.primary_dob equals |1959-12-31|
+  definition b.primary_dob equals |1960-01-01|
+  definition c.primary_dob equals |1960-01-02|
+  definition d.primary_dob equals |1960-07-04|
+  definition e.primary_dob equals |1930-02-28|
+  definition ra.date_of_birth equals |1959-12-31|
+  definition rb.date_of_birth equals |1960-01-01|
+  definition rc.date_of_birth equals |1960-01-02|
+  definition rd.date_of_birth equals |1960-07-04|
+  definition re.date_of_birth equals |1930-02-28|
+  assertion a.primary_age65 = ra.is_65
+  assertion b.primary_age65 = rb.is_65
+  assertion c.primary_age65 = rc.is_65
+  assertion d.primary_age65 = rd.is_65
+  assertion e.primary_age65 = re.is_65
+```
+
+## Earned Income Credit age: 25 on the day before, 64 on the actual birthday
+
+Pub. 596 (2024) p 16: "You meet the age test if you were born after December
+31, 1959, and before January 2, 2000." Born 2000-01-01: reaches 25 on
+1999-12-31, so meets the minimum. Born 2000-01-02: does not. For the maximum,
+the person born 1960-01-01 reaches 65 on the actual birthday 2025-01-01, so
+they are still "64 or younger" at the end of 2024 (and 65 or older for the
+standard deduction); the person born 1959-12-31 is not.
+
+```catala
+#[test]
+declaration scope TestEitcAge:
+  output ok condition
+  min_ok scope Case
+  min_bad scope Case
+  min_other scope Case
+  max_ok scope Case
+  max_ok_jan2 scope Case
+  max_bad scope Case
+
+scope TestEitcAge:
+  rule ok fulfilled
+  definition min_ok.primary_dob equals |2000-01-01|
+  definition min_bad.primary_dob equals |2000-01-02|
+  definition min_other.primary_dob equals |1999-12-31|
+  definition max_ok.primary_dob equals |1960-01-01|
+  definition max_ok_jan2.primary_dob equals |1960-01-02|
+  definition max_bad.primary_dob equals |1959-12-31|
+  # minimum age 25: day-before rule
+  assertion min_ok.primary_age25_for_eitc
+  assertion not min_bad.primary_age25_for_eitc
+  assertion min_other.primary_age25_for_eitc
+  # maximum age 64: actual birthday
+  assertion max_ok.primary_age64_for_eitc
+  assertion max_ok.primary_age65
+  assertion max_ok_jan2.primary_age64_for_eitc
+  assertion not max_bad.primary_age64_for_eitc
+  # a person born 1960-01-01 is 65 for the standard deduction but not too old for EITC
+  assertion max_ok.primary_age65 and max_ok.primary_age64_for_eitc
+```
+
+## Spouse who died during the year
+
+Pub. 596 p 16, Example 2: "Your spouse was born on February 14, 1999, and died
+on February 13, 2024. Your spouse is considered age 25 at the time of death.
+However, if your spouse died on February 12, 2024, your spouse isn't considered
+age 25 at the time of death and isn't at least age 25 at the end of 2024."
+
+Pub. 501 p 3: the deceased spouse is 65 for the standard deduction only if
+65 at death, counting the day before the birthday. A spouse born 1959-07-10
+reaches 65 on 2024-07-09: death on 2024-07-09 counts, on 2024-07-08 does not.
+For the EITC maximum age the spouse reaches 65 on the actual birthday
+(2024-07-10), so a death on 2024-07-09 still meets "under age 65".
+
+```catala
+#[test]
+declaration scope TestDeceasedSpouse:
+  output ok condition
+  age25_yes scope Case
+  age25_no scope Case
+  age65_yes scope Case
+  age65_no scope Case
+
+scope TestDeceasedSpouse:
+  rule ok fulfilled
+  definition age25_yes.filing_status equals MarriedFilingJointly
+  definition age25_yes.marital_status equals Widowed
+  definition age25_yes.year_of_spouse_death equals DiedInTaxYear
+  definition age25_yes.secondary_dob equals |1999-02-14|
+  definition age25_yes.secondary_date_of_death equals |2024-02-13|
+  definition age25_no.filing_status equals MarriedFilingJointly
+  definition age25_no.marital_status equals Widowed
+  definition age25_no.year_of_spouse_death equals DiedInTaxYear
+  definition age25_no.secondary_dob equals |1999-02-14|
+  definition age25_no.secondary_date_of_death equals |2024-02-12|
+  definition age65_yes.filing_status equals MarriedFilingJointly
+  definition age65_yes.marital_status equals Widowed
+  definition age65_yes.year_of_spouse_death equals DiedInTaxYear
+  definition age65_yes.secondary_dob equals |1959-07-10|
+  definition age65_yes.secondary_date_of_death equals |2024-07-09|
+  definition age65_no.filing_status equals MarriedFilingJointly
+  definition age65_no.marital_status equals Widowed
+  definition age65_no.year_of_spouse_death equals DiedInTaxYear
+  definition age65_no.secondary_dob equals |1959-07-10|
+  definition age65_no.secondary_date_of_death equals |2024-07-08|
+  assertion age25_yes.treat_as_mfj
+  assertion age25_yes.secondary_age25_for_eitc
+  assertion not age25_no.secondary_age25_for_eitc
+  assertion age65_yes.deceased_spouse_reached_age65
+  assertion not age65_no.deceased_spouse_reached_age65
+  assertion age65_yes.secondary_age64_for_eitc
+```
+
+## Marital status, residency and the joint return
+
+```catala
+#[test]
+declaration scope TestMarital:
+  output ok condition
+  married_mfj scope Case
+  married_nra_spouse scope Case
+  widowed_prior_year scope Case
+  never_married scope Case
+
+scope TestMarital:
+  rule ok fulfilled
+  definition married_mfj.filing_status equals MarriedFilingJointly
+  definition married_mfj.marital_status equals Married
+  definition married_nra_spouse.filing_status equals MarriedFilingJointly
+  definition married_nra_spouse.marital_status equals Married
+  definition married_nra_spouse.secondary_is_citizen equals false
+  definition widowed_prior_year.filing_status equals MarriedFilingJointly
+  definition widowed_prior_year.marital_status equals Widowed
+  definition widowed_prior_year.year_of_spouse_death equals DiedTaxYearMinusOne
+  definition never_married.filing_status equals MarriedFilingJointly
+  assertion married_mfj.eligible_for_mfj and married_mfj.treat_as_mfj
+  # IRC 6013(a)(1): no joint return with a nonresident alien spouse
+  assertion not married_nra_spouse.eligible_for_mfj
+  assertion not married_nra_spouse.treat_as_mfj
+  # widowed in an earlier year: not married at the end of the year (IRC 7703(a)(1))
+  assertion not widowed_prior_year.eligible_for_mfj
+  assertion not widowed_prior_year.treat_as_mfj
+  # Known-bad: an MFJ status chosen by a never-married filer does not count
+  assertion not never_married.treat_as_mfj
+```
+
+## Lived apart
+
+IRC 7703(b)(3): the spouse "is not a member of such household" during the last
+six months. DF derives it from the answers (`filers.xml` lines 3963 to 4102).
+
+```catala
+#[test]
+declaration scope TestLivedApart:
+  output ok condition
+  together_all_year scope Case
+  apart_all_year scope Case
+  together_more_than_six scope Case
+  six_or_less_apart scope Case
+  six_or_less_not_apart_agreement scope Case
+
+scope TestLivedApart:
+  rule ok fulfilled
+  definition together_all_year.marital_status equals Married
+  definition apart_all_year.marital_status equals Married
+  definition apart_all_year.lived_together_all_year equals false
+  definition apart_all_year.lived_together_months equals LivedApartAllYear
+  definition together_more_than_six.marital_status equals Married
+  definition together_more_than_six.lived_together_all_year equals false
+  definition together_more_than_six.lived_together_months equals
+    LivedTogetherMoreThanSixMonths
+  definition together_more_than_six.lived_apart_last_six_months equals true
+  definition six_or_less_apart.marital_status equals Married
+  definition six_or_less_apart.lived_together_all_year equals false
+  definition six_or_less_apart.lived_together_months equals
+    LivedTogetherSixMonthsOrLess
+  definition six_or_less_apart.lived_apart_last_six_months equals true
+  definition six_or_less_not_apart_agreement.marital_status equals Married
+  definition six_or_less_not_apart_agreement.lived_together_all_year equals false
+  definition six_or_less_not_apart_agreement.lived_together_months equals
+    LivedTogetherSixMonthsOrLess
+  definition six_or_less_not_apart_agreement.lived_apart_last_six_months equals false
+  definition six_or_less_not_apart_agreement.separation_agreement equals true
+  assertion not together_all_year.lived_apart_last_six
+  assertion not together_all_year.filer_could_qualify_for_hoh
+  assertion apart_all_year.lived_apart_last_six
+  assertion apart_all_year.filer_could_qualify_for_hoh
+  # the stale writable answer is ignored when the spouses lived together more than six months
+  assertion not together_more_than_six.lived_apart_last_six
+  assertion six_or_less_apart.lived_apart_last_six
+  assertion not six_or_less_not_apart_agreement.lived_apart_last_six
+  assertion six_or_less_not_apart_agreement.special_rule_for_separated_spouses
+```
+
+## Claimed as a dependent
+
+`/treatFilersAsDependents` (`filers.xml` line 1441). Not joint: the filer can
+be claimed and the claimer must file, or did file for more than a refund. Joint:
+`/isMFJDependent` needs one spouse who can be claimed, a couple not required to
+file, and a choice of refund only.
+
+```catala
+#[test]
+declaration scope TestDependents:
+  output ok condition
+  must_file scope Case
+  refund_only scope Case
+  not_claimable scope Case
+  filed_for_credits scope Case
+  mfj_refund_only scope Case
+  mfj_for_credits scope Case
+  mfj_required scope Case
+
+scope TestDependents:
+  rule ok fulfilled
+  definition must_file.primary_can_be_claimed equals true
+  definition must_file.primary_will_be_claimed equals true
+  definition must_file.primary_claimer_must_file equals true
+  definition refund_only.primary_can_be_claimed equals true
+  definition refund_only.primary_will_be_claimed equals true
+  definition refund_only.primary_claimer_must_file equals false
+  definition refund_only.primary_claimer_did_file equals true
+  definition refund_only.claimer_filed_only_for_refund equals true
+  definition not_claimable.primary_claimer_must_file equals true
+  definition filed_for_credits.primary_can_be_claimed equals true
+  definition filed_for_credits.primary_will_be_claimed equals true
+  definition filed_for_credits.primary_claimer_did_file equals true
+  definition mfj_refund_only.filing_status equals MarriedFilingJointly
+  definition mfj_refund_only.marital_status equals Married
+  definition mfj_refund_only.secondary_can_be_claimed equals true
+  definition mfj_refund_only.secondary_will_be_claimed equals true
+  definition mfj_refund_only.mfj_required_to_file equals false
+  definition mfj_refund_only.mfj_dependents_filing_for_credits equals false
+  definition mfj_for_credits.filing_status equals MarriedFilingJointly
+  definition mfj_for_credits.marital_status equals Married
+  definition mfj_for_credits.secondary_can_be_claimed equals true
+  definition mfj_for_credits.secondary_will_be_claimed equals true
+  definition mfj_for_credits.mfj_required_to_file equals false
+  definition mfj_for_credits.mfj_dependents_filing_for_credits equals true
+  definition mfj_required.filing_status equals MarriedFilingJointly
+  definition mfj_required.marital_status equals Married
+  definition mfj_required.secondary_can_be_claimed equals true
+  definition mfj_required.secondary_will_be_claimed equals true
+  definition mfj_required.mfj_required_to_file equals true
+  assertion must_file.treat_filers_as_dependents
+  assertion not refund_only.treat_filers_as_dependents
+  assertion not not_claimable.treat_filers_as_dependents
+  assertion filed_for_credits.treat_filers_as_dependents
+  assertion mfj_refund_only.is_mfj_dependent
+  assertion mfj_refund_only.treat_filers_as_dependents
+  assertion not mfj_refund_only.taxpayer_cannot_be_claimed
+  assertion not mfj_for_credits.is_mfj_dependent
+  assertion not mfj_for_credits.treat_filers_as_dependents
+  assertion mfj_for_credits.taxpayer_cannot_be_claimed
+  assertion not mfj_required.is_mfj_dependent
+  assertion not mfj_required.treat_filers_as_dependents
+```
+
+## Knockouts
+
+scope.md section 9 item 1, `flow.xml` lines 14 to 20.
+
+```catala
+#[test]
+declaration scope TestKnockouts:
+  output ok condition
+  baseline scope Case
+  under16 scope Case
+  just16 scope Case
+  secondary_under16_joint scope Case
+  secondary_under16_single scope Case
+  community_mfs scope Case
+  community_single scope Case
+  community_hoh_married scope Case
+  florida_mfs scope Case
+  rdp scope Case
+  rdp_florida scope Case
+  not_citizen scope Case
+  itemizing_spouse scope Case
+
+scope TestKnockouts:
+  rule ok fulfilled
+  # born 2009-01-01: 15 at the end of 2024
+  definition under16.primary_dob equals |2009-01-01|
+  # born 2008-12-31: 16 at the end of 2024
+  definition just16.primary_dob equals |2008-12-31|
+  definition secondary_under16_joint.filing_status equals MarriedFilingJointly
+  definition secondary_under16_joint.marital_status equals Married
+  definition secondary_under16_joint.secondary_dob equals |2010-05-05|
+  definition secondary_under16_single.secondary_dob equals |2010-05-05|
+  definition community_mfs.filing_status equals MarriedFilingSeparately
+  definition community_mfs.marital_status equals Married
+  definition community_mfs.residence_state equals CA
+  definition community_single.residence_state equals CA
+  definition community_hoh_married.filing_status equals HeadOfHousehold
+  definition community_hoh_married.marital_status equals Married
+  definition community_hoh_married.residence_state equals TX
+  definition florida_mfs.filing_status equals MarriedFilingSeparately
+  definition florida_mfs.marital_status equals Married
+  definition rdp.residence_state equals WA
+  definition rdp.in_registered_domestic_partnership equals true
+  definition rdp_florida.in_registered_domestic_partnership equals true
+  definition not_citizen.primary_is_citizen equals false
+  definition itemizing_spouse.filing_status equals MarriedFilingSeparately
+  definition itemizing_spouse.marital_status equals Married
+  definition itemizing_spouse.spouse_itemizes equals true
+  definition itemizing_spouse.mfs_living_spouse_filing_return equals true
+  assertion not baseline.unsupported
+  assertion under16.ko_under16 and under16.unsupported
+  assertion not just16.ko_under16
+  assertion secondary_under16_joint.ko_under16
+  assertion not secondary_under16_single.ko_under16
+  assertion community_mfs.ko_community_property
+  assertion community_mfs.unsupported
+  assertion not community_single.ko_community_property
+  assertion community_hoh_married.ko_community_property
+  assertion not florida_mfs.ko_community_property
+  assertion rdp.ko_domestic_partner
+  assertion not rdp_florida.ko_domestic_partner
+  assertion not_citizen.ko_residency
+  assertion not baseline.ko_residency
+  assertion itemizing_spouse.ko_spouse_itemizes
+  assertion not baseline.ko_spouse_itemizes
+```
+
+## Oldest filer
+
+```catala
+#[test]
+declaration scope TestMinimumDob:
+  output ok condition
+  joint scope Case
+  single scope Case
+
+scope TestMinimumDob:
+  rule ok fulfilled
+  definition joint.filing_status equals MarriedFilingJointly
+  definition joint.marital_status equals Married
+  definition joint.primary_dob equals |1985-06-15|
+  definition joint.secondary_dob equals |1980-03-01|
+  definition single.primary_dob equals |1985-06-15|
+  definition single.secondary_dob equals |1980-03-01|
+  assertion joint.minimum_filer_date_of_birth = |1980-03-01|
+  assertion single.minimum_filer_date_of_birth = |1985-06-15|
+```
+
+## From dates of birth to the standard deduction (Form 1040 line 12)
+
+TY2024: single $14,600, MFJ $29,200, additional $1,950 (unmarried) or $1,550
+(married) per item (Rev. Proc. 2023-34 § 3.15). The age comes from the date of
+birth through `Filers`.
+
+- Single born 1960-01-01: 65 on 2024-12-31, $14,600 + $1,950 = $16,550.
+- Single born 1960-01-02: not 65, $14,600.
+- MFJ, both born 1960-01-01: $29,200 + 2 x $1,550 = $32,300.
+- MFJ widowed in 2024, spouse born 1959-07-10 died 2024-07-09 (65 at death):
+  primary born 1985, $29,200 + $1,550 = $30,750; died 2024-07-08: $29,200.
+- Single who can be claimed and whose claimer must file, earned income $3,000:
+  `GreaterOf($1,300, $3,000 + $450)` = $3,450.
+- MFJ "refund only" dependent couple: the dependent minimum applies to the
+  couple, `max($1,300, $50,000 + $450)` is above $29,200, so $29,200.
+
+```catala
+#[test]
+declaration scope TestStandardDeductionWiring:
+  output ok condition
+  single65 scope Case
+  single64 scope Case
+  mfj_both65 scope Case
+  widow_died_65 scope Case
+  widow_died_64 scope Case
+  dependent scope Case
+  mfj_dependent_couple scope Case
+
+scope TestStandardDeductionWiring:
+  rule ok fulfilled
+  definition single65.primary_dob equals |1960-01-01|
+  definition single64.primary_dob equals |1960-01-02|
+  definition mfj_both65.filing_status equals MarriedFilingJointly
+  definition mfj_both65.marital_status equals Married
+  definition mfj_both65.primary_dob equals |1960-01-01|
+  definition mfj_both65.secondary_dob equals |1960-01-01|
+  definition widow_died_65.filing_status equals MarriedFilingJointly
+  definition widow_died_65.marital_status equals Widowed
+  definition widow_died_65.year_of_spouse_death equals DiedInTaxYear
+  definition widow_died_65.secondary_dob equals |1959-07-10|
+  definition widow_died_65.secondary_date_of_death equals |2024-07-09|
+  definition widow_died_64.filing_status equals MarriedFilingJointly
+  definition widow_died_64.marital_status equals Widowed
+  definition widow_died_64.year_of_spouse_death equals DiedInTaxYear
+  definition widow_died_64.secondary_dob equals |1959-07-10|
+  definition widow_died_64.secondary_date_of_death equals |2024-07-08|
+  definition dependent.primary_can_be_claimed equals true
+  definition dependent.primary_will_be_claimed equals true
+  definition dependent.primary_claimer_must_file equals true
+  definition dependent.employer_income_subtotal equals $3,000
+  definition mfj_dependent_couple.filing_status equals MarriedFilingJointly
+  definition mfj_dependent_couple.marital_status equals Married
+  definition mfj_dependent_couple.secondary_can_be_claimed equals true
+  definition mfj_dependent_couple.secondary_will_be_claimed equals true
+  definition mfj_dependent_couple.mfj_required_to_file equals false
+  definition mfj_dependent_couple.mfj_dependents_filing_for_credits equals false
+  assertion single65.standard_deduction = $16,550
+  assertion single64.standard_deduction = $14,600
+  assertion mfj_both65.standard_deduction = $32,300
+  assertion widow_died_65.standard_deduction = $30,750
+  assertion widow_died_64.standard_deduction = $29,200
+  assertion dependent.standard_deduction = $3,450
+  assertion mfj_dependent_couple.standard_deduction = $29,200
+```
