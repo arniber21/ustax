@@ -1,0 +1,19 @@
+lean/UsTax/Api/Json.lean
+  s_3031b504518be3::t_79620155e959a1 42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8856dcff7eb12c9019ff4a0e7932b18aeeda412c",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
