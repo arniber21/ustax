@@ -482,7 +482,7 @@ scope Form1099RItem:
     under condition (R.round_dollar of form.writable_other_dollar) > $0
     consequence fulfilled
 
-  # DF-BUG(7, proposed): DF tests "box 8 percentage is zero" on the typed text
+  # DF-BUG(8): DF tests "box 8 percentage is zero" on the typed text
   # with `StripChars(text, "0.")`. The XML literal `<String>0.</String>` is
   # read by the fast-xml-parser setting used by the Direct File client and by
   # `oracle/generate.mjs` (no `parseTagValue: false`) as the number `0`, i.e.
