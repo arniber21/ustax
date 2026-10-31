@@ -1,0 +1,269 @@
+# Tests for the Social_security module
+
+Run with `clerk test`. Named scopes with concrete numbers (issue #23), worked
+out by hand line by line from the Social Security Benefits Worksheet
+(`sources/forms-instructions/i1040gi--2024.pdf` p 32). The oracle comparison is
+`make difftest SCOPE=social_security`.
+
+> Using Types
+> Using Social_security as S
+
+## Helper: one worksheet run
+
+Every income component not named is `$0`. Wages are worksheet line 3 input
+`line_1z`; `other_income` is `line_8_other_income`.
+
+```catala
+declaration scope Run:
+  input filing_status content Types.FilingStatus
+  input lived_apart condition
+  input net_benefits content money
+  input wages content money
+  input interest content money
+  input other_income content money
+  input exempt_interest content money
+  input adjustments content money
+  ss scope S.SocialSecurity
+  output line_6a content money
+  output line_6b content money
+  output wksht_line_7 content money
+  output wksht_line_16 content money
+  output benefit_code_d condition
+  output repayment_over_3k condition
+  output non_taxable_benefits content money
+
+scope Run:
+  definition ss.report_net_benefits equals [net_benefits]
+  definition ss.filing_status equals filing_status
+  definition ss.lived_apart_all_year equals lived_apart
+  definition ss.line_1z equals wages
+  definition ss.line_2b equals interest
+  definition ss.line_2a equals exempt_interest
+  definition ss.line_3b equals $0
+  definition ss.line_4b equals $0
+  definition ss.line_5b equals $0
+  definition ss.line_7_capital_gains equals $0
+  definition ss.line_8_other_income equals other_income
+  definition ss.adjustments_excluding_student_loan_interest equals adjustments
+  definition line_6a equals ss.line_6a
+  definition line_6b equals ss.line_6b
+  definition wksht_line_7 equals ss.wksht_line_7
+  definition wksht_line_16 equals ss.wksht_line_16
+  definition benefit_code_d equals ss.benefit_code_d
+  definition repayment_over_3k equals ss.repayment_over_3k
+  definition non_taxable_benefits equals ss.non_taxable_benefits
+```
+
+## Issue #23 cases
+
+Single, $20,000 benefits, $10,000 other income: line 5 = 10,000 + 10,000 =
+20,000, below the $25,000 base amount (line 8): nothing taxable.
+
+Single, $24,000 benefits, $30,000 other income (the 85% branch): line 5 =
+12,000 + 30,000 = 42,000; line 9 = 17,000; line 10 = 9,000; line 11 = 8,000;
+line 12 = 9,000; line 13 = 4,500; line 14 = min(12,000, 4,500) = 4,500;
+line 15 = 6,800; line 16 = 11,300; line 17 = 20,400; line 18 = 11,300.
+
+MFS, lived with spouse, $10,000 benefits, $2,000 wages: line 7 = 5,000 + 2,000 =
+7,000; line 16 = 0.85 * 7,000 = 5,950; line 17 = 8,500; line 18 = 5,950.
+With $20,000 wages, line 7 = 25,000, line 16 = 21,250, capped by line 17 at 8,500.
+
+Negative net benefits (-300): taxable 0.
+
+```catala
+#[test]
+declaration scope TestIssueCases:
+  output ok condition
+  below_base scope Run
+  eighty_five scope Run
+  mfs_together scope Run
+  mfs_together_capped scope Run
+  negative scope Run
+
+scope TestIssueCases:
+  rule ok fulfilled
+  definition below_base.filing_status equals Single
+  definition below_base.lived_apart equals false
+  definition below_base.net_benefits equals $20,000
+  definition below_base.wages equals $0
+  definition below_base.interest equals $0
+  definition below_base.other_income equals $10,000
+  definition below_base.exempt_interest equals $0
+  definition below_base.adjustments equals $0
+
+  definition eighty_five.filing_status equals Single
+  definition eighty_five.lived_apart equals false
+  definition eighty_five.net_benefits equals $24,000
+  definition eighty_five.wages equals $0
+  definition eighty_five.interest equals $0
+  definition eighty_five.other_income equals $30,000
+  definition eighty_five.exempt_interest equals $0
+  definition eighty_five.adjustments equals $0
+
+  definition mfs_together.filing_status equals MarriedFilingSeparately
+  definition mfs_together.lived_apart equals false
+  definition mfs_together.net_benefits equals $10,000
+  definition mfs_together.wages equals $2,000
+  definition mfs_together.interest equals $0
+  definition mfs_together.other_income equals $0
+  definition mfs_together.exempt_interest equals $0
+  definition mfs_together.adjustments equals $0
+
+  definition mfs_together_capped.filing_status equals MarriedFilingSeparately
+  definition mfs_together_capped.lived_apart equals false
+  definition mfs_together_capped.net_benefits equals $10,000
+  definition mfs_together_capped.wages equals $20,000
+  definition mfs_together_capped.interest equals $0
+  definition mfs_together_capped.other_income equals $0
+  definition mfs_together_capped.exempt_interest equals $0
+  definition mfs_together_capped.adjustments equals $0
+
+  definition negative.filing_status equals Single
+  definition negative.lived_apart equals false
+  definition negative.net_benefits equals - $300
+  definition negative.wages equals $40,000
+  definition negative.interest equals $0
+  definition negative.other_income equals $0
+  definition negative.exempt_interest equals $0
+  definition negative.adjustments equals $0
+
+  assertion below_base.line_6b = $0
+  assertion below_base.wksht_line_16 = $0
+  assertion eighty_five.wksht_line_7 = $42,000
+  assertion eighty_five.wksht_line_16 = $11,300
+  assertion eighty_five.line_6b = $11,300
+  assertion eighty_five.non_taxable_benefits = $12,700
+  assertion mfs_together.wksht_line_7 = $7,000
+  assertion mfs_together.wksht_line_16 = $5,950
+  assertion mfs_together.line_6b = $5,950
+  assertion mfs_together_capped.wksht_line_16 = $21,250
+  assertion mfs_together_capped.line_6b = $8,500
+  assertion negative.line_6a = - $300
+  assertion negative.line_6b = $0
+  assertion negative.non_taxable_benefits = - $300
+  # the spec rejects known-bad outputs: the untaxed 100% of benefits, the
+  # 50% tier only, and a positive amount for repaid benefits
+  assertion not (eighty_five.line_6b = $24,000)
+  assertion not (eighty_five.line_6b = $12,000)
+  assertion not (negative.line_6b = $300)
+  assertion not (below_base.line_6b = $10,000)
+```
+
+## Other filing statuses, adjustments, tax-exempt interest, rounding
+
+MFJ, $29,102 benefits, $24,469 wages, $1,499 interest (Direct File scenario
+`mef-ats-SSA`): line 7 = 14,551 + 24,469 + 1,499 = 40,519; line 9 = 8,519 (base
+32,000); line 11 = 0 (gap 12,000); line 14 = min(14,551, 4,259.50) = 4,259.50;
+line 18 rounds the tie up to 4,260.
+
+MFS, lived apart all year, $10,000 benefits, $30,000 wages: line 7 = 35,000;
+line 9 = 10,000 (base 25,000); line 11 = 1,000, line 15 = 850; line 12 = 9,000,
+line 13 = 4,500, line 14 = min(5,000, 4,500) = 4,500; line 16 = 5,350; the "D"
+code applies.
+
+Single, $10,000 benefits, $30,000 wages, $5,000 adjustments: line 7 = 5,000 +
+30,000 - 5,000 = 30,000; line 9 = 5,000; line 14 = 2,500; line 18 = 2,500.
+
+Single, $10,000 benefits, $15,000 wages, $6,000 tax-exempt interest: line 7 =
+5,000 + 15,000 + 6,000 = 26,000; line 9 = 1,000; line 14 = 500; line 18 = 500.
+
+Single, $10,000 benefits, $60,000 wages: line 7 = 65,000, line 9 = 40,000,
+line 11 = 31,000, line 15 = 26,350, line 14 = 4,500, line 16 = 30,850, capped by
+line 17 = 8,500.
+
+Repayments: net benefits -$3,500 is over the $3,000 limit, -$3,000 is not.
+
+```catala
+#[test]
+declaration scope TestOthers:
+  output ok condition
+  mfj_tie scope Run
+  mfs_apart scope Run
+  adjusted scope Run
+  exempt scope Run
+  capped scope Run
+  repaid_3500 scope Run
+  repaid_3000 scope Run
+
+scope TestOthers:
+  rule ok fulfilled
+  definition mfj_tie.filing_status equals MarriedFilingJointly
+  definition mfj_tie.lived_apart equals false
+  definition mfj_tie.net_benefits equals $29,102
+  definition mfj_tie.wages equals $24,469
+  definition mfj_tie.interest equals $1,499
+  definition mfj_tie.other_income equals $0
+  definition mfj_tie.exempt_interest equals $0
+  definition mfj_tie.adjustments equals $0
+
+  definition mfs_apart.filing_status equals MarriedFilingSeparately
+  definition mfs_apart.lived_apart equals true
+  definition mfs_apart.net_benefits equals $10,000
+  definition mfs_apart.wages equals $30,000
+  definition mfs_apart.interest equals $0
+  definition mfs_apart.other_income equals $0
+  definition mfs_apart.exempt_interest equals $0
+  definition mfs_apart.adjustments equals $0
+
+  definition adjusted.filing_status equals Single
+  definition adjusted.lived_apart equals false
+  definition adjusted.net_benefits equals $10,000
+  definition adjusted.wages equals $30,000
+  definition adjusted.interest equals $0
+  definition adjusted.other_income equals $0
+  definition adjusted.exempt_interest equals $0
+  definition adjusted.adjustments equals $5,000
+
+  definition exempt.filing_status equals Single
+  definition exempt.lived_apart equals false
+  definition exempt.net_benefits equals $10,000
+  definition exempt.wages equals $15,000
+  definition exempt.interest equals $0
+  definition exempt.other_income equals $0
+  definition exempt.exempt_interest equals $6,000
+  definition exempt.adjustments equals $0
+
+  definition capped.filing_status equals Single
+  definition capped.lived_apart equals false
+  definition capped.net_benefits equals $10,000
+  definition capped.wages equals $60,000
+  definition capped.interest equals $0
+  definition capped.other_income equals $0
+  definition capped.exempt_interest equals $0
+  definition capped.adjustments equals $0
+
+  definition repaid_3500.filing_status equals Single
+  definition repaid_3500.lived_apart equals false
+  definition repaid_3500.net_benefits equals - $3,500
+  definition repaid_3500.wages equals $0
+  definition repaid_3500.interest equals $0
+  definition repaid_3500.other_income equals $0
+  definition repaid_3500.exempt_interest equals $0
+  definition repaid_3500.adjustments equals $0
+
+  definition repaid_3000.filing_status equals Single
+  definition repaid_3000.lived_apart equals false
+  definition repaid_3000.net_benefits equals - $3,000
+  definition repaid_3000.wages equals $0
+  definition repaid_3000.interest equals $0
+  definition repaid_3000.other_income equals $0
+  definition repaid_3000.exempt_interest equals $0
+  definition repaid_3000.adjustments equals $0
+
+  assertion mfj_tie.wksht_line_7 = $40,519
+  assertion mfj_tie.line_6b = $4,260
+  assertion not mfj_tie.benefit_code_d
+  assertion mfs_apart.wksht_line_7 = $35,000
+  assertion mfs_apart.wksht_line_16 = $5,350
+  assertion mfs_apart.line_6b = $5,350
+  assertion mfs_apart.benefit_code_d
+  assertion adjusted.wksht_line_7 = $30,000
+  assertion adjusted.line_6b = $2,500
+  assertion exempt.wksht_line_7 = $26,000
+  assertion exempt.line_6b = $500
+  assertion capped.wksht_line_16 = $30,850
+  assertion capped.line_6b = $8,500
+  assertion repaid_3500.repayment_over_3k
+  assertion not repaid_3000.repayment_over_3k
+  assertion repaid_3500.line_6b = $0
+```
