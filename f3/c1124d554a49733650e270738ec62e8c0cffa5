@@ -1,0 +1,26 @@
+catala/educator_adjustment.catala_en
+  s_3031b504518be3::t_e84e38497d4d50 1-131
+catala/student_loan_adjustment.catala_en
+  s_3031b504518be3::t_e5b5b593890849 1-309
+catala/tests/test_student_loan_adjustment.catala_en
+  s_3031b504518be3::t_b4068ea843e044 1-233
+catala/tests/test_educator_adjustment.catala_en
+  s_3031b504518be3::t_32c6fa5d13ce00 26,38,108-109
+  s_3031b504518be3::t_ed24bf2c6eb34a 1-25,27-37,39-107,110-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f3c1124d554a49733650e270738ec62e8c0cffa5",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
