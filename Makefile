@@ -82,3 +82,12 @@ tls-check: ## validate deploy/Caddyfile syntax
 .PHONY: audit
 audit:     ## fail on sorry, admit, native_decide, new axioms, vacuous theorems (SKIP_FORENSICS=1 skips step 3)
 	./scripts/audit.sh
+
+# --- Web frontend (see web/README.md) ---
+.PHONY: web-build web-test web-dev
+web-build: ## typecheck, lint and production-build the frontend
+	cd web && npm ci --no-audit --no-fund && npm run lint && npm run build
+web-test:  ## frontend unit tests (vitest + testing-library)
+	cd web && npm ci --no-audit --no-fund && npm test
+web-dev:   ## frontend dev server on the api/fixtures mock (VITE_API_MOCK=1)
+	cd web && npm ci --no-audit --no-fund && VITE_API_MOCK=1 npm run dev
