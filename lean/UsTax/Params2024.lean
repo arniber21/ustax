@@ -49,4 +49,27 @@ def niitThresholdMarriedSeparate : Int := usd 125_000
 /-- IRC 1411(b): any other case, $200,000. -/
 def niitThresholdOther : Int := usd 200_000
 
+/-- IRC 1341(a)(3): repayments over $3,000 (1099-G and SSA-1099 knockouts). -/
+def claimOfRightThreshold : Int := usd 3_000
+/-- Rev. Proc. 2023-34 § 3.13, IRC 62(a)(2)(D): educator expense cap, $300. -/
+def educatorExpenseCapPerEducator : Int := usd 300
+/-- IRC 221(b)(1): student loan interest cap, $2,500. -/
+def studentLoanInterestCap : Int := usd 2_500
+/-- Rev. Proc. 2023-34 § 3.30: phase-out start, other than joint, $80,000. -/
+def studentLoanPhaseoutStartOther : Int := usd 80_000
+/-- Rev. Proc. 2023-34 § 3.30: phase-out start, joint, $165,000. -/
+def studentLoanPhaseoutStartJoint : Int := usd 165_000
+/-- Rev. Proc. 2023-34 § 3.30: phase-out end, other than joint, $95,000. -/
+def studentLoanPhaseoutEndOther : Int := usd 95_000
+/-- Rev. Proc. 2023-34 § 3.30: phase-out end, joint, $195,000. -/
+def studentLoanPhaseoutEndJoint : Int := usd 195_000
+/-- IRC 86(c)(1): base amount, other than joint, $25,000. -/
+def ssBaseAmountOther : Int := usd 25_000
+/-- IRC 86(c)(1)(B): base amount, joint, $32,000. -/
+def ssBaseAmountJoint : Int := usd 32_000
+/-- IRC 86(c)(2) less (c)(1): gap to the adjusted base amount, other, $9,000. -/
+def ssAdjustedBaseGapOther : Int := usd 9_000
+/-- IRC 86(c)(2) less (c)(1): gap to the adjusted base amount, joint, $12,000. -/
+def ssAdjustedBaseGapJoint : Int := usd 12_000
+
 end UsTax.Params

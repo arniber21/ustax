@@ -5,6 +5,13 @@ import UsTax.StandardDeduction
 import UsTax.FormW2s
 import UsTax.Interest
 import UsTax.Form1040
+import UsTax.Unemployment
+import UsTax.Form1099Misc
+import UsTax.Form1099Rs
+import UsTax.SocialSecurity
+import UsTax.EducatorAdjustment
+import UsTax.StudentLoanAdjustment
+import UsTax.EstimatedPayments
 
 /-!
 # Command-line and JSON boundary of the Lean calculator
@@ -407,6 +414,236 @@ def runForm1040 (j : Json) : Except String Json := do
     ("unsupported", Json.bool o.unsupported)
   ]
 
+/-! ### Decoding and encoding the income and adjustment modules (issue #45) -/
+
+/-- A money output value. -/
+private def mj (c : Int) : Json := Json.str (showMoney c)
+
+/-- Catala `Unemployment.Form1099G`. -/
+def form1099GOfJson (j : Json) : Except String Unemployment.Form1099G :=
+  return {
+    filer := ← filerRoleOfJson (← field j "filer"),
+    amount := ← moneyReq j "amount",
+    writableAmountPaidBackForBenefitsInTaxYear :=
+      ← moneyReq j "writable_amount_paid_back_for_benefits_in_tax_year",
+    writableAmountPaidBackForBenefitsBeforeTaxYear :=
+      ← moneyReq j "writable_amount_paid_back_for_benefits_before_tax_year",
+    writableFederalTaxWithheld := ← moneyReq j "writable_federal_tax_withheld",
+    stateIsDifferentState := ← boolReq j "state_is_different_state" }
+
+/-- Catala scope `Unemployment.Unemployment`. -/
+def runUnemployment (j : Json) : Except String Json := do
+  let o := Unemployment.unemployment { form1099Gs := ← listReq j "form_1099gs" form1099GOfJson }
+  return Json.mkObj [
+    ("unemployment_compensation", mj o.unemploymentCompensation),
+    ("unemployment_comp_repaid_amt", mj o.unemploymentCompRepaidAmt),
+    ("received_unemployment_compensation", Json.bool o.receivedUnemploymentCompensation),
+    ("has_repaid_unemployment_compensation", Json.bool o.hasRepaidUnemploymentCompensation),
+    ("total_amount_paid_back_for_benefits_before_tax_year",
+      mj o.totalAmountPaidBackForBenefitsBeforeTaxYear),
+    ("form_1099g_federal_tax_withheld", mj o.form1099gFederalTaxWithheld),
+    ("ko_flow_knockout1099_g_repay_too_high", Json.bool o.koFlowKnockout1099GRepayTooHigh),
+    ("ko_flow_knockout_unemployment_compensation_unsupported_state",
+      Json.bool o.koFlowKnockoutUnemploymentCompensationUnsupportedState),
+    ("unsupported", Json.bool o.unsupported)]
+
+/-- Catala `Form1099_misc.Form1099Misc`. -/
+def form1099MiscOfJson (j : Json) : Except String Form1099Misc.Form1099Misc :=
+  return {
+    filer := ← filerRoleOfJson (← field j "filer"),
+    isAlaskaPfd := ← boolReq j "is_alaska_pfd",
+    writableOtherIncome := ← moneyReq j "writable_other_income",
+    writableFederalWithholding := ← moneyReq j "writable_federal_withholding" }
+
+/-- Catala scope `Form1099_misc.Form1099Miscs`. -/
+def runForm1099Miscs (j : Json) : Except String Json := do
+  let o := Form1099Misc.form1099Miscs
+    { form1099Miscs := ← listReq j "form_1099miscs" form1099MiscOfJson }
+  return Json.mkObj [
+    ("alaska_pfd_income", mj o.alaskaPfdIncome),
+    ("has_alaska_pfd_income", Json.bool o.hasAlaskaPfdIncome),
+    ("has_1099_misc", Json.bool o.has1099Misc),
+    ("form_1099_misc_federal_income_tax_withheld", mj o.form1099MiscFederalIncomeTaxWithheld),
+    ("ko_non_pfd_1099_misc", Json.bool o.koNonPfd1099Misc),
+    ("unsupported", Json.bool o.unsupported)]
+
+/-- A `Form1099_rs.CodeChar` from its Catala case name. -/
+def codeCharOfJson (j : Json) : Except String Form1099Rs.CodeChar := do
+  let s ← j.getStr?
+  match Form1099Rs.CodeChar.ofString? s with
+  | some c => .ok c
+  | none => .error s!"bad code char {s.quote}"
+
+/-- Catala `Form1099_rs.Form1099R`. -/
+def form1099ROfJson (j : Json) : Except String Form1099Rs.Form1099R :=
+  return {
+    filer := ← filerRoleOfJson (← field j "filer"),
+    distributionCode := ← listReq j "distribution_code" codeCharOfJson,
+    writableGrossDistribution := ← moneyReq j "writable_gross_distribution",
+    writableTaxableAmount := ← moneyReq j "writable_taxable_amount",
+    taxableAmountBlank := ← boolReq j "taxable_amount_blank",
+    taxableAmountNotDetermined := ← boolReq j "taxable_amount_not_determined",
+    totalDistribution := ← boolReq j "total_distribution",
+    writableCapitalGain := ← moneyReq j "writable_capital_gain",
+    writableFederalWithholding := ← moneyReq j "writable_federal_withholding",
+    writableNetAppreciation := ← moneyReq j "writable_net_appreciation",
+    iraSepSimple := ← boolReq j "ira_sep_simple",
+    writableOtherDollar := ← moneyReq j "writable_other_dollar",
+    otherPercentageNonzero := ← boolReq j "other_percentage_nonzero",
+    percentageTotalDistributionNonzero := ← boolReq j "percentage_total_distribution_nonzero",
+    writableAmountAllocableToIrr := ← moneyReq j "writable_amount_allocable_to_irr",
+    factaFilingRequirement := ← boolReq j "facta_filing_requirement",
+    writableStateTaxWithheld := ← moneyReq j "writable_state_tax_withheld",
+    payerStateIsDifferent := ← boolReq j "payer_state_is_different",
+    hasDeathBenefitPaymentDate := ← boolReq j "has_death_benefit_payment_date",
+    writableIsIndirectRollover := ← boolReq j "writable_is_indirect_rollover",
+    writableIsDistributionFromMilitaryRetirementPlan :=
+      ← boolReq j "writable_is_distribution_from_military_retirement_plan",
+    writableQualifiedDisasterDistribution := ← boolReq j "writable_qualified_disaster_distribution",
+    writeablePublicSafetyOfficer := ← boolReq j "writeable_public_safety_officer",
+    writeablePublicSafetyOfficerPremiums := ← boolReq j "writeable_public_safety_officer_premiums",
+    recipientDateOfBirth := ← dateOfJson (← field j "recipient_date_of_birth") }
+
+/-- Catala scope `Form1099_rs.Form1099Rs`. -/
+def runForm1099Rs (j : Json) : Except String Json := do
+  let o := Form1099Rs.form1099Rs { forms := ← listReq j "forms" form1099ROfJson }
+  return Json.mkObj [
+    ("tax_free_pension_rollovers", mj o.taxFreePensionRollovers),
+    ("partly_taxable_pensions", mj o.partlyTaxablePensions),
+    ("fully_taxable_pensions", mj o.fullyTaxablePensions),
+    ("taxable_amounts_of_partially_taxable_pensions", mj o.taxableAmountsOfPartiallyTaxablePensions),
+    ("line_5a", mj o.line5a),
+    ("line_5b", mj o.line5b),
+    ("line_5b_is_blank", Json.bool o.line5bIsBlank),
+    ("has_direct_rollover", Json.bool o.hasDirectRollover),
+    ("non_taxable_pensions_and_annuities", mj o.nonTaxablePensionsAndAnnuities),
+    ("form_1099r_federal_income_tax_withheld", mj o.form1099rFederalIncomeTaxWithheld),
+    ("primary_filer_savers_gross_distributions", mj o.primaryFilerSaversGrossDistributions),
+    ("secondary_filer_savers_gross_distributions", mj o.secondaryFilerSaversGrossDistributions),
+    ("ko_knockout_for_form1099_r_distribution_code", Json.bool o.koKnockoutForForm1099RDistributionCode),
+    ("ko_knockout_ira_sep_simple", Json.bool o.koKnockoutIraSepSimple),
+    ("ko_knockout_taxable_pension_rollover", Json.bool o.koKnockoutTaxablePensionRollover),
+    ("ko_knockout_indirect_rollover", Json.bool o.koKnockoutIndirectRollover),
+    ("ko_knockout_taxable_amount_not_determined", Json.bool o.koKnockoutTaxableAmountNotDetermined),
+    ("ko_flow_knockout_for_rollover", Json.bool o.koFlowKnockoutForRollover),
+    ("ko_flow_knockout_for_pre_tax_to_post_tax_rollover", Json.bool o.koFlowKnockoutForPreTaxToPostTaxRollover),
+    ("ko_flow_knockout_retirement_taxable_amount_not_determined",
+      Json.bool o.koFlowKnockoutRetirementTaxableAmountNotDetermined),
+    ("ko_flow_knockout_retirement_taxable_amount_blank", Json.bool o.koFlowKnockoutRetirementTaxableAmountBlank),
+    ("ko_flow_knockout_retirement_total_distribution", Json.bool o.koFlowKnockoutRetirementTotalDistribution),
+    ("ko_knockout_for_form1099_r_box8_value", Json.bool o.koKnockoutForForm1099RBox8Value),
+    ("ko_knockout_for_form1099_r_box8_percentage", Json.bool o.koKnockoutForForm1099RBox8Percentage),
+    ("ko_knockout_for_form1099_r_box9a_percentage", Json.bool o.koKnockoutForForm1099RBox9aPercentage),
+    ("ko_flow_knockout_retirement_capital_gain", Json.bool o.koFlowKnockoutRetirementCapitalGain),
+    ("ko_flow_knockout_retirement_net_unrealized_appreciation",
+      Json.bool o.koFlowKnockoutRetirementNetUnrealizedAppreciation),
+    ("ko_flow_knockout_retirement_amount_allocable_to_irr",
+      Json.bool o.koFlowKnockoutRetirementAmountAllocableToIrr),
+    ("ko_flow_knockout_retirement_facta_filing_requirement",
+      Json.bool o.koFlowKnockoutRetirementFactaFilingRequirement),
+    ("ko_flow_knockout_for_death_benefit_payment_date", Json.bool o.koFlowKnockoutForDeathBenefitPaymentDate),
+    ("ko_flow_knockout_retirement_qualified_disaster_distribution",
+      Json.bool o.koFlowKnockoutRetirementQualifiedDisasterDistribution),
+    ("ko_flow_knockout_retirement_public_safety_officer",
+      Json.bool o.koFlowKnockoutRetirementPublicSafetyOfficer),
+    ("ko_flow_knockout_box15", Json.bool o.koFlowKnockoutBox15),
+    ("unsupported", Json.bool o.unsupported)]
+
+/-- Catala scope `Social_security.SocialSecurity`. -/
+def runSocialSecurity (j : Json) : Except String Json := do
+  let o := SocialSecurity.socialSecurity
+    { reportNetBenefits := ← listReq j "report_net_benefits" moneyOfJson,
+      filingStatus := ← filingStatusOfJson (← field j "filing_status"),
+      livedApartAllYear := ← boolReq j "lived_apart_all_year",
+      line1z := ← moneyReq j "line_1z",
+      line2b := ← moneyReq j "line_2b",
+      line2a := ← moneyReq j "line_2a",
+      line3b := ← moneyReq j "line_3b",
+      line4b := ← moneyReq j "line_4b",
+      line5b := ← moneyReq j "line_5b",
+      line7CapitalGains := ← moneyReq j "line_7_capital_gains",
+      line8OtherIncome := ← moneyReq j "line_8_other_income",
+      adjustmentsExcludingStudentLoanInterest :=
+        ← moneyReq j "adjustments_excluding_student_loan_interest" }
+  return Json.mkObj [
+    ("line_6a", mj o.line6a),
+    ("wksht_line_3", mj o.wkshtLine3),
+    ("wksht_line_7", mj o.wkshtLine7),
+    ("wksht_line_8", mj o.wkshtLine8),
+    ("wksht_line_9", mj o.wkshtLine9),
+    ("wksht_line_10", mj o.wkshtLine10),
+    ("wksht_line_11", mj o.wkshtLine11),
+    ("wksht_line_16", mj o.wkshtLine16),
+    ("line_6b", mj o.line6b),
+    ("non_taxable_benefits", mj o.nonTaxableBenefits),
+    ("has_benefits", Json.bool o.hasBenefits),
+    ("benefit_code_d", Json.bool o.benefitCodeD),
+    ("repayment_over_3k", Json.bool o.repaymentOver3k)]
+
+/-- Catala scope `Educator_adjustment.EducatorAdjustment`. -/
+def runEducatorAdjustment (j : Json) : Except String Json := do
+  let s ← (← field j "was_k12_educators").getStr?
+  let opt ← match EducatorAdjustment.K12EducatorOptions.ofString? s with
+    | some o => pure o
+    | none => throw s!"bad K12 educator option {s.quote}"
+  let o := EducatorAdjustment.educatorAdjustment
+    { wasK12Educators := opt,
+      primaryEducatorExpensesWritable := ← moneyReq j "primary_educator_expenses_writable",
+      secondaryEducatorExpensesWritable := ← moneyReq j "secondary_educator_expenses_writable",
+      isMfjDependent := ← boolReq j "is_mfj_dependent" }
+  return Json.mkObj [
+    ("tp_was_k12_educator", Json.bool o.tpWasK12Educator),
+    ("spouse_was_k12_educator", Json.bool o.spouseWasK12Educator),
+    ("primary_educator_expenses", mj o.primaryEducatorExpenses),
+    ("secondary_educator_expenses", mj o.secondaryEducatorExpenses),
+    ("educator_expenses_adjustment", mj o.educatorExpensesAdjustment),
+    ("is_receiving_educator_expenses_adjustment", Json.bool o.isReceivingEducatorExpensesAdjustment)]
+
+/-- Catala scope `Student_loan_adjustment.StudentLoanAdjustment`. -/
+def runStudentLoanAdjustment (j : Json) : Except String Json := do
+  let o := StudentLoanAdjustment.studentLoanAdjustment
+    { filingStatus := ← filingStatusOfJson (← field j "filing_status"),
+      hadStudentLoanInterestPayments := ← boolReq j "had_student_loan_interest_payments",
+      studentLoansQualify := ← boolReq j "student_loans_qualify",
+      studentLoanInterestAmount := ← moneyReq j "student_loan_interest_amount",
+      isMfjDependent := ← boolReq j "is_mfj_dependent",
+      eitherFilerIsClaimedAsDependent := ← boolReq j "either_filer_is_claimed_as_dependent",
+      totalIncome := ← moneyReq j "total_income",
+      adjustmentsToIncomeExcludingStudentLoanInterest :=
+        ← moneyReq j "adjustments_to_income_excluding_student_loan_interest" }
+  return Json.mkObj [
+    ("magi_for_student_loan_interest_deduction", mj o.magiForStudentLoanInterestDeduction),
+    ("income_too_high_not_mfj", Json.bool o.incomeTooHighNotMfj),
+    ("income_too_high_mfj", Json.bool o.incomeTooHighMfj),
+    ("cannot_deduct_because_income_or_filing_status", Json.bool o.cannotDeductBecauseIncomeOrFilingStatus),
+    ("cannot_deduct_because_dependents", Json.bool o.cannotDeductBecauseDependents),
+    ("cannot_deduct_because_loans_dont_qualify", Json.bool o.cannotDeductBecauseLoansDontQualify),
+    ("cannot_deduct_student_loan_interest", Json.bool o.cannotDeductStudentLoanInterest),
+    ("student_loan_amount_phase_out_amount", mj o.studentLoanAmountPhaseOutAmount),
+    ("student_loan_interest_adjustment_amount", mj o.studentLoanInterestAdjustmentAmount),
+    ("is_receiving_student_loan_interest_adjustment", Json.bool o.isReceivingStudentLoanInterestAdjustment)]
+
+/-- Catala scope `Estimated_payments.EstimatedPayments`. -/
+def runEstimatedPayments (j : Json) : Except String Json := do
+  let s ← (← field j "paid_estimated_taxes_with_former_spouse").getStr?
+  let former ← match EstimatedPayments.PaidWithFormerSpouse.ofString? s with
+    | some o => pure o
+    | none => throw s!"bad former spouse option {s.quote}"
+  let o := EstimatedPayments.estimatedPayments
+    { paidEstimatedTaxesOrFromLastYear := ← boolReq j "paid_estimated_taxes_or_from_last_year",
+      estimatedTaxPaymentWritable := ← moneyReq j "estimated_tax_payment_writable",
+      paidEstimatedTaxesOrFromLastYearUnderDifferentName :=
+        ← boolReq j "paid_estimated_taxes_or_from_last_year_under_different_name",
+      paidEstimatedTaxesWithFormerSpouse := former }
+  return Json.mkObj [
+    ("estimated_and_from_last_year", mj o.estimatedAndFromLastYear),
+    ("spouse_paid_estimated_taxes_with_former_spouse", Json.bool o.spousePaidEstimatedTaxesWithFormerSpouse),
+    ("tp_paid_estimated_taxes_with_former_spouse", Json.bool o.tpPaidEstimatedTaxesWithFormerSpouse),
+    ("some_tp_paid_estimated_taxes_with_former_spouse", Json.bool o.someTpPaidEstimatedTaxesWithFormerSpouse),
+    ("ko_knockout_paid_estimated_taxes_under_different_last_name",
+      Json.bool o.koKnockoutPaidEstimatedTaxesUnderDifferentLastName),
+    ("unsupported", Json.bool o.unsupported)]
+
 /-- The scopes implemented in Lean, by Catala scope name. Add one line per
 new module. -/
 def scopes : List (String × (Json → Except String Json)) :=
@@ -415,7 +652,14 @@ def scopes : List (String × (Json → Except String Json)) :=
    ("StandardDeduction", runStandardDeduction),
    ("FormW2s", runFormW2s),
    ("Interest", runInterest),
-   ("Form1040", runForm1040)]
+   ("Form1040", runForm1040),
+   ("Unemployment", runUnemployment),
+   ("Form1099Miscs", runForm1099Miscs),
+   ("Form1099Rs", runForm1099Rs),
+   ("SocialSecurity", runSocialSecurity),
+   ("EducatorAdjustment", runEducatorAdjustment),
+   ("StudentLoanAdjustment", runStudentLoanAdjustment),
+   ("EstimatedPayments", runEstimatedPayments)]
 
 /-- Run scope `name` on one JSON input. -/
 def runScope (name : String) (input : Json) : Except String Json :=
