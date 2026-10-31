@@ -201,7 +201,7 @@ Not proved: that the handler maps every `Reply` to the right status line (checke
 test), and that the exception text never reaches a client (by construction: `handle` discards it).
 `ServerMain` is outside `lean/UsTax`, so `make audit` neither scans nor lints it; the audit's forensics
 step runs with `--roots UsTax` because the extractor cannot import two modules that each define `main`.
-=======
+
 ## Income types and adjustments (issue #45)
 
 Hand-translations (strategy (c)) of seven Catala modules; each file has a Catala <-> Lean
@@ -226,7 +226,6 @@ name table, and every assertion of the matching `catala/tests/test_*.catala_en` 
   21, 6b and 26 nonnegative (hypotheses stated where needed), line 11 at most $600, and refund/balance
   due exclusive for `form1040Full`. Axioms: `propext`, `Classical.choice`, `Quot.sound`. The Rat
   facts use `decide +kernel` (kernel evaluation, no extra axiom).
->>>>>>> 99b02fc (Lean income types and adjustments: 1099-G/MISC/R, Social Security, educator, student loan, estimated payments, Form1040Full composition (#45))
 
 ## Pattern for Lean modules (follow this for every later scope)
 
