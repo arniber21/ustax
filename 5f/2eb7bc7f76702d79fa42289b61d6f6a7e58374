@@ -1,0 +1,21 @@
+catala/savers_credit.catala_en
+  s_3031b504518be3::t_52904647031acc 371,390
+difftest/mappings/savers_credit.mjs
+  s_3031b504518be3::t_c501419ca4bf9b 26,100,102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5f2eb7bc7f76702d79fa42289b61d6f6a7e58374",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
