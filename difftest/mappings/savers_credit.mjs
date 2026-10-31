@@ -23,7 +23,7 @@
 //     with canBeClaimed have $0 deferrals).
 //   1040 line 18 (/totalTentativeTax), CDCC (/cdccTotalCredit) and Schedule R (/totalEdc) are the oracle's values.
 //
-// knownDivergence: DF-BUG(29-a): DF leaves line 4 at $0 in the column of a spouse who is not an eligible individual (a
+// knownDivergence: DF-BUG(14): DF leaves line 4 at $0 in the column of a spouse who is not an eligible individual (a
 // student), and drops that spouse's distributions from the other column. The statute and the form say both spouses'
 // amounts go in both columns. In these two scenarios the credit is unchanged (the ineligible spouse's line 2 is $0,
 // so line 5 is $0 either way); only the printed line 4 differs. No oracle scenario has an ineligible spouse with
@@ -97,9 +97,9 @@ export default {
   file: 'catala/savers_credit.catala_en',
   appliesTo: () => true,
   knownDivergence: [
-    { scenario: '1099r-savers-mfj-primary', path: '/secondaryFilerGrossDistributions', bug: 'DF-BUG(29-a)',
+    { scenario: '1099r-savers-mfj-primary', path: '/secondaryFilerGrossDistributions', bug: 'DF-BUG(14)',
       note: 'line 4b of the student spouse: DF $0, statute and form include both spouses (4000)' },
-    { scenario: '1099r-savers-mfj-spouse-eligible', path: '/primaryFilerGrossDistributions', bug: 'DF-BUG(29-a)',
+    { scenario: '1099r-savers-mfj-spouse-eligible', path: '/primaryFilerGrossDistributions', bug: 'DF-BUG(14)',
       note: 'line 4a of the student primary filer: DF $0, statute and form include both spouses (4000)' },
   ],
   inputs: {

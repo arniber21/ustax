@@ -368,7 +368,7 @@ military plan: `Form1099_rs`). The earlier years and 2025 distributions are
 self-reported questions that knock the filer out (`ko_savers_credit_knockouts`),
 so the 1099-R sums here are the whole of line 4 for every supported return.
 
-DF-BUG(29-a): DF's `/primaryFilerSaversEligibleGrossDistributions` and
+DF-BUG(14): DF's `/primaryFilerSaversEligibleGrossDistributions` and
 `/secondaryFilerSaversEligibleGrossDistributions` are `$0` unless that filer
 is eligible for the credit, and `/primaryFilerGrossDistributions` and
 `/secondaryFilerGrossDistributions` fall back to the filer's own (gated) sum
@@ -387,7 +387,7 @@ of the distribution) is a prior-year situation, which is a knockout.
 ```catala
 scope SaversCredit:
   # Form 8880 line 4a. DF: /primaryFilerGrossDistributions
-  # DF-BUG(29-a): DF drops an ineligible spouse's distributions; IRC
+  # DF-BUG(14): DF drops an ineligible spouse's distributions; IRC
   # 25B(d)(2)(D) and the form instructions do not.
   definition primary_filer_gross_distributions equals
     if is_filing_status_mfj
