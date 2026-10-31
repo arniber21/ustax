@@ -171,7 +171,10 @@ export function compareOutputs(mapping, facts, catalaOut) {
   for (const o of mapping.outputs) {
     const exp = facts.get(o.oracle);
     const base = { path: o.oracle, catala: o.catala };
-    if (!exp || exp.completeness !== 'Complete') {
+    // `placeholderFalse` (knockout flags): a Placeholder `false` means "not knocked out" (oracle/README.md), so
+    // it is checked as an expected `false` instead of being left unchecked.
+    const asFalse = o.placeholderFalse && exp && exp.completeness === 'Placeholder' && exp.value === 'false';
+    if (!exp || (exp.completeness !== 'Complete' && !asFalse)) {
       results.push({ ...base, status: 'unchecked', expected: exp ? `<${exp.completeness}>` : '<no row>', actual: catalaOut.get(o.catala) ?? '<none>' });
       continue;
     }
