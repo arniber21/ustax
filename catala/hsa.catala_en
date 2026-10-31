@@ -1114,7 +1114,7 @@ between you and your spouse, unless you both agree on a different allocation
 (such as allocating nothing to one spouse). Enter your allocable share on
 line 6."
 
-DF-BUG(7) candidate: Direct File never asks whether the spouses agree on a
+DF-BUG(12) candidate: Direct File never asks whether the spouses agree on a
 division. `hsa.xml` /hsaPrimaryFilerAllocatedContributionLimit and
 /hsaSecondaryFilerAllocatedContributionLimit (lines 2689 to 2786) assume an
 agreement that gives the primary filer what the primary filer contributed
@@ -1130,7 +1130,7 @@ scope Hsa:
     hsa_married_filers_have_family_coverage and both_filers_have_hsa
     and (has_hdhp_coverage_all_year of role)
   # IRC 223(b)(5)(B)(ii), Form 8889 instructions line 6 (p 7): equal division.
-  # DF-BUG(7) candidate: see above.
+  # DF-BUG(12) candidate: see above.
   definition hsa_allocated_contribution_limit of role equals
     (hsa_contribution_limit_less_msa_contributions of role) * 50%
   # Form 8889 line 6. DF: hsa.xml /filers/*/hsaContributionLimitLessAddition
