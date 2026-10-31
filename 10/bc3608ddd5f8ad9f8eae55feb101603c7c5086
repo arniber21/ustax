@@ -1,0 +1,35 @@
+oracle/.gitignore
+  s_3031b504518be3::t_804a6ff4faf195 1
+oracle/facts.summary.json
+  s_3031b504518be3::t_804a6ff4faf195 1-17
+oracle/generate.mjs
+  s_3031b504518be3::t_01f43c33feaf65 1-177,185-204,212-218
+  s_3031b504518be3::t_4b66ba437e5b7d 178-184,205-211
+Makefile
+  s_3031b504518be3::t_804a6ff4faf195 14-19
+oracle/README.md
+  s_3031b504518be3::t_db251a078c8caa 26-28,56
+  s_3031b504518be3::t_e09df12e1f82e0 1-25,29-55,57-117
+oracle/package.json
+  s_3031b504518be3::t_b7deeaf13a3817 1-9
+oracle/facts.csv
+  s_3031b504518be3::t_18b7e08fd8e63d 1-77210
+oracle/package-lock.json
+  s_3031b504518be3::t_c91ca04a7b5df2 1-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "10bc3608ddd5f8ad9f8eae55feb101603c7c5086",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
