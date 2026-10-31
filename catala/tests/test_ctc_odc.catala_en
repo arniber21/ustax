@@ -1,0 +1,710 @@
+# Tests for the Ctc_odc module
+
+Run with `clerk test`. Each named scope is one concrete case, worked by hand
+from IRC 24, Schedule 8812 (`f1040s8--2024.pdf`) and its instructions
+(`i1040s8--2024.pdf`) as quoted in `catala/ctc_odc.catala_en`. Every scope
+sets satisfiable inputs and asserts the expected result; most also assert
+that a known-bad output (the value a plausible mistake would give) is not
+produced. The oracle comparison is `make difftest SCOPE=ctc_odc`,
+`make difftest SCOPE=ctc_odc_household` and `make difftest-persons`.
+
+> Using Types
+> Using Qualifying_child as Q
+> Using Qualifying_relative as R
+> Using Eitc as E
+> Using Ctc_odc as C
+
+## Helper: one household member
+
+The default is the filer's biological son, born 2014-05-10 (10 at the end of
+2024), a U.S. citizen with an SSN whose card has no restriction, who lived
+with the filer all year, did not provide over half of his own support, is
+unmarried, nobody else's qualifying child, and claimed. The filer was born
+1985-06-15, is a U.S. citizen and cannot be claimed by anyone. A test
+overrides only what it tests.
+
+```catala
+declaration scope MkChild:
+  context relationship content Q.Relationship
+  context date_of_birth content date
+  context residency_duration content Q.ResidencyDuration
+  context tin_type content R.TinType
+  context citizen content boolean
+  context us_resident content boolean
+  context canada_mexico_resident content boolean
+  context ssn_employment_validity content C.SsnEmploymentValidity
+  context tp_claims content boolean
+  context gross_income content money
+  context qr_support content boolean
+  output household_member content C.HouseholdMember
+  output result content C.CtcOdcPersonTest
+
+scope MkChild:
+  definition relationship equals Q.Relationship.BiologicalChild
+  definition date_of_birth equals |2014-05-10|
+  definition residency_duration equals Q.ResidencyDuration.AllYear
+  definition tin_type equals R.TinType.Ssn
+  definition citizen equals true
+  definition us_resident equals false
+  definition canada_mexico_resident equals false
+  definition ssn_employment_validity equals C.SsnEmploymentValidity.Neither
+  definition tp_claims equals true
+  definition gross_income equals $0
+  definition qr_support equals true
+  definition household_member equals C.HouseholdMember {
+    -- member: R.Member {
+      -- person: Q.Person {
+           -- relationship: relationship
+           -- date_of_birth: date_of_birth
+           -- full_time_student: false
+           -- permanent_total_disability: false
+           -- residency_duration: residency_duration
+           -- own_support: false
+           -- married: false
+           -- writable_joint_return: false
+           -- writable_required_to_file: false
+           -- writable_filing_only_for_refund: false
+           -- writable_could_be_qualifying_child_of_another: false
+           -- writable_potential_claimer_must_file: false
+           -- writable_potential_claimer_did_file: false
+           -- writable_potential_claimer_filed_only_for_refund: false }
+      -- answers: R.DependentAnswers {
+           -- gross_income: gross_income
+           -- writable_qr_support_test: qr_support
+           -- tin_type: tin_type
+           -- is_us_citizen_full_year: citizen
+           -- writable_us_resident: us_resident
+           -- writable_us_national: false
+           -- writable_canada_mexico_resident: canada_mexico_resident
+           -- tp_claims: tp_claims
+           -- tp_can_claim_split_benefits_hoh_eitc_cdcc: false
+           -- disqualified_due_to_parental_custody: false } }
+    -- ssn_employment_validity: ssn_employment_validity }
+  definition result equals
+    output of C.CtcOdcPersonTest with {
+      -- household_member: household_member
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+```
+
+## Per-person tests (IRC 24(c), (h)(4), (h)(7))
+
+### A 10-year-old son with a valid SSN: CTC, not ODC
+
+```catala
+#[test]
+declaration scope TestPersonCtcChild:
+  c scope MkChild
+
+scope TestPersonCtcChild:
+  assertion c.result.dependent.qualifying_child
+  assertion c.result.ssn_valid_for_employment
+  assertion c.result.eligible_ctc
+  # Known-bad: the same person is never counted for both credits
+  assertion not c.result.eligible_odc
+```
+
+### Born 2007-12-31: 17 at the end of 2024, ODC, not CTC
+
+IRC 24(c)(1) "who has not attained age 17"; instructions p 2, Example 1
+(turned 17 on December 30, 2024: no CTC). The son is still a qualifying child
+(under 19), so he is a dependent for the ODC.
+
+```catala
+#[test]
+declaration scope TestPersonAge17:
+  c scope MkChild
+
+scope TestPersonAge17:
+  definition c.date_of_birth equals |2007-12-31|
+  assertion c.result.dependent.qc.age = 17
+  assertion c.result.dependent.qualifying_child
+  assertion not c.result.eligible_ctc
+  assertion c.result.eligible_odc
+```
+
+### Born 2008-01-01: 16 at the end of 2024, CTC
+
+```catala
+#[test]
+declaration scope TestPersonAge16:
+  c scope MkChild
+
+scope TestPersonAge16:
+  definition c.date_of_birth equals |2008-01-01|
+  assertion c.result.dependent.qc.age = 16
+  assertion c.result.eligible_ctc
+  assertion not c.result.eligible_odc
+```
+
+### A qualifying child with an ITIN: ODC (IRC 24(h)(7), (h)(4)(C))
+
+```catala
+#[test]
+declaration scope TestPersonItin:
+  c scope MkChild
+
+scope TestPersonItin:
+  definition c.tin_type equals R.TinType.Itin
+  assertion c.result.dependent.is_claimed_dependent
+  assertion not c.result.eligible_ctc
+  assertion c.result.eligible_odc
+```
+
+### SSN card "Not valid for employment": ODC
+
+```catala
+#[test]
+declaration scope TestPersonSsnNotValid:
+  c scope MkChild
+
+scope TestPersonSsnNotValid:
+  definition c.ssn_employment_validity equals C.SsnEmploymentValidity.NotValid
+  assertion not c.result.ssn_valid_for_employment
+  assertion not c.result.eligible_ctc
+  assertion c.result.eligible_odc
+```
+
+### SSN card "Valid for work only with DHS authorization"
+
+The required SSN only while the authorization is in effect (instructions
+p 1, "valid for employment").
+
+```catala
+#[test]
+declaration scope TestPersonDhsAuthorization:
+  in_effect scope MkChild
+  expired scope MkChild
+
+scope TestPersonDhsAuthorization:
+  definition in_effect.ssn_employment_validity equals
+    C.SsnEmploymentValidity.ValidOnlyWithDhsAuthorizationInEffect
+  definition expired.ssn_employment_validity equals
+    C.SsnEmploymentValidity.ValidOnlyWithDhsAuthorizationExpired
+  assertion in_effect.result.eligible_ctc
+  assertion not expired.result.eligible_ctc
+  assertion expired.result.eligible_odc
+```
+
+### A nephew living in Mexico: a dependent, but neither CTC nor ODC
+
+Instructions p 2, Example 2: "Your sibling's 10-year-old child lives in
+Mexico and qualifies as your dependent. The child is not a U.S. citizen, U.S.
+national, or U.S. resident alien. You can't use the child to claim the ODC."
+IRC 24(c)(2), 24(h)(4)(B). The nephew lived with the filer for less than six
+months, so he is the filer's qualifying relative (152(d)(2)(E)), not
+qualifying child.
+
+```catala
+#[test]
+declaration scope TestPersonMexicanNephew:
+  c scope MkChild
+
+scope TestPersonMexicanNephew:
+  definition c.relationship equals Q.Relationship.ChildOfSibling
+  definition c.residency_duration equals Q.ResidencyDuration.LessThanSixMonths
+  definition c.citizen equals false
+  definition c.canada_mexico_resident equals true
+  definition c.tin_type equals R.TinType.Itin
+  assertion c.result.dependent.qualifying_relative
+  assertion c.result.dependent.citizen_or_resident_test
+  assertion c.result.dependent.is_claimed_dependent
+  assertion not c.result.dependent.citizen_or_us_resident_test
+  assertion not c.result.eligible_ctc
+  assertion not c.result.eligible_odc
+```
+
+### A child the filer does not claim: neither credit (IRC 24(a), "allowed a deduction under section 151")
+
+```catala
+#[test]
+declaration scope TestPersonNotClaimed:
+  c scope MkChild
+
+scope TestPersonNotClaimed:
+  definition c.tp_claims equals false
+  assertion c.result.dependent.qualifying_child
+  assertion not c.result.eligible_ctc
+  assertion not c.result.eligible_odc
+```
+
+### A household: counts for lines 4 and 6
+
+Two CTC children, one 18-year-old student-age son (ODC) and one child with an
+ITIN (ODC).
+
+```catala
+#[test]
+declaration scope TestHouseholdCounts:
+  a scope MkChild
+  b scope MkChild
+  older scope MkChild
+  itin scope MkChild
+  internal h content C.CtcOdcDependents
+
+scope TestHouseholdCounts:
+  definition b.date_of_birth equals |2020-02-29|
+  definition older.date_of_birth equals |2006-03-01|
+  definition itin.tin_type equals R.TinType.Itin
+  definition h equals
+    output of C.CtcOdcDependents with {
+      -- household_members:
+           [a.household_member; b.household_member; older.household_member;
+            itin.household_member]
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: false
+      -- either_filer_us_citizen_or_national: true }
+  assertion h.ctc_eligible_dependents = 2
+  assertion h.odc_eligible_dependents = 2
+```
+
+### A filer who can be claimed as a dependent: no dependents, no credit
+
+IRC 152(b)(1): such a filer is treated as having no dependents.
+
+```catala
+#[test]
+declaration scope TestHouseholdFilerIsDependent:
+  a scope MkChild
+  internal h content C.CtcOdcDependents
+
+scope TestHouseholdFilerIsDependent:
+  definition h equals
+    output of C.CtcOdcDependents with {
+      -- household_members: [a.household_member]
+      -- minimum_filer_date_of_birth: |1985-06-15|
+      -- treat_filers_as_dependents: true
+      -- either_filer_us_citizen_or_national: true }
+  assertion h.ctc_eligible_dependents = 0
+  assertion h.odc_eligible_dependents = 0
+```
+
+## Helper: Schedule 8812 with default figures
+
+Single, two CTC children, no ODC dependents, AGI and line 1z $100,000, line 18
+tax $13,841 (the 2024 rate-schedule tax on $85,400 of taxable income,
+single; the exact figure does not matter here), no other
+credits, W-2 boxes 4 and 6 $7,650, no EIC, no combat pay, no improper
+claims.
+
+```catala
+declaration scope Mk8812:
+  context ctc content integer
+  context odc content integer
+  context filing_status content Types.FilingStatus
+  context agi content money
+  context tax content money
+  context cdcc content money
+  context savers content money
+  context edc content money
+  context earned content money
+  context combat_pay content money
+  context ss_taxes content money
+  context eic content money
+  context received_improper_claims content boolean
+  context notice content E.ImproperClaimsNotice
+  context notice_expired content boolean
+  output s content C.Schedule8812
+
+scope Mk8812:
+  definition ctc equals 2
+  definition odc equals 0
+  definition filing_status equals Types.FilingStatus.Single
+  definition agi equals $100,000
+  definition tax equals $13,841
+  definition cdcc equals $0
+  definition savers equals $0
+  definition edc equals $0
+  definition earned equals $100,000
+  definition combat_pay equals $0
+  definition ss_taxes equals $7,650
+  definition eic equals $0
+  definition received_improper_claims equals false
+  definition notice equals E.ImproperClaimsNotice.NotAnswered
+  definition notice_expired equals false
+  definition s equals
+    output of C.Schedule8812 with {
+      -- ctc_eligible_dependents: ctc
+      -- odc_eligible_dependents: odc
+      -- filing_status: filing_status
+      -- agi: agi
+      -- total_tentative_tax: tax
+      -- cdcc_total_credit: cdcc
+      -- qualified_saver_credit_amount: savers
+      -- total_edc: edc
+      -- employer_income_subtotal: earned
+      -- all_combat_pay: combat_pay
+      -- social_security_taxes_withheld: ss_taxes
+      -- earned_income_credit: eic
+      -- received_improper_claims: received_improper_claims
+      -- received_improper_claims_notice: notice
+      -- improper_claims_notice_expired: notice_expired
+      -- has_filed_ctc_odc_since_notice_expired: false }
+```
+
+## Part I
+
+### Two CTC children, single, AGI $100,000: $4,000
+
+Lines 4-5: 2 x $2,000 = $4,000. Line 10: $0. Line 13: $13,841. Line 14:
+$4,000. Line 16a: $0, so no ACTC.
+
+```catala
+#[test]
+declaration scope Test8812TwoKidsSingle100k:
+  m scope Mk8812
+
+scope Test8812TwoKidsSingle100k:
+  assertion m.s.total_potential_ctc = $4,000
+  assertion m.s.total_potential_dependent_credits = $4,000
+  assertion m.s.dependent_credit_phaseout = $0
+  assertion m.s.sched8812_credit_limit = $13,841
+  assertion m.s.total_ctc_and_odc = $4,000
+  assertion m.s.total_ctc = $4,000
+  assertion m.s.total_odc = $0
+  assertion m.s.remaining_ctc_and_odc = $0
+  assertion m.s.additional_ctc = $0
+  # Known-bad: the refundable cap is not paid on top of the full credit
+  assertion m.s.additional_ctc != $3,400
+```
+
+### The same, limited by tax: line 14 is the tax, the rest is ACTC
+
+Line 18 tax $3,000. Line 14 = $3,000. Line 16a = $1,000, line 16b = $3,400,
+line 17 = $1,000. Line 19 = $97,500, line 20 = $14,625. Line 27 = $1,000.
+
+```catala
+#[test]
+declaration scope Test8812LimitedByTax:
+  m scope Mk8812
+
+scope Test8812LimitedByTax:
+  definition m.tax equals $3,000
+  assertion m.s.sched8812_credit_limit = $3,000
+  assertion m.s.total_ctc_and_odc = $3,000
+  assertion m.s.remaining_ctc_and_odc = $1,000
+  assertion m.s.total_potential_actc = $3,400
+  assertion m.s.remaining_potential_actc = $1,000
+  assertion m.s.regular_maximum_actc = $14,625
+  assertion m.s.additional_ctc = $1,000
+  assertion m.s.total_ctc_and_odc + m.s.additional_ctc = $4,000
+```
+
+### The credit limit subtracts the other nonrefundable credits
+
+Credit Limit Worksheet A: line 1 $5,000 less Schedule 3 lines 2 ($600), 4
+($400) and 6d ($1,000) is $3,000.
+
+```catala
+#[test]
+declaration scope Test8812CreditLimitOtherCredits:
+  m scope Mk8812
+
+scope Test8812CreditLimitOtherCredits:
+  definition m.tax equals $5,000
+  definition m.cdcc equals $600
+  definition m.savers equals $400
+  definition m.edc equals $1,000
+  assertion m.s.sched8812_credit_limit = $3,000
+  assertion m.s.total_ctc_and_odc = $3,000
+  # Known-bad: ignoring the other credits would give $4,000
+  assertion m.s.total_ctc_and_odc != $4,000
+```
+
+### Phase-out, single, AGI $200,001: the $1 excess counts as $1,000
+
+Line 10: $1 rounded up to $1,000; line 11: $50; line 12: $3,950.
+
+```catala
+#[test]
+declaration scope Test8812PhaseoutSingle200001:
+  m scope Mk8812
+
+scope Test8812PhaseoutSingle200001:
+  definition m.agi equals $200,001
+  definition m.tax equals $40,000
+  assertion m.s.dependent_credit_phaseout_threshold = $200,000
+  assertion m.s.dependent_credit_magi_above_threshold = $1
+  assertion m.s.rounded_dependent_credit_magi_above_threshold = $1,000
+  assertion m.s.dependent_credit_phaseout = $50
+  assertion m.s.dependent_credit_less_phaseout = $3,950
+  assertion m.s.total_ctc_and_odc = $3,950
+  # Known-bad: 5% of the unrounded excess ($0.05) is not the reduction
+  assertion m.s.dependent_credit_phaseout != $0
+  assertion m.s.total_ctc_and_odc != $4,000
+```
+
+### Phase-out steps: $1,000 exactly stays $1,000, $1,001 is $2,000
+
+Line 10 example: "if the result is $425, enter $1,000; if the result is
+$1,025, enter $2,000".
+
+```catala
+#[test]
+declaration scope Test8812PhaseoutSteps:
+  at_200000 scope Mk8812
+  at_200425 scope Mk8812
+  at_201000 scope Mk8812
+  at_201025 scope Mk8812
+
+scope Test8812PhaseoutSteps:
+  definition at_200000.agi equals $200,000
+  definition at_200425.agi equals $200,425
+  definition at_201000.agi equals $201,000
+  definition at_201025.agi equals $201,025
+  assertion at_200000.s.rounded_dependent_credit_magi_above_threshold = $0
+  assertion at_200000.s.dependent_credit_phaseout = $0
+  assertion at_200425.s.rounded_dependent_credit_magi_above_threshold = $1,000
+  assertion at_201000.s.rounded_dependent_credit_magi_above_threshold = $1,000
+  assertion at_201000.s.dependent_credit_phaseout = $50
+  assertion at_201025.s.rounded_dependent_credit_magi_above_threshold = $2,000
+  assertion at_201025.s.dependent_credit_phaseout = $100
+```
+
+### MFJ threshold $400,000
+
+MFJ at $400,000: no reduction; at $400,001: $50. Single at $400,000: excess
+$200,000, reduction $10,000, more than the $4,000 credit: line 12 is $0, so
+no CTC and no ACTC even with no tax.
+
+```catala
+#[test]
+declaration scope Test8812PhaseoutMfj:
+  mfj_400000 scope Mk8812
+  mfj_400001 scope Mk8812
+  single_400000 scope Mk8812
+
+scope Test8812PhaseoutMfj:
+  definition mfj_400000.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition mfj_400000.agi equals $400,000
+  definition mfj_400001.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition mfj_400001.agi equals $400,001
+  definition single_400000.agi equals $400,000
+  definition single_400000.tax equals $0
+  assertion mfj_400000.s.dependent_credit_phaseout_threshold = $400,000
+  assertion mfj_400000.s.dependent_credit_phaseout = $0
+  assertion mfj_400000.s.total_ctc_and_odc = $4,000
+  assertion mfj_400001.s.dependent_credit_phaseout = $50
+  assertion mfj_400001.s.total_ctc_and_odc = $3,950
+  assertion single_400000.s.dependent_credit_phaseout = $10,000
+  assertion single_400000.s.dependent_credit_less_phaseout = $0
+  assertion not single_400000.s.dependent_credit_not_fully_phased_out
+  assertion single_400000.s.total_ctc_and_odc = $0
+  assertion single_400000.s.additional_ctc = $0
+```
+
+### Qualifying surviving spouse uses $200,000 (no joint return)
+
+```catala
+#[test]
+declaration scope Test8812PhaseoutQss:
+  m scope Mk8812
+
+scope Test8812PhaseoutQss:
+  definition m.filing_status equals Types.FilingStatus.QualifyingSurvivingSpouse
+  definition m.agi equals $250,000
+  assertion m.s.dependent_credit_phaseout_threshold = $200,000
+  assertion m.s.dependent_credit_phaseout = $2,500
+```
+
+### The phase-out reduces the ODC first
+
+One CTC child and one ODC dependent: line 8 = $2,500. AGI $210,000 single:
+line 11 = $500, line 12 = $2,000. The ODC part is $0 and the CTC part
+$2,000.
+
+```catala
+#[test]
+declaration scope Test8812OdcReducedFirst:
+  m scope Mk8812
+
+scope Test8812OdcReducedFirst:
+  definition m.ctc equals 1
+  definition m.odc equals 1
+  definition m.agi equals $210,000
+  definition m.tax equals $30,000
+  assertion m.s.total_potential_dependent_credits = $2,500
+  assertion m.s.dependent_credit_phaseout = $500
+  assertion m.s.total_ctc_and_odc = $2,000
+  assertion m.s.total_odc = $0
+  assertion m.s.total_ctc = $2,000
+  assertion m.s.is_receiving_ctc
+  assertion not m.s.is_receiving_odc
+```
+
+### ODC only: no ACTC
+
+The ACTC is for qualifying children only (IRC 24(h)(5)(A) "without regard to
+paragraph (4)"; instructions p 2: "you cannot take the ACTC if you are only
+claiming the ODC").
+
+```catala
+#[test]
+declaration scope Test8812OdcOnlyNoActc:
+  m scope Mk8812
+
+scope Test8812OdcOnlyNoActc:
+  definition m.ctc equals 0
+  definition m.odc equals 1
+  definition m.tax equals $200
+  assertion m.s.total_potential_odc = $500
+  assertion m.s.total_ctc_and_odc = $200
+  assertion m.s.total_odc = $200
+  assertion m.s.remaining_ctc_and_odc = $300
+  assertion m.s.total_potential_actc = $0
+  assertion m.s.additional_ctc = $0
+```
+
+## Part II: the additional child tax credit
+
+### Earned income $2,500: no ACTC; $10,000: $7,500 x 15% = $1,125
+
+Two CTC children, no tax: line 16a = $4,000, line 16b = $3,400, line 17 =
+$3,400. Line 19 is blank (not more than $2,500) or $7,500.
+
+```catala
+#[test]
+declaration scope Test8812ActcEarnedIncome:
+  e2500 scope Mk8812
+  e10000 scope Mk8812
+
+scope Test8812ActcEarnedIncome:
+  definition e2500.agi equals $2,500
+  definition e2500.earned equals $2,500
+  definition e2500.tax equals $0
+  definition e10000.agi equals $10,000
+  definition e10000.earned equals $10,000
+  definition e10000.tax equals $0
+  assertion e2500.s.remaining_potential_actc = $3,400
+  assertion e2500.s.earned_income_above_actc_refundability_threshold = $0
+  assertion not e2500.s.earned_income_exceeds_actc_refundability_threshold
+  assertion e2500.s.regular_maximum_actc = $0
+  assertion e2500.s.additional_ctc = $0
+  assertion e10000.s.earned_income_above_actc_refundability_threshold = $7,500
+  assertion e10000.s.regular_maximum_actc = $1,125
+  assertion e10000.s.additional_ctc = $1,125
+  # Known-bad: 15% of all earned income ($1,500) is not the ACTC
+  assertion e10000.s.additional_ctc != $1,500
+```
+
+### Combat pay counts as earned income (IRC 24(d)(1) last sentence, section 112)
+
+```catala
+#[test]
+declaration scope Test8812CombatPay:
+  m scope Mk8812
+
+scope Test8812CombatPay:
+  definition m.agi equals $10,000
+  definition m.earned equals $10,000
+  definition m.combat_pay equals $4,000
+  definition m.tax equals $0
+  assertion m.s.earned_income_with_all_combat_pay = $14,000
+  assertion m.s.regular_maximum_actc = $1,725
+  assertion m.s.additional_ctc = $1,725
+```
+
+### Three or more children: social security taxes less the EIC
+
+Earned income $3,000 (line 20 = $75). Social security and Medicare taxes
+withheld $230, no EIC (for example a filer whose investment income passes
+$11,600). With three CTC children line 25 = $230 and line 26 = $230; with two
+children Part II-B does not apply and line 27 is $75. With EIC $200 line 25
+is $30 and line 26 is line 20, $75.
+
+```catala
+#[test]
+declaration scope Test8812ThreeKidsAlternative:
+  three scope Mk8812
+  two scope Mk8812
+  three_with_eic scope Mk8812
+
+scope Test8812ThreeKidsAlternative:
+  definition three.ctc equals 3
+  definition three.agi equals $20,000
+  definition three.earned equals $3,000
+  definition three.ss_taxes equals $230
+  definition three.tax equals $0
+  definition two.agi equals $20,000
+  definition two.earned equals $3,000
+  definition two.ss_taxes equals $230
+  definition two.tax equals $0
+  definition three_with_eic.ctc equals 3
+  definition three_with_eic.agi equals $20,000
+  definition three_with_eic.earned equals $3,000
+  definition three_with_eic.ss_taxes equals $230
+  definition three_with_eic.eic equals $200
+  definition three_with_eic.tax equals $0
+  assertion three.s.regular_maximum_actc = $75
+  assertion three.s.three_or_more_ctc_eligible_dependents
+  assertion three.s.social_security_over_eitc = $230
+  assertion three.s.maximum_actc = $230
+  assertion three.s.additional_ctc = $230
+  assertion not two.s.three_or_more_ctc_eligible_dependents
+  assertion two.s.maximum_actc = $75
+  assertion two.s.additional_ctc = $75
+  # Known-bad: the alternative does not apply to two children
+  assertion two.s.additional_ctc != $230
+  assertion three_with_eic.s.social_security_over_eitc = $30
+  assertion three_with_eic.s.additional_ctc = $75
+```
+
+### Line 17 caps the ACTC at $1,700 per child
+
+One CTC child, no tax, earned income $40,000: line 20 = $5,625, line 16b =
+$1,700. Line 27 = $1,700, not $2,000.
+
+```catala
+#[test]
+declaration scope Test8812ActcCap:
+  m scope Mk8812
+
+scope Test8812ActcCap:
+  definition m.ctc equals 1
+  definition m.agi equals $40,000
+  definition m.earned equals $40,000
+  definition m.tax equals $0
+  assertion m.s.remaining_ctc_and_odc = $2,000
+  assertion m.s.total_potential_actc = $1,700
+  assertion m.s.additional_ctc = $1,700
+  assertion m.s.additional_ctc != $2,000
+```
+
+## Improper claims (IRC 24(g))
+
+### Inside a 2-year ban: no CTC, ODC or ACTC
+
+```catala
+#[test]
+declaration scope Test8812ImproperClaimsBan:
+  m scope Mk8812
+
+scope Test8812ImproperClaimsBan:
+  definition m.odc equals 1
+  definition m.tax equals $0
+  definition m.received_improper_claims equals true
+  definition m.notice equals E.ImproperClaimsNotice.TwoYears
+  assertion m.s.ctc_odc_disqualified_for_improper_claims
+  assertion m.s.total_potential_ctc = $0
+  assertion m.s.total_potential_odc = $0
+  assertion m.s.total_ctc_and_odc = $0
+  assertion m.s.additional_ctc = $0
+  assertion not m.s.ctc8862_required
+```
+
+### The ban expired: the credit is allowed and Form 8862 is required
+
+```catala
+#[test]
+declaration scope Test8812ImproperClaimsExpired:
+  m scope Mk8812
+
+scope Test8812ImproperClaimsExpired:
+  definition m.received_improper_claims equals true
+  definition m.notice equals E.ImproperClaimsNotice.TwoYears
+  definition m.notice_expired equals true
+  assertion not m.s.ctc_odc_disqualified_for_improper_claims
+  assertion m.s.total_ctc_and_odc = $4,000
+  assertion m.s.ctc8862_required
+```

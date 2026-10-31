@@ -81,6 +81,9 @@ scenario,path,value,completeness
 1099r-box-2b-total-distribution~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 1099r-box-2b-total-distribution~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 1099r-box-2b-total-distribution~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+1099r-box-2b-total-distribution~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+1099r-box-2b-total-distribution~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleCtc,false,Complete
+1099r-box-2b-total-distribution~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleOdc,true,Complete
 8862-ats-5~775ae299-7bab-43ca-b9bb-f67a46071bd6,/flowIsKnockedOut,false,Placeholder
 8862-ats-5~775ae299-7bab-43ca-b9bb-f67a46071bd6,/minimumFilerDateOfBirth,1993-12-27,Complete
 8862-ats-5~775ae299-7bab-43ca-b9bb-f67a46071bd6,/treatAsMFJ,false,Complete
@@ -164,6 +167,9 @@ scenario,path,value,completeness
 8862-ats-5~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 8862-ats-5~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 8862-ats-5~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+8862-ats-5~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+8862-ats-5~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/eligibleCtc,true,Complete
+8862-ats-5~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/eligibleOdc,false,Complete
 8862-ats-5~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/flowIsKnockedOut,false,Placeholder
 8862-ats-5~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/minimumFilerDateOfBirth,1993-12-27,Complete
 8862-ats-5~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/treatAsMFJ,false,Complete
@@ -247,6 +253,9 @@ scenario,path,value,completeness
 8862-ats-5~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 8862-ats-5~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 8862-ats-5~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+8862-ats-5~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+8862-ats-5~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/eligibleCtc,true,Complete
+8862-ats-5~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/eligibleOdc,false,Complete
 8862-ctc-no-eitc~02eaee04-9897-4d29-9dc2-10efb198c103,/flowIsKnockedOut,false,Placeholder
 8862-ctc-no-eitc~02eaee04-9897-4d29-9dc2-10efb198c103,/minimumFilerDateOfBirth,1987-11-11,Complete
 8862-ctc-no-eitc~02eaee04-9897-4d29-9dc2-10efb198c103,/treatAsMFJ,true,Complete
@@ -330,6 +339,9 @@ scenario,path,value,completeness
 8862-ctc-no-eitc~02eaee04-9897-4d29-9dc2-10efb198c103,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 8862-ctc-no-eitc~02eaee04-9897-4d29-9dc2-10efb198c103,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 8862-ctc-no-eitc~02eaee04-9897-4d29-9dc2-10efb198c103,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+8862-ctc-no-eitc~02eaee04-9897-4d29-9dc2-10efb198c103,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+8862-ctc-no-eitc~02eaee04-9897-4d29-9dc2-10efb198c103,/familyAndHousehold/*/eligibleCtc,true,Complete
+8862-ctc-no-eitc~02eaee04-9897-4d29-9dc2-10efb198c103,/familyAndHousehold/*/eligibleOdc,false,Complete
 8862-ctc-no-eitc~6b8cf1ae-b1be-48f9-a30e-2d8268b5c2a4,/flowIsKnockedOut,false,Placeholder
 8862-ctc-no-eitc~6b8cf1ae-b1be-48f9-a30e-2d8268b5c2a4,/minimumFilerDateOfBirth,1987-11-11,Complete
 8862-ctc-no-eitc~6b8cf1ae-b1be-48f9-a30e-2d8268b5c2a4,/treatAsMFJ,true,Complete
@@ -411,6 +423,9 @@ scenario,path,value,completeness
 8862-ctc-no-eitc~6b8cf1ae-b1be-48f9-a30e-2d8268b5c2a4,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 8862-ctc-no-eitc~6b8cf1ae-b1be-48f9-a30e-2d8268b5c2a4,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 8862-ctc-no-eitc~6b8cf1ae-b1be-48f9-a30e-2d8268b5c2a4,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+8862-ctc-no-eitc~6b8cf1ae-b1be-48f9-a30e-2d8268b5c2a4,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+8862-ctc-no-eitc~6b8cf1ae-b1be-48f9-a30e-2d8268b5c2a4,/familyAndHousehold/*/eligibleCtc,false,Complete
+8862-ctc-no-eitc~6b8cf1ae-b1be-48f9-a30e-2d8268b5c2a4,/familyAndHousehold/*/eligibleOdc,true,Complete
 8862-ctc-no-letter-for-improper-claims~941f816b-6e2a-4944-b98b-399e6a41946f,/flowIsKnockedOut,false,Placeholder
 8862-ctc-no-letter-for-improper-claims~941f816b-6e2a-4944-b98b-399e6a41946f,/minimumFilerDateOfBirth,1955-03-09,Complete
 8862-ctc-no-letter-for-improper-claims~941f816b-6e2a-4944-b98b-399e6a41946f,/treatAsMFJ,false,Complete
@@ -495,6 +510,9 @@ scenario,path,value,completeness
 8862-ctc-no-letter-for-improper-claims~941f816b-6e2a-4944-b98b-399e6a41946f,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 8862-ctc-no-letter-for-improper-claims~941f816b-6e2a-4944-b98b-399e6a41946f,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 8862-ctc-no-letter-for-improper-claims~941f816b-6e2a-4944-b98b-399e6a41946f,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+8862-ctc-no-letter-for-improper-claims~941f816b-6e2a-4944-b98b-399e6a41946f,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+8862-ctc-no-letter-for-improper-claims~941f816b-6e2a-4944-b98b-399e6a41946f,/familyAndHousehold/*/eligibleCtc,true,Complete
+8862-ctc-no-letter-for-improper-claims~941f816b-6e2a-4944-b98b-399e6a41946f,/familyAndHousehold/*/eligibleOdc,false,Complete
 8862-eitc-no-ctc~775ae299-7bab-43ca-b9bb-f67a46071bd6,/flowIsKnockedOut,false,Placeholder
 8862-eitc-no-ctc~775ae299-7bab-43ca-b9bb-f67a46071bd6,/minimumFilerDateOfBirth,1993-12-27,Complete
 8862-eitc-no-ctc~775ae299-7bab-43ca-b9bb-f67a46071bd6,/treatAsMFJ,false,Complete
@@ -578,6 +596,9 @@ scenario,path,value,completeness
 8862-eitc-no-ctc~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 8862-eitc-no-ctc~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 8862-eitc-no-ctc~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+8862-eitc-no-ctc~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+8862-eitc-no-ctc~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/eligibleCtc,true,Complete
+8862-eitc-no-ctc~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/eligibleOdc,false,Complete
 8862-eitc-no-ctc~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/flowIsKnockedOut,false,Placeholder
 8862-eitc-no-ctc~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/minimumFilerDateOfBirth,1993-12-27,Complete
 8862-eitc-no-ctc~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/treatAsMFJ,false,Complete
@@ -661,6 +682,9 @@ scenario,path,value,completeness
 8862-eitc-no-ctc~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 8862-eitc-no-ctc~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 8862-eitc-no-ctc~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+8862-eitc-no-ctc~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+8862-eitc-no-ctc~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/eligibleCtc,true,Complete
+8862-eitc-no-ctc~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/eligibleOdc,false,Complete
 HOH-32k-EITC~abac80a8-db81-44dc-9aae-12a134dafd73,/flowIsKnockedOut,false,Placeholder
 HOH-32k-EITC~abac80a8-db81-44dc-9aae-12a134dafd73,/minimumFilerDateOfBirth,1989-04-03,Complete
 HOH-32k-EITC~abac80a8-db81-44dc-9aae-12a134dafd73,/treatAsMFJ,false,Complete
@@ -747,6 +771,9 @@ HOH-32k-EITC~abac80a8-db81-44dc-9aae-12a134dafd73,/familyAndHousehold/*/contradi
 HOH-32k-EITC~abac80a8-db81-44dc-9aae-12a134dafd73,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 HOH-32k-EITC~abac80a8-db81-44dc-9aae-12a134dafd73,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 HOH-32k-EITC~abac80a8-db81-44dc-9aae-12a134dafd73,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+HOH-32k-EITC~abac80a8-db81-44dc-9aae-12a134dafd73,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+HOH-32k-EITC~abac80a8-db81-44dc-9aae-12a134dafd73,/familyAndHousehold/*/eligibleCtc,false,Complete
+HOH-32k-EITC~abac80a8-db81-44dc-9aae-12a134dafd73,/familyAndHousehold/*/eligibleOdc,false,Complete
 HOH-35K-dep-credits~606efa27-e8b4-4ec1-9f76-ade9c5e83870,/flowIsKnockedOut,false,Placeholder
 HOH-35K-dep-credits~606efa27-e8b4-4ec1-9f76-ade9c5e83870,/minimumFilerDateOfBirth,1983-10-10,Complete
 HOH-35K-dep-credits~606efa27-e8b4-4ec1-9f76-ade9c5e83870,/treatAsMFJ,false,Complete
@@ -830,6 +857,9 @@ HOH-35K-dep-credits~606efa27-e8b4-4ec1-9f76-ade9c5e83870,/familyAndHousehold/*/c
 HOH-35K-dep-credits~606efa27-e8b4-4ec1-9f76-ade9c5e83870,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 HOH-35K-dep-credits~606efa27-e8b4-4ec1-9f76-ade9c5e83870,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 HOH-35K-dep-credits~606efa27-e8b4-4ec1-9f76-ade9c5e83870,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+HOH-35K-dep-credits~606efa27-e8b4-4ec1-9f76-ade9c5e83870,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+HOH-35K-dep-credits~606efa27-e8b4-4ec1-9f76-ade9c5e83870,/familyAndHousehold/*/eligibleCtc,true,Complete
+HOH-35K-dep-credits~606efa27-e8b4-4ec1-9f76-ade9c5e83870,/familyAndHousehold/*/eligibleOdc,false,Complete
 ats-2-1099r-blank-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/flowIsKnockedOut,true,Complete
 ats-2-1099r-blank-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/minimumFilerDateOfBirth,1964-08-02,Complete
 ats-2-1099r-blank-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/treatAsMFJ,true,Complete
@@ -912,6 +942,9 @@ ats-2-1099r-blank-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHouseho
 ats-2-1099r-blank-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ats-2-1099r-blank-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ats-2-1099r-blank-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ats-2-1099r-blank-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ats-2-1099r-blank-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleCtc,false,Complete
+ats-2-1099r-blank-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleOdc,true,Complete
 ats-2-1099r-nonzero-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/flowIsKnockedOut,true,Complete
 ats-2-1099r-nonzero-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/minimumFilerDateOfBirth,1964-08-02,Complete
 ats-2-1099r-nonzero-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/treatAsMFJ,true,Complete
@@ -994,6 +1027,9 @@ ats-2-1099r-nonzero-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHouse
 ats-2-1099r-nonzero-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ats-2-1099r-nonzero-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ats-2-1099r-nonzero-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ats-2-1099r-nonzero-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ats-2-1099r-nonzero-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleCtc,false,Complete
+ats-2-1099r-nonzero-taxable~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleOdc,true,Complete
 ats-2-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/flowIsKnockedOut,true,Complete
 ats-2-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/minimumFilerDateOfBirth,1964-08-02,Complete
 ats-2-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/treatAsMFJ,true,Complete
@@ -1076,6 +1112,9 @@ ats-2-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/contradic
 ats-2-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ats-2-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ats-2-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ats-2-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ats-2-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleCtc,false,Complete
+ats-2-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleOdc,true,Complete
 ats-2-occupation-test~79ac153b-58be-4d5e-a59f-276ef540318e,/flowIsKnockedOut,false,Placeholder
 ats-2-occupation-test~79ac153b-58be-4d5e-a59f-276ef540318e,/minimumFilerDateOfBirth,1964-08-02,Complete
 ats-2-occupation-test~79ac153b-58be-4d5e-a59f-276ef540318e,/treatAsMFJ,true,Complete
@@ -1158,6 +1197,9 @@ ats-2-occupation-test~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*
 ats-2-occupation-test~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ats-2-occupation-test~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ats-2-occupation-test~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ats-2-occupation-test~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ats-2-occupation-test~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleCtc,false,Complete
+ats-2-occupation-test~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleOdc,true,Complete
 ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/flowIsKnockedOut,false,Placeholder
 ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/minimumFilerDateOfBirth,1964-08-02,Complete
 ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/treatAsMFJ,true,Complete
@@ -1240,6 +1282,9 @@ ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/contradictory88
 ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleCtc,false,Complete
+ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleOdc,true,Complete
 ats-3-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/flowIsKnockedOut,false,Placeholder
 ats-3-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/minimumFilerDateOfBirth,1964-08-02,Complete
 ats-3-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/treatAsMFJ,true,Complete
@@ -1322,6 +1367,9 @@ ats-3-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/contradic
 ats-3-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ats-3-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ats-3-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ats-3-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ats-3-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleCtc,false,Complete
+ats-3-1099r~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleOdc,true,Complete
 cdcc-hoh-net-allowable-less-than-zero~85501abd-9f7c-4746-b4e9-f765565ca923,/flowIsKnockedOut,false,Placeholder
 cdcc-hoh-net-allowable-less-than-zero~85501abd-9f7c-4746-b4e9-f765565ca923,/minimumFilerDateOfBirth,1974-01-01,Complete
 cdcc-hoh-net-allowable-less-than-zero~85501abd-9f7c-4746-b4e9-f765565ca923,/treatAsMFJ,false,Complete
@@ -1407,6 +1455,9 @@ cdcc-hoh-net-allowable-less-than-zero~85501abd-9f7c-4746-b4e9-f765565ca923,/fami
 cdcc-hoh-net-allowable-less-than-zero~85501abd-9f7c-4746-b4e9-f765565ca923,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cdcc-hoh-net-allowable-less-than-zero~85501abd-9f7c-4746-b4e9-f765565ca923,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cdcc-hoh-net-allowable-less-than-zero~85501abd-9f7c-4746-b4e9-f765565ca923,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cdcc-hoh-net-allowable-less-than-zero~85501abd-9f7c-4746-b4e9-f765565ca923,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cdcc-hoh-net-allowable-less-than-zero~85501abd-9f7c-4746-b4e9-f765565ca923,/familyAndHousehold/*/eligibleCtc,true,Complete
+cdcc-hoh-net-allowable-less-than-zero~85501abd-9f7c-4746-b4e9-f765565ca923,/familyAndHousehold/*/eligibleOdc,false,Complete
 cdcc-mfj-carryover-equal-income~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/flowIsKnockedOut,false,Placeholder
 cdcc-mfj-carryover-equal-income~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/minimumFilerDateOfBirth,1987-03-22,Complete
 cdcc-mfj-carryover-equal-income~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/treatAsMFJ,true,Complete
@@ -1496,6 +1547,9 @@ cdcc-mfj-carryover-equal-income~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndH
 cdcc-mfj-carryover-equal-income~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cdcc-mfj-carryover-equal-income~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cdcc-mfj-carryover-equal-income~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cdcc-mfj-carryover-equal-income~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cdcc-mfj-carryover-equal-income~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/eligibleCtc,true,Complete
+cdcc-mfj-carryover-equal-income~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/eligibleOdc,false,Complete
 cdcc-mfj-dep-care-benefits-only~9d2b2ec6-9db3-46c9-8903-8c1e808b7c89,/flowIsKnockedOut,false,Placeholder
 cdcc-mfj-dep-care-benefits-only~9d2b2ec6-9db3-46c9-8903-8c1e808b7c89,/minimumFilerDateOfBirth,1995-01-01,Complete
 cdcc-mfj-dep-care-benefits-only~9d2b2ec6-9db3-46c9-8903-8c1e808b7c89,/treatAsMFJ,true,Complete
@@ -1579,6 +1633,9 @@ cdcc-mfj-dep-care-benefits-only~9d2b2ec6-9db3-46c9-8903-8c1e808b7c89,/familyAndH
 cdcc-mfj-dep-care-benefits-only~9d2b2ec6-9db3-46c9-8903-8c1e808b7c89,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cdcc-mfj-dep-care-benefits-only~9d2b2ec6-9db3-46c9-8903-8c1e808b7c89,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cdcc-mfj-dep-care-benefits-only~9d2b2ec6-9db3-46c9-8903-8c1e808b7c89,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cdcc-mfj-dep-care-benefits-only~9d2b2ec6-9db3-46c9-8903-8c1e808b7c89,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cdcc-mfj-dep-care-benefits-only~9d2b2ec6-9db3-46c9-8903-8c1e808b7c89,/familyAndHousehold/*/eligibleCtc,true,Complete
+cdcc-mfj-dep-care-benefits-only~9d2b2ec6-9db3-46c9-8903-8c1e808b7c89,/familyAndHousehold/*/eligibleOdc,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~d9508bb8-9e7f-476b-be04-2a59a7082dcd,/flowIsKnockedOut,false,Placeholder
 cdcc-mfj-filer-qp-multiple-qps~d9508bb8-9e7f-476b-be04-2a59a7082dcd,/minimumFilerDateOfBirth,1955-03-09,Complete
 cdcc-mfj-filer-qp-multiple-qps~d9508bb8-9e7f-476b-be04-2a59a7082dcd,/treatAsMFJ,true,Complete
@@ -1665,6 +1722,9 @@ cdcc-mfj-filer-qp-multiple-qps~d9508bb8-9e7f-476b-be04-2a59a7082dcd,/familyAndHo
 cdcc-mfj-filer-qp-multiple-qps~d9508bb8-9e7f-476b-be04-2a59a7082dcd,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~d9508bb8-9e7f-476b-be04-2a59a7082dcd,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~d9508bb8-9e7f-476b-be04-2a59a7082dcd,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cdcc-mfj-filer-qp-multiple-qps~d9508bb8-9e7f-476b-be04-2a59a7082dcd,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cdcc-mfj-filer-qp-multiple-qps~d9508bb8-9e7f-476b-be04-2a59a7082dcd,/familyAndHousehold/*/eligibleCtc,true,Complete
+cdcc-mfj-filer-qp-multiple-qps~d9508bb8-9e7f-476b-be04-2a59a7082dcd,/familyAndHousehold/*/eligibleOdc,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~529710a9-4ac5-43d8-b421-75f67ef59e21,/flowIsKnockedOut,false,Placeholder
 cdcc-mfj-filer-qp-multiple-qps~529710a9-4ac5-43d8-b421-75f67ef59e21,/minimumFilerDateOfBirth,1955-03-09,Complete
 cdcc-mfj-filer-qp-multiple-qps~529710a9-4ac5-43d8-b421-75f67ef59e21,/treatAsMFJ,true,Complete
@@ -1752,6 +1812,9 @@ cdcc-mfj-filer-qp-multiple-qps~529710a9-4ac5-43d8-b421-75f67ef59e21,/familyAndHo
 cdcc-mfj-filer-qp-multiple-qps~529710a9-4ac5-43d8-b421-75f67ef59e21,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~529710a9-4ac5-43d8-b421-75f67ef59e21,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~529710a9-4ac5-43d8-b421-75f67ef59e21,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cdcc-mfj-filer-qp-multiple-qps~529710a9-4ac5-43d8-b421-75f67ef59e21,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cdcc-mfj-filer-qp-multiple-qps~529710a9-4ac5-43d8-b421-75f67ef59e21,/familyAndHousehold/*/eligibleCtc,true,Complete
+cdcc-mfj-filer-qp-multiple-qps~529710a9-4ac5-43d8-b421-75f67ef59e21,/familyAndHousehold/*/eligibleOdc,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~84bea8d8-4b2c-48a2-8257-0c8326acba6e,/flowIsKnockedOut,false,Placeholder
 cdcc-mfj-filer-qp-multiple-qps~84bea8d8-4b2c-48a2-8257-0c8326acba6e,/minimumFilerDateOfBirth,1955-03-09,Complete
 cdcc-mfj-filer-qp-multiple-qps~84bea8d8-4b2c-48a2-8257-0c8326acba6e,/treatAsMFJ,true,Complete
@@ -1838,6 +1901,9 @@ cdcc-mfj-filer-qp-multiple-qps~84bea8d8-4b2c-48a2-8257-0c8326acba6e,/familyAndHo
 cdcc-mfj-filer-qp-multiple-qps~84bea8d8-4b2c-48a2-8257-0c8326acba6e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~84bea8d8-4b2c-48a2-8257-0c8326acba6e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~84bea8d8-4b2c-48a2-8257-0c8326acba6e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cdcc-mfj-filer-qp-multiple-qps~84bea8d8-4b2c-48a2-8257-0c8326acba6e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cdcc-mfj-filer-qp-multiple-qps~84bea8d8-4b2c-48a2-8257-0c8326acba6e,/familyAndHousehold/*/eligibleCtc,true,Complete
+cdcc-mfj-filer-qp-multiple-qps~84bea8d8-4b2c-48a2-8257-0c8326acba6e,/familyAndHousehold/*/eligibleOdc,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~0bbf6ef9-a42a-429a-9c32-0a27f5a1330e,/flowIsKnockedOut,false,Placeholder
 cdcc-mfj-filer-qp-multiple-qps~0bbf6ef9-a42a-429a-9c32-0a27f5a1330e,/minimumFilerDateOfBirth,1955-03-09,Complete
 cdcc-mfj-filer-qp-multiple-qps~0bbf6ef9-a42a-429a-9c32-0a27f5a1330e,/treatAsMFJ,true,Complete
@@ -1924,6 +1990,9 @@ cdcc-mfj-filer-qp-multiple-qps~0bbf6ef9-a42a-429a-9c32-0a27f5a1330e,/familyAndHo
 cdcc-mfj-filer-qp-multiple-qps~0bbf6ef9-a42a-429a-9c32-0a27f5a1330e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~0bbf6ef9-a42a-429a-9c32-0a27f5a1330e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~0bbf6ef9-a42a-429a-9c32-0a27f5a1330e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cdcc-mfj-filer-qp-multiple-qps~0bbf6ef9-a42a-429a-9c32-0a27f5a1330e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cdcc-mfj-filer-qp-multiple-qps~0bbf6ef9-a42a-429a-9c32-0a27f5a1330e,/familyAndHousehold/*/eligibleCtc,true,Complete
+cdcc-mfj-filer-qp-multiple-qps~0bbf6ef9-a42a-429a-9c32-0a27f5a1330e,/familyAndHousehold/*/eligibleOdc,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~ebca1d8e-a856-4e91-8cbd-a9b8496d34af,/flowIsKnockedOut,false,Placeholder
 cdcc-mfj-filer-qp-multiple-qps~ebca1d8e-a856-4e91-8cbd-a9b8496d34af,/minimumFilerDateOfBirth,1955-03-09,Complete
 cdcc-mfj-filer-qp-multiple-qps~ebca1d8e-a856-4e91-8cbd-a9b8496d34af,/treatAsMFJ,true,Complete
@@ -2010,6 +2079,9 @@ cdcc-mfj-filer-qp-multiple-qps~ebca1d8e-a856-4e91-8cbd-a9b8496d34af,/familyAndHo
 cdcc-mfj-filer-qp-multiple-qps~ebca1d8e-a856-4e91-8cbd-a9b8496d34af,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~ebca1d8e-a856-4e91-8cbd-a9b8496d34af,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cdcc-mfj-filer-qp-multiple-qps~ebca1d8e-a856-4e91-8cbd-a9b8496d34af,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cdcc-mfj-filer-qp-multiple-qps~ebca1d8e-a856-4e91-8cbd-a9b8496d34af,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cdcc-mfj-filer-qp-multiple-qps~ebca1d8e-a856-4e91-8cbd-a9b8496d34af,/familyAndHousehold/*/eligibleCtc,true,Complete
+cdcc-mfj-filer-qp-multiple-qps~ebca1d8e-a856-4e91-8cbd-a9b8496d34af,/familyAndHousehold/*/eligibleOdc,false,Complete
 cfa-npe-01-26~21c6d019-7713-45b9-86fe-1b3be31742cd,/flowIsKnockedOut,false,Placeholder
 cfa-npe-01-26~21c6d019-7713-45b9-86fe-1b3be31742cd,/minimumFilerDateOfBirth,1980-01-01,Complete
 cfa-npe-01-26~21c6d019-7713-45b9-86fe-1b3be31742cd,/treatAsMFJ,true,Complete
@@ -2093,6 +2165,9 @@ cfa-npe-01-26~21c6d019-7713-45b9-86fe-1b3be31742cd,/familyAndHousehold/*/contrad
 cfa-npe-01-26~21c6d019-7713-45b9-86fe-1b3be31742cd,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-npe-01-26~21c6d019-7713-45b9-86fe-1b3be31742cd,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-npe-01-26~21c6d019-7713-45b9-86fe-1b3be31742cd,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-npe-01-26~21c6d019-7713-45b9-86fe-1b3be31742cd,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cfa-npe-01-26~21c6d019-7713-45b9-86fe-1b3be31742cd,/familyAndHousehold/*/eligibleCtc,true,Complete
+cfa-npe-01-26~21c6d019-7713-45b9-86fe-1b3be31742cd,/familyAndHousehold/*/eligibleOdc,false,Complete
 cfa-npe-01-26~d51c282c-a165-49ba-bb69-91e4371dee6e,/flowIsKnockedOut,false,Placeholder
 cfa-npe-01-26~d51c282c-a165-49ba-bb69-91e4371dee6e,/minimumFilerDateOfBirth,1980-01-01,Complete
 cfa-npe-01-26~d51c282c-a165-49ba-bb69-91e4371dee6e,/treatAsMFJ,true,Complete
@@ -2175,6 +2250,9 @@ cfa-npe-01-26~d51c282c-a165-49ba-bb69-91e4371dee6e,/familyAndHousehold/*/contrad
 cfa-npe-01-26~d51c282c-a165-49ba-bb69-91e4371dee6e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-npe-01-26~d51c282c-a165-49ba-bb69-91e4371dee6e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-npe-01-26~d51c282c-a165-49ba-bb69-91e4371dee6e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-npe-01-26~d51c282c-a165-49ba-bb69-91e4371dee6e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cfa-npe-01-26~d51c282c-a165-49ba-bb69-91e4371dee6e,/familyAndHousehold/*/eligibleCtc,true,Complete
+cfa-npe-01-26~d51c282c-a165-49ba-bb69-91e4371dee6e,/familyAndHousehold/*/eligibleOdc,false,Complete
 cfa-npe-01-26~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/flowIsKnockedOut,false,Placeholder
 cfa-npe-01-26~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/minimumFilerDateOfBirth,1980-01-01,Complete
 cfa-npe-01-26~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/treatAsMFJ,true,Complete
@@ -2259,6 +2337,9 @@ cfa-npe-01-26~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/familyAndHousehold/*/contrad
 cfa-npe-01-26~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-npe-01-26~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-npe-01-26~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-npe-01-26~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cfa-npe-01-26~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/familyAndHousehold/*/eligibleCtc,false,Complete
+cfa-npe-01-26~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/familyAndHousehold/*/eligibleOdc,true,Complete
 cfa-npe-01-26~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/flowIsKnockedOut,false,Placeholder
 cfa-npe-01-26~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/minimumFilerDateOfBirth,1980-01-01,Complete
 cfa-npe-01-26~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/treatAsMFJ,true,Complete
@@ -2343,6 +2424,9 @@ cfa-npe-01-26~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/familyAndHousehold/*/contrad
 cfa-npe-01-26~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-npe-01-26~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-npe-01-26~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-npe-01-26~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cfa-npe-01-26~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/familyAndHousehold/*/eligibleCtc,false,Complete
+cfa-npe-01-26~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/familyAndHousehold/*/eligibleOdc,true,Complete
 cfa-xml-error-1~b590d27e-461e-4780-8798-2a6606657ff1,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-1~b590d27e-461e-4780-8798-2a6606657ff1,/minimumFilerDateOfBirth,1973-01-02,Complete
 cfa-xml-error-1~b590d27e-461e-4780-8798-2a6606657ff1,/treatAsMFJ,true,Complete
@@ -2426,6 +2510,9 @@ cfa-xml-error-1~b590d27e-461e-4780-8798-2a6606657ff1,/familyAndHousehold/*/contr
 cfa-xml-error-1~b590d27e-461e-4780-8798-2a6606657ff1,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-1~b590d27e-461e-4780-8798-2a6606657ff1,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-1~b590d27e-461e-4780-8798-2a6606657ff1,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-1~b590d27e-461e-4780-8798-2a6606657ff1,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cfa-xml-error-1~b590d27e-461e-4780-8798-2a6606657ff1,/familyAndHousehold/*/eligibleCtc,true,Complete
+cfa-xml-error-1~b590d27e-461e-4780-8798-2a6606657ff1,/familyAndHousehold/*/eligibleOdc,false,Complete
 cfa-xml-error-1~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-1~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/minimumFilerDateOfBirth,1973-01-02,Complete
 cfa-xml-error-1~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/treatAsMFJ,true,Complete
@@ -2508,6 +2595,9 @@ cfa-xml-error-1~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/familyAndHousehold/*/contr
 cfa-xml-error-1~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-1~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-1~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-1~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cfa-xml-error-1~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/familyAndHousehold/*/eligibleCtc,true,Complete
+cfa-xml-error-1~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/familyAndHousehold/*/eligibleOdc,false,Complete
 cfa-xml-error-1~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-1~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/minimumFilerDateOfBirth,1973-01-02,Complete
 cfa-xml-error-1~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/treatAsMFJ,true,Complete
@@ -2592,6 +2682,9 @@ cfa-xml-error-1~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/familyAndHousehold/*/contr
 cfa-xml-error-1~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-1~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-1~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-1~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cfa-xml-error-1~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/familyAndHousehold/*/eligibleCtc,true,Complete
+cfa-xml-error-1~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/familyAndHousehold/*/eligibleOdc,false,Complete
 cfa-xml-error-1~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-1~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/minimumFilerDateOfBirth,1973-01-02,Complete
 cfa-xml-error-1~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/treatAsMFJ,true,Complete
@@ -2675,6 +2768,9 @@ cfa-xml-error-1~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/familyAndHousehold/*/contr
 cfa-xml-error-1~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-1~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-1~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-1~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+cfa-xml-error-1~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/familyAndHousehold/*/eligibleCtc,false,Complete
+cfa-xml-error-1~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/familyAndHousehold/*/eligibleOdc,true,Complete
 cfa-xml-error-1~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-1~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/minimumFilerDateOfBirth,1973-01-02,Complete
 cfa-xml-error-1~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/treatAsMFJ,true,Complete
@@ -2760,6 +2856,9 @@ cfa-xml-error-1~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/familyAndHousehold/*/contr
 cfa-xml-error-1~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-1~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-1~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-1~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/familyAndHousehold/*/ssnValidForEmployment,false,Complete
+cfa-xml-error-1~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/familyAndHousehold/*/eligibleCtc,false,Complete
+cfa-xml-error-1~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/familyAndHousehold/*/eligibleOdc,true,Complete
 cfa-xml-error-1~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-1~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/minimumFilerDateOfBirth,1973-01-02,Complete
 cfa-xml-error-1~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/treatAsMFJ,true,Complete
@@ -2842,6 +2941,9 @@ cfa-xml-error-1~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/familyAndHousehold/*/contr
 cfa-xml-error-1~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-1~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-1~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-1~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+cfa-xml-error-1~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/familyAndHousehold/*/eligibleCtc,false,Complete
+cfa-xml-error-1~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/familyAndHousehold/*/eligibleOdc,true,Complete
 cfa-xml-error-1~d1301ddc-2a99-42e1-a76b-81349703c262,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-1~d1301ddc-2a99-42e1-a76b-81349703c262,/minimumFilerDateOfBirth,1973-01-02,Complete
 cfa-xml-error-1~d1301ddc-2a99-42e1-a76b-81349703c262,/treatAsMFJ,true,Complete
@@ -2925,6 +3027,9 @@ cfa-xml-error-1~d1301ddc-2a99-42e1-a76b-81349703c262,/familyAndHousehold/*/contr
 cfa-xml-error-1~d1301ddc-2a99-42e1-a76b-81349703c262,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-1~d1301ddc-2a99-42e1-a76b-81349703c262,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-1~d1301ddc-2a99-42e1-a76b-81349703c262,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-1~d1301ddc-2a99-42e1-a76b-81349703c262,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cfa-xml-error-1~d1301ddc-2a99-42e1-a76b-81349703c262,/familyAndHousehold/*/eligibleCtc,true,Complete
+cfa-xml-error-1~d1301ddc-2a99-42e1-a76b-81349703c262,/familyAndHousehold/*/eligibleOdc,false,Complete
 cfa-xml-error-1~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-1~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/minimumFilerDateOfBirth,1973-01-02,Complete
 cfa-xml-error-1~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/treatAsMFJ,true,Complete
@@ -3008,6 +3113,9 @@ cfa-xml-error-1~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/familyAndHousehold/*/contr
 cfa-xml-error-1~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-1~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-1~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-1~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cfa-xml-error-1~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/familyAndHousehold/*/eligibleCtc,false,Complete
+cfa-xml-error-1~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/familyAndHousehold/*/eligibleOdc,true,Complete
 cfa-xml-error-1~59bc042d-1224-47e5-a408-73791125469a,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-1~59bc042d-1224-47e5-a408-73791125469a,/minimumFilerDateOfBirth,1973-01-02,Complete
 cfa-xml-error-1~59bc042d-1224-47e5-a408-73791125469a,/treatAsMFJ,true,Complete
@@ -3092,6 +3200,9 @@ cfa-xml-error-1~59bc042d-1224-47e5-a408-73791125469a,/familyAndHousehold/*/contr
 cfa-xml-error-1~59bc042d-1224-47e5-a408-73791125469a,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-1~59bc042d-1224-47e5-a408-73791125469a,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-1~59bc042d-1224-47e5-a408-73791125469a,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-1~59bc042d-1224-47e5-a408-73791125469a,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cfa-xml-error-1~59bc042d-1224-47e5-a408-73791125469a,/familyAndHousehold/*/eligibleCtc,false,Complete
+cfa-xml-error-1~59bc042d-1224-47e5-a408-73791125469a,/familyAndHousehold/*/eligibleOdc,true,Complete
 cfa-xml-error-1~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-1~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/minimumFilerDateOfBirth,1973-01-02,Complete
 cfa-xml-error-1~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/treatAsMFJ,true,Complete
@@ -3176,6 +3287,9 @@ cfa-xml-error-1~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/familyAndHousehold/*/contr
 cfa-xml-error-1~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-1~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-1~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-1~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+cfa-xml-error-1~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/familyAndHousehold/*/eligibleCtc,false,Complete
+cfa-xml-error-1~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/familyAndHousehold/*/eligibleOdc,true,Complete
 cfa-xml-error-1~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-1~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/minimumFilerDateOfBirth,1973-01-02,Complete
 cfa-xml-error-1~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/treatAsMFJ,true,Complete
@@ -3257,6 +3371,9 @@ cfa-xml-error-1~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/familyAndHousehold/*/contr
 cfa-xml-error-1~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-1~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-1~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-1~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+cfa-xml-error-1~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/familyAndHousehold/*/eligibleCtc,false,Complete
+cfa-xml-error-1~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/familyAndHousehold/*/eligibleOdc,true,Complete
 cfa-xml-error-2~21c6d019-7713-45b9-86fe-1b3be31742cd,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-2~21c6d019-7713-45b9-86fe-1b3be31742cd,/minimumFilerDateOfBirth,1980-01-01,Complete
 cfa-xml-error-2~21c6d019-7713-45b9-86fe-1b3be31742cd,/treatAsMFJ,true,Complete
@@ -3340,6 +3457,9 @@ cfa-xml-error-2~21c6d019-7713-45b9-86fe-1b3be31742cd,/familyAndHousehold/*/contr
 cfa-xml-error-2~21c6d019-7713-45b9-86fe-1b3be31742cd,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-2~21c6d019-7713-45b9-86fe-1b3be31742cd,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-2~21c6d019-7713-45b9-86fe-1b3be31742cd,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-2~21c6d019-7713-45b9-86fe-1b3be31742cd,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cfa-xml-error-2~21c6d019-7713-45b9-86fe-1b3be31742cd,/familyAndHousehold/*/eligibleCtc,true,Complete
+cfa-xml-error-2~21c6d019-7713-45b9-86fe-1b3be31742cd,/familyAndHousehold/*/eligibleOdc,false,Complete
 cfa-xml-error-2~d51c282c-a165-49ba-bb69-91e4371dee6e,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-2~d51c282c-a165-49ba-bb69-91e4371dee6e,/minimumFilerDateOfBirth,1980-01-01,Complete
 cfa-xml-error-2~d51c282c-a165-49ba-bb69-91e4371dee6e,/treatAsMFJ,true,Complete
@@ -3422,6 +3542,9 @@ cfa-xml-error-2~d51c282c-a165-49ba-bb69-91e4371dee6e,/familyAndHousehold/*/contr
 cfa-xml-error-2~d51c282c-a165-49ba-bb69-91e4371dee6e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-2~d51c282c-a165-49ba-bb69-91e4371dee6e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-2~d51c282c-a165-49ba-bb69-91e4371dee6e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-2~d51c282c-a165-49ba-bb69-91e4371dee6e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cfa-xml-error-2~d51c282c-a165-49ba-bb69-91e4371dee6e,/familyAndHousehold/*/eligibleCtc,true,Complete
+cfa-xml-error-2~d51c282c-a165-49ba-bb69-91e4371dee6e,/familyAndHousehold/*/eligibleOdc,false,Complete
 cfa-xml-error-2~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-2~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/minimumFilerDateOfBirth,1980-01-01,Complete
 cfa-xml-error-2~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/treatAsMFJ,true,Complete
@@ -3506,6 +3629,9 @@ cfa-xml-error-2~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/familyAndHousehold/*/contr
 cfa-xml-error-2~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-2~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-2~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-2~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cfa-xml-error-2~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/familyAndHousehold/*/eligibleCtc,false,Complete
+cfa-xml-error-2~8e8b297f-b4ea-4591-a6f7-3c2de675fb2c,/familyAndHousehold/*/eligibleOdc,true,Complete
 cfa-xml-error-2~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/flowIsKnockedOut,false,Placeholder
 cfa-xml-error-2~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/minimumFilerDateOfBirth,1980-01-01,Complete
 cfa-xml-error-2~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/treatAsMFJ,true,Complete
@@ -3590,6 +3716,9 @@ cfa-xml-error-2~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/familyAndHousehold/*/contr
 cfa-xml-error-2~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 cfa-xml-error-2~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 cfa-xml-error-2~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+cfa-xml-error-2~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+cfa-xml-error-2~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/familyAndHousehold/*/eligibleCtc,false,Complete
+cfa-xml-error-2~e196e87c-d7db-49fa-b38b-9a7c7d24699f,/familyAndHousehold/*/eligibleOdc,true,Complete
 hoh-12k-income~9eecdf4c-6171-44eb-90c4-722afd12715a,/flowIsKnockedOut,false,Placeholder
 hoh-12k-income~9eecdf4c-6171-44eb-90c4-722afd12715a,/minimumFilerDateOfBirth,1990-10-10,Complete
 hoh-12k-income~9eecdf4c-6171-44eb-90c4-722afd12715a,/treatAsMFJ,false,Complete
@@ -3674,6 +3803,9 @@ hoh-12k-income~9eecdf4c-6171-44eb-90c4-722afd12715a,/familyAndHousehold/*/contra
 hoh-12k-income~9eecdf4c-6171-44eb-90c4-722afd12715a,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-12k-income~9eecdf4c-6171-44eb-90c4-722afd12715a,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-12k-income~9eecdf4c-6171-44eb-90c4-722afd12715a,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-12k-income~9eecdf4c-6171-44eb-90c4-722afd12715a,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-12k-income~9eecdf4c-6171-44eb-90c4-722afd12715a,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-12k-income~9eecdf4c-6171-44eb-90c4-722afd12715a,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-13936-actc-eitc~18ed77ea-0f7c-40e1-8037-2c8c7febb053,/flowIsKnockedOut,false,Placeholder
 hoh-13936-actc-eitc~18ed77ea-0f7c-40e1-8037-2c8c7febb053,/minimumFilerDateOfBirth,1980-02-01,Complete
 hoh-13936-actc-eitc~18ed77ea-0f7c-40e1-8037-2c8c7febb053,/treatAsMFJ,false,Complete
@@ -3758,6 +3890,9 @@ hoh-13936-actc-eitc~18ed77ea-0f7c-40e1-8037-2c8c7febb053,/familyAndHousehold/*/c
 hoh-13936-actc-eitc~18ed77ea-0f7c-40e1-8037-2c8c7febb053,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-13936-actc-eitc~18ed77ea-0f7c-40e1-8037-2c8c7febb053,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-13936-actc-eitc~18ed77ea-0f7c-40e1-8037-2c8c7febb053,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-13936-actc-eitc~18ed77ea-0f7c-40e1-8037-2c8c7febb053,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-13936-actc-eitc~18ed77ea-0f7c-40e1-8037-2c8c7febb053,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-13936-actc-eitc~18ed77ea-0f7c-40e1-8037-2c8c7febb053,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-13k~2b39b3eb-119b-4aec-8115-9b1d3eecfd35,/flowIsKnockedOut,false,Placeholder
 hoh-13k~2b39b3eb-119b-4aec-8115-9b1d3eecfd35,/minimumFilerDateOfBirth,1975-07-19,Complete
 hoh-13k~2b39b3eb-119b-4aec-8115-9b1d3eecfd35,/treatAsMFJ,false,Complete
@@ -3845,6 +3980,9 @@ hoh-13k~2b39b3eb-119b-4aec-8115-9b1d3eecfd35,/familyAndHousehold/*/contradictory
 hoh-13k~2b39b3eb-119b-4aec-8115-9b1d3eecfd35,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-13k~2b39b3eb-119b-4aec-8115-9b1d3eecfd35,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-13k~2b39b3eb-119b-4aec-8115-9b1d3eecfd35,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-13k~2b39b3eb-119b-4aec-8115-9b1d3eecfd35,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-13k~2b39b3eb-119b-4aec-8115-9b1d3eecfd35,/familyAndHousehold/*/eligibleCtc,false,Complete
+hoh-13k~2b39b3eb-119b-4aec-8115-9b1d3eecfd35,/familyAndHousehold/*/eligibleOdc,true,Complete
 hoh-20k~fa1cfd2e-887f-40ee-8db9-0fabff6ea6e9,/flowIsKnockedOut,false,Placeholder
 hoh-20k~fa1cfd2e-887f-40ee-8db9-0fabff6ea6e9,/minimumFilerDateOfBirth,1990-11-11,Complete
 hoh-20k~fa1cfd2e-887f-40ee-8db9-0fabff6ea6e9,/treatAsMFJ,false,Complete
@@ -3927,6 +4065,9 @@ hoh-20k~fa1cfd2e-887f-40ee-8db9-0fabff6ea6e9,/familyAndHousehold/*/contradictory
 hoh-20k~fa1cfd2e-887f-40ee-8db9-0fabff6ea6e9,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-20k~fa1cfd2e-887f-40ee-8db9-0fabff6ea6e9,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-20k~fa1cfd2e-887f-40ee-8db9-0fabff6ea6e9,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-20k~fa1cfd2e-887f-40ee-8db9-0fabff6ea6e9,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+hoh-20k~fa1cfd2e-887f-40ee-8db9-0fabff6ea6e9,/familyAndHousehold/*/eligibleCtc,false,Complete
+hoh-20k~fa1cfd2e-887f-40ee-8db9-0fabff6ea6e9,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-35k-2~7719ff80-0a4e-4b99-8ec9-17253a0b7ff0,/flowIsKnockedOut,false,Placeholder
 hoh-35k-2~7719ff80-0a4e-4b99-8ec9-17253a0b7ff0,/minimumFilerDateOfBirth,2000-10-10,Complete
 hoh-35k-2~7719ff80-0a4e-4b99-8ec9-17253a0b7ff0,/treatAsMFJ,false,Complete
@@ -4013,6 +4154,9 @@ hoh-35k-2~7719ff80-0a4e-4b99-8ec9-17253a0b7ff0,/familyAndHousehold/*/contradicto
 hoh-35k-2~7719ff80-0a4e-4b99-8ec9-17253a0b7ff0,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-35k-2~7719ff80-0a4e-4b99-8ec9-17253a0b7ff0,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-35k-2~7719ff80-0a4e-4b99-8ec9-17253a0b7ff0,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-35k-2~7719ff80-0a4e-4b99-8ec9-17253a0b7ff0,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-35k-2~7719ff80-0a4e-4b99-8ec9-17253a0b7ff0,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-35k-2~7719ff80-0a4e-4b99-8ec9-17253a0b7ff0,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-35k~d09ae8b5-6ab4-4384-943f-ab3a795f429a,/flowIsKnockedOut,false,Placeholder
 hoh-35k~d09ae8b5-6ab4-4384-943f-ab3a795f429a,/minimumFilerDateOfBirth,1980-01-01,Complete
 hoh-35k~d09ae8b5-6ab4-4384-943f-ab3a795f429a,/treatAsMFJ,false,Complete
@@ -4097,6 +4241,9 @@ hoh-35k~d09ae8b5-6ab4-4384-943f-ab3a795f429a,/familyAndHousehold/*/contradictory
 hoh-35k~d09ae8b5-6ab4-4384-943f-ab3a795f429a,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-35k~d09ae8b5-6ab4-4384-943f-ab3a795f429a,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-35k~d09ae8b5-6ab4-4384-943f-ab3a795f429a,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-35k~d09ae8b5-6ab4-4384-943f-ab3a795f429a,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-35k~d09ae8b5-6ab4-4384-943f-ab3a795f429a,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-35k~d09ae8b5-6ab4-4384-943f-ab3a795f429a,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-38k~a84c6a78-ac5c-45cd-bee5-031c1e1ae536,/flowIsKnockedOut,false,Placeholder
 hoh-38k~a84c6a78-ac5c-45cd-bee5-031c1e1ae536,/minimumFilerDateOfBirth,1980-01-01,Complete
 hoh-38k~a84c6a78-ac5c-45cd-bee5-031c1e1ae536,/treatAsMFJ,false,Complete
@@ -4179,6 +4326,9 @@ hoh-38k~a84c6a78-ac5c-45cd-bee5-031c1e1ae536,/familyAndHousehold/*/contradictory
 hoh-38k~a84c6a78-ac5c-45cd-bee5-031c1e1ae536,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-38k~a84c6a78-ac5c-45cd-bee5-031c1e1ae536,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-38k~a84c6a78-ac5c-45cd-bee5-031c1e1ae536,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-38k~a84c6a78-ac5c-45cd-bee5-031c1e1ae536,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-38k~a84c6a78-ac5c-45cd-bee5-031c1e1ae536,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-38k~a84c6a78-ac5c-45cd-bee5-031c1e1ae536,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-40k-2~bdb73e16-be14-4511-a504-963a1c93f8a0,/flowIsKnockedOut,false,Placeholder
 hoh-40k-2~bdb73e16-be14-4511-a504-963a1c93f8a0,/minimumFilerDateOfBirth,1980-01-01,Complete
 hoh-40k-2~bdb73e16-be14-4511-a504-963a1c93f8a0,/treatAsMFJ,false,Complete
@@ -4264,6 +4414,9 @@ hoh-40k-2~bdb73e16-be14-4511-a504-963a1c93f8a0,/familyAndHousehold/*/contradicto
 hoh-40k-2~bdb73e16-be14-4511-a504-963a1c93f8a0,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-40k-2~bdb73e16-be14-4511-a504-963a1c93f8a0,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-40k-2~bdb73e16-be14-4511-a504-963a1c93f8a0,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-40k-2~bdb73e16-be14-4511-a504-963a1c93f8a0,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-40k-2~bdb73e16-be14-4511-a504-963a1c93f8a0,/familyAndHousehold/*/eligibleCtc,false,Complete
+hoh-40k-2~bdb73e16-be14-4511-a504-963a1c93f8a0,/familyAndHousehold/*/eligibleOdc,true,Complete
 hoh-40k-2~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/flowIsKnockedOut,false,Placeholder
 hoh-40k-2~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/minimumFilerDateOfBirth,1980-01-01,Complete
 hoh-40k-2~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/treatAsMFJ,false,Complete
@@ -4347,6 +4500,9 @@ hoh-40k-2~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/familyAndHousehold/*/contradicto
 hoh-40k-2~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-40k-2~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-40k-2~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-40k-2~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-40k-2~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-40k-2~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-40k~bdb73e16-be14-4511-a504-963a1c93f8a0,/flowIsKnockedOut,false,Placeholder
 hoh-40k~bdb73e16-be14-4511-a504-963a1c93f8a0,/minimumFilerDateOfBirth,1980-01-01,Complete
 hoh-40k~bdb73e16-be14-4511-a504-963a1c93f8a0,/treatAsMFJ,false,Complete
@@ -4432,6 +4588,9 @@ hoh-40k~bdb73e16-be14-4511-a504-963a1c93f8a0,/familyAndHousehold/*/contradictory
 hoh-40k~bdb73e16-be14-4511-a504-963a1c93f8a0,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-40k~bdb73e16-be14-4511-a504-963a1c93f8a0,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-40k~bdb73e16-be14-4511-a504-963a1c93f8a0,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-40k~bdb73e16-be14-4511-a504-963a1c93f8a0,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-40k~bdb73e16-be14-4511-a504-963a1c93f8a0,/familyAndHousehold/*/eligibleCtc,false,Complete
+hoh-40k~bdb73e16-be14-4511-a504-963a1c93f8a0,/familyAndHousehold/*/eligibleOdc,true,Complete
 hoh-40k~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/flowIsKnockedOut,false,Placeholder
 hoh-40k~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/minimumFilerDateOfBirth,1980-01-01,Complete
 hoh-40k~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/treatAsMFJ,false,Complete
@@ -4515,6 +4674,9 @@ hoh-40k~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/familyAndHousehold/*/contradictory
 hoh-40k~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-40k~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-40k~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-40k~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-40k~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-40k~c431dda5-6778-4e2b-9f7d-f51f6380b18d,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-43k-plus-interest~7436eb94-12bd-469a-9791-514c8a54e540,/flowIsKnockedOut,false,Placeholder
 hoh-43k-plus-interest~7436eb94-12bd-469a-9791-514c8a54e540,/minimumFilerDateOfBirth,2004-02-29,Complete
 hoh-43k-plus-interest~7436eb94-12bd-469a-9791-514c8a54e540,/treatAsMFJ,false,Complete
@@ -4598,6 +4760,9 @@ hoh-43k-plus-interest~7436eb94-12bd-469a-9791-514c8a54e540,/familyAndHousehold/*
 hoh-43k-plus-interest~7436eb94-12bd-469a-9791-514c8a54e540,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-43k-plus-interest~7436eb94-12bd-469a-9791-514c8a54e540,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-43k-plus-interest~7436eb94-12bd-469a-9791-514c8a54e540,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-43k-plus-interest~7436eb94-12bd-469a-9791-514c8a54e540,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-43k-plus-interest~7436eb94-12bd-469a-9791-514c8a54e540,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-43k-plus-interest~7436eb94-12bd-469a-9791-514c8a54e540,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-48k-ctc~e92851c0-9290-49e2-a91f-6a0afe68c4d5,/flowIsKnockedOut,false,Placeholder
 hoh-48k-ctc~e92851c0-9290-49e2-a91f-6a0afe68c4d5,/minimumFilerDateOfBirth,1975-12-30,Complete
 hoh-48k-ctc~e92851c0-9290-49e2-a91f-6a0afe68c4d5,/treatAsMFJ,false,Complete
@@ -4682,6 +4847,9 @@ hoh-48k-ctc~e92851c0-9290-49e2-a91f-6a0afe68c4d5,/familyAndHousehold/*/contradic
 hoh-48k-ctc~e92851c0-9290-49e2-a91f-6a0afe68c4d5,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-48k-ctc~e92851c0-9290-49e2-a91f-6a0afe68c4d5,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-48k-ctc~e92851c0-9290-49e2-a91f-6a0afe68c4d5,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-48k-ctc~e92851c0-9290-49e2-a91f-6a0afe68c4d5,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-48k-ctc~e92851c0-9290-49e2-a91f-6a0afe68c4d5,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-48k-ctc~e92851c0-9290-49e2-a91f-6a0afe68c4d5,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-49k-ctc~2d6142ff-50ad-43b7-bd5f-20bd4bd2a282,/flowIsKnockedOut,false,Placeholder
 hoh-49k-ctc~2d6142ff-50ad-43b7-bd5f-20bd4bd2a282,/minimumFilerDateOfBirth,1929-01-01,Complete
 hoh-49k-ctc~2d6142ff-50ad-43b7-bd5f-20bd4bd2a282,/treatAsMFJ,false,Complete
@@ -4767,6 +4935,9 @@ hoh-49k-ctc~2d6142ff-50ad-43b7-bd5f-20bd4bd2a282,/familyAndHousehold/*/contradic
 hoh-49k-ctc~2d6142ff-50ad-43b7-bd5f-20bd4bd2a282,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-49k-ctc~2d6142ff-50ad-43b7-bd5f-20bd4bd2a282,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-49k-ctc~2d6142ff-50ad-43b7-bd5f-20bd4bd2a282,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-49k-ctc~2d6142ff-50ad-43b7-bd5f-20bd4bd2a282,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-49k-ctc~2d6142ff-50ad-43b7-bd5f-20bd4bd2a282,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-49k-ctc~2d6142ff-50ad-43b7-bd5f-20bd4bd2a282,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-49k-ctc~fbda543b-ede3-4395-ad54-a400d2b03561,/flowIsKnockedOut,false,Placeholder
 hoh-49k-ctc~fbda543b-ede3-4395-ad54-a400d2b03561,/minimumFilerDateOfBirth,1929-01-01,Complete
 hoh-49k-ctc~fbda543b-ede3-4395-ad54-a400d2b03561,/treatAsMFJ,false,Complete
@@ -4852,6 +5023,9 @@ hoh-49k-ctc~fbda543b-ede3-4395-ad54-a400d2b03561,/familyAndHousehold/*/contradic
 hoh-49k-ctc~fbda543b-ede3-4395-ad54-a400d2b03561,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-49k-ctc~fbda543b-ede3-4395-ad54-a400d2b03561,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-49k-ctc~fbda543b-ede3-4395-ad54-a400d2b03561,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-49k-ctc~fbda543b-ede3-4395-ad54-a400d2b03561,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+hoh-49k-ctc~fbda543b-ede3-4395-ad54-a400d2b03561,/familyAndHousehold/*/eligibleCtc,false,Complete
+hoh-49k-ctc~fbda543b-ede3-4395-ad54-a400d2b03561,/familyAndHousehold/*/eligibleOdc,true,Complete
 hoh-9300~d3fd5858-8bd0-4946-9561-e23d88197f66,/flowIsKnockedOut,false,Placeholder
 hoh-9300~d3fd5858-8bd0-4946-9561-e23d88197f66,/minimumFilerDateOfBirth,1996-09-17,Complete
 hoh-9300~d3fd5858-8bd0-4946-9561-e23d88197f66,/treatAsMFJ,false,Complete
@@ -4936,6 +5110,9 @@ hoh-9300~d3fd5858-8bd0-4946-9561-e23d88197f66,/familyAndHousehold/*/contradictor
 hoh-9300~d3fd5858-8bd0-4946-9561-e23d88197f66,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-9300~d3fd5858-8bd0-4946-9561-e23d88197f66,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-9300~d3fd5858-8bd0-4946-9561-e23d88197f66,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-9300~d3fd5858-8bd0-4946-9561-e23d88197f66,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-9300~d3fd5858-8bd0-4946-9561-e23d88197f66,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-9300~d3fd5858-8bd0-4946-9561-e23d88197f66,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-benefit-split-combat-pay-sched-lep-other-withholding~83625993-bcde-41a1-83ef-20f80b859eb3,/flowIsKnockedOut,false,Placeholder
 hoh-benefit-split-combat-pay-sched-lep-other-withholding~83625993-bcde-41a1-83ef-20f80b859eb3,/minimumFilerDateOfBirth,1999-01-01,Complete
 hoh-benefit-split-combat-pay-sched-lep-other-withholding~83625993-bcde-41a1-83ef-20f80b859eb3,/treatAsMFJ,false,Complete
@@ -5024,6 +5201,9 @@ hoh-benefit-split-combat-pay-sched-lep-other-withholding~83625993-bcde-41a1-83ef
 hoh-benefit-split-combat-pay-sched-lep-other-withholding~83625993-bcde-41a1-83ef-20f80b859eb3,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-benefit-split-combat-pay-sched-lep-other-withholding~83625993-bcde-41a1-83ef-20f80b859eb3,/familyAndHousehold/*/eligibleForBenefitSplit,true,Complete
 hoh-benefit-split-combat-pay-sched-lep-other-withholding~83625993-bcde-41a1-83ef-20f80b859eb3,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-benefit-split-combat-pay-sched-lep-other-withholding~83625993-bcde-41a1-83ef-20f80b859eb3,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-benefit-split-combat-pay-sched-lep-other-withholding~83625993-bcde-41a1-83ef-20f80b859eb3,/familyAndHousehold/*/eligibleCtc,false,Complete
+hoh-benefit-split-combat-pay-sched-lep-other-withholding~83625993-bcde-41a1-83ef-20f80b859eb3,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-cdcc-combat-pay~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/flowIsKnockedOut,false,Placeholder
 hoh-cdcc-combat-pay~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/minimumFilerDateOfBirth,1987-03-22,Complete
 hoh-cdcc-combat-pay~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/treatAsMFJ,false,Complete
@@ -5115,6 +5295,9 @@ hoh-cdcc-combat-pay~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/c
 hoh-cdcc-combat-pay~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-cdcc-combat-pay~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-cdcc-combat-pay~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-cdcc-combat-pay~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-cdcc-combat-pay~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-cdcc-combat-pay~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-cdcc-combat-pay~1979aec3-be19-4b51-a6c3-53db837f42d0,/flowIsKnockedOut,false,Placeholder
 hoh-cdcc-combat-pay~1979aec3-be19-4b51-a6c3-53db837f42d0,/minimumFilerDateOfBirth,1987-03-22,Complete
 hoh-cdcc-combat-pay~1979aec3-be19-4b51-a6c3-53db837f42d0,/treatAsMFJ,false,Complete
@@ -5203,6 +5386,9 @@ hoh-cdcc-combat-pay~1979aec3-be19-4b51-a6c3-53db837f42d0,/familyAndHousehold/*/c
 hoh-cdcc-combat-pay~1979aec3-be19-4b51-a6c3-53db837f42d0,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-cdcc-combat-pay~1979aec3-be19-4b51-a6c3-53db837f42d0,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-cdcc-combat-pay~1979aec3-be19-4b51-a6c3-53db837f42d0,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-cdcc-combat-pay~1979aec3-be19-4b51-a6c3-53db837f42d0,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-cdcc-combat-pay~1979aec3-be19-4b51-a6c3-53db837f42d0,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-cdcc-combat-pay~1979aec3-be19-4b51-a6c3-53db837f42d0,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-cdcc-combat-pay~010947ac-4cf0-4de6-9229-1c78ba27c955,/flowIsKnockedOut,false,Placeholder
 hoh-cdcc-combat-pay~010947ac-4cf0-4de6-9229-1c78ba27c955,/minimumFilerDateOfBirth,1987-03-22,Complete
 hoh-cdcc-combat-pay~010947ac-4cf0-4de6-9229-1c78ba27c955,/treatAsMFJ,false,Complete
@@ -5288,6 +5474,9 @@ hoh-cdcc-combat-pay~010947ac-4cf0-4de6-9229-1c78ba27c955,/familyAndHousehold/*/c
 hoh-cdcc-combat-pay~010947ac-4cf0-4de6-9229-1c78ba27c955,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-cdcc-combat-pay~010947ac-4cf0-4de6-9229-1c78ba27c955,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-cdcc-combat-pay~010947ac-4cf0-4de6-9229-1c78ba27c955,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-cdcc-combat-pay~010947ac-4cf0-4de6-9229-1c78ba27c955,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+hoh-cdcc-combat-pay~010947ac-4cf0-4de6-9229-1c78ba27c955,/familyAndHousehold/*/eligibleCtc,false,Complete
+hoh-cdcc-combat-pay~010947ac-4cf0-4de6-9229-1c78ba27c955,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-cdcc-income-excluded~60c874b4-bb7b-4c82-8550-5555b2b585f8,/flowIsKnockedOut,false,Placeholder
 hoh-cdcc-income-excluded~60c874b4-bb7b-4c82-8550-5555b2b585f8,/minimumFilerDateOfBirth,1987-11-11,Complete
 hoh-cdcc-income-excluded~60c874b4-bb7b-4c82-8550-5555b2b585f8,/treatAsMFJ,false,Complete
@@ -5374,6 +5563,9 @@ hoh-cdcc-income-excluded~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehol
 hoh-cdcc-income-excluded~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-cdcc-income-excluded~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-cdcc-income-excluded~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-cdcc-income-excluded~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-cdcc-income-excluded~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-cdcc-income-excluded~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-cdcc-income-excluded~93e7961f-dd7b-4c7f-9430-bb597123935f,/flowIsKnockedOut,false,Placeholder
 hoh-cdcc-income-excluded~93e7961f-dd7b-4c7f-9430-bb597123935f,/minimumFilerDateOfBirth,1987-11-11,Complete
 hoh-cdcc-income-excluded~93e7961f-dd7b-4c7f-9430-bb597123935f,/treatAsMFJ,false,Complete
@@ -5462,6 +5654,9 @@ hoh-cdcc-income-excluded~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehol
 hoh-cdcc-income-excluded~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-cdcc-income-excluded~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-cdcc-income-excluded~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-cdcc-income-excluded~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-cdcc-income-excluded~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-cdcc-income-excluded~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-cdcc-multiple-careproviders~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/flowIsKnockedOut,false,Placeholder
 hoh-cdcc-multiple-careproviders~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/minimumFilerDateOfBirth,1987-03-22,Complete
 hoh-cdcc-multiple-careproviders~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/treatAsMFJ,false,Complete
@@ -5553,6 +5748,9 @@ hoh-cdcc-multiple-careproviders~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndH
 hoh-cdcc-multiple-careproviders~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-cdcc-multiple-careproviders~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-cdcc-multiple-careproviders~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-cdcc-multiple-careproviders~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-cdcc-multiple-careproviders~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-cdcc-multiple-careproviders~e626fc63-667a-4639-ac65-1e68ce9d0d2e,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-cdcc-multiple-careproviders~1979aec3-be19-4b51-a6c3-53db837f42d0,/flowIsKnockedOut,false,Placeholder
 hoh-cdcc-multiple-careproviders~1979aec3-be19-4b51-a6c3-53db837f42d0,/minimumFilerDateOfBirth,1987-03-22,Complete
 hoh-cdcc-multiple-careproviders~1979aec3-be19-4b51-a6c3-53db837f42d0,/treatAsMFJ,false,Complete
@@ -5641,6 +5839,9 @@ hoh-cdcc-multiple-careproviders~1979aec3-be19-4b51-a6c3-53db837f42d0,/familyAndH
 hoh-cdcc-multiple-careproviders~1979aec3-be19-4b51-a6c3-53db837f42d0,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-cdcc-multiple-careproviders~1979aec3-be19-4b51-a6c3-53db837f42d0,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-cdcc-multiple-careproviders~1979aec3-be19-4b51-a6c3-53db837f42d0,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-cdcc-multiple-careproviders~1979aec3-be19-4b51-a6c3-53db837f42d0,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-cdcc-multiple-careproviders~1979aec3-be19-4b51-a6c3-53db837f42d0,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-cdcc-multiple-careproviders~1979aec3-be19-4b51-a6c3-53db837f42d0,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-cdcc-multiple-careproviders~010947ac-4cf0-4de6-9229-1c78ba27c955,/flowIsKnockedOut,false,Placeholder
 hoh-cdcc-multiple-careproviders~010947ac-4cf0-4de6-9229-1c78ba27c955,/minimumFilerDateOfBirth,1987-03-22,Complete
 hoh-cdcc-multiple-careproviders~010947ac-4cf0-4de6-9229-1c78ba27c955,/treatAsMFJ,false,Complete
@@ -5726,6 +5927,9 @@ hoh-cdcc-multiple-careproviders~010947ac-4cf0-4de6-9229-1c78ba27c955,/familyAndH
 hoh-cdcc-multiple-careproviders~010947ac-4cf0-4de6-9229-1c78ba27c955,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-cdcc-multiple-careproviders~010947ac-4cf0-4de6-9229-1c78ba27c955,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-cdcc-multiple-careproviders~010947ac-4cf0-4de6-9229-1c78ba27c955,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-cdcc-multiple-careproviders~010947ac-4cf0-4de6-9229-1c78ba27c955,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+hoh-cdcc-multiple-careproviders~010947ac-4cf0-4de6-9229-1c78ba27c955,/familyAndHousehold/*/eligibleCtc,false,Complete
+hoh-cdcc-multiple-careproviders~010947ac-4cf0-4de6-9229-1c78ba27c955,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-cdcc-multiple-careproviders~d8ef6a22-3823-48b1-a1b6-1f728b96c8d2,/flowIsKnockedOut,false,Placeholder
 hoh-cdcc-multiple-careproviders~d8ef6a22-3823-48b1-a1b6-1f728b96c8d2,/minimumFilerDateOfBirth,1987-03-22,Complete
 hoh-cdcc-multiple-careproviders~d8ef6a22-3823-48b1-a1b6-1f728b96c8d2,/treatAsMFJ,false,Complete
@@ -5818,6 +6022,9 @@ hoh-cdcc-multiple-careproviders~d8ef6a22-3823-48b1-a1b6-1f728b96c8d2,/familyAndH
 hoh-cdcc-multiple-careproviders~d8ef6a22-3823-48b1-a1b6-1f728b96c8d2,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-cdcc-multiple-careproviders~d8ef6a22-3823-48b1-a1b6-1f728b96c8d2,/familyAndHousehold/*/eligibleForBenefitSplit,true,Complete
 hoh-cdcc-multiple-careproviders~d8ef6a22-3823-48b1-a1b6-1f728b96c8d2,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-cdcc-multiple-careproviders~d8ef6a22-3823-48b1-a1b6-1f728b96c8d2,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-cdcc-multiple-careproviders~d8ef6a22-3823-48b1-a1b6-1f728b96c8d2,/familyAndHousehold/*/eligibleCtc,false,Complete
+hoh-cdcc-multiple-careproviders~d8ef6a22-3823-48b1-a1b6-1f728b96c8d2,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-cdcc-multiple-careproviders~89387295-5488-432f-874f-ba6f2353d6a3,/flowIsKnockedOut,false,Placeholder
 hoh-cdcc-multiple-careproviders~89387295-5488-432f-874f-ba6f2353d6a3,/minimumFilerDateOfBirth,1987-03-22,Complete
 hoh-cdcc-multiple-careproviders~89387295-5488-432f-874f-ba6f2353d6a3,/treatAsMFJ,false,Complete
@@ -5908,6 +6115,9 @@ hoh-cdcc-multiple-careproviders~89387295-5488-432f-874f-ba6f2353d6a3,/familyAndH
 hoh-cdcc-multiple-careproviders~89387295-5488-432f-874f-ba6f2353d6a3,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,,Incomplete
 hoh-cdcc-multiple-careproviders~89387295-5488-432f-874f-ba6f2353d6a3,/familyAndHousehold/*/eligibleForBenefitSplit,true,Complete
 hoh-cdcc-multiple-careproviders~89387295-5488-432f-874f-ba6f2353d6a3,/familyAndHousehold/*/reachedNonParentalBenefitSplit,true,Complete
+hoh-cdcc-multiple-careproviders~89387295-5488-432f-874f-ba6f2353d6a3,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-cdcc-multiple-careproviders~89387295-5488-432f-874f-ba6f2353d6a3,/familyAndHousehold/*/eligibleCtc,false,Complete
+hoh-cdcc-multiple-careproviders~89387295-5488-432f-874f-ba6f2353d6a3,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/flowIsKnockedOut,false,Placeholder
 hoh-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/minimumFilerDateOfBirth,1987-11-11,Complete
 hoh-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/treatAsMFJ,false,Complete
@@ -5994,6 +6204,9 @@ hoh-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/contradictor
 hoh-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/flowIsKnockedOut,false,Placeholder
 hoh-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/minimumFilerDateOfBirth,1987-11-11,Complete
 hoh-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/treatAsMFJ,false,Complete
@@ -6082,6 +6295,9 @@ hoh-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/contradictor
 hoh-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-itin-ctc~c677912c-259c-41f0-8cc5-ff569d1a708d,/flowIsKnockedOut,false,Placeholder
 hoh-itin-ctc~c677912c-259c-41f0-8cc5-ff569d1a708d,/minimumFilerDateOfBirth,1995-01-01,Complete
 hoh-itin-ctc~c677912c-259c-41f0-8cc5-ff569d1a708d,/treatAsMFJ,false,Complete
@@ -6165,6 +6381,9 @@ hoh-itin-ctc~c677912c-259c-41f0-8cc5-ff569d1a708d,/familyAndHousehold/*/contradi
 hoh-itin-ctc~c677912c-259c-41f0-8cc5-ff569d1a708d,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-itin-ctc~c677912c-259c-41f0-8cc5-ff569d1a708d,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-itin-ctc~c677912c-259c-41f0-8cc5-ff569d1a708d,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-itin-ctc~c677912c-259c-41f0-8cc5-ff569d1a708d,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+hoh-itin-ctc~c677912c-259c-41f0-8cc5-ff569d1a708d,/familyAndHousehold/*/eligibleCtc,true,Complete
+hoh-itin-ctc~c677912c-259c-41f0-8cc5-ff569d1a708d,/familyAndHousehold/*/eligibleOdc,false,Complete
 hoh-self-only-eic-third-party-designee-form-9000~1dc2e299-cca5-45e1-b8b2-745f8d9bedec,/flowIsKnockedOut,false,Placeholder
 hoh-self-only-eic-third-party-designee-form-9000~1dc2e299-cca5-45e1-b8b2-745f8d9bedec,/minimumFilerDateOfBirth,2003-01-01,Complete
 hoh-self-only-eic-third-party-designee-form-9000~1dc2e299-cca5-45e1-b8b2-745f8d9bedec,/treatAsMFJ,false,Complete
@@ -6251,6 +6470,9 @@ hoh-self-only-eic-third-party-designee-form-9000~1dc2e299-cca5-45e1-b8b2-745f8d9
 hoh-self-only-eic-third-party-designee-form-9000~1dc2e299-cca5-45e1-b8b2-745f8d9bedec,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 hoh-self-only-eic-third-party-designee-form-9000~1dc2e299-cca5-45e1-b8b2-745f8d9bedec,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 hoh-self-only-eic-third-party-designee-form-9000~1dc2e299-cca5-45e1-b8b2-745f8d9bedec,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+hoh-self-only-eic-third-party-designee-form-9000~1dc2e299-cca5-45e1-b8b2-745f8d9bedec,/familyAndHousehold/*/ssnValidForEmployment,false,Complete
+hoh-self-only-eic-third-party-designee-form-9000~1dc2e299-cca5-45e1-b8b2-745f8d9bedec,/familyAndHousehold/*/eligibleCtc,false,Complete
+hoh-self-only-eic-third-party-designee-form-9000~1dc2e299-cca5-45e1-b8b2-745f8d9bedec,/familyAndHousehold/*/eligibleOdc,true,Complete
 mef-ats-1040sr-eic~182e52d8-282a-4542-9ef2-a85406913732,/flowIsKnockedOut,false,Placeholder
 mef-ats-1040sr-eic~182e52d8-282a-4542-9ef2-a85406913732,/minimumFilerDateOfBirth,1955-01-17,Complete
 mef-ats-1040sr-eic~182e52d8-282a-4542-9ef2-a85406913732,/treatAsMFJ,false,Complete
@@ -6336,6 +6558,9 @@ mef-ats-1040sr-eic~182e52d8-282a-4542-9ef2-a85406913732,/familyAndHousehold/*/co
 mef-ats-1040sr-eic~182e52d8-282a-4542-9ef2-a85406913732,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mef-ats-1040sr-eic~182e52d8-282a-4542-9ef2-a85406913732,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mef-ats-1040sr-eic~182e52d8-282a-4542-9ef2-a85406913732,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mef-ats-1040sr-eic~182e52d8-282a-4542-9ef2-a85406913732,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mef-ats-1040sr-eic~182e52d8-282a-4542-9ef2-a85406913732,/familyAndHousehold/*/eligibleCtc,true,Complete
+mef-ats-1040sr-eic~182e52d8-282a-4542-9ef2-a85406913732,/familyAndHousehold/*/eligibleOdc,false,Complete
 mef-ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/flowIsKnockedOut,false,Placeholder
 mef-ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/minimumFilerDateOfBirth,1964-08-02,Complete
 mef-ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/treatAsMFJ,true,Complete
@@ -6418,6 +6643,9 @@ mef-ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/contradicto
 mef-ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mef-ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mef-ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mef-ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mef-ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleCtc,false,Complete
+mef-ats-2~79ac153b-58be-4d5e-a59f-276ef540318e,/familyAndHousehold/*/eligibleOdc,true,Complete
 mef-ats-2a~82842774-884a-4ab2-88df-5a1980e68373,/flowIsKnockedOut,false,Placeholder
 mef-ats-2a~82842774-884a-4ab2-88df-5a1980e68373,/minimumFilerDateOfBirth,1964-08-02,Complete
 mef-ats-2a~82842774-884a-4ab2-88df-5a1980e68373,/treatAsMFJ,true,Complete
@@ -6500,6 +6728,9 @@ mef-ats-2a~82842774-884a-4ab2-88df-5a1980e68373,/familyAndHousehold/*/contradict
 mef-ats-2a~82842774-884a-4ab2-88df-5a1980e68373,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mef-ats-2a~82842774-884a-4ab2-88df-5a1980e68373,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mef-ats-2a~82842774-884a-4ab2-88df-5a1980e68373,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mef-ats-2a~82842774-884a-4ab2-88df-5a1980e68373,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mef-ats-2a~82842774-884a-4ab2-88df-5a1980e68373,/familyAndHousehold/*/eligibleCtc,false,Complete
+mef-ats-2a~82842774-884a-4ab2-88df-5a1980e68373,/familyAndHousehold/*/eligibleOdc,true,Complete
 mef-ats-5~cad41efc-79f2-4743-8ae2-06a440b5a87d,/flowIsKnockedOut,false,Placeholder
 mef-ats-5~cad41efc-79f2-4743-8ae2-06a440b5a87d,/minimumFilerDateOfBirth,1993-12-27,Complete
 mef-ats-5~cad41efc-79f2-4743-8ae2-06a440b5a87d,/treatAsMFJ,false,Complete
@@ -6584,6 +6815,9 @@ mef-ats-5~cad41efc-79f2-4743-8ae2-06a440b5a87d,/familyAndHousehold/*/contradicto
 mef-ats-5~cad41efc-79f2-4743-8ae2-06a440b5a87d,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mef-ats-5~cad41efc-79f2-4743-8ae2-06a440b5a87d,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mef-ats-5~cad41efc-79f2-4743-8ae2-06a440b5a87d,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mef-ats-5~cad41efc-79f2-4743-8ae2-06a440b5a87d,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mef-ats-5~cad41efc-79f2-4743-8ae2-06a440b5a87d,/familyAndHousehold/*/eligibleCtc,true,Complete
+mef-ats-5~cad41efc-79f2-4743-8ae2-06a440b5a87d,/familyAndHousehold/*/eligibleOdc,false,Complete
 mef-ats-5~1477d5d0-ee20-4a0e-a3b6-330a491c8967,/flowIsKnockedOut,false,Placeholder
 mef-ats-5~1477d5d0-ee20-4a0e-a3b6-330a491c8967,/minimumFilerDateOfBirth,1993-12-27,Complete
 mef-ats-5~1477d5d0-ee20-4a0e-a3b6-330a491c8967,/treatAsMFJ,false,Complete
@@ -6667,6 +6901,9 @@ mef-ats-5~1477d5d0-ee20-4a0e-a3b6-330a491c8967,/familyAndHousehold/*/contradicto
 mef-ats-5~1477d5d0-ee20-4a0e-a3b6-330a491c8967,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mef-ats-5~1477d5d0-ee20-4a0e-a3b6-330a491c8967,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mef-ats-5~1477d5d0-ee20-4a0e-a3b6-330a491c8967,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mef-ats-5~1477d5d0-ee20-4a0e-a3b6-330a491c8967,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mef-ats-5~1477d5d0-ee20-4a0e-a3b6-330a491c8967,/familyAndHousehold/*/eligibleCtc,true,Complete
+mef-ats-5~1477d5d0-ee20-4a0e-a3b6-330a491c8967,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-11k~296aa849-b3b9-4c4c-bfe7-bc99e0cf90f7,/flowIsKnockedOut,false,Placeholder
 mfj-11k~296aa849-b3b9-4c4c-bfe7-bc99e0cf90f7,/minimumFilerDateOfBirth,1995-02-10,Complete
 mfj-11k~296aa849-b3b9-4c4c-bfe7-bc99e0cf90f7,/treatAsMFJ,true,Complete
@@ -6748,6 +6985,9 @@ mfj-11k~296aa849-b3b9-4c4c-bfe7-bc99e0cf90f7,/familyAndHousehold/*/contradictory
 mfj-11k~296aa849-b3b9-4c4c-bfe7-bc99e0cf90f7,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-11k~296aa849-b3b9-4c4c-bfe7-bc99e0cf90f7,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-11k~296aa849-b3b9-4c4c-bfe7-bc99e0cf90f7,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-11k~296aa849-b3b9-4c4c-bfe7-bc99e0cf90f7,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mfj-11k~296aa849-b3b9-4c4c-bfe7-bc99e0cf90f7,/familyAndHousehold/*/eligibleCtc,true,Complete
+mfj-11k~296aa849-b3b9-4c4c-bfe7-bc99e0cf90f7,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-15k~e65bb83a-c8f5-41b9-b3c3-5629d48d5d4b,/flowIsKnockedOut,false,Placeholder
 mfj-15k~e65bb83a-c8f5-41b9-b3c3-5629d48d5d4b,/minimumFilerDateOfBirth,1972-05-09,Complete
 mfj-15k~e65bb83a-c8f5-41b9-b3c3-5629d48d5d4b,/treatAsMFJ,true,Complete
@@ -6834,6 +7074,9 @@ mfj-15k~e65bb83a-c8f5-41b9-b3c3-5629d48d5d4b,/familyAndHousehold/*/contradictory
 mfj-15k~e65bb83a-c8f5-41b9-b3c3-5629d48d5d4b,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-15k~e65bb83a-c8f5-41b9-b3c3-5629d48d5d4b,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-15k~e65bb83a-c8f5-41b9-b3c3-5629d48d5d4b,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-15k~e65bb83a-c8f5-41b9-b3c3-5629d48d5d4b,/familyAndHousehold/*/ssnValidForEmployment,false,Complete
+mfj-15k~e65bb83a-c8f5-41b9-b3c3-5629d48d5d4b,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-15k~e65bb83a-c8f5-41b9-b3c3-5629d48d5d4b,/familyAndHousehold/*/eligibleOdc,true,Complete
 mfj-1dep-1nondep~e93deeef-cb90-48b0-911d-b074959f2319,/flowIsKnockedOut,false,Placeholder
 mfj-1dep-1nondep~e93deeef-cb90-48b0-911d-b074959f2319,/minimumFilerDateOfBirth,1901-03-05,Complete
 mfj-1dep-1nondep~e93deeef-cb90-48b0-911d-b074959f2319,/treatAsMFJ,true,Complete
@@ -6911,6 +7154,9 @@ mfj-1dep-1nondep~e93deeef-cb90-48b0-911d-b074959f2319,/familyAndHousehold/*/cont
 mfj-1dep-1nondep~e93deeef-cb90-48b0-911d-b074959f2319,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-1dep-1nondep~e93deeef-cb90-48b0-911d-b074959f2319,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-1dep-1nondep~e93deeef-cb90-48b0-911d-b074959f2319,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-1dep-1nondep~e93deeef-cb90-48b0-911d-b074959f2319,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-1dep-1nondep~e93deeef-cb90-48b0-911d-b074959f2319,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-1dep-1nondep~e93deeef-cb90-48b0-911d-b074959f2319,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-1dep-1nondep~bc16d3cc-c9ea-4240-bc3a-7645ca171ce9,/flowIsKnockedOut,false,Placeholder
 mfj-1dep-1nondep~bc16d3cc-c9ea-4240-bc3a-7645ca171ce9,/minimumFilerDateOfBirth,1901-03-05,Complete
 mfj-1dep-1nondep~bc16d3cc-c9ea-4240-bc3a-7645ca171ce9,/treatAsMFJ,true,Complete
@@ -6992,6 +7238,9 @@ mfj-1dep-1nondep~bc16d3cc-c9ea-4240-bc3a-7645ca171ce9,/familyAndHousehold/*/cont
 mfj-1dep-1nondep~bc16d3cc-c9ea-4240-bc3a-7645ca171ce9,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-1dep-1nondep~bc16d3cc-c9ea-4240-bc3a-7645ca171ce9,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-1dep-1nondep~bc16d3cc-c9ea-4240-bc3a-7645ca171ce9,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-1dep-1nondep~bc16d3cc-c9ea-4240-bc3a-7645ca171ce9,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-1dep-1nondep~bc16d3cc-c9ea-4240-bc3a-7645ca171ce9,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-1dep-1nondep~bc16d3cc-c9ea-4240-bc3a-7645ca171ce9,/familyAndHousehold/*/eligibleOdc,true,Complete
 mfj-20k~12cad005-1312-40bf-bcc1-3624237f1ea8,/flowIsKnockedOut,false,Placeholder
 mfj-20k~12cad005-1312-40bf-bcc1-3624237f1ea8,/minimumFilerDateOfBirth,1990-01-01,Complete
 mfj-20k~12cad005-1312-40bf-bcc1-3624237f1ea8,/treatAsMFJ,true,Complete
@@ -7073,6 +7322,9 @@ mfj-20k~12cad005-1312-40bf-bcc1-3624237f1ea8,/familyAndHousehold/*/contradictory
 mfj-20k~12cad005-1312-40bf-bcc1-3624237f1ea8,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-20k~12cad005-1312-40bf-bcc1-3624237f1ea8,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-20k~12cad005-1312-40bf-bcc1-3624237f1ea8,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-20k~12cad005-1312-40bf-bcc1-3624237f1ea8,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-20k~12cad005-1312-40bf-bcc1-3624237f1ea8,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-20k~12cad005-1312-40bf-bcc1-3624237f1ea8,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-30k-eitc-ctc-actc~97297bea-bbfa-4c77-bff6-12554186f6c9,/flowIsKnockedOut,false,Placeholder
 mfj-30k-eitc-ctc-actc~97297bea-bbfa-4c77-bff6-12554186f6c9,/minimumFilerDateOfBirth,1983-01-01,Complete
 mfj-30k-eitc-ctc-actc~97297bea-bbfa-4c77-bff6-12554186f6c9,/treatAsMFJ,true,Complete
@@ -7161,6 +7413,9 @@ mfj-30k-eitc-ctc-actc~97297bea-bbfa-4c77-bff6-12554186f6c9,/familyAndHousehold/*
 mfj-30k-eitc-ctc-actc~97297bea-bbfa-4c77-bff6-12554186f6c9,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-30k-eitc-ctc-actc~97297bea-bbfa-4c77-bff6-12554186f6c9,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-30k-eitc-ctc-actc~97297bea-bbfa-4c77-bff6-12554186f6c9,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-30k-eitc-ctc-actc~97297bea-bbfa-4c77-bff6-12554186f6c9,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mfj-30k-eitc-ctc-actc~97297bea-bbfa-4c77-bff6-12554186f6c9,/familyAndHousehold/*/eligibleCtc,true,Complete
+mfj-30k-eitc-ctc-actc~97297bea-bbfa-4c77-bff6-12554186f6c9,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-30k~e1e40e93-83d3-417d-b8ba-a1e720976ec4,/flowIsKnockedOut,false,Placeholder
 mfj-30k~e1e40e93-83d3-417d-b8ba-a1e720976ec4,/minimumFilerDateOfBirth,1902-08-12,Complete
 mfj-30k~e1e40e93-83d3-417d-b8ba-a1e720976ec4,/treatAsMFJ,true,Complete
@@ -7244,6 +7499,9 @@ mfj-30k~e1e40e93-83d3-417d-b8ba-a1e720976ec4,/familyAndHousehold/*/contradictory
 mfj-30k~e1e40e93-83d3-417d-b8ba-a1e720976ec4,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-30k~e1e40e93-83d3-417d-b8ba-a1e720976ec4,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-30k~e1e40e93-83d3-417d-b8ba-a1e720976ec4,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-30k~e1e40e93-83d3-417d-b8ba-a1e720976ec4,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-30k~e1e40e93-83d3-417d-b8ba-a1e720976ec4,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-30k~e1e40e93-83d3-417d-b8ba-a1e720976ec4,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-30k~331f1a2a-cd1c-4082-a6b0-7a333e72919b,/flowIsKnockedOut,false,Placeholder
 mfj-30k~331f1a2a-cd1c-4082-a6b0-7a333e72919b,/minimumFilerDateOfBirth,1902-08-12,Complete
 mfj-30k~331f1a2a-cd1c-4082-a6b0-7a333e72919b,/treatAsMFJ,true,Complete
@@ -7329,6 +7587,9 @@ mfj-30k~331f1a2a-cd1c-4082-a6b0-7a333e72919b,/familyAndHousehold/*/contradictory
 mfj-30k~331f1a2a-cd1c-4082-a6b0-7a333e72919b,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-30k~331f1a2a-cd1c-4082-a6b0-7a333e72919b,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-30k~331f1a2a-cd1c-4082-a6b0-7a333e72919b,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-30k~331f1a2a-cd1c-4082-a6b0-7a333e72919b,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-30k~331f1a2a-cd1c-4082-a6b0-7a333e72919b,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-30k~331f1a2a-cd1c-4082-a6b0-7a333e72919b,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-40k-eitc-ctc~7b9e390b-d359-4573-b181-6874bf0c2af2,/flowIsKnockedOut,false,Placeholder
 mfj-40k-eitc-ctc~7b9e390b-d359-4573-b181-6874bf0c2af2,/minimumFilerDateOfBirth,1970-05-29,Complete
 mfj-40k-eitc-ctc~7b9e390b-d359-4573-b181-6874bf0c2af2,/treatAsMFJ,true,Complete
@@ -7411,6 +7672,9 @@ mfj-40k-eitc-ctc~7b9e390b-d359-4573-b181-6874bf0c2af2,/familyAndHousehold/*/cont
 mfj-40k-eitc-ctc~7b9e390b-d359-4573-b181-6874bf0c2af2,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-40k-eitc-ctc~7b9e390b-d359-4573-b181-6874bf0c2af2,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-40k-eitc-ctc~7b9e390b-d359-4573-b181-6874bf0c2af2,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-40k-eitc-ctc~7b9e390b-d359-4573-b181-6874bf0c2af2,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mfj-40k-eitc-ctc~7b9e390b-d359-4573-b181-6874bf0c2af2,/familyAndHousehold/*/eligibleCtc,true,Complete
+mfj-40k-eitc-ctc~7b9e390b-d359-4573-b181-6874bf0c2af2,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-42505-ctck12~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/flowIsKnockedOut,false,Placeholder
 mfj-42505-ctck12~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/minimumFilerDateOfBirth,1990-05-05,Complete
 mfj-42505-ctck12~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/treatAsMFJ,true,Complete
@@ -7495,6 +7759,9 @@ mfj-42505-ctck12~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/familyAndHousehold/*/cont
 mfj-42505-ctck12~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-42505-ctck12~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-42505-ctck12~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-42505-ctck12~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mfj-42505-ctck12~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/familyAndHousehold/*/eligibleCtc,true,Complete
+mfj-42505-ctck12~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-42505-ctck12~8957bee4-c79c-4b04-916a-eea160ccbf53,/flowIsKnockedOut,false,Placeholder
 mfj-42505-ctck12~8957bee4-c79c-4b04-916a-eea160ccbf53,/minimumFilerDateOfBirth,1990-05-05,Complete
 mfj-42505-ctck12~8957bee4-c79c-4b04-916a-eea160ccbf53,/treatAsMFJ,true,Complete
@@ -7577,6 +7844,9 @@ mfj-42505-ctck12~8957bee4-c79c-4b04-916a-eea160ccbf53,/familyAndHousehold/*/cont
 mfj-42505-ctck12~8957bee4-c79c-4b04-916a-eea160ccbf53,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-42505-ctck12~8957bee4-c79c-4b04-916a-eea160ccbf53,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-42505-ctck12~8957bee4-c79c-4b04-916a-eea160ccbf53,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-42505-ctck12~8957bee4-c79c-4b04-916a-eea160ccbf53,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-42505-ctck12~8957bee4-c79c-4b04-916a-eea160ccbf53,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-42505-ctck12~8957bee4-c79c-4b04-916a-eea160ccbf53,/familyAndHousehold/*/eligibleOdc,true,Complete
 mfj-43k~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/flowIsKnockedOut,false,Placeholder
 mfj-43k~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/minimumFilerDateOfBirth,1990-05-05,Complete
 mfj-43k~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/treatAsMFJ,true,Complete
@@ -7661,6 +7931,9 @@ mfj-43k~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/familyAndHousehold/*/contradictory
 mfj-43k~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-43k~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-43k~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-43k~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mfj-43k~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/familyAndHousehold/*/eligibleCtc,true,Complete
+mfj-43k~0dea6e9a-f314-4789-b07e-2aaaf1adbb65,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-43k~8957bee4-c79c-4b04-916a-eea160ccbf53,/flowIsKnockedOut,false,Placeholder
 mfj-43k~8957bee4-c79c-4b04-916a-eea160ccbf53,/minimumFilerDateOfBirth,1990-05-05,Complete
 mfj-43k~8957bee4-c79c-4b04-916a-eea160ccbf53,/treatAsMFJ,true,Complete
@@ -7743,6 +8016,9 @@ mfj-43k~8957bee4-c79c-4b04-916a-eea160ccbf53,/familyAndHousehold/*/contradictory
 mfj-43k~8957bee4-c79c-4b04-916a-eea160ccbf53,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-43k~8957bee4-c79c-4b04-916a-eea160ccbf53,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-43k~8957bee4-c79c-4b04-916a-eea160ccbf53,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-43k~8957bee4-c79c-4b04-916a-eea160ccbf53,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-43k~8957bee4-c79c-4b04-916a-eea160ccbf53,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-43k~8957bee4-c79c-4b04-916a-eea160ccbf53,/familyAndHousehold/*/eligibleOdc,true,Complete
 mfj-44k-ak-pfd~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/flowIsKnockedOut,false,Placeholder
 mfj-44k-ak-pfd~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/minimumFilerDateOfBirth,1980-03-05,Complete
 mfj-44k-ak-pfd~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/treatAsMFJ,true,Complete
@@ -7827,6 +8103,9 @@ mfj-44k-ak-pfd~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/contra
 mfj-44k-ak-pfd~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-44k-ak-pfd~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-44k-ak-pfd~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-44k-ak-pfd~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mfj-44k-ak-pfd~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/eligibleCtc,true,Complete
+mfj-44k-ak-pfd~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-44k-ak-pfd~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/flowIsKnockedOut,false,Placeholder
 mfj-44k-ak-pfd~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/minimumFilerDateOfBirth,1980-03-05,Complete
 mfj-44k-ak-pfd~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/treatAsMFJ,true,Complete
@@ -7914,6 +8193,9 @@ mfj-44k-ak-pfd~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/contra
 mfj-44k-ak-pfd~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-44k-ak-pfd~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-44k-ak-pfd~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-44k-ak-pfd~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-44k-ak-pfd~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-44k-ak-pfd~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-44k-ak-pfd~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/flowIsKnockedOut,false,Placeholder
 mfj-44k-ak-pfd~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/minimumFilerDateOfBirth,1980-03-05,Complete
 mfj-44k-ak-pfd~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/treatAsMFJ,true,Complete
@@ -7997,6 +8279,9 @@ mfj-44k-ak-pfd~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/contra
 mfj-44k-ak-pfd~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-44k-ak-pfd~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-44k-ak-pfd~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-44k-ak-pfd~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-44k-ak-pfd~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-44k-ak-pfd~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/eligibleOdc,true,Complete
 mfj-44k~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/flowIsKnockedOut,false,Placeholder
 mfj-44k~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/minimumFilerDateOfBirth,1980-03-05,Complete
 mfj-44k~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/treatAsMFJ,true,Complete
@@ -8081,6 +8366,9 @@ mfj-44k~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/contradictory
 mfj-44k~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-44k~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-44k~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-44k~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mfj-44k~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/eligibleCtc,true,Complete
+mfj-44k~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-44k~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/flowIsKnockedOut,false,Placeholder
 mfj-44k~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/minimumFilerDateOfBirth,1980-03-05,Complete
 mfj-44k~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/treatAsMFJ,true,Complete
@@ -8168,6 +8456,9 @@ mfj-44k~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/contradictory
 mfj-44k~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-44k~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-44k~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-44k~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-44k~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-44k~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-44k~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/flowIsKnockedOut,false,Placeholder
 mfj-44k~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/minimumFilerDateOfBirth,1980-03-05,Complete
 mfj-44k~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/treatAsMFJ,true,Complete
@@ -8251,6 +8542,9 @@ mfj-44k~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/contradictory
 mfj-44k~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-44k~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-44k~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-44k~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-44k~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-44k~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/eligibleOdc,true,Complete
 mfj-50k-ctc-odc~3524705d-35f2-44dd-bb0a-ea4481b06502,/flowIsKnockedOut,false,Placeholder
 mfj-50k-ctc-odc~3524705d-35f2-44dd-bb0a-ea4481b06502,/minimumFilerDateOfBirth,1940-03-04,Complete
 mfj-50k-ctc-odc~3524705d-35f2-44dd-bb0a-ea4481b06502,/treatAsMFJ,true,Complete
@@ -8334,6 +8628,9 @@ mfj-50k-ctc-odc~3524705d-35f2-44dd-bb0a-ea4481b06502,/familyAndHousehold/*/contr
 mfj-50k-ctc-odc~3524705d-35f2-44dd-bb0a-ea4481b06502,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-50k-ctc-odc~3524705d-35f2-44dd-bb0a-ea4481b06502,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-50k-ctc-odc~3524705d-35f2-44dd-bb0a-ea4481b06502,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-50k-ctc-odc~3524705d-35f2-44dd-bb0a-ea4481b06502,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-50k-ctc-odc~3524705d-35f2-44dd-bb0a-ea4481b06502,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-50k-ctc-odc~3524705d-35f2-44dd-bb0a-ea4481b06502,/familyAndHousehold/*/eligibleOdc,true,Complete
 mfj-50k-ctc-odc~ac82b88d-c13b-4c6f-a08b-c74d01f57a4a,/flowIsKnockedOut,false,Placeholder
 mfj-50k-ctc-odc~ac82b88d-c13b-4c6f-a08b-c74d01f57a4a,/minimumFilerDateOfBirth,1940-03-04,Complete
 mfj-50k-ctc-odc~ac82b88d-c13b-4c6f-a08b-c74d01f57a4a,/treatAsMFJ,true,Complete
@@ -8419,6 +8716,9 @@ mfj-50k-ctc-odc~ac82b88d-c13b-4c6f-a08b-c74d01f57a4a,/familyAndHousehold/*/contr
 mfj-50k-ctc-odc~ac82b88d-c13b-4c6f-a08b-c74d01f57a4a,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-50k-ctc-odc~ac82b88d-c13b-4c6f-a08b-c74d01f57a4a,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-50k-ctc-odc~ac82b88d-c13b-4c6f-a08b-c74d01f57a4a,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-50k-ctc-odc~ac82b88d-c13b-4c6f-a08b-c74d01f57a4a,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-50k-ctc-odc~ac82b88d-c13b-4c6f-a08b-c74d01f57a4a,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-50k-ctc-odc~ac82b88d-c13b-4c6f-a08b-c74d01f57a4a,/familyAndHousehold/*/eligibleOdc,true,Complete
 mfj-50k-ctc-odc~9d45c664-8966-42e0-a179-4883b593f939,/flowIsKnockedOut,false,Placeholder
 mfj-50k-ctc-odc~9d45c664-8966-42e0-a179-4883b593f939,/minimumFilerDateOfBirth,1940-03-04,Complete
 mfj-50k-ctc-odc~9d45c664-8966-42e0-a179-4883b593f939,/treatAsMFJ,true,Complete
@@ -8504,6 +8804,9 @@ mfj-50k-ctc-odc~9d45c664-8966-42e0-a179-4883b593f939,/familyAndHousehold/*/contr
 mfj-50k-ctc-odc~9d45c664-8966-42e0-a179-4883b593f939,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-50k-ctc-odc~9d45c664-8966-42e0-a179-4883b593f939,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-50k-ctc-odc~9d45c664-8966-42e0-a179-4883b593f939,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-50k-ctc-odc~9d45c664-8966-42e0-a179-4883b593f939,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-50k-ctc-odc~9d45c664-8966-42e0-a179-4883b593f939,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-50k-ctc-odc~9d45c664-8966-42e0-a179-4883b593f939,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~1efc8013-daa6-42c3-b704-ec52f7a1dacd,/flowIsKnockedOut,false,Placeholder
 mfj-adjustments-spouse-didnt-file-last-year~1efc8013-daa6-42c3-b704-ec52f7a1dacd,/minimumFilerDateOfBirth,1980-01-01,Complete
 mfj-adjustments-spouse-didnt-file-last-year~1efc8013-daa6-42c3-b704-ec52f7a1dacd,/treatAsMFJ,true,Complete
@@ -8586,6 +8889,9 @@ mfj-adjustments-spouse-didnt-file-last-year~1efc8013-daa6-42c3-b704-ec52f7a1dacd
 mfj-adjustments-spouse-didnt-file-last-year~1efc8013-daa6-42c3-b704-ec52f7a1dacd,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~1efc8013-daa6-42c3-b704-ec52f7a1dacd,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~1efc8013-daa6-42c3-b704-ec52f7a1dacd,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-adjustments-spouse-didnt-file-last-year~1efc8013-daa6-42c3-b704-ec52f7a1dacd,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mfj-adjustments-spouse-didnt-file-last-year~1efc8013-daa6-42c3-b704-ec52f7a1dacd,/familyAndHousehold/*/eligibleCtc,true,Complete
+mfj-adjustments-spouse-didnt-file-last-year~1efc8013-daa6-42c3-b704-ec52f7a1dacd,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~9d87d8db-a657-4960-ad7d-73511a170416,/flowIsKnockedOut,false,Placeholder
 mfj-adjustments-spouse-didnt-file-last-year~9d87d8db-a657-4960-ad7d-73511a170416,/minimumFilerDateOfBirth,1980-01-01,Complete
 mfj-adjustments-spouse-didnt-file-last-year~9d87d8db-a657-4960-ad7d-73511a170416,/treatAsMFJ,true,Complete
@@ -8668,6 +8974,9 @@ mfj-adjustments-spouse-didnt-file-last-year~9d87d8db-a657-4960-ad7d-73511a170416
 mfj-adjustments-spouse-didnt-file-last-year~9d87d8db-a657-4960-ad7d-73511a170416,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~9d87d8db-a657-4960-ad7d-73511a170416,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~9d87d8db-a657-4960-ad7d-73511a170416,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-adjustments-spouse-didnt-file-last-year~9d87d8db-a657-4960-ad7d-73511a170416,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mfj-adjustments-spouse-didnt-file-last-year~9d87d8db-a657-4960-ad7d-73511a170416,/familyAndHousehold/*/eligibleCtc,true,Complete
+mfj-adjustments-spouse-didnt-file-last-year~9d87d8db-a657-4960-ad7d-73511a170416,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~348e109d-fba3-4311-a2fc-02e8b7b3a1b1,/flowIsKnockedOut,false,Placeholder
 mfj-adjustments-spouse-didnt-file-last-year~348e109d-fba3-4311-a2fc-02e8b7b3a1b1,/minimumFilerDateOfBirth,1980-01-01,Complete
 mfj-adjustments-spouse-didnt-file-last-year~348e109d-fba3-4311-a2fc-02e8b7b3a1b1,/treatAsMFJ,true,Complete
@@ -8750,6 +9059,9 @@ mfj-adjustments-spouse-didnt-file-last-year~348e109d-fba3-4311-a2fc-02e8b7b3a1b1
 mfj-adjustments-spouse-didnt-file-last-year~348e109d-fba3-4311-a2fc-02e8b7b3a1b1,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~348e109d-fba3-4311-a2fc-02e8b7b3a1b1,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~348e109d-fba3-4311-a2fc-02e8b7b3a1b1,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-adjustments-spouse-didnt-file-last-year~348e109d-fba3-4311-a2fc-02e8b7b3a1b1,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mfj-adjustments-spouse-didnt-file-last-year~348e109d-fba3-4311-a2fc-02e8b7b3a1b1,/familyAndHousehold/*/eligibleCtc,true,Complete
+mfj-adjustments-spouse-didnt-file-last-year~348e109d-fba3-4311-a2fc-02e8b7b3a1b1,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~ed36e540-f3e4-4015-9787-6cd895bd2fea,/flowIsKnockedOut,false,Placeholder
 mfj-adjustments-spouse-didnt-file-last-year~ed36e540-f3e4-4015-9787-6cd895bd2fea,/minimumFilerDateOfBirth,1980-01-01,Complete
 mfj-adjustments-spouse-didnt-file-last-year~ed36e540-f3e4-4015-9787-6cd895bd2fea,/treatAsMFJ,true,Complete
@@ -8832,6 +9144,9 @@ mfj-adjustments-spouse-didnt-file-last-year~ed36e540-f3e4-4015-9787-6cd895bd2fea
 mfj-adjustments-spouse-didnt-file-last-year~ed36e540-f3e4-4015-9787-6cd895bd2fea,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~ed36e540-f3e4-4015-9787-6cd895bd2fea,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~ed36e540-f3e4-4015-9787-6cd895bd2fea,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-adjustments-spouse-didnt-file-last-year~ed36e540-f3e4-4015-9787-6cd895bd2fea,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mfj-adjustments-spouse-didnt-file-last-year~ed36e540-f3e4-4015-9787-6cd895bd2fea,/familyAndHousehold/*/eligibleCtc,true,Complete
+mfj-adjustments-spouse-didnt-file-last-year~ed36e540-f3e4-4015-9787-6cd895bd2fea,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~2d07210c-7ddb-41b8-bcca-bd57e2d0e1c8,/flowIsKnockedOut,false,Placeholder
 mfj-adjustments-spouse-didnt-file-last-year~2d07210c-7ddb-41b8-bcca-bd57e2d0e1c8,/minimumFilerDateOfBirth,1980-01-01,Complete
 mfj-adjustments-spouse-didnt-file-last-year~2d07210c-7ddb-41b8-bcca-bd57e2d0e1c8,/treatAsMFJ,true,Complete
@@ -8913,6 +9228,9 @@ mfj-adjustments-spouse-didnt-file-last-year~2d07210c-7ddb-41b8-bcca-bd57e2d0e1c8
 mfj-adjustments-spouse-didnt-file-last-year~2d07210c-7ddb-41b8-bcca-bd57e2d0e1c8,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~2d07210c-7ddb-41b8-bcca-bd57e2d0e1c8,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-adjustments-spouse-didnt-file-last-year~2d07210c-7ddb-41b8-bcca-bd57e2d0e1c8,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-adjustments-spouse-didnt-file-last-year~2d07210c-7ddb-41b8-bcca-bd57e2d0e1c8,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfj-adjustments-spouse-didnt-file-last-year~2d07210c-7ddb-41b8-bcca-bd57e2d0e1c8,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfj-adjustments-spouse-didnt-file-last-year~2d07210c-7ddb-41b8-bcca-bd57e2d0e1c8,/familyAndHousehold/*/eligibleOdc,true,Complete
 mfj-cdcc-combat-pay-2024-verified~d4aab682-94c9-482b-8bd9-3a31fd861353,/flowIsKnockedOut,false,Placeholder
 mfj-cdcc-combat-pay-2024-verified~d4aab682-94c9-482b-8bd9-3a31fd861353,/minimumFilerDateOfBirth,1980-01-15,Complete
 mfj-cdcc-combat-pay-2024-verified~d4aab682-94c9-482b-8bd9-3a31fd861353,/treatAsMFJ,true,Complete
@@ -8999,6 +9317,9 @@ mfj-cdcc-combat-pay-2024-verified~d4aab682-94c9-482b-8bd9-3a31fd861353,/familyAn
 mfj-cdcc-combat-pay-2024-verified~d4aab682-94c9-482b-8bd9-3a31fd861353,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-cdcc-combat-pay-2024-verified~d4aab682-94c9-482b-8bd9-3a31fd861353,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-cdcc-combat-pay-2024-verified~d4aab682-94c9-482b-8bd9-3a31fd861353,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-cdcc-combat-pay-2024-verified~d4aab682-94c9-482b-8bd9-3a31fd861353,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mfj-cdcc-combat-pay-2024-verified~d4aab682-94c9-482b-8bd9-3a31fd861353,/familyAndHousehold/*/eligibleCtc,true,Complete
+mfj-cdcc-combat-pay-2024-verified~d4aab682-94c9-482b-8bd9-3a31fd861353,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfj-deceased-spouse~c51c36fe-0587-4134-a24b-95b539bf9916,/flowIsKnockedOut,false,Placeholder
 mfj-deceased-spouse~c51c36fe-0587-4134-a24b-95b539bf9916,/minimumFilerDateOfBirth,1998-03-29,Complete
 mfj-deceased-spouse~c51c36fe-0587-4134-a24b-95b539bf9916,/treatAsMFJ,true,Complete
@@ -9081,6 +9402,9 @@ mfj-deceased-spouse~c51c36fe-0587-4134-a24b-95b539bf9916,/familyAndHousehold/*/c
 mfj-deceased-spouse~c51c36fe-0587-4134-a24b-95b539bf9916,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfj-deceased-spouse~c51c36fe-0587-4134-a24b-95b539bf9916,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfj-deceased-spouse~c51c36fe-0587-4134-a24b-95b539bf9916,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfj-deceased-spouse~c51c36fe-0587-4134-a24b-95b539bf9916,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+mfj-deceased-spouse~c51c36fe-0587-4134-a24b-95b539bf9916,/familyAndHousehold/*/eligibleCtc,true,Complete
+mfj-deceased-spouse~c51c36fe-0587-4134-a24b-95b539bf9916,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfs-20k-no-credits~e1ac3565-557f-41f8-8c20-5b21cf5fd061,/flowIsKnockedOut,false,Placeholder
 mfs-20k-no-credits~e1ac3565-557f-41f8-8c20-5b21cf5fd061,/minimumFilerDateOfBirth,1994-05-10,Complete
 mfs-20k-no-credits~e1ac3565-557f-41f8-8c20-5b21cf5fd061,/treatAsMFJ,false,Complete
@@ -9163,6 +9487,9 @@ mfs-20k-no-credits~e1ac3565-557f-41f8-8c20-5b21cf5fd061,/familyAndHousehold/*/co
 mfs-20k-no-credits~e1ac3565-557f-41f8-8c20-5b21cf5fd061,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfs-20k-no-credits~e1ac3565-557f-41f8-8c20-5b21cf5fd061,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfs-20k-no-credits~e1ac3565-557f-41f8-8c20-5b21cf5fd061,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfs-20k-no-credits~e1ac3565-557f-41f8-8c20-5b21cf5fd061,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfs-20k-no-credits~e1ac3565-557f-41f8-8c20-5b21cf5fd061,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfs-20k-no-credits~e1ac3565-557f-41f8-8c20-5b21cf5fd061,/familyAndHousehold/*/eligibleOdc,true,Complete
 mfs-35k-cod-eitc~82b41571-392b-46ee-b0f0-d86259efc662,/flowIsKnockedOut,false,Placeholder
 mfs-35k-cod-eitc~82b41571-392b-46ee-b0f0-d86259efc662,/minimumFilerDateOfBirth,1970-01-01,Complete
 mfs-35k-cod-eitc~82b41571-392b-46ee-b0f0-d86259efc662,/treatAsMFJ,false,Complete
@@ -9248,6 +9575,9 @@ mfs-35k-cod-eitc~82b41571-392b-46ee-b0f0-d86259efc662,/familyAndHousehold/*/cont
 mfs-35k-cod-eitc~82b41571-392b-46ee-b0f0-d86259efc662,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfs-35k-cod-eitc~82b41571-392b-46ee-b0f0-d86259efc662,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfs-35k-cod-eitc~82b41571-392b-46ee-b0f0-d86259efc662,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfs-35k-cod-eitc~82b41571-392b-46ee-b0f0-d86259efc662,/familyAndHousehold/*/ssnValidForEmployment,false,Complete
+mfs-35k-cod-eitc~82b41571-392b-46ee-b0f0-d86259efc662,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfs-35k-cod-eitc~82b41571-392b-46ee-b0f0-d86259efc662,/familyAndHousehold/*/eligibleOdc,true,Complete
 mfs-35k-cod-eitc~775b9ef8-8811-4176-b90c-8f79f6a5af9a,/flowIsKnockedOut,false,Placeholder
 mfs-35k-cod-eitc~775b9ef8-8811-4176-b90c-8f79f6a5af9a,/minimumFilerDateOfBirth,1970-01-01,Complete
 mfs-35k-cod-eitc~775b9ef8-8811-4176-b90c-8f79f6a5af9a,/treatAsMFJ,false,Complete
@@ -9326,6 +9656,9 @@ mfs-35k-cod-eitc~775b9ef8-8811-4176-b90c-8f79f6a5af9a,/familyAndHousehold/*/cont
 mfs-35k-cod-eitc~775b9ef8-8811-4176-b90c-8f79f6a5af9a,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfs-35k-cod-eitc~775b9ef8-8811-4176-b90c-8f79f6a5af9a,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfs-35k-cod-eitc~775b9ef8-8811-4176-b90c-8f79f6a5af9a,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfs-35k-cod-eitc~775b9ef8-8811-4176-b90c-8f79f6a5af9a,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfs-35k-cod-eitc~775b9ef8-8811-4176-b90c-8f79f6a5af9a,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfs-35k-cod-eitc~775b9ef8-8811-4176-b90c-8f79f6a5af9a,/familyAndHousehold/*/eligibleOdc,false,Complete
 mfs-4300-none~04282192-cc89-47a6-8728-07bc050b580f,/flowIsKnockedOut,false,Placeholder
 mfs-4300-none~04282192-cc89-47a6-8728-07bc050b580f,/minimumFilerDateOfBirth,1988-09-09,Complete
 mfs-4300-none~04282192-cc89-47a6-8728-07bc050b580f,/treatAsMFJ,false,Complete
@@ -9410,6 +9743,9 @@ mfs-4300-none~04282192-cc89-47a6-8728-07bc050b580f,/familyAndHousehold/*/contrad
 mfs-4300-none~04282192-cc89-47a6-8728-07bc050b580f,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 mfs-4300-none~04282192-cc89-47a6-8728-07bc050b580f,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 mfs-4300-none~04282192-cc89-47a6-8728-07bc050b580f,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+mfs-4300-none~04282192-cc89-47a6-8728-07bc050b580f,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+mfs-4300-none~04282192-cc89-47a6-8728-07bc050b580f,/familyAndHousehold/*/eligibleCtc,false,Complete
+mfs-4300-none~04282192-cc89-47a6-8728-07bc050b580f,/familyAndHousehold/*/eligibleOdc,true,Complete
 npe-form-2441-without-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/flowIsKnockedOut,false,Placeholder
 npe-form-2441-without-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/minimumFilerDateOfBirth,1987-11-11,Complete
 npe-form-2441-without-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/treatAsMFJ,false,Complete
@@ -9496,6 +9832,9 @@ npe-form-2441-without-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHouseh
 npe-form-2441-without-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 npe-form-2441-without-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 npe-form-2441-without-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+npe-form-2441-without-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+npe-form-2441-without-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/eligibleCtc,true,Complete
+npe-form-2441-without-cdcc~60c874b4-bb7b-4c82-8550-5555b2b585f8,/familyAndHousehold/*/eligibleOdc,false,Complete
 npe-form-2441-without-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/flowIsKnockedOut,false,Placeholder
 npe-form-2441-without-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/minimumFilerDateOfBirth,1987-11-11,Complete
 npe-form-2441-without-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/treatAsMFJ,false,Complete
@@ -9584,6 +9923,9 @@ npe-form-2441-without-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHouseh
 npe-form-2441-without-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 npe-form-2441-without-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 npe-form-2441-without-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+npe-form-2441-without-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+npe-form-2441-without-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/eligibleCtc,true,Complete
+npe-form-2441-without-cdcc~93e7961f-dd7b-4c7f-9430-bb597123935f,/familyAndHousehold/*/eligibleOdc,false,Complete
 qss-12k~c027236c-4514-4bc8-874b-e1aae71126e2,/flowIsKnockedOut,false,Placeholder
 qss-12k~c027236c-4514-4bc8-874b-e1aae71126e2,/minimumFilerDateOfBirth,1950-09-09,Complete
 qss-12k~c027236c-4514-4bc8-874b-e1aae71126e2,/treatAsMFJ,false,Complete
@@ -9666,6 +10008,9 @@ qss-12k~c027236c-4514-4bc8-874b-e1aae71126e2,/familyAndHousehold/*/contradictory
 qss-12k~c027236c-4514-4bc8-874b-e1aae71126e2,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 qss-12k~c027236c-4514-4bc8-874b-e1aae71126e2,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 qss-12k~c027236c-4514-4bc8-874b-e1aae71126e2,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+qss-12k~c027236c-4514-4bc8-874b-e1aae71126e2,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+qss-12k~c027236c-4514-4bc8-874b-e1aae71126e2,/familyAndHousehold/*/eligibleCtc,false,Complete
+qss-12k~c027236c-4514-4bc8-874b-e1aae71126e2,/familyAndHousehold/*/eligibleOdc,true,Complete
 qss-34K-ctc-2dependents~8973097c-5b46-4dd6-9f21-dfe07a9ea82b,/flowIsKnockedOut,false,Placeholder
 qss-34K-ctc-2dependents~8973097c-5b46-4dd6-9f21-dfe07a9ea82b,/minimumFilerDateOfBirth,1999-04-21,Complete
 qss-34K-ctc-2dependents~8973097c-5b46-4dd6-9f21-dfe07a9ea82b,/treatAsMFJ,false,Complete
@@ -9749,6 +10094,9 @@ qss-34K-ctc-2dependents~8973097c-5b46-4dd6-9f21-dfe07a9ea82b,/familyAndHousehold
 qss-34K-ctc-2dependents~8973097c-5b46-4dd6-9f21-dfe07a9ea82b,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 qss-34K-ctc-2dependents~8973097c-5b46-4dd6-9f21-dfe07a9ea82b,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 qss-34K-ctc-2dependents~8973097c-5b46-4dd6-9f21-dfe07a9ea82b,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+qss-34K-ctc-2dependents~8973097c-5b46-4dd6-9f21-dfe07a9ea82b,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+qss-34K-ctc-2dependents~8973097c-5b46-4dd6-9f21-dfe07a9ea82b,/familyAndHousehold/*/eligibleCtc,true,Complete
+qss-34K-ctc-2dependents~8973097c-5b46-4dd6-9f21-dfe07a9ea82b,/familyAndHousehold/*/eligibleOdc,false,Complete
 qss-34K-ctc-2dependents~8b1c8ecb-0743-4323-bc25-438389a70ba1,/flowIsKnockedOut,false,Placeholder
 qss-34K-ctc-2dependents~8b1c8ecb-0743-4323-bc25-438389a70ba1,/minimumFilerDateOfBirth,1999-04-21,Complete
 qss-34K-ctc-2dependents~8b1c8ecb-0743-4323-bc25-438389a70ba1,/treatAsMFJ,false,Complete
@@ -9832,6 +10180,9 @@ qss-34K-ctc-2dependents~8b1c8ecb-0743-4323-bc25-438389a70ba1,/familyAndHousehold
 qss-34K-ctc-2dependents~8b1c8ecb-0743-4323-bc25-438389a70ba1,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 qss-34K-ctc-2dependents~8b1c8ecb-0743-4323-bc25-438389a70ba1,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 qss-34K-ctc-2dependents~8b1c8ecb-0743-4323-bc25-438389a70ba1,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+qss-34K-ctc-2dependents~8b1c8ecb-0743-4323-bc25-438389a70ba1,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+qss-34K-ctc-2dependents~8b1c8ecb-0743-4323-bc25-438389a70ba1,/familyAndHousehold/*/eligibleCtc,true,Complete
+qss-34K-ctc-2dependents~8b1c8ecb-0743-4323-bc25-438389a70ba1,/familyAndHousehold/*/eligibleOdc,false,Complete
 qss-75k~9ea10c6c-7d7e-4aa2-9f79-bd8d53a37ced,/flowIsKnockedOut,false,Placeholder
 qss-75k~9ea10c6c-7d7e-4aa2-9f79-bd8d53a37ced,/minimumFilerDateOfBirth,1980-03-17,Complete
 qss-75k~9ea10c6c-7d7e-4aa2-9f79-bd8d53a37ced,/treatAsMFJ,false,Complete
@@ -9915,6 +10266,9 @@ qss-75k~9ea10c6c-7d7e-4aa2-9f79-bd8d53a37ced,/familyAndHousehold/*/contradictory
 qss-75k~9ea10c6c-7d7e-4aa2-9f79-bd8d53a37ced,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 qss-75k~9ea10c6c-7d7e-4aa2-9f79-bd8d53a37ced,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 qss-75k~9ea10c6c-7d7e-4aa2-9f79-bd8d53a37ced,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+qss-75k~9ea10c6c-7d7e-4aa2-9f79-bd8d53a37ced,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+qss-75k~9ea10c6c-7d7e-4aa2-9f79-bd8d53a37ced,/familyAndHousehold/*/eligibleCtc,true,Complete
+qss-75k~9ea10c6c-7d7e-4aa2-9f79-bd8d53a37ced,/familyAndHousehold/*/eligibleOdc,false,Complete
 qss-additional-standard-deduction-disabled-eic-ip-pin-other-withholding~7ce42bed-ff73-4856-b775-10c27cf3383a,/flowIsKnockedOut,false,Placeholder
 qss-additional-standard-deduction-disabled-eic-ip-pin-other-withholding~7ce42bed-ff73-4856-b775-10c27cf3383a,/minimumFilerDateOfBirth,1952-01-01,Complete
 qss-additional-standard-deduction-disabled-eic-ip-pin-other-withholding~7ce42bed-ff73-4856-b775-10c27cf3383a,/treatAsMFJ,false,Complete
@@ -10001,6 +10355,9 @@ qss-additional-standard-deduction-disabled-eic-ip-pin-other-withholding~7ce42bed
 qss-additional-standard-deduction-disabled-eic-ip-pin-other-withholding~7ce42bed-ff73-4856-b775-10c27cf3383a,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 qss-additional-standard-deduction-disabled-eic-ip-pin-other-withholding~7ce42bed-ff73-4856-b775-10c27cf3383a,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 qss-additional-standard-deduction-disabled-eic-ip-pin-other-withholding~7ce42bed-ff73-4856-b775-10c27cf3383a,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+qss-additional-standard-deduction-disabled-eic-ip-pin-other-withholding~7ce42bed-ff73-4856-b775-10c27cf3383a,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+qss-additional-standard-deduction-disabled-eic-ip-pin-other-withholding~7ce42bed-ff73-4856-b775-10c27cf3383a,/familyAndHousehold/*/eligibleCtc,false,Complete
+qss-additional-standard-deduction-disabled-eic-ip-pin-other-withholding~7ce42bed-ff73-4856-b775-10c27cf3383a,/familyAndHousehold/*/eligibleOdc,true,Complete
 qss_35K_1 dependent-signed~a39ea20d-687d-4bc7-b73c-9d413f32e708,/flowIsKnockedOut,false,Placeholder
 qss_35K_1 dependent-signed~a39ea20d-687d-4bc7-b73c-9d413f32e708,/minimumFilerDateOfBirth,1960-01-01,Complete
 qss_35K_1 dependent-signed~a39ea20d-687d-4bc7-b73c-9d413f32e708,/treatAsMFJ,false,Complete
@@ -10090,6 +10447,9 @@ qss_35K_1 dependent-signed~a39ea20d-687d-4bc7-b73c-9d413f32e708,/familyAndHouseh
 qss_35K_1 dependent-signed~a39ea20d-687d-4bc7-b73c-9d413f32e708,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 qss_35K_1 dependent-signed~a39ea20d-687d-4bc7-b73c-9d413f32e708,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 qss_35K_1 dependent-signed~a39ea20d-687d-4bc7-b73c-9d413f32e708,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+qss_35K_1 dependent-signed~a39ea20d-687d-4bc7-b73c-9d413f32e708,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+qss_35K_1 dependent-signed~a39ea20d-687d-4bc7-b73c-9d413f32e708,/familyAndHousehold/*/eligibleCtc,true,Complete
+qss_35K_1 dependent-signed~a39ea20d-687d-4bc7-b73c-9d413f32e708,/familyAndHousehold/*/eligibleOdc,false,Complete
 schedule-b-single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/flowIsKnockedOut,false,Placeholder
 schedule-b-single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/minimumFilerDateOfBirth,1985-05-04,Complete
 schedule-b-single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/treatAsMFJ,false,Complete
@@ -10172,6 +10532,9 @@ schedule-b-single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/familyAndHousehold/*
 schedule-b-single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 schedule-b-single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 schedule-b-single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+schedule-b-single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+schedule-b-single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/familyAndHousehold/*/eligibleCtc,false,Complete
+schedule-b-single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/familyAndHousehold/*/eligibleOdc,false,Complete
 single-10k-eitc-qcs-without-ssn~ddb0704f-2848-416f-9221-43eaa1636fae,/flowIsKnockedOut,false,Placeholder
 single-10k-eitc-qcs-without-ssn~ddb0704f-2848-416f-9221-43eaa1636fae,/minimumFilerDateOfBirth,1987-11-11,Complete
 single-10k-eitc-qcs-without-ssn~ddb0704f-2848-416f-9221-43eaa1636fae,/treatAsMFJ,false,Complete
@@ -10252,6 +10615,9 @@ single-10k-eitc-qcs-without-ssn~ddb0704f-2848-416f-9221-43eaa1636fae,/familyAndH
 single-10k-eitc-qcs-without-ssn~ddb0704f-2848-416f-9221-43eaa1636fae,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 single-10k-eitc-qcs-without-ssn~ddb0704f-2848-416f-9221-43eaa1636fae,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 single-10k-eitc-qcs-without-ssn~ddb0704f-2848-416f-9221-43eaa1636fae,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+single-10k-eitc-qcs-without-ssn~ddb0704f-2848-416f-9221-43eaa1636fae,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+single-10k-eitc-qcs-without-ssn~ddb0704f-2848-416f-9221-43eaa1636fae,/familyAndHousehold/*/eligibleCtc,false,Complete
+single-10k-eitc-qcs-without-ssn~ddb0704f-2848-416f-9221-43eaa1636fae,/familyAndHousehold/*/eligibleOdc,false,Complete
 single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/flowIsKnockedOut,false,Placeholder
 single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/minimumFilerDateOfBirth,1985-05-04,Complete
 single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/treatAsMFJ,false,Complete
@@ -10334,6 +10700,9 @@ single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/familyAndHousehold/*/contradict
 single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/familyAndHousehold/*/eligibleCtc,false,Complete
+single-50k~a08a50d0-7a18-4200-b208-9de096b49e1e,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-12386~9ee8ac69-e111-497b-b039-7c8a2959c911,/flowIsKnockedOut,false,Placeholder
 ticket-12386~9ee8ac69-e111-497b-b039-7c8a2959c911,/minimumFilerDateOfBirth,1955-03-09,Complete
 ticket-12386~9ee8ac69-e111-497b-b039-7c8a2959c911,/treatAsMFJ,true,Complete
@@ -10417,6 +10786,9 @@ ticket-12386~9ee8ac69-e111-497b-b039-7c8a2959c911,/familyAndHousehold/*/contradi
 ticket-12386~9ee8ac69-e111-497b-b039-7c8a2959c911,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-12386~9ee8ac69-e111-497b-b039-7c8a2959c911,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-12386~9ee8ac69-e111-497b-b039-7c8a2959c911,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-12386~9ee8ac69-e111-497b-b039-7c8a2959c911,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-12386~9ee8ac69-e111-497b-b039-7c8a2959c911,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-12386~9ee8ac69-e111-497b-b039-7c8a2959c911,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-4893~ec151ab0-6551-4799-8c65-8e96b5c68b22,/flowIsKnockedOut,false,Placeholder
 ticket-4893~ec151ab0-6551-4799-8c65-8e96b5c68b22,/minimumFilerDateOfBirth,1980-01-01,Complete
 ticket-4893~ec151ab0-6551-4799-8c65-8e96b5c68b22,/treatAsMFJ,false,Complete
@@ -10505,6 +10877,9 @@ ticket-4893~ec151ab0-6551-4799-8c65-8e96b5c68b22,/familyAndHousehold/*/contradic
 ticket-4893~ec151ab0-6551-4799-8c65-8e96b5c68b22,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-4893~ec151ab0-6551-4799-8c65-8e96b5c68b22,/familyAndHousehold/*/eligibleForBenefitSplit,true,Complete
 ticket-4893~ec151ab0-6551-4799-8c65-8e96b5c68b22,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-4893~ec151ab0-6551-4799-8c65-8e96b5c68b22,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-4893~ec151ab0-6551-4799-8c65-8e96b5c68b22,/familyAndHousehold/*/eligibleCtc,false,Complete
+ticket-4893~ec151ab0-6551-4799-8c65-8e96b5c68b22,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6192-ctc~b78b9780-fa54-4216-ac46-7ae9d4934149,/flowIsKnockedOut,false,Placeholder
 ticket-6192-ctc~b78b9780-fa54-4216-ac46-7ae9d4934149,/minimumFilerDateOfBirth,1980-01-05,Complete
 ticket-6192-ctc~b78b9780-fa54-4216-ac46-7ae9d4934149,/treatAsMFJ,false,Complete
@@ -10588,6 +10963,9 @@ ticket-6192-ctc~b78b9780-fa54-4216-ac46-7ae9d4934149,/familyAndHousehold/*/contr
 ticket-6192-ctc~b78b9780-fa54-4216-ac46-7ae9d4934149,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6192-ctc~b78b9780-fa54-4216-ac46-7ae9d4934149,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6192-ctc~b78b9780-fa54-4216-ac46-7ae9d4934149,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6192-ctc~b78b9780-fa54-4216-ac46-7ae9d4934149,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6192-ctc~b78b9780-fa54-4216-ac46-7ae9d4934149,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6192-ctc~b78b9780-fa54-4216-ac46-7ae9d4934149,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6192-ctc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/flowIsKnockedOut,false,Placeholder
 ticket-6192-ctc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/minimumFilerDateOfBirth,1980-01-05,Complete
 ticket-6192-ctc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/treatAsMFJ,false,Complete
@@ -10671,6 +11049,9 @@ ticket-6192-ctc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/familyAndHousehold/*/contr
 ticket-6192-ctc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6192-ctc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6192-ctc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6192-ctc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6192-ctc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6192-ctc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6192-ctc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/flowIsKnockedOut,false,Placeholder
 ticket-6192-ctc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/minimumFilerDateOfBirth,1980-01-05,Complete
 ticket-6192-ctc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/treatAsMFJ,false,Complete
@@ -10754,6 +11135,9 @@ ticket-6192-ctc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/familyAndHousehold/*/contr
 ticket-6192-ctc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6192-ctc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6192-ctc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6192-ctc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6192-ctc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6192-ctc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6192-ctc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/flowIsKnockedOut,false,Placeholder
 ticket-6192-ctc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/minimumFilerDateOfBirth,1980-01-05,Complete
 ticket-6192-ctc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/treatAsMFJ,false,Complete
@@ -10837,6 +11221,9 @@ ticket-6192-ctc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/familyAndHousehold/*/contr
 ticket-6192-ctc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6192-ctc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6192-ctc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6192-ctc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6192-ctc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6192-ctc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6192-ctc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/flowIsKnockedOut,false,Placeholder
 ticket-6192-ctc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/minimumFilerDateOfBirth,1980-01-05,Complete
 ticket-6192-ctc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/treatAsMFJ,false,Complete
@@ -10920,6 +11307,9 @@ ticket-6192-ctc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/familyAndHousehold/*/contr
 ticket-6192-ctc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6192-ctc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6192-ctc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6192-ctc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6192-ctc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6192-ctc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6192-ctc~8509f050-6965-4864-9bbc-8aa7337d615b,/flowIsKnockedOut,false,Placeholder
 ticket-6192-ctc~8509f050-6965-4864-9bbc-8aa7337d615b,/minimumFilerDateOfBirth,1980-01-05,Complete
 ticket-6192-ctc~8509f050-6965-4864-9bbc-8aa7337d615b,/treatAsMFJ,false,Complete
@@ -11003,6 +11393,9 @@ ticket-6192-ctc~8509f050-6965-4864-9bbc-8aa7337d615b,/familyAndHousehold/*/contr
 ticket-6192-ctc~8509f050-6965-4864-9bbc-8aa7337d615b,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6192-ctc~8509f050-6965-4864-9bbc-8aa7337d615b,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6192-ctc~8509f050-6965-4864-9bbc-8aa7337d615b,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6192-ctc~8509f050-6965-4864-9bbc-8aa7337d615b,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6192-ctc~8509f050-6965-4864-9bbc-8aa7337d615b,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6192-ctc~8509f050-6965-4864-9bbc-8aa7337d615b,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6192-odc~b78b9780-fa54-4216-ac46-7ae9d4934149,/flowIsKnockedOut,false,Placeholder
 ticket-6192-odc~b78b9780-fa54-4216-ac46-7ae9d4934149,/minimumFilerDateOfBirth,1980-01-05,Complete
 ticket-6192-odc~b78b9780-fa54-4216-ac46-7ae9d4934149,/treatAsMFJ,false,Complete
@@ -11090,6 +11483,9 @@ ticket-6192-odc~b78b9780-fa54-4216-ac46-7ae9d4934149,/familyAndHousehold/*/contr
 ticket-6192-odc~b78b9780-fa54-4216-ac46-7ae9d4934149,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6192-odc~b78b9780-fa54-4216-ac46-7ae9d4934149,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6192-odc~b78b9780-fa54-4216-ac46-7ae9d4934149,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6192-odc~b78b9780-fa54-4216-ac46-7ae9d4934149,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6192-odc~b78b9780-fa54-4216-ac46-7ae9d4934149,/familyAndHousehold/*/eligibleCtc,false,Complete
+ticket-6192-odc~b78b9780-fa54-4216-ac46-7ae9d4934149,/familyAndHousehold/*/eligibleOdc,true,Complete
 ticket-6192-odc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/flowIsKnockedOut,false,Placeholder
 ticket-6192-odc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/minimumFilerDateOfBirth,1980-01-05,Complete
 ticket-6192-odc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/treatAsMFJ,false,Complete
@@ -11177,6 +11573,9 @@ ticket-6192-odc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/familyAndHousehold/*/contr
 ticket-6192-odc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6192-odc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6192-odc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6192-odc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6192-odc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/familyAndHousehold/*/eligibleCtc,false,Complete
+ticket-6192-odc~b9cf4fa1-a61c-4504-a470-2f265ec5e642,/familyAndHousehold/*/eligibleOdc,true,Complete
 ticket-6192-odc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/flowIsKnockedOut,false,Placeholder
 ticket-6192-odc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/minimumFilerDateOfBirth,1980-01-05,Complete
 ticket-6192-odc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/treatAsMFJ,false,Complete
@@ -11264,6 +11663,9 @@ ticket-6192-odc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/familyAndHousehold/*/contr
 ticket-6192-odc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6192-odc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6192-odc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6192-odc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6192-odc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/familyAndHousehold/*/eligibleCtc,false,Complete
+ticket-6192-odc~138eb7cf-7dd8-417c-90f3-02f9ba535ff5,/familyAndHousehold/*/eligibleOdc,true,Complete
 ticket-6192-odc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/flowIsKnockedOut,false,Placeholder
 ticket-6192-odc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/minimumFilerDateOfBirth,1980-01-05,Complete
 ticket-6192-odc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/treatAsMFJ,false,Complete
@@ -11351,6 +11753,9 @@ ticket-6192-odc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/familyAndHousehold/*/contr
 ticket-6192-odc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6192-odc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6192-odc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6192-odc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6192-odc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/familyAndHousehold/*/eligibleCtc,false,Complete
+ticket-6192-odc~fc4bedd3-17ad-4132-a54c-52315666e7b9,/familyAndHousehold/*/eligibleOdc,true,Complete
 ticket-6192-odc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/flowIsKnockedOut,false,Placeholder
 ticket-6192-odc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/minimumFilerDateOfBirth,1980-01-05,Complete
 ticket-6192-odc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/treatAsMFJ,false,Complete
@@ -11438,6 +11843,9 @@ ticket-6192-odc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/familyAndHousehold/*/contr
 ticket-6192-odc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6192-odc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6192-odc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6192-odc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6192-odc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/familyAndHousehold/*/eligibleCtc,false,Complete
+ticket-6192-odc~d6c0e00c-de00-4a5c-8f02-27f84cfc78e6,/familyAndHousehold/*/eligibleOdc,true,Complete
 ticket-6192-odc~8509f050-6965-4864-9bbc-8aa7337d615b,/flowIsKnockedOut,false,Placeholder
 ticket-6192-odc~8509f050-6965-4864-9bbc-8aa7337d615b,/minimumFilerDateOfBirth,1980-01-05,Complete
 ticket-6192-odc~8509f050-6965-4864-9bbc-8aa7337d615b,/treatAsMFJ,false,Complete
@@ -11521,6 +11929,9 @@ ticket-6192-odc~8509f050-6965-4864-9bbc-8aa7337d615b,/familyAndHousehold/*/contr
 ticket-6192-odc~8509f050-6965-4864-9bbc-8aa7337d615b,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6192-odc~8509f050-6965-4864-9bbc-8aa7337d615b,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6192-odc~8509f050-6965-4864-9bbc-8aa7337d615b,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6192-odc~8509f050-6965-4864-9bbc-8aa7337d615b,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6192-odc~8509f050-6965-4864-9bbc-8aa7337d615b,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6192-odc~8509f050-6965-4864-9bbc-8aa7337d615b,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6196~c51c36fe-0587-4134-a24b-95b539bf9916,/flowIsKnockedOut,false,Placeholder
 ticket-6196~c51c36fe-0587-4134-a24b-95b539bf9916,/minimumFilerDateOfBirth,1998-03-29,Complete
 ticket-6196~c51c36fe-0587-4134-a24b-95b539bf9916,/treatAsMFJ,true,Complete
@@ -11603,6 +12014,9 @@ ticket-6196~c51c36fe-0587-4134-a24b-95b539bf9916,/familyAndHousehold/*/contradic
 ticket-6196~c51c36fe-0587-4134-a24b-95b539bf9916,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6196~c51c36fe-0587-4134-a24b-95b539bf9916,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6196~c51c36fe-0587-4134-a24b-95b539bf9916,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6196~c51c36fe-0587-4134-a24b-95b539bf9916,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6196~c51c36fe-0587-4134-a24b-95b539bf9916,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6196~c51c36fe-0587-4134-a24b-95b539bf9916,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6197~775ae299-7bab-43ca-b9bb-f67a46071bd6,/flowIsKnockedOut,false,Placeholder
 ticket-6197~775ae299-7bab-43ca-b9bb-f67a46071bd6,/minimumFilerDateOfBirth,1993-12-27,Complete
 ticket-6197~775ae299-7bab-43ca-b9bb-f67a46071bd6,/treatAsMFJ,false,Complete
@@ -11686,6 +12100,9 @@ ticket-6197~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/contradic
 ticket-6197~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6197~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6197~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6197~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6197~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6197~775ae299-7bab-43ca-b9bb-f67a46071bd6,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6197~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/flowIsKnockedOut,false,Placeholder
 ticket-6197~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/minimumFilerDateOfBirth,1993-12-27,Complete
 ticket-6197~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/treatAsMFJ,false,Complete
@@ -11769,6 +12186,9 @@ ticket-6197~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/contradic
 ticket-6197~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6197~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6197~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6197~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6197~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6197~f6876bd0-21e9-40fe-8c54-94cfd3f1601b,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6256~c3478a50-b4a6-45ed-b1da-865b3614bf65,/flowIsKnockedOut,false,Placeholder
 ticket-6256~c3478a50-b4a6-45ed-b1da-865b3614bf65,/minimumFilerDateOfBirth,1976-02-29,Complete
 ticket-6256~c3478a50-b4a6-45ed-b1da-865b3614bf65,/treatAsMFJ,false,Complete
@@ -11852,6 +12272,9 @@ ticket-6256~c3478a50-b4a6-45ed-b1da-865b3614bf65,/familyAndHousehold/*/contradic
 ticket-6256~c3478a50-b4a6-45ed-b1da-865b3614bf65,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6256~c3478a50-b4a6-45ed-b1da-865b3614bf65,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6256~c3478a50-b4a6-45ed-b1da-865b3614bf65,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6256~c3478a50-b4a6-45ed-b1da-865b3614bf65,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6256~c3478a50-b4a6-45ed-b1da-865b3614bf65,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6256~c3478a50-b4a6-45ed-b1da-865b3614bf65,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6269~e7b72457-d177-4180-845c-116ec6b2bebe,/flowIsKnockedOut,false,Placeholder
 ticket-6269~e7b72457-d177-4180-845c-116ec6b2bebe,/minimumFilerDateOfBirth,1957-03-20,Complete
 ticket-6269~e7b72457-d177-4180-845c-116ec6b2bebe,/treatAsMFJ,false,Complete
@@ -11935,6 +12358,9 @@ ticket-6269~e7b72457-d177-4180-845c-116ec6b2bebe,/familyAndHousehold/*/contradic
 ticket-6269~e7b72457-d177-4180-845c-116ec6b2bebe,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6269~e7b72457-d177-4180-845c-116ec6b2bebe,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6269~e7b72457-d177-4180-845c-116ec6b2bebe,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6269~e7b72457-d177-4180-845c-116ec6b2bebe,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6269~e7b72457-d177-4180-845c-116ec6b2bebe,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6269~e7b72457-d177-4180-845c-116ec6b2bebe,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6718~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/flowIsKnockedOut,false,Placeholder
 ticket-6718~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/minimumFilerDateOfBirth,1980-03-05,Complete
 ticket-6718~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/treatAsMFJ,true,Complete
@@ -12018,6 +12444,9 @@ ticket-6718~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/contradic
 ticket-6718~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6718~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6718~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6718~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6718~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6718~8a85cb6d-9c18-4720-bf1e-ed518b17d154,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6718~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/flowIsKnockedOut,false,Placeholder
 ticket-6718~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/minimumFilerDateOfBirth,1980-03-05,Complete
 ticket-6718~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/treatAsMFJ,true,Complete
@@ -12105,6 +12534,9 @@ ticket-6718~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/contradic
 ticket-6718~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6718~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6718~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6718~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6718~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6718~44a34635-2101-44b7-a6f8-d30f6c5c87dd,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6718~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/flowIsKnockedOut,false,Placeholder
 ticket-6718~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/minimumFilerDateOfBirth,1980-03-05,Complete
 ticket-6718~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/treatAsMFJ,true,Complete
@@ -12188,6 +12620,9 @@ ticket-6718~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/contradic
 ticket-6718~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6718~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6718~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6718~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+ticket-6718~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/eligibleCtc,false,Complete
+ticket-6718~cbd23888-cc8c-4b4d-b08a-6525a8b5db36,/familyAndHousehold/*/eligibleOdc,true,Complete
 ticket-6718~1ef4d47f-4911-4ec1-bdd9-e54344bd06e9,/flowIsKnockedOut,false,Placeholder
 ticket-6718~1ef4d47f-4911-4ec1-bdd9-e54344bd06e9,/minimumFilerDateOfBirth,1980-03-05,Complete
 ticket-6718~1ef4d47f-4911-4ec1-bdd9-e54344bd06e9,/treatAsMFJ,true,Complete
@@ -12271,6 +12706,9 @@ ticket-6718~1ef4d47f-4911-4ec1-bdd9-e54344bd06e9,/familyAndHousehold/*/contradic
 ticket-6718~1ef4d47f-4911-4ec1-bdd9-e54344bd06e9,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6718~1ef4d47f-4911-4ec1-bdd9-e54344bd06e9,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6718~1ef4d47f-4911-4ec1-bdd9-e54344bd06e9,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6718~1ef4d47f-4911-4ec1-bdd9-e54344bd06e9,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6718~1ef4d47f-4911-4ec1-bdd9-e54344bd06e9,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6718~1ef4d47f-4911-4ec1-bdd9-e54344bd06e9,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6718~8d952d04-b34d-43ae-aeb5-4ded1b9c1f67,/flowIsKnockedOut,false,Placeholder
 ticket-6718~8d952d04-b34d-43ae-aeb5-4ded1b9c1f67,/minimumFilerDateOfBirth,1980-03-05,Complete
 ticket-6718~8d952d04-b34d-43ae-aeb5-4ded1b9c1f67,/treatAsMFJ,true,Complete
@@ -12353,6 +12791,9 @@ ticket-6718~8d952d04-b34d-43ae-aeb5-4ded1b9c1f67,/familyAndHousehold/*/contradic
 ticket-6718~8d952d04-b34d-43ae-aeb5-4ded1b9c1f67,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6718~8d952d04-b34d-43ae-aeb5-4ded1b9c1f67,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6718~8d952d04-b34d-43ae-aeb5-4ded1b9c1f67,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6718~8d952d04-b34d-43ae-aeb5-4ded1b9c1f67,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6718~8d952d04-b34d-43ae-aeb5-4ded1b9c1f67,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6718~8d952d04-b34d-43ae-aeb5-4ded1b9c1f67,/familyAndHousehold/*/eligibleOdc,false,Complete
 ticket-6718~8d7551f3-1d65-4e71-90e9-62b411f4ca6b,/flowIsKnockedOut,false,Placeholder
 ticket-6718~8d7551f3-1d65-4e71-90e9-62b411f4ca6b,/minimumFilerDateOfBirth,1980-03-05,Complete
 ticket-6718~8d7551f3-1d65-4e71-90e9-62b411f4ca6b,/treatAsMFJ,true,Complete
@@ -12434,6 +12875,9 @@ ticket-6718~8d7551f3-1d65-4e71-90e9-62b411f4ca6b,/familyAndHousehold/*/contradic
 ticket-6718~8d7551f3-1d65-4e71-90e9-62b411f4ca6b,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6718~8d7551f3-1d65-4e71-90e9-62b411f4ca6b,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6718~8d7551f3-1d65-4e71-90e9-62b411f4ca6b,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6718~8d7551f3-1d65-4e71-90e9-62b411f4ca6b,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+ticket-6718~8d7551f3-1d65-4e71-90e9-62b411f4ca6b,/familyAndHousehold/*/eligibleCtc,false,Complete
+ticket-6718~8d7551f3-1d65-4e71-90e9-62b411f4ca6b,/familyAndHousehold/*/eligibleOdc,true,Complete
 ticket-6718~f9e31a4e-5b32-4449-8f6e-e533b9e63da8,/flowIsKnockedOut,false,Placeholder
 ticket-6718~f9e31a4e-5b32-4449-8f6e-e533b9e63da8,/minimumFilerDateOfBirth,1980-03-05,Complete
 ticket-6718~f9e31a4e-5b32-4449-8f6e-e533b9e63da8,/treatAsMFJ,true,Complete
@@ -12515,6 +12959,9 @@ ticket-6718~f9e31a4e-5b32-4449-8f6e-e533b9e63da8,/familyAndHousehold/*/contradic
 ticket-6718~f9e31a4e-5b32-4449-8f6e-e533b9e63da8,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6718~f9e31a4e-5b32-4449-8f6e-e533b9e63da8,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6718~f9e31a4e-5b32-4449-8f6e-e533b9e63da8,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6718~f9e31a4e-5b32-4449-8f6e-e533b9e63da8,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+ticket-6718~f9e31a4e-5b32-4449-8f6e-e533b9e63da8,/familyAndHousehold/*/eligibleCtc,false,Complete
+ticket-6718~f9e31a4e-5b32-4449-8f6e-e533b9e63da8,/familyAndHousehold/*/eligibleOdc,true,Complete
 ticket-6718~1404fa51-8c58-43c8-81ae-78d56f6b55af,/flowIsKnockedOut,false,Placeholder
 ticket-6718~1404fa51-8c58-43c8-81ae-78d56f6b55af,/minimumFilerDateOfBirth,1980-03-05,Complete
 ticket-6718~1404fa51-8c58-43c8-81ae-78d56f6b55af,/treatAsMFJ,true,Complete
@@ -12598,6 +13045,9 @@ ticket-6718~1404fa51-8c58-43c8-81ae-78d56f6b55af,/familyAndHousehold/*/contradic
 ticket-6718~1404fa51-8c58-43c8-81ae-78d56f6b55af,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6718~1404fa51-8c58-43c8-81ae-78d56f6b55af,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6718~1404fa51-8c58-43c8-81ae-78d56f6b55af,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6718~1404fa51-8c58-43c8-81ae-78d56f6b55af,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+ticket-6718~1404fa51-8c58-43c8-81ae-78d56f6b55af,/familyAndHousehold/*/eligibleCtc,false,Complete
+ticket-6718~1404fa51-8c58-43c8-81ae-78d56f6b55af,/familyAndHousehold/*/eligibleOdc,true,Complete
 ticket-6718~53046690-c9cd-4abf-bdb5-a22acda47422,/flowIsKnockedOut,false,Placeholder
 ticket-6718~53046690-c9cd-4abf-bdb5-a22acda47422,/minimumFilerDateOfBirth,1980-03-05,Complete
 ticket-6718~53046690-c9cd-4abf-bdb5-a22acda47422,/treatAsMFJ,true,Complete
@@ -12680,6 +13130,9 @@ ticket-6718~53046690-c9cd-4abf-bdb5-a22acda47422,/familyAndHousehold/*/contradic
 ticket-6718~53046690-c9cd-4abf-bdb5-a22acda47422,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6718~53046690-c9cd-4abf-bdb5-a22acda47422,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6718~53046690-c9cd-4abf-bdb5-a22acda47422,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6718~53046690-c9cd-4abf-bdb5-a22acda47422,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+ticket-6718~53046690-c9cd-4abf-bdb5-a22acda47422,/familyAndHousehold/*/eligibleCtc,false,Complete
+ticket-6718~53046690-c9cd-4abf-bdb5-a22acda47422,/familyAndHousehold/*/eligibleOdc,true,Complete
 ticket-6718~bbbfe8a2-5140-4216-b7d5-737e6cd16aaa,/flowIsKnockedOut,false,Placeholder
 ticket-6718~bbbfe8a2-5140-4216-b7d5-737e6cd16aaa,/minimumFilerDateOfBirth,1980-03-05,Complete
 ticket-6718~bbbfe8a2-5140-4216-b7d5-737e6cd16aaa,/treatAsMFJ,true,Complete
@@ -12761,6 +13214,9 @@ ticket-6718~bbbfe8a2-5140-4216-b7d5-737e6cd16aaa,/familyAndHousehold/*/contradic
 ticket-6718~bbbfe8a2-5140-4216-b7d5-737e6cd16aaa,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6718~bbbfe8a2-5140-4216-b7d5-737e6cd16aaa,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6718~bbbfe8a2-5140-4216-b7d5-737e6cd16aaa,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6718~bbbfe8a2-5140-4216-b7d5-737e6cd16aaa,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+ticket-6718~bbbfe8a2-5140-4216-b7d5-737e6cd16aaa,/familyAndHousehold/*/eligibleCtc,false,Complete
+ticket-6718~bbbfe8a2-5140-4216-b7d5-737e6cd16aaa,/familyAndHousehold/*/eligibleOdc,true,Complete
 ticket-6718~6465ed31-f2f7-4bad-8ce9-22090d1689d4,/flowIsKnockedOut,false,Placeholder
 ticket-6718~6465ed31-f2f7-4bad-8ce9-22090d1689d4,/minimumFilerDateOfBirth,1980-03-05,Complete
 ticket-6718~6465ed31-f2f7-4bad-8ce9-22090d1689d4,/treatAsMFJ,true,Complete
@@ -12845,6 +13301,9 @@ ticket-6718~6465ed31-f2f7-4bad-8ce9-22090d1689d4,/familyAndHousehold/*/contradic
 ticket-6718~6465ed31-f2f7-4bad-8ce9-22090d1689d4,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 ticket-6718~6465ed31-f2f7-4bad-8ce9-22090d1689d4,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 ticket-6718~6465ed31-f2f7-4bad-8ce9-22090d1689d4,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+ticket-6718~6465ed31-f2f7-4bad-8ce9-22090d1689d4,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+ticket-6718~6465ed31-f2f7-4bad-8ce9-22090d1689d4,/familyAndHousehold/*/eligibleCtc,true,Complete
+ticket-6718~6465ed31-f2f7-4bad-8ce9-22090d1689d4,/familyAndHousehold/*/eligibleOdc,false,Complete
 w2-with-box-14-value-set-to-0~b590d27e-461e-4780-8798-2a6606657ff1,/flowIsKnockedOut,false,Placeholder
 w2-with-box-14-value-set-to-0~b590d27e-461e-4780-8798-2a6606657ff1,/minimumFilerDateOfBirth,1973-01-02,Complete
 w2-with-box-14-value-set-to-0~b590d27e-461e-4780-8798-2a6606657ff1,/treatAsMFJ,true,Complete
@@ -12928,6 +13387,9 @@ w2-with-box-14-value-set-to-0~b590d27e-461e-4780-8798-2a6606657ff1,/familyAndHou
 w2-with-box-14-value-set-to-0~b590d27e-461e-4780-8798-2a6606657ff1,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 w2-with-box-14-value-set-to-0~b590d27e-461e-4780-8798-2a6606657ff1,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 w2-with-box-14-value-set-to-0~b590d27e-461e-4780-8798-2a6606657ff1,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+w2-with-box-14-value-set-to-0~b590d27e-461e-4780-8798-2a6606657ff1,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+w2-with-box-14-value-set-to-0~b590d27e-461e-4780-8798-2a6606657ff1,/familyAndHousehold/*/eligibleCtc,true,Complete
+w2-with-box-14-value-set-to-0~b590d27e-461e-4780-8798-2a6606657ff1,/familyAndHousehold/*/eligibleOdc,false,Complete
 w2-with-box-14-value-set-to-0~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/flowIsKnockedOut,false,Placeholder
 w2-with-box-14-value-set-to-0~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/minimumFilerDateOfBirth,1973-01-02,Complete
 w2-with-box-14-value-set-to-0~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/treatAsMFJ,true,Complete
@@ -13010,6 +13472,9 @@ w2-with-box-14-value-set-to-0~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/familyAndHou
 w2-with-box-14-value-set-to-0~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 w2-with-box-14-value-set-to-0~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 w2-with-box-14-value-set-to-0~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+w2-with-box-14-value-set-to-0~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+w2-with-box-14-value-set-to-0~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/familyAndHousehold/*/eligibleCtc,true,Complete
+w2-with-box-14-value-set-to-0~e2f6ddee-ecbe-4ab7-bcef-9d6a6eda3e70,/familyAndHousehold/*/eligibleOdc,false,Complete
 w2-with-box-14-value-set-to-0~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/flowIsKnockedOut,false,Placeholder
 w2-with-box-14-value-set-to-0~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/minimumFilerDateOfBirth,1973-01-02,Complete
 w2-with-box-14-value-set-to-0~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/treatAsMFJ,true,Complete
@@ -13094,6 +13559,9 @@ w2-with-box-14-value-set-to-0~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/familyAndHou
 w2-with-box-14-value-set-to-0~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 w2-with-box-14-value-set-to-0~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 w2-with-box-14-value-set-to-0~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+w2-with-box-14-value-set-to-0~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+w2-with-box-14-value-set-to-0~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/familyAndHousehold/*/eligibleCtc,true,Complete
+w2-with-box-14-value-set-to-0~6eaedbfc-33ce-4bbd-82a6-0b8de74938a8,/familyAndHousehold/*/eligibleOdc,false,Complete
 w2-with-box-14-value-set-to-0~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/flowIsKnockedOut,false,Placeholder
 w2-with-box-14-value-set-to-0~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/minimumFilerDateOfBirth,1973-01-02,Complete
 w2-with-box-14-value-set-to-0~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/treatAsMFJ,true,Complete
@@ -13177,6 +13645,9 @@ w2-with-box-14-value-set-to-0~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/familyAndHou
 w2-with-box-14-value-set-to-0~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 w2-with-box-14-value-set-to-0~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 w2-with-box-14-value-set-to-0~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+w2-with-box-14-value-set-to-0~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+w2-with-box-14-value-set-to-0~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/familyAndHousehold/*/eligibleCtc,false,Complete
+w2-with-box-14-value-set-to-0~402261d5-1ddc-4bd3-ba14-bfe7ea1ff732,/familyAndHousehold/*/eligibleOdc,true,Complete
 w2-with-box-14-value-set-to-0~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/flowIsKnockedOut,false,Placeholder
 w2-with-box-14-value-set-to-0~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/minimumFilerDateOfBirth,1973-01-02,Complete
 w2-with-box-14-value-set-to-0~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/treatAsMFJ,true,Complete
@@ -13262,6 +13733,9 @@ w2-with-box-14-value-set-to-0~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/familyAndHou
 w2-with-box-14-value-set-to-0~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 w2-with-box-14-value-set-to-0~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 w2-with-box-14-value-set-to-0~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+w2-with-box-14-value-set-to-0~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/familyAndHousehold/*/ssnValidForEmployment,false,Complete
+w2-with-box-14-value-set-to-0~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/familyAndHousehold/*/eligibleCtc,false,Complete
+w2-with-box-14-value-set-to-0~3ab6c4d6-b723-4798-9a30-79f94e9a0d77,/familyAndHousehold/*/eligibleOdc,true,Complete
 w2-with-box-14-value-set-to-0~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/flowIsKnockedOut,false,Placeholder
 w2-with-box-14-value-set-to-0~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/minimumFilerDateOfBirth,1973-01-02,Complete
 w2-with-box-14-value-set-to-0~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/treatAsMFJ,true,Complete
@@ -13344,6 +13818,9 @@ w2-with-box-14-value-set-to-0~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/familyAndHou
 w2-with-box-14-value-set-to-0~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 w2-with-box-14-value-set-to-0~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 w2-with-box-14-value-set-to-0~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+w2-with-box-14-value-set-to-0~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+w2-with-box-14-value-set-to-0~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/familyAndHousehold/*/eligibleCtc,false,Complete
+w2-with-box-14-value-set-to-0~91562d2d-3087-492c-8f26-dd78e1d6bd9e,/familyAndHousehold/*/eligibleOdc,true,Complete
 w2-with-box-14-value-set-to-0~d1301ddc-2a99-42e1-a76b-81349703c262,/flowIsKnockedOut,false,Placeholder
 w2-with-box-14-value-set-to-0~d1301ddc-2a99-42e1-a76b-81349703c262,/minimumFilerDateOfBirth,1973-01-02,Complete
 w2-with-box-14-value-set-to-0~d1301ddc-2a99-42e1-a76b-81349703c262,/treatAsMFJ,true,Complete
@@ -13427,6 +13904,9 @@ w2-with-box-14-value-set-to-0~d1301ddc-2a99-42e1-a76b-81349703c262,/familyAndHou
 w2-with-box-14-value-set-to-0~d1301ddc-2a99-42e1-a76b-81349703c262,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 w2-with-box-14-value-set-to-0~d1301ddc-2a99-42e1-a76b-81349703c262,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 w2-with-box-14-value-set-to-0~d1301ddc-2a99-42e1-a76b-81349703c262,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+w2-with-box-14-value-set-to-0~d1301ddc-2a99-42e1-a76b-81349703c262,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+w2-with-box-14-value-set-to-0~d1301ddc-2a99-42e1-a76b-81349703c262,/familyAndHousehold/*/eligibleCtc,true,Complete
+w2-with-box-14-value-set-to-0~d1301ddc-2a99-42e1-a76b-81349703c262,/familyAndHousehold/*/eligibleOdc,false,Complete
 w2-with-box-14-value-set-to-0~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/flowIsKnockedOut,false,Placeholder
 w2-with-box-14-value-set-to-0~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/minimumFilerDateOfBirth,1973-01-02,Complete
 w2-with-box-14-value-set-to-0~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/treatAsMFJ,true,Complete
@@ -13510,6 +13990,9 @@ w2-with-box-14-value-set-to-0~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/familyAndHou
 w2-with-box-14-value-set-to-0~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 w2-with-box-14-value-set-to-0~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 w2-with-box-14-value-set-to-0~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+w2-with-box-14-value-set-to-0~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+w2-with-box-14-value-set-to-0~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/familyAndHousehold/*/eligibleCtc,false,Complete
+w2-with-box-14-value-set-to-0~5eed4b39-6024-4e63-a2c8-4a5c81b87ba8,/familyAndHousehold/*/eligibleOdc,true,Complete
 w2-with-box-14-value-set-to-0~59bc042d-1224-47e5-a408-73791125469a,/flowIsKnockedOut,false,Placeholder
 w2-with-box-14-value-set-to-0~59bc042d-1224-47e5-a408-73791125469a,/minimumFilerDateOfBirth,1973-01-02,Complete
 w2-with-box-14-value-set-to-0~59bc042d-1224-47e5-a408-73791125469a,/treatAsMFJ,true,Complete
@@ -13594,6 +14077,9 @@ w2-with-box-14-value-set-to-0~59bc042d-1224-47e5-a408-73791125469a,/familyAndHou
 w2-with-box-14-value-set-to-0~59bc042d-1224-47e5-a408-73791125469a,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 w2-with-box-14-value-set-to-0~59bc042d-1224-47e5-a408-73791125469a,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 w2-with-box-14-value-set-to-0~59bc042d-1224-47e5-a408-73791125469a,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+w2-with-box-14-value-set-to-0~59bc042d-1224-47e5-a408-73791125469a,/familyAndHousehold/*/ssnValidForEmployment,true,Complete
+w2-with-box-14-value-set-to-0~59bc042d-1224-47e5-a408-73791125469a,/familyAndHousehold/*/eligibleCtc,false,Complete
+w2-with-box-14-value-set-to-0~59bc042d-1224-47e5-a408-73791125469a,/familyAndHousehold/*/eligibleOdc,true,Complete
 w2-with-box-14-value-set-to-0~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/flowIsKnockedOut,false,Placeholder
 w2-with-box-14-value-set-to-0~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/minimumFilerDateOfBirth,1973-01-02,Complete
 w2-with-box-14-value-set-to-0~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/treatAsMFJ,true,Complete
@@ -13678,6 +14164,9 @@ w2-with-box-14-value-set-to-0~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/familyAndHou
 w2-with-box-14-value-set-to-0~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 w2-with-box-14-value-set-to-0~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 w2-with-box-14-value-set-to-0~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+w2-with-box-14-value-set-to-0~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+w2-with-box-14-value-set-to-0~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/familyAndHousehold/*/eligibleCtc,false,Complete
+w2-with-box-14-value-set-to-0~7e2fe8ae-17cb-4190-bffb-a35dfbc14fc3,/familyAndHousehold/*/eligibleOdc,true,Complete
 w2-with-box-14-value-set-to-0~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/flowIsKnockedOut,false,Placeholder
 w2-with-box-14-value-set-to-0~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/minimumFilerDateOfBirth,1973-01-02,Complete
 w2-with-box-14-value-set-to-0~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/treatAsMFJ,true,Complete
@@ -13759,3 +14248,6 @@ w2-with-box-14-value-set-to-0~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/familyAndHou
 w2-with-box-14-value-set-to-0~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/familyAndHousehold/*/causesNoncustodialParentBenefitSplitKnockout,false,Complete
 w2-with-box-14-value-set-to-0~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/familyAndHousehold/*/eligibleForBenefitSplit,false,Complete
 w2-with-box-14-value-set-to-0~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/familyAndHousehold/*/reachedNonParentalBenefitSplit,false,Complete
+w2-with-box-14-value-set-to-0~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/familyAndHousehold/*/ssnValidForEmployment,,Incomplete
+w2-with-box-14-value-set-to-0~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/familyAndHousehold/*/eligibleCtc,false,Complete
+w2-with-box-14-value-set-to-0~5238c9fb-1887-41f5-bae6-7d9305de6ef7,/familyAndHousehold/*/eligibleOdc,true,Complete
