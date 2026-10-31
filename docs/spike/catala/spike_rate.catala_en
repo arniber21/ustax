@@ -1,0 +1,89 @@
+# Spike toy: TY2024 rate schedule with Tax Table midpoint (scope.md 2.1)
+
+> Module Spike_rate
+
+```catala-metadata
+declaration enumeration FilingStatus:
+  -- Single
+  -- MarriedFilingJointly
+  -- MarriedFilingSeparately
+  -- HeadOfHousehold
+  -- QualifyingSurvivingSpouse
+
+declaration structure Bracket:
+  data lower content money
+  data upper content money
+  data rate content decimal
+
+declaration scope TaxSchedule:
+  input filing_status content FilingStatus
+  input taxable_income content money
+  internal brackets content list of Bracket
+  internal rounded_taxable_income content money
+  output tax content money
+```
+
+```catala
+scope TaxSchedule:
+  definition brackets equals
+    match filing_status with pattern
+    -- Single : [
+        Bracket { -- lower: $0 -- upper: $11,600 -- rate: 10% };
+        Bracket { -- lower: $11,600 -- upper: $47,150 -- rate: 12% };
+        Bracket { -- lower: $47,150 -- upper: $100,525 -- rate: 22% };
+        Bracket { -- lower: $100,525 -- upper: $191,950 -- rate: 24% };
+        Bracket { -- lower: $191,950 -- upper: $243,725 -- rate: 32% };
+        Bracket { -- lower: $243,725 -- upper: $609,350 -- rate: 35% };
+        Bracket { -- lower: $609,350 -- upper: $1,000,000,000 -- rate: 37% } ]
+    -- MarriedFilingSeparately : [
+        Bracket { -- lower: $0 -- upper: $11,600 -- rate: 10% };
+        Bracket { -- lower: $11,600 -- upper: $47,150 -- rate: 12% };
+        Bracket { -- lower: $47,150 -- upper: $100,525 -- rate: 22% };
+        Bracket { -- lower: $100,525 -- upper: $191,950 -- rate: 24% };
+        Bracket { -- lower: $191,950 -- upper: $243,725 -- rate: 32% };
+        Bracket { -- lower: $243,725 -- upper: $365,600 -- rate: 35% };
+        Bracket { -- lower: $365,600 -- upper: $1,000,000,000 -- rate: 37% } ]
+    -- HeadOfHousehold : [
+        Bracket { -- lower: $0 -- upper: $16,550 -- rate: 10% };
+        Bracket { -- lower: $16,550 -- upper: $63,100 -- rate: 12% };
+        Bracket { -- lower: $63,100 -- upper: $100,500 -- rate: 22% };
+        Bracket { -- lower: $100,500 -- upper: $191,950 -- rate: 24% };
+        Bracket { -- lower: $191,950 -- upper: $243,700 -- rate: 32% };
+        Bracket { -- lower: $243,700 -- upper: $609,350 -- rate: 35% };
+        Bracket { -- lower: $609,350 -- upper: $1,000,000,000 -- rate: 37% } ]
+    -- anything : [
+        Bracket { -- lower: $0 -- upper: $23,200 -- rate: 10% };
+        Bracket { -- lower: $23,200 -- upper: $94,300 -- rate: 12% };
+        Bracket { -- lower: $94,300 -- upper: $201,050 -- rate: 22% };
+        Bracket { -- lower: $201,050 -- upper: $383,900 -- rate: 24% };
+        Bracket { -- lower: $383,900 -- upper: $487,450 -- rate: 32% };
+        Bracket { -- lower: $487,450 -- upper: $731,200 -- rate: 35% };
+        Bracket { -- lower: $731,200 -- upper: $1,000,000,000 -- rate: 37% } ]
+
+  # Tax Table lookup key, as an exception tree (scope.md 2.1).
+  label schedule definition rounded_taxable_income equals taxable_income
+
+  label table exception schedule definition rounded_taxable_income
+  under condition taxable_income < $100,000
+  consequence equals
+    (integer of (taxable_income / $50)) * $50 + $25
+
+  label narrow exception table definition rounded_taxable_income
+  under condition taxable_income < $3,000
+  consequence equals
+    (integer of (taxable_income / $25)) * $25 + $12.50
+
+  exception narrow definition rounded_taxable_income
+  under condition taxable_income < $25
+  consequence equals
+    if taxable_income <= $0 then $0
+    else if taxable_income < $5 then $2.50
+    else if taxable_income < $15 then $10
+    else $20
+
+  definition tax equals
+    round of Money.sum of
+      (map each b among brackets to
+        (Money.positive of
+          ((Money.min of rounded_taxable_income, b.upper) - b.lower)) * b.rate)
+```

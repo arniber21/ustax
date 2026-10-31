@@ -1,0 +1,5 @@
+(executable
+ (name lean_spike)
+ (modules lean_spike)
+ (modes plugin)
+ (libraries catala.driver))

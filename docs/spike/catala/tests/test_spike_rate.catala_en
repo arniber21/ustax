@@ -1,0 +1,27 @@
+# Tests for the spike toy
+
+> Using Spike_rate
+
+```catala
+#[test]
+declaration scope T1:
+  s1 scope Spike_rate.TaxSchedule
+  s2 scope Spike_rate.TaxSchedule
+  s3 scope Spike_rate.TaxSchedule
+  s4 scope Spike_rate.TaxSchedule
+
+scope T1:
+  definition s1.filing_status equals Spike_rate.FilingStatus.Single
+  definition s1.taxable_income equals $50,000
+  definition s2.filing_status equals Spike_rate.FilingStatus.Single
+  definition s2.taxable_income equals $1,000,000
+  definition s3.filing_status equals Spike_rate.FilingStatus.MarriedFilingJointly
+  definition s3.taxable_income equals $3
+  definition s4.filing_status equals Spike_rate.FilingStatus.HeadOfHousehold
+  definition s4.taxable_income equals $2,999
+  # IRS 2024 Tax Table: Single 50,000-50,050 is 6,059
+  assertion (s1.tax = $6,059)
+  assertion (s2.tax = $328,188)
+  assertion (s3.tax = $0)
+  assertion (s4.tax = $299)
+```
