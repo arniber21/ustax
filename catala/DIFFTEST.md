@@ -86,12 +86,24 @@ want checked (for example `/agi`, `/totalIncome`); each becomes one fact check p
 `oracle/README.md`). Result: 157/157 checks pass; the 4 knocked-out scenarios are DF-BUG-8 and are listed as
 `knownDivergence`. `docs/knockout-inventory.md` lists every `flow.xml` member and its status.
 
-## Lean vs Catala (issue #41 and later Lean modules)
+## Lean vs Catala (issue #41, #42 and later Lean modules)
 
-`make lean-difftest-rates` (`node difftest/lean_rates.mjs`) compares the Lean calculator with Catala and the
-oracle for the rate schedule: the `ustax` executable (`lean/`, `ustax run TentativeTax`, JSON lines) against one
+`make lean-difftest SCOPE=<mapping name>` (`node difftest/lean.mjs`) is the three-way comparison Direct File /
+Catala / Lean, per scenario and fact, using the same `difftest/mappings/<name>.mjs` as `make difftest`
+(one source of truth for the oracle-path -> input/output mapping and for `knownDivergence`). The input JSON is
+written once per scenario to `_build/difftest/<name>/<scenario>.input.json`; Catala reads that file
+(`clerk run`) and Lean reads the same text (`ustax run <CatalaScope>`, JSON lines, one process). A Lean port
+only adds its scope to `UsTax.Cli.scopes`. Counts: three-way agree; lean = catala where the oracle row is not
+Complete (never counted as agreement with Direct File) or has no oracle fact (mapping `extraOutputs`);
+knownDivergence (Catala differs from Direct File as listed; Lean must equal Catala); failures split into
+lean != catala and catala != oracle. Knocked-out scenarios are skipped and listed. Exit status 1 on any failure.
+`LEAN_DIFFTEST_PERTURB=1` perturbs every Lean output (negative control: all checks must fail).
+The harness and mappings are untrusted test code; JSON for Lean is parsed by `Lean.Json.parse` in `lean/UsTax/Cli.lean`.
+`clerk` needs `ninja` on `PATH`. Pilot: `make lean-difftest SCOPE=tax_rates` gives 157 facts three-way agree
+(+314 Lean = Catala on the two outputs without an oracle fact).
+
+`make lean-difftest-rates` (`node difftest/lean_rates.mjs`) is the dense extra sweep for the rate schedule: one
 `clerk run` of the batch wrapper `catala/tests/difftest_tax_rates_batch.catala_en` (2,402 incomes x 5 statuses,
-three outputs each, exact cents), then Lean against `/tentativeTaxFromTaxableIncome` on the 157 scenarios that
-are not knocked out. `clerk` needs `ninja` on `PATH`. `--perturb` adds one cent to every Lean output (every check
-must fail); `--dense 100 1000000` sweeps every dollar to $1,000,000. The pattern for later modules is in
+three outputs each, exact cents), then Lean against the oracle. `--perturb` is its negative control;
+`--dense 100 1000000` sweeps every dollar to $1,000,000. The pattern for later modules is in
 `lean/README.md`, "Pattern for Lean modules".

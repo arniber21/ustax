@@ -139,14 +139,22 @@ primitives it uses). The agreement with Catala is by testing, not proof.
    scope's Catala JSON input (the shape `catala json-schema -s <Scope>`
    prints; money as a decimal string, enums by case name) to a JSON object of
    its outputs keyed by Catala output names, money as `"1234.56"`.
-8. **Differential test.** `difftest/lean_<module>.mjs`, copied from
-   `lean_rates.mjs`: build inputs, run `ustax run <Scope>` once over JSON lines
-   and `clerk run` once over a batch wrapper scope
-   (`catala/tests/difftest_<module>_batch.catala_en`: an input list of the
-   scope's inputs, one output list per scope output), compare every output
-   exactly in cents; then compare Lean with the oracle (`oracle/facts.csv`) on
-   every scenario that is not knocked out. Report exact counts and keep a
-   `--perturb` negative control. Single-input scopes are swept densely;
-   multi-input scopes use the oracle scenarios plus a generator of valid inputs.
+8. **Differential test.** Add (or reuse) the Catala mapping
+   `difftest/mappings/<scope>.mjs` (oracle path -> Catala input and output;
+   `extraOutputs` for Catala outputs with no oracle fact; `knownDivergence`),
+   the same file `make difftest SCOPE=<scope>` uses, then run
+   `make lean-difftest SCOPE=<scope>`. `difftest/lean.mjs` writes each
+   scenario's input JSON once (the file the Catala runner reads), feeds the
+   same text to `ustax run <CatalaScope>` and `clerk run`, and reports Direct
+   File / Catala / Lean per fact: three-way agreement, lean = catala where the
+   oracle row is not Complete, knownDivergence (Lean must equal Catala) and
+   failures; knocked-out scenarios are skipped and listed. Nothing else is
+   added per module. `LEAN_DIFFTEST_PERTURB=1` is the negative control (every
+   check must fail). Optional extra: a dense sweep script like
+   `difftest/lean_rates.mjs` (`make lean-difftest-rates`) with a batch wrapper
+   scope (`catala/tests/difftest_<module>_batch.catala_en`).
+   **Trust:** the harness, the mappings and the JSON handling of the scenario
+   subset are untrusted test code (JavaScript). Lean parses its input with
+   `Lean.Json.parse` in `UsTax/Cli.lean`; there is no parsing script.
 9. **Register** the new modules in `UsTax.lean`, build with `lake build`
    (one `lake` process at a time), and run `make forensics`.

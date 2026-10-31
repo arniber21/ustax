@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { loadOracle, isKnockedOut, parseCatalaResult, compareOutputs, parseCatalaValue } from './lib.mjs';
+import { loadOracle, isKnockedOut, parseCatalaResult, compareOutputs, parseCatalaValue, buildInput, inputFileText } from './lib.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -51,13 +51,13 @@ for (const name of names) {
 
     let input;
     try {
-      input = Object.fromEntries(Object.entries(mapping.inputs).map(([k, f]) => [k, f(facts)]));
+      input = buildInput(mapping, facts);
     } catch (e) {
       failures.push({ scenario, path: '(input mapping)', expected: '-', actual: String(e.message) });
       c.error++; c.scenFail.push(scenario); continue;
     }
     const inFile = join(outDir, `${scenario}.input.json`);
-    writeFileSync(inFile, JSON.stringify(input, null, 1) + '\n');
+    writeFileSync(inFile, inputFileText(input));
     if (emitOnly) continue;
 
     const r = spawnSync('clerk', ['run', '-s', mapping.scope, `--input=${inFile}`, '--color=never', join(root, mapping.file)],

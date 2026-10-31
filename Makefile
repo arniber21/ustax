@@ -50,7 +50,9 @@ difftest-persons:  ## qualifying-child and dependent tests per household member 
 oracle-persons:  ## regenerate oracle/persons.csv (needs DIRECT_FILE, as for `make oracle`)
 	cd oracle && npm ci --ignore-scripts --no-audit --no-fund && node generate_persons.mjs
 # Lean rate schedule vs Catala (clerk run) and vs the oracle (see lean/README.md).
-.PHONY: lean-difftest-rates
+.PHONY: lean-difftest lean-difftest-rates
+lean-difftest:  ## Direct File / Catala / Lean three-way, per scenario/fact (SCOPE=<difftest/mappings name>)
+	node difftest/lean.mjs --scope $(SCOPE) $(ARGS)
 lean-difftest-rates:  ## Lean TentativeTax vs Catala and vs oracle/facts.csv
 	node difftest/lean_rates.mjs $(ARGS)
 
