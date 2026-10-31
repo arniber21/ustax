@@ -1,0 +1,46 @@
+catala/form1099_misc.catala_en
+  s_3031b504518be3::t_f80aad66dfa36e 53,74
+  s_3031b504518be3::t_cd6213526c912e 99
+  s_3031b504518be3::t_1a9d19aec03a9f 1-40,44-52,54-65,70-73,95-98,100-108,110-111
+  s_3031b504518be3::t_98ba31c51fa501 41-43,66-69,75-94,109
+catala/unemployment.catala_en
+  s_3031b504518be3::t_87f64130fdd33e 1-95,97-98,102-144,147-166,169-183,229,232
+  s_3031b504518be3::t_a10fc46aaaa3b9 184,191-228,230-231,233-239
+  s_3031b504518be3::t_dc9be33a5702bc 145-146,185-190
+  s_3031b504518be3::t_98ba31c51fa501 96,99-101
+  s_3031b504518be3::t_1a9d19aec03a9f 167-168
+difftest/mappings/form1099_misc.mjs
+  s_3031b504518be3::t_be9b042ea029cc 1-17,19-31
+  s_3031b504518be3::t_98ba31c51fa501 18
+catala/tests/test_unemployment.catala_en
+  s_3031b504518be3::t_6d585c4fbcedb5 1-55,57-77,79-107,109-137,139-162,164-179,181-202,204-220,222-232,234
+  s_3031b504518be3::t_080bdb48ef1b70 56,78,108,138,163,180,203,221,233
+difftest/mappings/unemployment.mjs
+  s_3031b504518be3::t_880e42910380bc 1-40
+catala/tests/test_form1099_misc.catala_en
+  s_3031b504518be3::t_98ba31c51fa501 18
+  s_3031b504518be3::t_080bdb48ef1b70 45,72,84
+  s_3031b504518be3::t_6d585c4fbcedb5 1-17,19-44,46-71,73-83,85
+  s_3031b504518be3::t_94601cf9a19ffa 86-106
+difftest/mappings/line25b_1099g_misc.mjs
+  s_3031b504518be3::t_1eff2854356cb8 1-39
+catala/tests/difftest_line25b.catala_en
+  s_3031b504518be3::t_86e58d209cf3d6 20-21
+  s_3031b504518be3::t_75eb93ea7f4bf1 1-19,22-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "782d181fa27fbe00f66fe909b4647c5ea68c90fc",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
