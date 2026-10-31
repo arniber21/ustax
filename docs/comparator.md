@@ -209,3 +209,7 @@ Problem found on the way: with a stock `ubuntu:24.04` image, both commands
 failed at once with `bwrap: Can't mkdir /run/user: Read-only file system`.
 Lake binds `/` read-only and then mounts a tmpfs on `/run/user`, which must
 already exist. The Containerfile creates it.
+
+## CI
+
+`.github/workflows/ci.yml` runs `lake build`, `lake check` and `lake comparator` natively on Ubuntu (they need Linux and bwrap), followed by `make audit`. bwrap setup on the runners: `docs/audit.md`.

@@ -1,0 +1,143 @@
+# CI (issue #70). Two independent jobs:
+#   catala : type-check + run Catala tests, summarize the three-way difftest.
+#   lean   : lake build, lake check, lake comparator (Lean v4.35 kernel replay
+#            and Comparator, sandboxed by bubblewrap), then scripts/audit.sh.
+# See docs/audit.md and docs/comparator.md. This file cannot be run locally;
+# it was validated for syntax only (see docs/audit.md, "CI").
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  catala:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same OCaml as the local switch (5.4.1). setup-ocaml caches the opam
+      # switch (and so the Catala build) between runs.
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.4.1
+          dune-cache: false
+
+      # `make install` = `opam install -y catala.1.3.0` + `clerk start`
+      # (the Makefile pins the version; Catala 1.3.0 is what the sources assume).
+      - name: Install Catala 1.3.0
+        run: opam exec -- make install
+
+      - name: make check (type-check, run #[test] scopes)
+        run: opam exec -- make check
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Report, do not gate: the difftest lists known Direct File differences
+      # (see STATUS.md). The summary goes to the job page.
+      - name: make difftest SCOPE=all (summary)
+        run: |
+          set -o pipefail
+          opam exec -- make difftest SCOPE=all 2>&1 | tee difftest.log || true
+          {
+            echo '### make difftest SCOPE=all'
+            echo '```'
+            tail -40 difftest.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  lean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      # Outside /home and /root: the bwrap sandbox of `lake check` and
+      # `lake comparator` covers both with a tmpfs (docs/comparator.md).
+      ELAN_HOME: /opt/elan
+      LEAN_WORK: /opt/ustax-lean
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bubblewrap and prepare directories
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bubblewrap zstd
+          # The sandbox mounts tmpfs on these after binding / read-only, so
+          # they must already exist.
+          sudo mkdir -p /run/user /home /root /tmp
+          sudo mkdir -p "$ELAN_HOME" "$LEAN_WORK"
+          sudo chown -R "$USER" "$ELAN_HOME" "$LEAN_WORK"
+
+      # ubuntu-24.04 sets kernel.apparmor_restrict_unprivileged_userns=1, which
+      # makes bwrap fail with "setting up uid map: Permission denied". Probe
+      # first; relax the sysctl only if the probe fails.
+      - name: Allow unprivileged user namespaces for bwrap
+        run: |
+          probe() { bwrap --ro-bind / / --tmpfs /tmp --dev /dev --proc /proc \
+                      --unshare-all --die-with-parent --new-session -- true; }
+          if probe; then
+            echo "bwrap works as is"
+          else
+            echo "bwrap probe failed; relaxing apparmor_restrict_unprivileged_userns"
+            sysctl kernel.apparmor_restrict_unprivileged_userns || true
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+            probe
+          fi
+
+      - name: Cache elan and the Lean toolchain
+        uses: actions/cache@v4
+        with:
+          path: /opt/elan
+          key: elan-${{ runner.os }}-${{ hashFiles('lean/lean-toolchain') }}
+
+      - name: Install elan and the pinned toolchain
+        run: |
+          echo "$ELAN_HOME/bin" >> "$GITHUB_PATH"
+          if [ ! -x "$ELAN_HOME/bin/elan" ]; then
+            curl -sSfL https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz \
+              | tar -xz -C /tmp
+            /tmp/elan-init -y --no-modify-path --default-toolchain "$(cat lean/lean-toolchain)"
+          fi
+          "$ELAN_HOME/bin/lean" --version
+
+      # Build in a copy outside /home (as the container setup does with /work);
+      # .lake (dependency clones and build output) is cached.
+      - name: Cache lake build output
+        uses: actions/cache@v4
+        with:
+          path: /opt/ustax-lean/.lake
+          key: lake-${{ runner.os }}-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml') }}-${{ hashFiles('lean/**/*.lean') }}
+          restore-keys: |
+            lake-${{ runner.os }}-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml') }}-
+
+      - name: Sync lean/ to /opt/ustax-lean
+        run: |
+          find "$LEAN_WORK" -mindepth 1 -maxdepth 1 ! -name .lake -exec rm -rf {} +
+          tar -C lean --exclude=./.lake -cf - . | tar -C "$LEAN_WORK" -xf -
+
+      - name: lake build
+        working-directory: /opt/ustax-lean
+        run: lake build
+
+      - name: lake check (kernel replay, axiom allow-list)
+        working-directory: /opt/ustax-lean
+        run: lake check
+
+      - name: lake comparator (challenge vs solution)
+        working-directory: /opt/ustax-lean
+        run: lake comparator --config comparator.json
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: make audit (source scan, #audit_all, forensics)
+        run: LEAN_DIR="$LEAN_WORK" ./scripts/audit.sh
