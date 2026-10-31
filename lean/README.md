@@ -19,6 +19,10 @@ Both tags match Lean v4.35.0 exactly.
 statement depends on; filter keeps modules rooted at `UsTax`) and
 `#audit_axioms thm`. Allowed axioms: `propext`, `Classical.choice`, `Quot.sound`.
 
+`make comparator` runs `lake check` and `lake comparator` in a Linux container
+(`docs/comparator.md`). `UsTax/Comparator/Challenge.lean` holds the trusted
+statements with intended `sorry` proofs; it is not imported by `UsTax.lean`.
+
 `make forensics` clones for-all-dev/forensics into `.forensics-tool/` (gitignored)
 and runs, from `.forensics-tool/app`, `bun server.ts <abs path to lean/> --dump forensics-out.json`.
 The project root is `lakefile.toml`, so module roots are inferred (else `--roots UsTax`).

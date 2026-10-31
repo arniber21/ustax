@@ -1,0 +1,47 @@
+# Linux image for `lake check` / `lake comparator` (issue #70, docs/comparator.md).
+#
+# Both commands refuse to run outside Linux: they sandbox the project with
+# bubblewrap (`bwrap`), which needs Linux namespaces. This image gives them
+# that on a Mac via Apple's `container` CLI (or any OCI runtime).
+#
+# Build: scripts/comparator.sh does it (`container build -t ustax-comparator
+#        -f deploy/comparator/Containerfile deploy/comparator`).
+FROM ubuntu:24.04
+
+# The toolchain must match lean/lean-toolchain exactly: `lake check` always
+# uses the toolchain's own `leanexport`, so the export format matches the
+# .olean files it reads.
+ARG LEAN_TOOLCHAIN=leanprover/lean4:v4.35.0
+ARG ELAN_VERSION=v4.2.4
+
+ENV DEBIAN_FRONTEND=noninteractive
+# bubblewrap: the sandbox. git: `lake` clones dependencies inside it.
+# Everything else: elan's installer and TLS for the clones.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      bubblewrap git curl ca-certificates xz-utils zstd \
+ && rm -rf /var/lib/apt/lists/*
+
+# Install elan outside /root: the sandbox covers /home and /root with a tmpfs
+# and binds back only the toolchain directory it needs. /opt is outside both.
+ENV ELAN_HOME=/opt/elan
+ENV PATH=/opt/elan/bin:$PATH
+RUN curl -sSfL "https://github.com/leanprover/elan/releases/download/${ELAN_VERSION}/elan-$(uname -m)-unknown-linux-gnu.tar.gz" \
+      | tar -xz -C /tmp \
+ && /tmp/elan-init -y --no-modify-path --default-toolchain "${LEAN_TOOLCHAIN}" \
+ && rm -f /tmp/elan-init \
+ && lean --version && lake --version && bwrap --version
+
+# Lake's sandbox mounts tmpfs over /home, /root, /run/user and /tmp after
+# binding / read-only, so each must already exist: bwrap cannot mkdir on the
+# read-only root. Ubuntu images lack /run/user ("bwrap: Can't mkdir
+# /run/user: Read-only file system" without this line).
+RUN mkdir -p /run/user /home /root /tmp
+
+# The entrypoint probes bwrap before running lake: the runtime (not the image)
+# decides capabilities and seccomp, so the probe has to run at `container run`.
+COPY entrypoint.sh /usr/local/bin/comparator-entrypoint
+RUN chmod +x /usr/local/bin/comparator-entrypoint
+
+WORKDIR /work
+ENTRYPOINT ["/usr/local/bin/comparator-entrypoint"]
