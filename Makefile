@@ -20,3 +20,9 @@ lean-build:  ## build the Lean library (core + Batteries + plausible)
 forensics:   ## run forensics extractor on lean/, writing forensics-out.json
 	@test -d .forensics-tool || git clone https://github.com/for-all-dev/forensics .forensics-tool
 	cd .forensics-tool/app && bun server.ts $(CURDIR)/lean --dump $(CURDIR)/forensics-out.json
+
+# Oracle: dump Direct File reference-engine values for its backend scenarios (see oracle/README.md).
+# Needs node >= 18 and a direct-file checkout: set DIRECT_FILE=<path to direct-file/direct-file>.
+.PHONY: oracle
+oracle:    ## regenerate oracle/facts.csv from the Direct File scenarios
+	cd oracle && npm ci --ignore-scripts --no-audit --no-fund && node generate.mjs

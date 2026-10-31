@@ -1,0 +1,17 @@
+{
+ "total": 161,
+ "knockedOut": 4,
+ "notKnockedOut": 0,
+ "notKnockedOutPlaceholder": 157,
+ "coreComplete": 161,
+ "coreCompleteAndNotKnockedOut": 157,
+ "knockedOutScenarios": [
+  "1099r-box-2b-total-distribution",
+  "ats-2-1099r-blank-taxable",
+  "ats-2-1099r-nonzero-taxable",
+  "ats-2-1099r"
+ ],
+ "errors": [],
+ "sha256": "a238501f6b8efcb25012e7a423e4dfa46a4ce748a93759459e182e47e7ef8a00",
+ "mefExtraPaths": 313
+}
