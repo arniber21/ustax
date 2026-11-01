@@ -7,7 +7,9 @@
     "UsTax.Main.credits_within_liability",
     "UsTax.Main.totalTax_nonneg",
     "UsTax.Main.tentativeTax_matches_tax_table",
-    "UsTax.Main.line16_matches_tax_table"
+    "UsTax.Main.line16_matches_tax_table",
+    "UsTax.Main.tentativeTax_matches_worksheet",
+    "UsTax.Main.line16_matches_worksheet"
   ],
   "definition_names": [],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]

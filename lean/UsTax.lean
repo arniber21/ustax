@@ -50,8 +50,10 @@ import UsTax.Spec.RefundBalance
 import UsTax.Spec.Credits
 import UsTax.Spec.Eitc
 import UsTax.Spec.TaxTable
+import UsTax.Spec.TaxWorksheet
 import UsTax.Proofs.Form1040
 import UsTax.Proofs.TaxTable
+import UsTax.Proofs.TaxWorksheet
 import UsTax.Proofs.Main
 import UsTax.Cli
 import UsTax.Api.Json

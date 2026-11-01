@@ -15,9 +15,10 @@ and not the rate schedules. Its 2,062 rows are the generated data
 `sources/forms-instructions/derived-tax-table-2024.csv`). That data is part of
 this spec: a wrong row would make the theorem say the wrong thing.
 
-The table covers taxable income below $100,000. Above that the property says
-nothing (no row contains the income). The data also lacks the printed rows
-[$5, $15) and [$15, $25) (see `docs/spec-surface.md`).
+The table covers taxable income below $100,000 (its 2,062 rows tile $0 to
+$100,000: `Proofs.rows_chain`). From $100,000 the property says nothing (no
+row contains the income); there the instructions use the Tax Computation
+Worksheet, the property of `Spec/TaxWorksheet.lean` (main theorems 5c, 5d).
 
 This file imports the data and `FilingStatus`, not the calculator.
 -/

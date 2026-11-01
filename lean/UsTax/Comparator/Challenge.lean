@@ -2,6 +2,7 @@ import UsTax.Spec.TaxMonotone
 import UsTax.Spec.RefundBalance
 import UsTax.Spec.Credits
 import UsTax.Spec.TaxTable
+import UsTax.Spec.TaxWorksheet
 import UsTax.TaxRates
 import UsTax.Form1040
 
@@ -69,6 +70,24 @@ filing status. -/
 theorem line16_matches_tax_table (i : Form1040In) :
     MatchesTaxTable i.filingStatus (form1040 i).taxableIncome
       (form1040 i).tentativeTaxFromTaxableIncome := by
+  sorry
+
+/-- (5c) For every filing status and taxable income from $100,000 (up to the
+code's $1-trillion sentinel), line 16 as computed is the 2024 Tax Computation
+Worksheet amount. -/
+theorem tentativeTax_matches_worksheet (fs : FilingStatus) (ti : Int)
+    (h1 : 100_000_00 ≤ ti) (h2 : ti ≤ 1_000_000_000_000_00) :
+    tentativeTaxFor ti fs = worksheetTax fs ti := by
+  sorry
+
+/-- (5d) On every return with line 15 from $100,000 (up to the sentinel),
+line 16 is the Tax Computation Worksheet amount for line 15 and the filing
+status. -/
+theorem line16_matches_worksheet (i : Form1040In)
+    (h1 : 100_000_00 ≤ (form1040 i).taxableIncome)
+    (h2 : (form1040 i).taxableIncome ≤ 1_000_000_000_000_00) :
+    (form1040 i).tentativeTaxFromTaxableIncome =
+      worksheetTax i.filingStatus (form1040 i).taxableIncome := by
   sorry
 
 end UsTax.Main
