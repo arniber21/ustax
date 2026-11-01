@@ -22,7 +22,10 @@ else
   fi
   opam switch list --short 2>/dev/null | grep -qx "$SW" \
     || opam switch create "$SW" "ocaml-base-compiler.$OCAMLV"
-  opam install --switch "$SW" "catala.$CATALAV"
+  # System packages (ninja, gmp, pkg-config...) come from devbox (nix), which opam cannot see: on Linux opam would
+  # otherwise stop and ask apt to install `ninja-build` (CI failure, and a fresh-clone failure for judges).
+  command -v ninja >/dev/null 2>&1 || { echo "error: ninja is not on PATH; run inside devbox" >&2; exit 1; }
+  opam install --switch "$SW" --assume-depexts "catala.$CATALAV"
 fi
 
 export PATH="$OPAMROOT/$SW/bin:$PATH"
