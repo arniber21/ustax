@@ -38,22 +38,22 @@ is carried by the answer `expenses_paid_to_qualifying_provider`.
 
 Divergences from DF, all statute-first (CONVENTIONS section 8):
 
-- `DF-BUG(28-a)`: DF lets a non-parent (a grandparent or foster parent) take
+- `DF-BUG(23)`: DF lets a non-parent (a grandparent or foster parent) take
   CDCC for a child through the Form 8332 benefit split. IRC 21(e)(5) gives
   the child to the custodial parent only. Status: candidate. Changes
   `hoh-cdcc-multiple-careproviders`.
-- `DF-BUG(28-b)`: DF gives a 0 decimal amount when AGI is zero or less; the
+- `DF-BUG(24)`: DF gives a 0 decimal amount when AGI is zero or less; the
   statute gives 35 percent.
-- `DF-BUG(28-c)`: DF tests "a qualifying person lived with you" and "you paid
+- `DF-BUG(25)`: DF tests "a qualifying person lived with you" and "you paid
   over half the upkeep" on two possibly different persons for the married
   filing separately exception; IRC 21(e)(4) is about one household.
   Candidate.
-- `DF-BUG(28-d)`: DF takes the spouse's earned income on line 19 for a
+- `DF-BUG(26)`: DF takes the spouse's earned income on line 19 for a
   qualifying surviving spouse (it reads the empty secondary filer, so line 19
   is $0). The form says "All others, enter the amount from line 18".
-- `DF-BUG(28-e)`: DF ignores forfeited amounts (line 14) unless box 10 of a
+- `DF-BUG(27)`: DF ignores forfeited amounts (line 14) unless box 10 of a
   W-2 is positive; line 14 covers amounts on line 13 as well. Candidate.
-- `DF-BUG(28-f)`: DF requires the filer to have chosen to claim a dependent
+- `DF-BUG(28)`: DF requires the filer to have chosen to claim a dependent
   child; IRC 21(b)(1)(A) and i2441 p 1 ask whether the child "can" be
   claimed. Candidate.
 
@@ -164,7 +164,7 @@ also gives the credit to a non-parent who reaches the Form 8332 benefit split
 (`tpCanClaimSplitBenefitsHohEitcCdcc`, `reachedNonParentalBenefitSplit`). A
 grandparent or foster parent is not a "custodial parent" (IRC 152(e)(4)(A):
 "the parent having custody"), and the child is not their dependent, so we do
-not (`DF-BUG(28-a)`).
+not (`DF-BUG(23)`).
 
 The age in IRC 21(b)(1)(A) is "age 13" and a child who turns 13 during the
 year is a qualifying person for the earlier part (i2441 p 1; Pub. 503 p 3).
@@ -241,7 +241,7 @@ scope CdccPersonTest:
     and dependent.qc.age >= P.cdcc_qualifying_child_age_limit
   consequence fulfilled
 
-  # IRC 21(b)(1)(A); IRC 152(a)(1) (a qualifying child). DF-BUG(28-f): the
+  # IRC 21(b)(1)(A); IRC 152(a)(1) (a qualifying child). DF-BUG(28): the
   # statute asks whether the child is the taxpayer's dependent, not whether
   # the taxpayer elected to claim; `eligible_dependent`, not
   # `is_claimed_dependent`. DF: first branch of /cdccQualifyingPerson.
@@ -274,7 +274,7 @@ scope CdccPersonTest:
 
   # IRC 21(e)(5): the custodial parent who released the claim keeps the
   # credit. The parent path of DF /tpCanClaimSplitBenefitsHohEitcCdcc
-  # (`tp_is_parent`); the non-parent path is DF-BUG(28-a).
+  # (`tp_is_parent`); the non-parent path is DF-BUG(23).
   rule custodial_parent_release under condition
     dependent.split.tp_can_claim_split_benefits_hoh_eitc_cdcc
     and dependent.split.tp_is_parent
@@ -491,7 +491,7 @@ scope Form2441PartIII:
   rule has_qualifying_persons under condition count_of_qualifying_persons > 0
   consequence fulfilled
 
-  # IRC 21(e)(4), Form 2441 line A. See DF-BUG(28-c): one person must pass
+  # IRC 21(e)(4), Form 2441 line A. See DF-BUG(25): one person must pass
   # both home tests.
   # DF: filers.xml /mfsButEligibleForCdcc
   rule mfs_but_eligible_for_cdcc under condition
@@ -534,7 +534,7 @@ received in 2024. Amounts you received as an employee should be shown in box
 10 of your Form(s) W-2." Line 13: the amount carried over from 2023 and used
 in 2024. Line 14: "If you forfeited or carried over to 2025 any of the
 amounts reported on line 12 or 13, enter the amount." Line 15: "Combine lines
-12 through 14." DF rounds each (`Round`). `DF-BUG(28-e)`: DF counts a
+12 through 14." DF rounds each (`Round`). `DF-BUG(27)`: DF counts a
 forfeited amount only if box 10 is positive.
 
 ```catala
@@ -564,7 +564,7 @@ scope Form2441PartIII:
   rule has_reported_carryover under condition line13_carryover > $0
   consequence fulfilled
 
-  # DF-BUG(28-e)
+  # DF-BUG(27)
   definition line14_forfeited equals
     R.round_dollar of writable_forfeited_amount
 
@@ -599,7 +599,7 @@ dependent care benefits shown on line 12." Line 19: "If your filing status is
 married filing separately ... Are you considered unmarried under that rule?
 Yes. Enter your earned income (from line 18) on line 19. No. Enter your
 spouse's earned income on line 19." The form for all others: "enter the amount
-from line 18" (`DF-BUG(28-d)`).
+from line 18" (`DF-BUG(26)`).
 
 Earned income of a student or incapable spouse: IRC 21(d)(2) quoted above; Reg.
 1.21-2(b)(4)(iii): "Earned income may be attributed under this paragraph
@@ -787,7 +787,7 @@ include it in earned income", each spouse separately, so line 1e (taxable
 dependent care benefits) is part of one spouse's earned income. The form does
 not say whose; DF allocates the amount below.
 
-`DF-BUG(28-b)`: AGI zero or less gives 35 percent here; DF gives 0.
+`DF-BUG(24)`: AGI zero or less gives 35 percent here; DF gives 0.
 
 ```catala-metadata
 declaration scope Form2441:
@@ -1075,7 +1075,7 @@ $2,000 over $15,000.
 
 ```catala
 scope Form2441:
-  # IRC 21(a)(2). DF: /cdccCareExpensesDecimalAmount (DF-BUG(28-b) at AGI <= 0)
+  # IRC 21(a)(2). DF: /cdccCareExpensesDecimalAmount (DF-BUG(24) at AGI <= 0)
   definition applicable_percentage equals
     if agi <= P.cdcc_percentage_reduction_threshold
     then P.cdcc_maximum_percentage

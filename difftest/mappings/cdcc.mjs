@@ -117,7 +117,7 @@ function filer(f, which) {
 
 const m = (o, c) => ({ oracle: `/${o}`, catala: c, type: 'money' });
 const b = (o, c) => ({ oracle: `/${o}`, catala: c, type: 'bool' });
-const FOSTER = { scenario: 'hoh-cdcc-multiple-careproviders', bug: 'DF-BUG(28-a)',
+const FOSTER = { scenario: 'hoh-cdcc-multiple-careproviders', bug: 'DF-BUG(23)',
   note: 'the foster child of the non-parent Form 8332 split ($500 of expenses) is a qualifying person in DF; ' +
     'IRC 21(e)(5) gives the child to the custodial parent only' };
 
@@ -143,7 +143,7 @@ export default {
     writable_total_qualified_dependent_care_expenses: (f) => money(f, '/writableCdccTotalQualifiedDependentCareExpenses'),
     writable_carryover_amount: (f) => (bool(f, '/hasCdccCarryoverAmountFromPriorTaxYear')
       ? money(f, '/writableCdccCarryoverAmountFromPriorTaxYear') : 0),
-    // DF-BUG(28-e): the statute counts the amount whatever box 10 says.
+    // DF-BUG(27): the statute counts the amount whatever box 10 says.
     writable_forfeited_amount: (f) => (bool(f, '/writableHasCdccForfeitedCredits')
       ? money(f, '/writableCdccForfeitedCredits') : 0),
     has_credit_for_prior_year_expenses: (f) => bool(f, '/cdccHasCreditForPriorYearExpenses'),
@@ -188,7 +188,7 @@ export default {
     // DF gives a $0.00 decimal amount at AGI <= 0; IRC 21(a)(2) gives 35 percent. No credit changes
     // (these returns have no qualifying expenses).
     ...['edc-ats-1', 'edc-disqualified-disability-income', 'ptc-no-aptc-negative-magi'].map((scenario) => ({
-      scenario, path: '/xmlCdccCareExpensesDecimalAmount', bug: 'DF-BUG(28-b)',
+      scenario, path: '/xmlCdccCareExpensesDecimalAmount', bug: 'DF-BUG(24)',
       note: 'AGI is zero or less: DF decimal amount 0.00, statute 35 percent',
     })),
   ],

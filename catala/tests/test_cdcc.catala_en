@@ -258,7 +258,7 @@ scope TestPercentageSteps:
   assertion e.f.line8_decimal_amount = $0.33
 ```
 
-### Negative AGI: 35 percent (IRC 21(a)(2); DF-BUG(28-b))
+### Negative AGI: 35 percent (IRC 21(a)(2); DF-BUG(24))
 
 ```catala
 #[test]
