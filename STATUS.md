@@ -8,11 +8,11 @@ Lean: money lib, helpers, rate schedule, spine, income types, household/filing s
 Product: devbox + CI, shadcn "US Tax" UI, provenance index (data side), README + write-up draft, Docker, TLS doc, API contract 1.2.0 (dependents, credits, PTC inputs).
 DF bug log: 33 entries (docs/direct-file-bugs.md), DF-BUG-8 confirmed.
 
-## KNOWN GAP (server slice, until the Lean Calculator lands)
-Contract 1.2.0 is validated by Lean (make api-conformance green, 2,100 cases) but `/calculate` still computes only W-2, interest, standard deduction, tax: credits/dependents/PTC/HSA/other income are accepted and ignored with `section_not_used` warnings. EXCEPTION: a request with no new sections (e.g. low-income single filer) returns 200 WITHOUT a warning while omitting credits it would be entitled to (EITC). 7 server fixtures are SKIPPED, not passed: hoh-w2-60k, qss-w2-80k, family-mfj-two-kids, eitc-hoh-one-child, refund-below-standard-deduction, knocked-out-hoh-no-qualifying-person, error-500. Fixed by the Lean Calculator (#48) wiring.
+## Milestone: end-to-end whole-return calculator (2026-11-01)
+`POST /calculate` runs the Lean ApiCalculator (#48/#151): W-2, interest, 1099-G/MISC/R, SS, adjustments, estimated payments, HSA, dependents, CTC/ODC/ACTC, EITC, CDCC, Saver's, Schedule R, PTC, knockouts. Verified: `make test-server` 46 passed / 0 failed / 1 skipped (error-500 not provokable); Lean vs Catala vs Direct File oracle: calculator 5,360 agree, api_calculator 3,105 agree; `make audit` PASS (7,790 declarations, 0 high-severity). Seen in the UI: MFJ, $80,000 wages, two kids -> refund $1,365 (matches hand-computed Catala test).
 
 ## In progress
-#47 Lean PTC + HSA port (then Lean Calculator #48 + server wiring #52).
+Comparator + comparator-extra runs on main (serial, ~25 min). Then: regenerate provenance if stale, close #65/#66 if Comparator-extra passes.
 
 ## Not yet done
 Lean Calculator (#48) + server sync (#52/#53/#57), provenance viewer in the UI, wizard steps for dependents/credits, Lean PTC/HSA port (#47), proofs #66/#69 composed over the Calculator, spec review by the human (docs/spec-surface.md), #60 quirk decisions, #59/#71 README trusted-surface, LICENSE decision, fresh-clone `make install && make run` check on Linux/CI.
