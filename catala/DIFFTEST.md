@@ -107,3 +107,14 @@ The harness and mappings are untrusted test code; JSON for Lean is parsed by `Le
 three outputs each, exact cents), then Lean against the oracle. `--perturb` is its negative control;
 `--dense 100 1000000` sweeps every dollar to $1,000,000. The pattern for later modules is in
 `lean/README.md`, "Pattern for Lean modules".
+
+## Whole return (issues #38, #48)
+
+`calculator` (scope `Calculator`, `catala/calculator.catala_en`) runs the whole return with every merged module
+plugged into `Form1040` and no oracle value as input: every input is a writable fact of the scenario
+(per-person facts from the `/familyAndHousehold/#<uuid>/...` rows of `facts.csv`). Scenarios that need an
+unmerged module are skipped as `blocked by #28 (CDCC)` or `blocked by #32-#34 (PTC)` (non-zero
+`/cdccTotalCredit`, `/taxableDependentCare`, `/totalAdditionalTaxesOwed` or
+`/otherPaymentsAndRefundableCreditsTotal`); `CALC_INCLUDE_BLOCKED=1` runs them anyway. Result: 142/142
+scenarios, 4120/4120 fact checks over 30 paths, 1 known divergence (DF-BUG-3, `qss_35K_1 dependent-signed`
+knocked out by the qualifying-child tie-breaker), 15 blocked, 4 knocked out (DF-BUG-8).

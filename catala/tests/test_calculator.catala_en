@@ -1,0 +1,530 @@
+# Tests for the Calculator module (issues #38, #48)
+
+Run with `clerk test`. One full return per filing status, each worked out by
+hand from the TY2024 figures (Rev. Proc. 2023-34; the Tax Table row midpoint
+rule of `catala/tax_rates.catala_en`; the EIC Table of `i1040gi--2024.pdf`,
+`sources/forms-instructions/derived-eic-table-2024.csv`), plus tests that the
+spec rejects wrong outputs and that a knockout is reported. The oracle
+comparison is `make difftest SCOPE=calculator`.
+
+> Using Types
+> Using Filers as F
+> Using Form_w2s as W
+> Using Hsa as H
+> Using Qualifying_relative as QR
+> Using Qualifying_child as Q
+> Using Dependents_benefit_split as B
+> Using Hoh_qss_persons as HQ
+> Using Ctc_odc as C
+> Using Eitc as E
+> Using Educator_adjustment as EA
+> Using Estimated_payments as EP
+> Using Elderly_and_disabled as ED
+> Using Knockouts_income as KI
+> Using Calculator as Calc
+
+## Helpers
+
+`MkW2` builds a W-2 with box 1 (wages), box 2 (withholding), boxes 3 to 6
+(Social Security and Medicare wages equal to box 1, taxes at 6.2% and 1.45%)
+and every other box `$0`. `MkChild` builds a household member who is the
+filer's biological child, lived with the filer all year in the United States,
+has an SSN, is unmarried, a citizen, and is claimed. `Defaults` holds the
+answers of an adult citizen filer with no other activity.
+
+```catala
+declaration scope MkW2:
+  context filer content Types.FilerRole
+  context wages content money
+  context withholding content money
+  output w2 content W.FormW2
+
+scope MkW2:
+  definition filer equals Types.FilerRole.PrimaryFiler
+  definition wages equals $0
+  definition withholding equals $0
+  definition w2 equals W.FormW2 {
+    -- filer: filer
+    -- writable_wages: wages
+    -- writable_federal_withholding: withholding
+    -- writable_oasdi_wages: wages
+    -- writable_oasdi_withholding: wages * 6.2%
+    -- writable_medicare_wages: wages
+    -- writable_medicare_withholding: wages * 1.45%
+    -- writable_allocated_tips: $0
+    -- writable_dependent_care_benefits: $0
+    -- writable_non_qualified_plans: $0
+    -- uncollected_oasdi_tax_on_tips: $0
+    -- uncollected_medicare_tax_on_tips: $0
+    -- taxable_life_insurance_over_50k: $0
+    -- deferrals_401k: $0
+    -- deferrals_403b: $0
+    -- sarsep_deferrals: $0
+    -- deferrals_457b: $0
+    -- deferrals_501c18: $0
+    -- nontaxable_sick_pay: $0
+    -- golden_parachute_excise_tax: $0
+    -- expense_reimbursements: $0
+    -- uncollected_oasdi_tax_on_life_insurance_over_50k: $0
+    -- uncollected_medicare_tax_on_life_insurance_over_50k: $0
+    -- armed_forces_moving_expenses: $0
+    -- writable_combat_pay: $0
+    -- archer_msa_contributions: $0
+    -- simple_contributions: $0
+    -- adoption_benefits: $0
+    -- nso_income: $0
+    -- employer_hsa_contributions: $0
+    -- deferrals_409a: $0
+    -- nqdc_deferrals: $0
+    -- roth401k_contributions: $0
+    -- roth403b_contributions: $0
+    -- health_coverage_cost: $0
+    -- roth457b_contributions: $0
+    -- qsehra_benefits: $0
+    -- income_83i: $0
+    -- deferrals_83i: $0
+    -- non_taxable_medicaid_waiver_payments: $0
+    -- plan_457b_is_governmental: false
+    -- statutory_employee: false
+    -- third_party_sick_pay: false
+  }
+
+declaration scope MkChild:
+  input date_of_birth content date
+  output member content Calc.HouseholdMember
+
+scope MkChild:
+  definition member equals Calc.HouseholdMember {
+    -- dependent: QR.Member {
+         -- person: Q.Person {
+              -- relationship: Q.Relationship.BiologicalChild
+              -- date_of_birth: date_of_birth
+              -- full_time_student: false
+              -- permanent_total_disability: false
+              -- residency_duration: Q.ResidencyDuration.AllYear
+              -- own_support: false
+              -- married: false
+              -- writable_joint_return: false
+              -- writable_required_to_file: false
+              -- writable_filing_only_for_refund: false
+              -- writable_could_be_qualifying_child_of_another: false
+              -- writable_potential_claimer_must_file: false
+              -- writable_potential_claimer_did_file: false
+              -- writable_potential_claimer_filed_only_for_refund: false }
+         -- answers: QR.DependentAnswers {
+              -- gross_income: $0
+              -- writable_qr_support_test: false
+              -- tin_type: QR.TinType.Ssn
+              -- is_us_citizen_full_year: true
+              -- writable_us_resident: false
+              -- writable_us_national: false
+              -- writable_canada_mexico_resident: false
+              -- tp_claims: true }
+         -- split: B.BenefitSplitAnswers {
+              -- has_other_biological_or_adoptive_parent: false
+              -- non_parental_some_parent_not_claiming: false
+              -- which_parent_not_claiming: B.WrittenDeclaration.NobodyDid
+              -- in_parents_custody: false
+              -- lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months: false
+              -- biological_or_adoptive_parents_living: false
+              -- nights_with_tp_vs_other_parent: B.NightsComparison.Less
+              -- tp_agi_higher_than_other_parent: false
+              -- parents_meet_reqs_rule_for_children_of_divorced_parents: false
+              -- special_rule_child_used_by_custodial_parent_as_qp: false
+              -- special_rule_agi_test: false
+              -- parental_situation: B.ParentalSituation.Other
+              -- parental_support: false
+              -- multiple_support_agreement: false } }
+    -- upkeep: HQ.UpkeepAnswers {
+         -- tp_paid_most_of_home_upkeep: true
+         -- tp_paid_most_of_parent_home_upkeep: false }
+    -- ssn_employment_validity: C.SsnEmploymentValidity.Neither
+    -- ssn_only_for_federally_funded_benefit: false
+    -- months_lived_with_tp_in_us: 12
+  }
+
+declaration scope Defaults:
+  output filer content F.FilerAnswers
+  output extra content Calc.FilerExtra
+  output filers content Calc.FilersInput
+  output income content Calc.IncomeInput
+  output adjustments content Calc.AdjustmentsInput
+  output payments content Calc.PaymentsInput
+  output credits content Calc.CreditAnswers
+  output screening content Calc.ScreeningAnswers
+
+scope Defaults:
+  definition filer equals F.FilerAnswers {
+    -- date_of_birth: |1990-06-15|
+    -- is_blind: false
+    -- can_be_claimed: false
+    -- will_be_claimed: false
+    -- potential_claimer_must_file: false
+    -- potential_claimer_did_file: false
+    -- is_us_citizen_full_year: true
+    -- writable_citizen_at_end_of_tax_year: false
+    -- writable_is_noncitizen_resident_full_year: false
+    -- writable_is_national: false }
+  definition extra equals Calc.FilerExtra {
+    -- tin: Calc.FilerTin {
+         -- tin_is_ssn: true
+         -- ssn_employment_validity: Calc.FilerSsnEmploymentValidity.Neither
+         -- has_ssn_only_for_benefits: false }
+    -- is_student: false
+    -- disability: ED.DisabilityAnswers {
+         -- is_retired_on_perm_or_total_disability: false
+         -- employer_has_mandatory_retirement_age: false
+         -- has_met_employer_mandatory_retirement_age: false
+         -- are_payments_taxable_disability_income: false
+         -- writable_total_taxable_disability_amount: $0
+         -- has_w2_wages: false }
+    -- hsa: H.HsaFilerAnswers {
+         -- writable_primary_filer_has_made_contributions_to_hsa: false
+         -- writable_secondary_filer_has_made_contributions_to_hsa: false
+         -- enrolled_in_medicare: H.MedicareEnrollment.MedicareNoneOfYear
+         -- hsa_hdhp_coverage_status: H.HdhpCoverageStatus.HdhpAllYear
+         -- type_of_hdhp: H.TypeOfHdhp.SelfOnly
+         -- had_other_coverage_ineligible_for_hsa: H.OtherCoverageIneligible.OtherCoverageNoneOfYear
+         -- writable_mfs_line6_check: false
+         -- writable_change_in_marital_status_during_tax_year:
+              H.MaritalStatusChange.WasNotMarriedNorDivorcedThisYear
+         -- writable_marital_change_affect_contribution_limit_bool: false
+         -- has_made_qualified_hsa_funding_distribution: false
+         -- writable_hsa_nonemployer_contributions_tax_year: $0
+         -- writable_hsa_nonemployer_contributions_tax_year_plus_one: $0 } }
+  definition filers equals Calc.FilersInput {
+    -- marital_status: F.MaritalStatus.NeverMarried
+    -- year_of_spouse_death: F.YearOfSpouseDeath.DiedBeforeTaxYearMinusTwo
+    -- primary_filer: filer
+    -- secondary_filer: filer
+    -- secondary_filer_date_of_death: |2024-12-31|
+    -- primary_filer_potential_claimer_filed_only_for_refund: false
+    -- mfj_required_to_file: false
+    -- mfj_dependents_filing_for_credits: false
+    -- lived_together_all_year_with_spouse: true
+    -- spouse_lived_together_months: F.SpouseLivedTogetherMonths.LivedApartAllYear
+    -- writable_lived_apart_last_six_months: false
+    -- writable_separation_agreement: false
+    -- can_file_jointly_year_of_spouse_death: false
+    -- in_registered_domestic_partnership: false
+    -- filer_residence_and_income_state: Types.ScopedState.FL
+    -- spouse_itemizes: false
+    -- mfs_living_spouse_filing_return: false
+    -- mfs_deceased_spouse_filing_return: false
+    -- mfs_spouse_has_gross_income: false
+    -- mfs_spouse_65_or_older: false }
+  definition income equals Calc.IncomeInput {
+    -- w2s: []
+    -- combat_pay_election: W.CombatPayElection.NoCombatPay
+    -- combat_pay_election_made: false
+    -- interest_reports: []
+    -- form_1099gs: []
+    -- form_1099miscs: []
+    -- form_1099rs: []
+    -- ssa_net_benefits: []
+    -- ssa_federal_tax_withheld: [] }
+  definition adjustments equals Calc.AdjustmentsInput {
+    -- was_k12_educators: EA.K12EducatorOptions.Neither
+    -- primary_educator_expenses_writable: $0
+    -- secondary_educator_expenses_writable: $0
+    -- had_student_loan_interest_payments: false
+    -- student_loans_qualify: false
+    -- student_loan_interest_amount: $0
+    -- hsa: Calc.HsaInput {
+         -- some_filer_had_non_w2_hsa_activity: false
+         -- writable_primary_filer_had_non_w2_hsa_activity: false
+         -- writable_secondary_filer_had_non_w2_hsa_activity: false
+         -- has_hsa_medical_savings_account_type: false
+         -- writable_has_hsa_excess_contributions_previous_year: false
+         -- writable_has_hsa_withdrawn_excess_contributions_yes_no: false
+         -- some_filers_made_testing_period_contribution: false
+         -- some_filers_have_testing_period_additional_income: false
+         -- hsa_distributions: [] } }
+  definition payments equals Calc.PaymentsInput {
+    -- paid_estimated_taxes_or_from_last_year: false
+    -- estimated_tax_payment_writable: $0
+    -- paid_estimated_taxes_or_from_last_year_under_different_name: false
+    -- paid_estimated_taxes_with_former_spouse: EP.PaidWithFormerSpouse.Neither }
+  definition credits equals Calc.CreditAnswers {
+    -- eitc_qc_of_another: false
+    -- eitc_qc_of_another_required_to_file: false
+    -- eitc_qc_of_another_is_filing: false
+    -- eitc_qc_of_another_is_filing_refund_only: false
+    -- eitc_had_improper_claims: false
+    -- eitc_improper_claims_due_to_qc: false
+    -- eitc_improper_claim_taken_since_disallowal: false
+    -- eitc_received_improper_claims_notice: E.ImproperClaimsNotice.NotAnswered
+    -- eitc_improper_claims_notice_expired: false
+    -- received_improper_claims: false
+    -- received_improper_claims_notice: E.ImproperClaimsNotice.NotAnswered
+    -- improper_claims_notice_expired: false
+    -- has_filed_ctc_odc_since_notice_expired: false
+    -- has_distributions_in_last_three_years: false
+    -- has_current_year_distributions: false
+    -- has_self_reported_contributions: false
+    -- has_self_reported_non_taxable_payments: false
+    -- self_reported_non_taxable_payment_amount: $0 }
+  definition screening equals Calc.ScreeningAnswers {
+    -- income_sources_supported: true
+    -- received_digital_assets: false
+    -- disposed_digital_assets: false
+    -- has_foreign_accounts: false
+    -- is_foreign_trusts_grantor: false
+    -- has_foreign_trusts_transactions: false
+    -- made_ira_contributions: false
+    -- w2_box15_income_from_different_state: false
+    -- w2_has_box14_nyrrta_knockout_code: false
+    -- w2_has_rrta_codes_in_box14: false
+    -- lived_in_ny: false
+    -- w2_paid_yonkers_taxes: false
+    -- part_year_yonkers_resident: false
+    -- primary_filer_forms_another_state: false
+    -- received_alaska_pfd: false
+    -- spouse_received_alaska_pfd: false
+    -- spouse_lives_in_other_or_multiple_states: false
+    -- spouse_forms_another_state: false
+    -- is_after_tax_day_and_not_resubmitting: false
+    -- is_after_resubmission_deadline: false }
+```
+
+## Single: W-2 only
+
+Wages $50,000, withholding $5,000, born 1990. Line 9 = line 11 = $50,000;
+standard deduction $14,600; line 15 = $35,400. Tax Table row $35,400 to
+$35,450, midpoint $35,425: $1,160 + 12% x ($35,425 - $11,600) = $1,160 +
+$2,859 = $4,019. No credit: the EITC with no qualifying child ends at AGI
+$18,591. Refund $5,000 - $4,019 = $981.
+
+```catala
+#[test]
+declaration scope TestSingle:
+  d scope Defaults
+  output r content Calc.Calculator
+
+scope TestSingle:
+  definition r equals output of Calc.Calculator with {
+    -- filing_status: Types.FilingStatus.Single
+    -- filers: d.filers
+    -- primary_extra: d.extra
+    -- secondary_extra: d.extra
+    -- household: []
+    -- income: d.income but replace {
+         -- w2s: [(output of MkW2 with { -- wages: $50,000 -- withholding: $5,000 }).w2] }
+    -- adjustments: d.adjustments
+    -- payments: d.payments
+    -- credits: d.credits
+    -- screening: d.screening }
+  assertion r.agi = $50,000
+  assertion r.taxable_income = $35,400
+  assertion r.total_tax = $4,019
+  assertion r.earned_income_credit = $0
+  assertion r.overpayment = $981
+  assertion r.balance_due = $0
+  assertion not r.unsupported
+  assertion r.fired_knockouts = []
+```
+
+## Married filing jointly: two children
+
+Primary wages $80,000, withholding $3,000; two children born 2016 and 2019
+with SSNs. Standard deduction $29,200, line 15 = $50,800. Tax Table row
+$50,800 to $50,850, midpoint $50,825: 10% x $23,200 + 12% x $27,625 = $2,320 +
+$3,315 = $5,635. Schedule 8812: 2 x $2,000 = $4,000 (AGI under $400,000),
+limited by $5,635: line 19 = $4,000, total tax $1,635. No ACTC (nothing left
+of the credit) and no EITC (2 children, MFJ, ends at AGI $62,688). Refund
+$3,000 - $1,635 = $1,365.
+
+```catala
+#[test]
+declaration scope TestMfj:
+  d scope Defaults
+  output r content Calc.Calculator
+
+scope TestMfj:
+  definition r equals output of Calc.Calculator with {
+    -- filing_status: Types.FilingStatus.MarriedFilingJointly
+    -- filers: d.filers but replace { -- marital_status: F.MaritalStatus.Married }
+    -- primary_extra: d.extra
+    -- secondary_extra: d.extra
+    -- household: [ (output of MkChild with { -- date_of_birth: |2016-03-01| }).member
+                  ; (output of MkChild with { -- date_of_birth: |2019-05-01| }).member ]
+    -- income: d.income but replace {
+         -- w2s: [(output of MkW2 with { -- wages: $80,000 -- withholding: $3,000 }).w2] }
+    -- adjustments: d.adjustments
+    -- payments: d.payments
+    -- credits: d.credits
+    -- screening: d.screening }
+  assertion r.ctc_eligible_dependents = 2
+  assertion r.num_eitc_qualifying_children = 2
+  assertion r.taxable_income = $50,800
+  assertion r.total_tentative_tax = $5,635
+  assertion r.total_ctc_and_odc = $4,000
+  assertion r.total_tax = $1,635
+  assertion r.earned_income_credit = $0
+  assertion r.additional_ctc = $0
+  assertion r.overpayment = $1,365
+  assertion not r.unsupported
+```
+
+## Married filing separately: balance due
+
+Wages $30,000, withholding $1,000; married, living together, spouse does not
+itemize. Standard deduction $14,600, line 15 = $15,400. Tax Table row $15,400
+to $15,450, midpoint $15,425: $1,160 + 12% x $3,825 = $1,160 + $459 = $1,619.
+No EITC (married filing separately, not separated). Amount owed $1,619 -
+$1,000 = $619.
+
+```catala
+#[test]
+declaration scope TestMfs:
+  d scope Defaults
+  output r content Calc.Calculator
+
+scope TestMfs:
+  definition r equals output of Calc.Calculator with {
+    -- filing_status: Types.FilingStatus.MarriedFilingSeparately
+    -- filers: d.filers but replace { -- marital_status: F.MaritalStatus.Married }
+    -- primary_extra: d.extra
+    -- secondary_extra: d.extra
+    -- household: []
+    -- income: d.income but replace {
+         -- w2s: [(output of MkW2 with { -- wages: $30,000 -- withholding: $1,000 }).w2] }
+    -- adjustments: d.adjustments
+    -- payments: d.payments
+    -- credits: d.credits
+    -- screening: d.screening }
+  assertion r.standard_or_itemized_deductions = $14,600
+  assertion r.taxable_income = $15,400
+  assertion r.total_tax = $1,619
+  assertion r.earned_income_credit = $0
+  assertion r.balance_due = $619
+  assertion r.overpayment = $0
+  assertion not r.unsupported
+```
+
+## Head of household: one child, EITC and ACTC
+
+Never married; wages $40,000, withholding $2,000; one child born 2014.
+Standard deduction $21,900, line 15 = $18,100. Tax Table row $18,100 to
+$18,150, midpoint $18,125: 10% x $16,550 + 12% x $1,575 = $1,655 + $189 =
+$1,844. Credit Limit Worksheet A: CTC $2,000 limited to $1,844, total tax $0.
+ACTC (Schedule 8812 Part II-A): line 16a = $2,000 - $1,844 = $156; line 16b
+$1,700; 15% x ($40,000 - $2,500) = $5,625; ACTC = $156. EIC Table, $40,000 to
+$40,050, one child, single/HoH: $1,448. Refund $2,000 + $1,448 + $156 =
+$3,604.
+
+```catala
+#[test]
+declaration scope TestHoh:
+  d scope Defaults
+  output r content Calc.Calculator
+
+scope TestHoh:
+  definition r equals output of Calc.Calculator with {
+    -- filing_status: Types.FilingStatus.HeadOfHousehold
+    -- filers: d.filers
+    -- primary_extra: d.extra
+    -- secondary_extra: d.extra
+    -- household: [ (output of MkChild with { -- date_of_birth: |2014-09-10| }).member ]
+    -- income: d.income but replace {
+         -- w2s: [(output of MkW2 with { -- wages: $40,000 -- withholding: $2,000 }).w2] }
+    -- adjustments: d.adjustments
+    -- payments: d.payments
+    -- credits: d.credits
+    -- screening: d.screening }
+  assertion r.eligible_for_hoh
+  assertion r.taxable_income = $18,100
+  assertion r.total_tentative_tax = $1,844
+  assertion r.total_ctc_and_odc = $1,844
+  assertion r.total_tax = $0
+  assertion r.additional_ctc = $156
+  assertion r.earned_income_credit = $1,448
+  assertion r.total_payments = $3,604
+  assertion r.overpayment = $3,604
+  assertion not r.unsupported
+```
+
+## Qualifying surviving spouse: one child
+
+Widowed, spouse died in 2023, could have filed jointly that year; one child
+born 2012 lived with the filer all year. Wages $60,000, withholding $4,000.
+Standard deduction $29,200 (QSS), line 15 = $30,800. Tax Table (QSS uses the
+joint column) row $30,800 to $30,850, midpoint $30,825: $2,320 + 12% x $7,625
+= $2,320 + $915 = $3,235. CTC $2,000, total tax $1,235. No EITC (AGI above
+$49,084 for one child) and no ACTC. Refund $4,000 - $1,235 = $2,765.
+
+```catala
+#[test]
+declaration scope TestQss:
+  d scope Defaults
+  output r content Calc.Calculator
+
+scope TestQss:
+  definition r equals output of Calc.Calculator with {
+    -- filing_status: Types.FilingStatus.QualifyingSurvivingSpouse
+    -- filers: d.filers but replace {
+         -- marital_status: F.MaritalStatus.Widowed
+         -- year_of_spouse_death: F.YearOfSpouseDeath.DiedTaxYearMinusOne
+         -- can_file_jointly_year_of_spouse_death: true }
+    -- primary_extra: d.extra
+    -- secondary_extra: d.extra
+    -- household: [ (output of MkChild with { -- date_of_birth: |2012-02-20| }).member ]
+    -- income: d.income but replace {
+         -- w2s: [(output of MkW2 with { -- wages: $60,000 -- withholding: $4,000 }).w2] }
+    -- adjustments: d.adjustments
+    -- payments: d.payments
+    -- credits: d.credits
+    -- screening: d.screening }
+  assertion r.eligible_for_qss
+  assertion not r.eligible_for_hoh
+  assertion r.taxable_income = $30,800
+  assertion r.total_tentative_tax = $3,235
+  assertion r.total_ctc_and_odc = $2,000
+  assertion r.total_tax = $1,235
+  assertion r.earned_income_credit = $0
+  assertion r.overpayment = $2,765
+  assertion not r.unsupported
+```
+
+## The spec rejects wrong outputs, and reports knockouts
+
+Known-bad outputs for the single return above: the tax without the Tax Table
+midpoint ($35,400 x rates = $4,016) and the refund with the standard deduction
+left out are not what the calculator computes. A filer who answers that
+Direct File does not support all of their income sources is knocked out with
+exactly that reason.
+
+```catala
+#[test]
+declaration scope TestRejectsBadOutputs:
+  s scope TestSingle
+  output ok condition
+
+scope TestRejectsBadOutputs:
+  rule ok under condition
+    s.r.total_tax != $4,016 and s.r.overpayment != $0 and s.r.agi != $35,400
+  consequence fulfilled
+  assertion ok
+
+#[test]
+declaration scope TestKnockout:
+  d scope Defaults
+  output r content Calc.Calculator
+
+scope TestKnockout:
+  definition r equals output of Calc.Calculator with {
+    -- filing_status: Types.FilingStatus.Single
+    -- filers: d.filers
+    -- primary_extra: d.extra
+    -- secondary_extra: d.extra
+    -- household: []
+    -- income: d.income but replace {
+         -- w2s: [(output of MkW2 with { -- wages: $50,000 -- withholding: $5,000 }).w2] }
+    -- adjustments: d.adjustments
+    -- payments: d.payments
+    -- credits: d.credits
+    -- screening: d.screening but replace { -- income_sources_supported: false } }
+  assertion r.unsupported
+  assertion r.fired_knockouts =
+    [Calc.CalculatorKnockout.IncomeOrHsa content KI.KnockoutReason.IncomeSourcesNotSupported]
+```
