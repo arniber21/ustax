@@ -1,0 +1,50 @@
+catala/calculator.catala_en
+  s_3031b504518be3::t_cce34f6abf462e 1650
+  s_3031b504518be3::t_0da1257e15eb17 1631-1632
+  s_3031b504518be3::t_fc31fe6bb7f67c 349
+  s_3031b504518be3::t_13f9bb24f1da61 974
+  s_3031b504518be3::t_4fc42b3c52885a 983
+  s_3031b504518be3::t_bbf30694a6f781 90,92-95
+  s_3031b504518be3::t_d2ae2ec8db9f24 26-28
+  s_3031b504518be3::t_4a58e9064d8fc6 1411
+  s_3031b504518be3::t_9ba20991cd8afe 69-72
+  s_3031b504518be3::t_e6c17ce4e80ab4 554
+  s_3031b504518be3::t_893e221b16619d 79
+  s_3031b504518be3::t_b26b2adf999337 577-583
+  s_3031b504518be3::t_718939011c3069 525
+  s_3031b504518be3::t_8eb8fefba42470 1122-1224
+  s_3031b504518be3::t_7af82ad1713226 176-196
+  s_3031b504518be3::t_1914ae48b4d0a8 86-88
+  s_3031b504518be3::t_61ebb445c5f594 1279,1306,1325,1386
+  s_3031b504518be3::t_48ca2b30c7b774 1424-1426
+  s_3031b504518be3::t_55e28dc6523b33 648-658
+catala/tests/test_calculator.catala_en
+  s_3031b504518be3::t_9813ab332db3ab 24,161,295-312
+  s_3031b504518be3::t_7aa09c1aecde95 619-824,827-850,852-855
+  s_3031b504518be3::t_d4bb82ffc77a65 363,405,446,487,532,583,613
+  s_3031b504518be3::t_1d0038dfdf38a2 825-826,851
+catala/ptc_net.catala_en
+  s_3031b504518be3::t_420bbb6799f940 1-185
+catala/tests/test_ptc_net.catala_en
+  s_3031b504518be3::t_3037a3498254fc 1-194
+difftest/mappings/calculator.mjs
+  s_3031b504518be3::t_233fd34011cddf 8-9,34,150-162,252,284-290
+catala/DIFFTEST.md
+  s_3031b504518be3::t_36b289fddc57c9 116-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b691baf2d4fb8230a5f7043b4efc64fd1e099e3f",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
