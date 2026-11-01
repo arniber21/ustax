@@ -2,9 +2,10 @@
  * Dot-matrix globe with a US flag wrapped on it. Pure and deterministic: the same options always give the same dots,
  * so the artwork is testable and never flickers between renders.
  *
- * Geometry: dots on a regular latitude/longitude grid (so flag stripes line up with dot rows), orthographic projection,
- * slightly tilted and turned. Between +-FLAG_ROWS the longitude spacing is constant so the flag's columns stay straight;
- * toward the poles the number of dots per row shrinks with cos(latitude) to keep the spacing even.
+ * Geometry: dots on a latitude/longitude grid (so flag stripes line up with dot rows), orthographic projection,
+ * slightly tilted and turned. The whole sphere is the flag: 13 stripes run pole to pole (7 dot rows each) and the navy
+ * canton with its stars covers part of the northern half. The number of dots per row shrinks with cos(latitude) to keep
+ * the spacing even.
  * Dots fade and shrink toward the limb (the "dot gradient"). Dots on the far side are drawn very faintly so the
  * globe reads as a transparent sphere.
  */
@@ -33,51 +34,38 @@ export interface GlobeOptions {
 
 const DEG = Math.PI / 180;
 const STRIPES = 13;
-const ROWS_PER_STRIPE = 2;
-/** canton covers the top 7 stripes and 40% of the width (the real flag proportions) */
+const ROWS_PER_STRIPE = 7;
+/** canton: the first 7 stripes from the north pole; its longitude extent on the sphere */
 const CANTON_STRIPES = 7;
-const CANTON_W = 0.4;
-const FLAG_ASPECT = 1.9;
+const CANTON_LON_START = -74;
+const CANTON_LON_WIDTH = 86;
 
 export function globeDots(opts: GlobeOptions = {}): Dot[] {
   const size = opts.size ?? 1000;
-  const step = opts.step ?? 2.2;
+  // the flag wraps the whole sphere: 13 stripes pole to pole, 6 dot rows per stripe
+  const step = opts.step ?? 180 / (STRIPES * ROWS_PER_STRIPE);
   const tilt = (opts.tilt ?? 12) * DEG;
   const yaw = (opts.yaw ?? -14) * DEG;
   const R = size * 0.44;
   const c = size / 2;
-
-  const flagLat = STRIPES * ROWS_PER_STRIPE * step; // degrees of latitude the flag covers
-  const flagLon = flagLat * FLAG_ASPECT;
-  const halfLat = flagLat / 2;
+  const stripeDeg = 180 / STRIPES;
   const dots: Dot[] = [];
 
-  // rows centred on latitude 0 so the flag is centred: lat = (j + 0.5) * step
-  const maxJ = Math.floor(90 / step);
-  for (let j = -maxJ; j < maxJ; j++) {
-    const lat = (j + 0.5) * step;
-    if (Math.abs(lat) >= 90) continue;
-    const inFlagBand = Math.abs(lat) <= halfLat + step;
-    const count = inFlagBand
-      ? Math.round(360 / step)
-      : Math.max(6, Math.round((360 * Math.cos(lat * DEG)) / step));
+  const rows = Math.round(180 / step);
+  for (let j = 0; j < rows; j++) {
+    const lat = 90 - (j + 0.5) * step; // north to south
+    const count = Math.max(8, Math.round((360 * Math.cos(lat * DEG)) / step));
     const lonStep = 360 / count;
+    const stripe = Math.min(STRIPES - 1, Math.floor((90 - lat) / stripeDeg));
     for (let i = 0; i < count; i++) {
-      const lon = -180 + (i + (inFlagBand ? 0.5 : (j & 1 ? 0.5 : 0))) * lonStep;
+      const lon = -180 + (i + (j & 1 ? 0.5 : 0)) * lonStep;
 
-      // flag colour (null outside the flag)
-      let kind: DotKind = 'base';
-      if (Math.abs(lat) <= halfLat && Math.abs(lon) <= flagLon / 2) {
-        const stripe = Math.min(STRIPES - 1, Math.floor((halfLat - lat) / (ROWS_PER_STRIPE * step)));
-        const u = (lon + flagLon / 2) / flagLon;
-        if (u < CANTON_W && stripe < CANTON_STRIPES) {
-          // stars on every other row and column of the canton
-          const row = Math.floor((halfLat - lat) / step);
-          const col = Math.floor((lon + flagLon / 2) / step);
-          kind = row % 2 === 0 && col % 2 === 0 ? 'star' : 'navy';
-        } else {
-          kind = stripe % 2 === 0 ? 'red' : 'white';
-        }
+      let kind: DotKind = stripe % 2 === 0 ? 'red' : 'white';
+      const inCantonLon = lon >= CANTON_LON_START && lon < CANTON_LON_START + CANTON_LON_WIDTH;
+      if (stripe < CANTON_STRIPES && inCantonLon) {
+        // stars: every other row, every other 2*step of longitude
+        const cell = Math.floor((lon - CANTON_LON_START) / (2 * step));
+        kind = j % 2 === 0 && cell % 2 === 0 ? 'star' : 'navy';
       }
 
       // sphere point (z towards the viewer), then yaw about the vertical axis and tilt about the horizontal axis
@@ -96,12 +84,11 @@ export function globeDots(opts: GlobeOptions = {}): Dot[] {
 
       if (zt >= 0) {
         const falloff = Math.pow(zt, 0.55); // 1 at the centre of the disc, 0 at the limb
-        const baseR = kind === 'base' ? 1.9 : 2.7;
         dots.push({
           x: round(px),
           y: round(py),
-          r: round(Math.max(0.55, baseR * (0.35 + 0.65 * falloff))),
-          o: round((kind === 'base' ? 0.4 : 0.95) * (0.18 + 0.82 * falloff)),
+          r: round(Math.max(0.55, 2.35 * (0.35 + 0.65 * falloff))),
+          o: round(0.95 * (0.18 + 0.82 * falloff)),
           kind,
         });
       } else {
@@ -129,8 +116,8 @@ function round(v: number): number {
 /** Colours for a standalone SVG/preview (the app component themes these with CSS variables instead). */
 export const GLOBE_COLORS = {
   red: '#b3202e',
-  navy: '#14306b',
+  navy: '#102a66',
   star: '#9db4e6',
-  white: '#8493ad',
+  white: '#aab6cc',
   base: '#14306b',
 };

@@ -14,9 +14,9 @@ type Palette = Record<DotKind, string>;
 
 const LIGHT: Palette = {
   red: '179 32 46',
-  navy: '20 48 107',
+  navy: '16 42 102',
   star: '127 155 224',
-  white: '132 147 173',
+  white: '170 182 204',
   base: '20 48 107',
 };
 

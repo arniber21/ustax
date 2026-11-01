@@ -8,14 +8,20 @@ describe('globeDots', () => {
     expect(globeDots({ size: 1000 })).toEqual(globeDots({ size: 1000 }));
   });
 
-  it('draws a recognisable flag: all five kinds, with more stripe dots than canton dots', () => {
+  it('wraps the whole sphere in the flag: every near-side dot is a flag dot, far-side dots are faint base dots', () => {
     const dots = globeDots({ size: 1000 });
     const count = (k: string) => dots.filter((d) => d.kind === k).length;
-    expect(count('red')).toBeGreaterThan(300);
-    expect(count('white')).toBeGreaterThan(300);
+    expect(count('red')).toBeGreaterThan(500);
+    expect(count('white')).toBeGreaterThan(500);
     expect(count('navy')).toBeGreaterThan(100);
     expect(count('star')).toBeGreaterThan(30);
-    expect(count('base')).toBeGreaterThan(count('red'));
+    for (const d of dots) if (d.o > 0.17) expect(d.kind).not.toBe('base');
+    // stripes cover the sphere: red and white are present in the upper and the lower half
+    const mid = 500;
+    for (const k of ['red', 'white']) {
+      expect(dots.some((d) => d.kind === k && d.y < mid - 100)).toBe(true);
+      expect(dots.some((d) => d.kind === k && d.y > mid + 100)).toBe(true);
+    }
   });
 
   it('keeps every dot inside the viewBox with a valid radius and opacity', () => {
