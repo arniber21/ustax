@@ -1,6 +1,7 @@
 import UsTax.Api.Parse
 import UsTax.Api.Response
 import UsTax.Api.Bridge
+import UsTax.Api.Reasons
 
 /-!
 # `POST /calculate` without HTTP (issue #52)
@@ -23,8 +24,9 @@ enumeration. When #38 lands, `knockoutReasons` is replaced by the `Calculator`
 scope's `fired_knockouts`. `Reply.fault` is returned (HTTP 500) if the two
 ever disagree about whether the return is supported.
 
-**Warnings** (a proposed additive contract change, `docs/api.md` "Warnings"):
-`warnings` lists request sections that were accepted but not yet used.
+**Warnings** (`docs/api.md` "Warnings"): `warnings` lists request sections that were
+accepted but not read by this slice (`section_not_used`) and schema 1.0 fields that
+schema 1.2.0 supersedes (`field_superseded`).
 -/
 
 namespace UsTax.Api
@@ -49,8 +51,11 @@ def calculateSuccessW (l : Lines) (ws : List Warning) : J :=
         ("message", .str w.message)]))])
   | j => j
 
-/-- The warnings for a request. -/
+/-- The warnings for a request: first the schema 1.0 `filing_details` fields that
+schema 1.2.0 supersedes (`field_superseded`), then each section the slice does not
+read (`section_not_used`). -/
 def warnings (r : Request) : List Warning :=
+  (supersededFields r).map (fun u => ⟨"field_superseded", u.path, u.message⟩) ++
   (unwiredSections r).map fun u => ⟨"section_not_used", u.path, u.message⟩
 
 /-- Form 1040 output to the response `lines`. -/
@@ -79,48 +84,28 @@ def knockoutReasons (i : Form1040.Form1040In) (o : Form1040.Form1040Out) :
   let int := Interest.interest
     { interestReports := i.interestReports, hasForeignAccountsOrTrusts := i.hasForeignAccountsOrTrusts,
       filingStatus := i.filingStatus, agi := o.agi, flowHasSeenDeductions := true }
-  let table : List (Bool × UnsupportedReason) :=
-    [(int.koHasRequiredFactaFilings, ⟨"HasRequiredFactaFilings", "interest", "Has Required Facta Filings"⟩),
-     (int.koFlowKnockoutHasEarlyWithdrawlPenalty,
-       ⟨"FlowKnockoutHasEarlyWithdrawlPenalty", "interest", "Flow Knockout Has Early Withdrawl Penalty"⟩),
-     (int.koFlowKnockoutHasBonds, ⟨"FlowKnockoutHasBonds", "interest", "Flow Knockout Has Bonds"⟩),
-     (int.koFlowKnockoutHasForeignTaxPaid,
-       ⟨"FlowKnockoutHasForeignTaxPaid", "interest", "Flow Knockout Has Foreign Tax Paid"⟩),
-     (int.koFlowKnockoutWithholdingUnsupportedState,
-       ⟨"FlowKnockoutWithholdingUnsupportedState", "interest",
-         "Flow Knockout Withholding Unsupported State"⟩),
-     (int.koFlowKnockoutStateTaxWithheld,
-       ⟨"FlowKnockoutStateTaxWithheld", "interest", "Flow Knockout State Tax Withheld"⟩),
-     (int.koHasInterestIncomeAndAgiAboveThresholdForMfs,
-       ⟨"HasInterestIncomeAndAgiAboveThresholdForMfs", "interest",
-         "Has Interest Income And Agi Above Threshold For Mfs"⟩),
-     (int.koHasInterestIncomeAndAgiAboveThresholdForMfjOrQss,
-       ⟨"HasInterestIncomeAndAgiAboveThresholdForMfjOrQss", "interest",
-         "Has Interest Income And Agi Above Threshold For Mfj Or Qss"⟩),
-     (int.koHasInterestIncomeAndAgiAboveThresholdForSingleOrHoh,
-       ⟨"HasInterestIncomeAndAgiAboveThresholdForSingleOrHoh", "interest",
-         "Has Interest Income And Agi Above Threshold For Single Or Hoh"⟩),
-     (int.koFlowKnockoutTaxExemptInterest,
-       ⟨"FlowKnockoutTaxExemptInterest", "interest", "Flow Knockout Tax Exempt Interest"⟩),
-     (w2.koKnockoutForBox12Value, ⟨"KnockoutForBox12Value", "w2", "Knockout For Box12 Value"⟩),
-     (w2.koKnockoutForBox12Dependency,
-       ⟨"KnockoutForBox12Dependency", "w2", "Knockout For Box12 Dependency"⟩),
-     (w2.koFlowKnockoutAllocatedTips,
-       ⟨"FlowKnockoutAllocatedTips", "w2", "Flow Knockout Allocated Tips"⟩),
-     (w2.koFlowKnockoutStatutoryEmployee,
-       ⟨"FlowKnockoutStatutoryEmployee", "w2", "Flow Knockout Statutory Employee"⟩),
-     (w2.koFlowKnockoutThirdPartySickPay,
-       ⟨"FlowKnockoutThirdPartySickPay", "w2", "Flow Knockout Third Party Sick Pay"⟩),
-     (w2.koFlowKnockoutNonQualifiedPlans,
-       ⟨"FlowKnockoutNonQualifiedPlans", "w2", "Flow Knockout Non Qualified Plans"⟩),
-     (w2.koKnockoutMedicareWages, ⟨"KnockoutMedicareWages", "w2", "Knockout Medicare Wages"⟩),
-     (w2.koAnyFilerExceedsMaxOasdiWages,
-       ⟨"AnyFilerExceedsMaxOasdiWages", "w2", "Any Filer Exceeds Max Oasdi Wages"⟩),
-     (i.hasForeignAccountsOrTrusts,
-       ⟨"HasForeignAccountsOrTrusts", "income", "Has Foreign Accounts Or Trusts"⟩),
-     (o.koKnockoutHasNoPaymentsOrCredits,
-       ⟨"KnockoutHasNoPaymentsOrCredits", "process", "Knockout Has No Payments Or Credits"⟩)]
-  (table.filter (·.1)).map (·.2)
+  let table : List (Bool × KnockoutReason) :=
+    [(int.koHasRequiredFactaFilings, .hasRequiredFactaFilings),
+     (int.koFlowKnockoutHasEarlyWithdrawlPenalty, .flowKnockoutHasEarlyWithdrawlPenalty),
+     (int.koFlowKnockoutHasBonds, .flowKnockoutHasBonds),
+     (int.koFlowKnockoutHasForeignTaxPaid, .flowKnockoutHasForeignTaxPaid),
+     (int.koFlowKnockoutWithholdingUnsupportedState, .flowKnockoutWithholdingUnsupportedState),
+     (int.koFlowKnockoutStateTaxWithheld, .flowKnockoutStateTaxWithheld),
+     (int.koHasInterestIncomeAndAgiAboveThresholdForMfs, .hasInterestIncomeAndAgiAboveThresholdForMfs),
+     (int.koHasInterestIncomeAndAgiAboveThresholdForMfjOrQss, .hasInterestIncomeAndAgiAboveThresholdForMfjOrQss),
+     (int.koHasInterestIncomeAndAgiAboveThresholdForSingleOrHoh, .hasInterestIncomeAndAgiAboveThresholdForSingleOrHoh),
+     (int.koFlowKnockoutTaxExemptInterest, .flowKnockoutTaxExemptInterest),
+     (w2.koKnockoutForBox12Value, .knockoutForBox12Value),
+     (w2.koKnockoutForBox12Dependency, .knockoutForBox12Dependency),
+     (w2.koFlowKnockoutAllocatedTips, .flowKnockoutAllocatedTips),
+     (w2.koFlowKnockoutStatutoryEmployee, .flowKnockoutStatutoryEmployee),
+     (w2.koFlowKnockoutThirdPartySickPay, .flowKnockoutThirdPartySickPay),
+     (w2.koFlowKnockoutNonQualifiedPlans, .flowKnockoutNonQualifiedPlans),
+     (w2.koKnockoutMedicareWages, .knockoutMedicareWages),
+     (w2.koAnyFilerExceedsMaxOasdiWages, .anyFilerExceedsMaxOasdiWages),
+     (i.hasForeignAccountsOrTrusts, .hasForeignAccountsOrTrusts),
+     (o.koKnockoutHasNoPaymentsOrCredits, .knockoutHasNoPaymentsOrCredits)]
+  (table.filter (·.1)).map (·.2.toReason)
 
 /-- What `POST /calculate` answers, before HTTP framing. -/
 inductive Reply where

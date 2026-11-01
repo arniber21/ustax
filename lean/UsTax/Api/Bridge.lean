@@ -131,11 +131,35 @@ def toForm1040Input (r : Request) (_h : r.Valid) : Form1040.Form1040In :=
     primaryFilerAge65OrOlder := p.age65OrOlder
     secondaryFilerIsBlind := s.isBlind
     secondaryFilerAge65OrOlder := s.age65OrOlder
-    isWidowedInTaxYear := d.isWidowedInTaxYear
-    mfjDeceasedSpouseReachedAge65 := d.mfjDeceasedSpouseReachedAge65
+    isWidowedInTaxYear := d.isWidowedInTaxYear.getD false
+    mfjDeceasedSpouseReachedAge65 := d.mfjDeceasedSpouseReachedAge65.getD false
     mfsSpouse65OrOlder := d.mfsSpouse65OrOlder
-    mfsSpouseProvidesNoBenefits := d.mfsSpouseProvidesNoBenefits
-    treatFilersAsDependents := d.treatFilersAsDependents }
+    mfsSpouseProvidesNoBenefits := d.mfsSpouseProvidesNoBenefits.getD false
+    treatFilersAsDependents := d.treatFilersAsDependents.getD false }
+
+/-- The calculator input of the whole-return `Calculator` scope (issue #48).
+
+**Documented stub.** The Lean `Calculator` has not landed, so this type only
+fixes the seam: the part of the request the slice already computes
+(`form1040`) and the whole validated request (`request`), from which the
+`Calculator` input is mapped field by field following `docs/api-mapping.md`
+(filers' extra answers, `dependents[]`, `credits`, `cdcc`,
+`premium_tax_credit`, `screening`, `adjustments.hsa`, ...). The server does
+not call `toCalculatorInput`; it answers from `toForm1040Input` and reports
+every section the slice does not read as a `section_not_used` warning
+(`unwiredSections`). The team that lands the Lean `Calculator` (#48)
+replaces this structure by the `Calculator` input type and deletes the
+warnings it makes obsolete. -/
+structure CalculatorInput where
+  /-- The part computed by the slice today. -/
+  form1040 : Form1040.Form1040In
+  /-- The whole validated request, the source of every other input. -/
+  request : Request
+
+/-- **Stub** (see `CalculatorInput`): the seam where the `Calculator` input is
+built from a validated request. Total, no arithmetic. -/
+def toCalculatorInput (r : Request) (h : r.Valid) : CalculatorInput :=
+  { form1040 := toForm1040Input r h, request := r }
 
 /-- A request section that validates but is not yet read by the calculator. -/
 structure UnwiredSection where
@@ -145,12 +169,29 @@ structure UnwiredSection where
   message : String
   deriving DecidableEq, Repr
 
+/-- The `FilerFlags` part the slice reads: the three flags of schema 1.0. -/
+def FilerFlags.slicePart (f : FilerFlags) : FilerFlags :=
+  { isBlind := f.isBlind, age65OrOlder := f.age65OrOlder,
+    canBeClaimedAsDependent := f.canBeClaimedAsDependent }
+
+/-- The filer has an answer the slice does not read (any schema 1.2.0 property that is not at its default). -/
+def FilerFlags.hasUnread (f : FilerFlags) : Bool :=
+  decide (f ≠ f.slicePart)
+
 /-- The sections of the request that are present (non-empty) but have no Lean
 module behind them yet, in schema order. Their values do not reach the
 calculator, so the response must say so. -/
 def unwiredSections (r : Request) : List UnwiredSection :=
   let mk (path name : String) : UnwiredSection :=
     ⟨path, s!"{name} is accepted but not yet used in the calculation."⟩
+  (match r.filers.primary with
+   | some f => if f.hasUnread then [mk "/filers/primary" "The extended answers about the primary filer"] else []
+   | none => []) ++
+  (match r.filers.secondary with
+   | some f => if f.hasUnread then [mk "/filers/secondary" "The extended answers about the secondary filer"] else []
+   | none => []) ++
+  (if r.filingDetails.combatPayElectionMade then
+    [mk "/filing_details/combat_pay_election_made" "The combat pay election flag"] else []) ++
   (if r.form1099g.isEmpty then [] else [mk "/form_1099g" "Form 1099-G"]) ++
   (if r.form1099misc.isEmpty then [] else [mk "/form_1099misc" "Form 1099-MISC"]) ++
   (if r.form1099r.isEmpty then [] else [mk "/form_1099r" "Form 1099-R"]) ++
@@ -163,8 +204,40 @@ def unwiredSections (r : Request) : List UnwiredSection :=
   (match r.adjustments.studentLoanInterest with
    | some _ => [mk "/adjustments/student_loan_interest" "The student loan interest adjustment"]
    | none => []) ++
+  (match r.adjustments.hsa with
+   | some _ => [mk "/adjustments/hsa" "The health savings account answers"]
+   | none => []) ++
   (match r.estimatedPayments with
    | some _ => [mk "/estimated_payments" "Estimated tax payments"]
+   | none => []) ++
+  (match r.filingAnswers with
+   | some _ => [mk "/filing_answers" "The filing answers"]
+   | none => []) ++
+  (if r.dependents.isEmpty then [] else [mk "/dependents" "The household members"]) ++
+  (match r.credits with
+   | some _ => [mk "/credits" "The credit answers"]
+   | none => []) ++
+  (match r.cdcc with
+   | some _ => [mk "/cdcc" "The child and dependent care answers"]
+   | none => []) ++
+  (match r.premiumTaxCredit with
+   | some _ => [mk "/premium_tax_credit" "The premium tax credit answers"]
+   | none => []) ++
+  (match r.screening with
+   | some _ => [mk "/screening" "The screening answers"]
    | none => [])
+
+/-- Schema 1.0 `filing_details` fields that `Calculator` derives from the
+filers' facts (`docs/api-mapping.md`, "Legacy `filing_details` fields"): the
+request sets them (`some`), the response says `field_superseded`. -/
+def supersededFields (r : Request) : List UnwiredSection :=
+  let d := r.filingDetails
+  let mk (k : String) : UnwiredSection :=
+    ⟨s!"/filing_details/{k}", s!"filing_details.{k} is superseded in schema 1.2.0: the calculator derives it from the filers' answers (docs/api-mapping.md)."⟩
+  (if d.treatAsMfs.isSome then [mk "treat_as_mfs"] else []) ++
+  (if d.isWidowedInTaxYear.isSome then [mk "is_widowed_in_tax_year"] else []) ++
+  (if d.mfjDeceasedSpouseReachedAge65.isSome then [mk "mfj_deceased_spouse_reached_age65"] else []) ++
+  (if d.mfsSpouseProvidesNoBenefits.isSome then [mk "mfs_spouse_provides_no_benefits"] else []) ++
+  (if d.treatFilersAsDependents.isSome then [mk "treat_filers_as_dependents"] else [])
 
 end UsTax.Api

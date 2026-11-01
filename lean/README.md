@@ -148,27 +148,40 @@ Turns an untrusted `POST /calculate` body into a typed `Request`, or the 400
   rejected and a nesting limit (32). Fuel-based, structural.
 - `Types.lean`: the typed request, field for field with `$defs/CalculateRequest`
   (money `Int` cents, absent box 0, absent flag false). `moneyFields` lists every
-  money box.
+  money box. Contract 1.2.0 (the filers' extra answers, `filing_answers`, `dependents[]`,
+  `credits`, `cdcc`, `premium_tax_credit` with Forms 1095-A, `screening`, `adjustments.hsa`,
+  `social_security.federal_tax_withheld`, `filing_details.combat_pay_election_made`,
+  `Dependent.deceased`) is typed field for field: an answer with a schema default is a plain
+  `Bool` / enum / `Int`, one without is an `Option`, and an absent section is `none`. The 1.2.0
+  structures, decoders and `errs`/`Valid`/lemma triples were generated once from
+  `api/schema.json` and are checked in as ordinary source (edit them by hand from now on).
 - `Decode.lean`: phase 1 (shape: types, enums, required, unknown fields,
   integer-ness), accumulating every problem. Unknown fields are found as "keys
   no accessor read", so a field cannot be dropped silently.
 - `Spec.lean`: **the specification**, `Request.Valid` (caps `|n| <= 10^13`,
-  `NonNegMoney` vs signed, list sizes 20/4/4, `SecondaryFiler` only on joint
-  returns, real dates), with named examples. Review this file.
+  `NonNegMoney` vs signed, list sizes 20/4/4 (and 12 for the 1095-A lists), integer ranges
+  for months, `SecondaryFiler` only on joint returns (forms, HSA distributions,
+  `filers.secondary`), `federal_tax_withheld` no longer than `net_benefits`, real dates),
+  with named examples. Review this file. `Request.Valid` is `ValidBase` (schema 1.0
+  sections) and `ValidSections` (1.2.0 sections).
 - `Validate.lean`: phase 2, `Request.validate : List FieldError` with paths.
 - `Lemmas.lean`: `validate_eq_nil_iff` (so `Valid` is decidable),
   `validate_sound`; `Parse.lean`: `parseRequest_sound` (**every accepted request
   is `Valid`**), `parseRequest_error_status` (every failure is a 400), `parseBody`
   (415, 413, UTF-8). This is the seed of issue #69.
 - `Response.lean`: `CalculateSuccess`, `CalculateUnsupported`, health and version
-  serialisation. `Bridge.lean`: the documented, not yet written
-  `toForm1040Input` (fill when #43 merges).
+  serialisation (`schema_version` 1.2.0). `Reasons.lean`: **generated** by
+  `scripts/gen_lean_api_reasons.py` from `api/knockout-reasons.json`, the 104-constructor
+  `KnockoutReason` enumeration with code, category and message (`make api-conformance` checks
+  the file is current and that `ustax api-reasons` equals the JSON). `Bridge.lean`:
+  `toForm1040Input`, and the documented stub `toCalculatorInput` (the seam for the Lean
+  `Calculator`, #48; not called by the server).
 - `Props.lean` (plausible, before the lemmas) and `Tests.lean` (55 table-driven
   bodies, accepted-value checks, the 400 fixtures byte for byte, responses).
 - `ustax api-parse` (stdin lines to `status TAB body`) and
   `scripts/api_conformance.mjs` (`make api-conformance`): the Lean validator vs
-  `api/schema.json` via ajv on all examples, fixtures and about 900 generated
-  mutants. Lean must be stricter than the schema only for integer-valued float
+  `api/schema.json` via ajv on all examples, fixtures and about 2,100 generated
+  mutants (every property of every 1.2.0 section included). Lean must be stricter than the schema only for integer-valued float
   literals, cross-field roles and impossible dates, and the script checks that.
 
 Trusted for this layer: `Json.lean` (it parses untrusted bytes), the
@@ -189,8 +202,12 @@ body cap 256 KiB (413), 415 for a non-JSON content type, 404/405, 422 knockouts,
 * `Bridge.lean`: `toForm1040Input : Request → r.Valid → Form1040In`, the one place that knows both
   vocabularies. Wired: filing status, W-2s (boxes 1 to 13 incl. box 12), 1099-INT, blind / 65 / claimed
   flags, `filing_details`. `unwiredSections` lists what validates but is not read (1099-G, 1099-MISC,
-  1099-R, SSA-1099, educator and student loan adjustments, estimated payments); the 200 response then
-  carries `warnings` (schema 1.1.0, `docs/api.md` "Warnings").
+  1099-R, SSA-1099, educator and student loan adjustments, estimated payments, and the 1.2.0 sections:
+  the filers' extra answers, `filing_answers`, `dependents`, `credits`, `cdcc`, `premium_tax_credit`,
+  `screening`, `adjustments.hsa`, `combat_pay_election_made`); the 200 response then carries `warnings`
+  with code `section_not_used`, and `field_superseded` for the five schema 1.0 `filing_details` fields
+  that 1.2.0 derives (`docs/api.md` "Warnings"). `toCalculatorInput` is a typed, documented stub for the
+  whole-return Lean `Calculator` (#48); the full mapping is not written.
 * `Calculate.lean`: `calculate : String → Reply`, the whole endpoint minus sockets, with `#guard`s for the
   $50,000 example, warnings, a knockout and a 400. No tax logic: it calls `Form1040.form1040` and reads
   the knockout reasons from the same sub-scopes (`FormW2s.formW2s`, `Interest.interest`). Until the
@@ -198,7 +215,9 @@ body cap 256 KiB (413), 415 for a non-JSON content type, 404/405, 422 knockouts,
   `HasForeignAccountsOrTrusts` (which `form1040` only passes down); a disagreement with
   `Form1040Out.unsupported` is `Reply.fault` (HTTP 500).
 * Tests: `make test-server` starts the server and runs `scripts/server_integration.mjs` (every
-  `api/fixtures` entry, error classes, CORS, warnings) and `scripts/server_vs_cli.mjs` (the server against
+  `api/fixtures` entry, error classes, CORS, warnings; the six fixtures whose answer needs the
+  `Calculator` (EITC, child tax credit, household knockouts) are listed as `SKIP ... needs Lean
+  Calculator (#48)` and refused as skips once the server matches them) and `scripts/server_vs_cli.mjs` (the server against
   `ustax run Form1040` on an independent re-mapping of about 300 random requests).
 
 **Trusted code added by the server.** `ServerMain.lean` (IO only, no theorem; routing, CORS, body cap,

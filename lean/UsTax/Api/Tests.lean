@@ -1,6 +1,7 @@
 import UsTax.Api.Parse
 import UsTax.Api.Response
 import UsTax.Api.Bridge
+import UsTax.Api.Calculate
 
 /-!
 # Tests of the request layer (issue #51)
@@ -283,5 +284,223 @@ def bondsReason : UnsupportedReason :=
   "{\"api_version\":1,\"tax_year\":2024,\"supported\":false,\"reasons\":[{\"code\":\"FlowKnockoutHasBonds\",\"category\":\"interest\",\"message\":\"Flow Knockout Has Bonds\"}]}"
 
 #guard healthResponse.render == "{\"status\":\"ok\"}"
+
+/-! ### Schema 1.2.0 sections (contract 1.2.0, `api/schema.json`) -/
+
+/-- A joint-return body with `extra` (a JSON fragment of properties) appended. -/
+def withExtra (extra : String) : String :=
+  "{\"api_version\":1,\"tax_year\":2024,\"filing_status\":\"MarriedFilingJointly\"," ++ extra ++ "}"
+
+/-- A dependent with the three required properties, plus `more`. -/
+def dep (more : String) : String :=
+  "{\"relationship\":\"BiologicalChild\",\"date_of_birth\":\"2016-03-01\",\"tin_type\":\"Ssn\"" ++ more ++ "}"
+
+/-- A Form 1095-A with every required property, plus `more`. -/
+def a1095 (more : String) : String :=
+  "{\"writable_policy_start_date\":\"2024-01-01\",\"writable_policy_end_date\":\"2024-12-31\"," ++
+  "\"writable_special_policy_modification_in_starting_month\":false," ++
+  "\"writable_has_policy_date_exception\":false,\"has_coverage_months\":true," ++
+  "\"coverage_months\":[1,2,3],\"writable_premiums_or_slcsp_change\":false," ++
+  "\"has_change_in_circumstance\":false,\"writable_ptc_annual_premium\":1," ++
+  "\"writable_slcsp_annual_premium\":2,\"writable_aptc_annual_amount\":3," ++
+  "\"writable_ptc_monthly_premium\":[1],\"writable_ptc_monthly_slcsp_premium\":[2]," ++
+  "\"writable_ptc_monthly_aptc_premium\":[3]" ++ more ++ "}"
+
+/-- An HSA distribution of `who` with every required property. -/
+def hsaDist (who : String) : String :=
+  "{\"filer\":\"" ++ who ++ "\",\"writable_distributions_rollover_bool\":false," ++
+  "\"writable_distributions_rollover_amount\":0,\"writable_gross_distribution\":1," ++
+  "\"has_withdrawn_excess_contributions\":false,\"writable_withdrawn_excess_contributions_amount\":0," ++
+  "\"writable_earnings_on_excess_contributions\":0,\"hsa_distribution_code\":\"NormalDistribution\"," ++
+  "\"writable_fmv_on_date_of_death\":0," ++
+  "\"writable_qualified_med_expenses\":0}"
+
+/-- A single return with `extra` appended. -/
+def withSingle (extra : String) : String :=
+  "{\"api_version\":1,\"tax_year\":2024,\"filing_status\":\"Single\"," ++ extra ++ "}"
+
+/-- The required-property errors of an empty object at `p` (`names` in schema order). -/
+def requiredAll (p : String) (names : List String) : String :=
+  ", ".intercalate (names.map fun n => p ++ "/" ++ n ++ " required")
+
+/-- (name, body, expected verdict) for the sections added in 1.2.0. -/
+def table12 : List (String × String × String) := [
+  ("dependent ok", withExtra ("\"dependents\":[" ++ dep "" ++ "]"), "ok"),
+  ("dependent all optional ok", withExtra ("\"dependents\":[" ++ dep
+    ",\"deceased\":true,\"gross_income\":5,\"months_lived_with_tp_in_us\":0,\"custody\":{\"nights_with_tp_vs_other_parent\":\"Equal\"},\"cdcc\":{\"unable_to_care_for_self\":true}" ++ "]"), "ok"),
+  ("dependent missing dob", withExtra "\"dependents\":[{\"relationship\":\"Parent\",\"tin_type\":\"Ssn\"}]",
+    "invalid_request:/dependents/0/date_of_birth required"),
+  ("dependent missing tin_type", withExtra "\"dependents\":[{\"relationship\":\"Parent\",\"date_of_birth\":\"2000-01-01\"}]",
+    "invalid_request:/dependents/0/tin_type required"),
+  ("dependent bad relationship", withExtra "\"dependents\":[{\"relationship\":\"Cousin\",\"date_of_birth\":\"2000-01-01\",\"tin_type\":\"Ssn\"}]",
+    "invalid_request:/dependents/0/relationship enum"),
+  ("dependent impossible date", withExtra ("\"dependents\":[" ++ (dep "").replace "2016-03-01" "2023-02-30" ++ "]"),
+    "invalid_request:/dependents/0/date_of_birth invalid_date"),
+  ("dependent date format", withExtra ("\"dependents\":[" ++ (dep "").replace "2016-03-01" "2016/03/01" ++ "]"),
+    "invalid_request:/dependents/0/date_of_birth type"),
+  ("dependent 13 months", withExtra ("\"dependents\":[" ++ dep ",\"months_lived_with_tp_in_us\":13" ++ "]"),
+    "invalid_request:/dependents/0/months_lived_with_tp_in_us range"),
+  ("dependent -1 months", withExtra ("\"dependents\":[" ++ dep ",\"months_lived_with_tp_in_us\":-1" ++ "]"),
+    "invalid_request:/dependents/0/months_lived_with_tp_in_us range"),
+  ("dependent float months", withExtra ("\"dependents\":[" ++ dep ",\"months_lived_with_tp_in_us\":6.0" ++ "]"),
+    "invalid_request:/dependents/0/months_lived_with_tp_in_us not_integer"),
+  ("dependent negative income", withExtra ("\"dependents\":[" ++ dep ",\"gross_income\":-1" ++ "]"),
+    "invalid_request:/dependents/0/gross_income range"),
+  ("dependent unknown field", withExtra ("\"dependents\":[" ++ dep ",\"ssn\":\"123\"" ++ "]"),
+    "unknown_field:/dependents/0/ssn unknown_field"),
+  ("dependent deceased not bool", withExtra ("\"dependents\":[" ++ dep ",\"deceased\":1" ++ "]"),
+    "invalid_request:/dependents/0/deceased type"),
+  ("dependent custody bad enum", withExtra ("\"dependents\":[" ++ dep ",\"custody\":{\"which_parent_not_claiming\":\"Me\"}" ++ "]"),
+    "invalid_request:/dependents/0/custody/which_parent_not_claiming enum"),
+  ("dependent cdcc over cap", withExtra ("\"dependents\":[" ++ dep ",\"cdcc\":{\"writable_qualifying_expense_amount\":10000000000001}" ++ "]"),
+    "invalid_request:/dependents/0/cdcc/writable_qualifying_expense_amount range"),
+  ("21 dependents", withExtra ("\"dependents\":[" ++ ",".intercalate (List.replicate 21 (dep "")) ++ "]"),
+    "invalid_request:/dependents too_many_items"),
+  ("20 dependents ok", withExtra ("\"dependents\":[" ++ ",".intercalate (List.replicate 20 (dep "")) ++ "]"), "ok"),
+  ("dependents is object", withExtra "\"dependents\":{}", "invalid_request:/dependents type"),
+  ("filer facts ok", withExtra "\"filers\":{\"primary\":{\"date_of_birth\":\"1986-04-12\",\"is_student\":true,\"tin\":{\"tin_is_ssn\":false,\"ssn_employment_validity\":\"NotValid\"},\"disability\":{\"has_w2_wages\":true,\"writable_total_taxable_disability_amount\":7},\"hsa\":{\"enrolled_in_medicare\":\"MedicarePartOfYear\"},\"cdcc\":{\"deemed_income_month_earnings\":[1,2],\"is_disabled\":false}}}", "ok"),
+  ("filer dob impossible", withExtra "\"filers\":{\"primary\":{\"date_of_birth\":\"2023-02-29\"}}",
+    "invalid_request:/filers/primary/date_of_birth invalid_date"),
+  ("filer dob not a string", withExtra "\"filers\":{\"primary\":{\"date_of_birth\":19860412}}",
+    "invalid_request:/filers/primary/date_of_birth type"),
+  ("filer tin bad enum", withExtra "\"filers\":{\"primary\":{\"tin\":{\"ssn_employment_validity\":\"ValidOnlyWithDhsAuthorizationInEffect\"}}}",
+    "invalid_request:/filers/primary/tin/ssn_employment_validity enum"),
+  ("filer disability negative", withExtra "\"filers\":{\"primary\":{\"disability\":{\"writable_total_taxable_disability_amount\":-1}}}",
+    "invalid_request:/filers/primary/disability/writable_total_taxable_disability_amount range"),
+  ("filer hsa over cap", withExtra "\"filers\":{\"secondary\":{\"hsa\":{\"writable_hsa_nonemployer_contributions_tax_year\":10000000000001}}}",
+    "invalid_request:/filers/secondary/hsa/writable_hsa_nonemployer_contributions_tax_year range"),
+  ("filer cdcc 21 earnings", withExtra ("\"filers\":{\"primary\":{\"cdcc\":{\"deemed_income_month_earnings\":[" ++ ",".intercalate (List.replicate 21 "1") ++ "]}}}"),
+    "invalid_request:/filers/primary/cdcc/deemed_income_month_earnings too_many_items"),
+  ("filer cdcc negative earnings", withExtra "\"filers\":{\"primary\":{\"cdcc\":{\"deemed_income_month_earnings\":[1,-2]}}}",
+    "invalid_request:/filers/primary/cdcc/deemed_income_month_earnings/1 range"),
+  ("filer unknown field", withExtra "\"filers\":{\"primary\":{\"name\":\"x\"}}", "unknown_field:/filers/primary/name unknown_field"),
+  ("filing_answers ok", withExtra "\"filing_answers\":{\"marital_status\":\"Widowed\",\"year_of_spouse_death\":\"DiedTaxYearMinusOne\",\"residence_state\":\"NY\",\"secondary_filer_date_of_death\":\"2024-02-29\"}", "ok"),
+  ("filing_answers bad state", withExtra "\"filing_answers\":{\"residence_state\":\"ZZ\"}", "invalid_request:/filing_answers/residence_state enum"),
+  ("filing_answers date of death impossible", withExtra "\"filing_answers\":{\"secondary_filer_date_of_death\":\"2023-02-29\"}",
+    "invalid_request:/filing_answers/secondary_filer_date_of_death invalid_date"),
+  ("credits ok", withExtra "\"credits\":{\"eitc_received_improper_claims_notice\":\"TenYears\",\"self_reported_non_taxable_payment_amount\":9}", "ok"),
+  ("credits bad notice", withExtra "\"credits\":{\"eitc_received_improper_claims_notice\":\"Never\"}", "invalid_request:/credits/eitc_received_improper_claims_notice enum"),
+  ("credits negative amount", withExtra "\"credits\":{\"self_reported_non_taxable_payment_amount\":-5}", "invalid_request:/credits/self_reported_non_taxable_payment_amount range"),
+  ("cdcc ok", withExtra "\"cdcc\":{\"writable_carryover_amount\":4,\"has_household_employee\":true}", "ok"),
+  ("cdcc over cap", withExtra "\"cdcc\":{\"writable_forfeited_amount\":10000000000001}", "invalid_request:/cdcc/writable_forfeited_amount range"),
+  ("screening ok", withExtra "\"screening\":{\"made_ira_contributions\":true,\"income_sources_supported\":false}", "ok"),
+  ("screening unknown", withExtra "\"screening\":{\"has_crypto\":true}", "unknown_field:/screening/has_crypto unknown_field"),
+  ("screening not bool", withExtra "\"screening\":{\"lived_in_ny\":\"yes\"}", "invalid_request:/screening/lived_in_ny type"),
+  ("ptc ok", withExtra ("\"premium_tax_credit\":{\"form1095_as\":[" ++ a1095 "" ++ "],\"writable_has_advanced_ptc\":true}"), "ok"),
+  ("1095-A missing required", withExtra "\"premium_tax_credit\":{\"form1095_as\":[{}]}",
+    "invalid_request:" ++ requiredAll "/premium_tax_credit/form1095_as/0"
+      ["writable_policy_start_date", "writable_policy_end_date",
+       "writable_special_policy_modification_in_starting_month", "writable_has_policy_date_exception",
+       "has_coverage_months", "coverage_months", "writable_premiums_or_slcsp_change",
+       "has_change_in_circumstance", "writable_ptc_annual_premium", "writable_slcsp_annual_premium",
+       "writable_aptc_annual_amount", "writable_ptc_monthly_premium", "writable_ptc_monthly_slcsp_premium",
+       "writable_ptc_monthly_aptc_premium"]),
+  ("1095-A month 13", withExtra ("\"premium_tax_credit\":{\"form1095_as\":[" ++ (a1095 "").replace "[1,2,3]" "[1,13]" ++ "]}"),
+    "invalid_request:/premium_tax_credit/form1095_as/0/coverage_months/1 range"),
+  ("1095-A month 0", withExtra ("\"premium_tax_credit\":{\"form1095_as\":[" ++ (a1095 "").replace "[1,2,3]" "[0]" ++ "]}"),
+    "invalid_request:/premium_tax_credit/form1095_as/0/coverage_months/0 range"),
+  ("1095-A 13 months", withExtra ("\"premium_tax_credit\":{\"form1095_as\":[" ++ (a1095 "").replace "[1,2,3]" "[1,2,3,4,5,6,7,8,9,10,11,12,12]" ++ "]}"),
+    "invalid_request:/premium_tax_credit/form1095_as/0/coverage_months too_many_items"),
+  ("1095-A impossible date", withExtra ("\"premium_tax_credit\":{\"form1095_as\":[" ++ (a1095 "").replace "2024-12-31" "2024-04-31" ++ "]}"),
+    "invalid_request:/premium_tax_credit/form1095_as/0/writable_policy_end_date invalid_date"),
+  ("1095-A negative premium", withExtra ("\"premium_tax_credit\":{\"form1095_as\":[" ++ (a1095 "").replace "\"writable_ptc_monthly_premium\":[1]" "\"writable_ptc_monthly_premium\":[-1]" ++ "]}"),
+    "invalid_request:/premium_tax_credit/form1095_as/0/writable_ptc_monthly_premium/0 range"),
+  ("hsa ok", withExtra ("\"adjustments\":{\"hsa\":{\"some_filer_had_non_w2_hsa_activity\":true,\"hsa_distributions\":[" ++ hsaDist "SecondaryFiler" ++ "]}}"), "ok"),
+  ("hsa distribution missing fields", withExtra "\"adjustments\":{\"hsa\":{\"hsa_distributions\":[{\"filer\":\"PrimaryFiler\"}]}}",
+    "invalid_request:" ++ requiredAll "/adjustments/hsa/hsa_distributions/0"
+      ["writable_distributions_rollover_bool", "writable_distributions_rollover_amount",
+       "writable_gross_distribution", "has_withdrawn_excess_contributions",
+       "writable_withdrawn_excess_contributions_amount", "writable_earnings_on_excess_contributions",
+       "hsa_distribution_code", "writable_fmv_on_date_of_death", "writable_qualified_med_expenses"]),
+  ("hsa over 20 distributions", withExtra ("\"adjustments\":{\"hsa\":{\"hsa_distributions\":[" ++ ",".intercalate (List.replicate 21 (hsaDist "PrimaryFiler")) ++ "]}}"),
+    "invalid_request:/adjustments/hsa/hsa_distributions too_many_items"),
+  ("secondary HSA distribution on single", withSingle ("\"adjustments\":{\"hsa\":{\"hsa_distributions\":[" ++ hsaDist "SecondaryFiler" ++ "]}}"),
+    "invalid_request:/adjustments/hsa/hsa_distributions/0/filer filer_not_allowed"),
+  ("ss federal_tax_withheld ok", withSingle "\"social_security\":{\"net_benefits\":[100,200],\"federal_tax_withheld\":[10,0]}", "ok"),
+  ("ss withheld negative", withSingle "\"social_security\":{\"net_benefits\":[100],\"federal_tax_withheld\":[-1]}",
+    "invalid_request:/social_security/federal_tax_withheld/0 range"),
+  ("ss withheld longer than benefits", withSingle "\"social_security\":{\"net_benefits\":[100],\"federal_tax_withheld\":[1,2]}",
+    "invalid_request:/social_security/federal_tax_withheld range"),
+  ("ss 5 withheld", withSingle "\"social_security\":{\"net_benefits\":[1,2,3,4],\"federal_tax_withheld\":[1,2,3,4,5]}",
+    "invalid_request:/social_security/federal_tax_withheld too_many_items, /social_security/federal_tax_withheld range"),
+  ("combat_pay_election_made ok", withExtra "\"filing_details\":{\"combat_pay_election_made\":true}", "ok"),
+  ("combat_pay_election_made not bool", withExtra "\"filing_details\":{\"combat_pay_election_made\":\"yes\"}",
+    "invalid_request:/filing_details/combat_pay_election_made type")
+]
+
+#guard table12.length ≥ 50
+#guard table12.all fun (_, b, v) => verdict b == v
+
+/-! ### A 1.2.0 request is read into the right values (distinct non-default values) -/
+
+/-- The dependent of the next test. -/
+def richDep : Dependent :=
+  { relationship := .biologicalChild
+    dateOfBirth := { year := 2016, month := 3, day := 1 }
+    tinType := .ssn
+    fullTimeStudent := true
+    grossIncome := 7
+    monthsLivedWithTpInUs := 5
+    tpClaims := false
+    deceased := true
+    residencyDuration := .sixToElevenMonths
+    custody := some { parentalSituation := .divorcedOrSeparated }
+    cdcc := some { writableQualifyingExpenseAmount := some 9 } }
+
+#guard parsesTo (withExtra ("\"dependents\":[" ++ dep
+    ",\"full_time_student\":true,\"gross_income\":7,\"months_lived_with_tp_in_us\":5,\"tp_claims\":false,\"deceased\":true,\"residency_duration\":\"SixToElevenMonths\",\"custody\":{\"parental_situation\":\"DivorcedOrSeparated\"},\"cdcc\":{\"writable_qualifying_expense_amount\":9}" ++ "]"))
+  { filingStatus := .marriedFilingJointly, dependents := [richDep] }
+
+/-- The filers of the next test. -/
+def richFilers : Filers :=
+  { primary := some { dateOfBirth := some { year := 1986, month := 4, day := 12 }
+                      isUsCitizenFullYear := false
+                      disability := some { writableTotalTaxableDisabilityAmount := some 11 } }
+    secondary := some { isStudent := true } }
+
+#guard parsesTo (withExtra "\"filers\":{\"primary\":{\"date_of_birth\":\"1986-04-12\",\"is_us_citizen_full_year\":false,\"disability\":{\"writable_total_taxable_disability_amount\":11}},\"secondary\":{\"is_student\":true}},\"filing_details\":{\"combat_pay_election_made\":true,\"is_widowed_in_tax_year\":false}")
+  { filingStatus := .marriedFilingJointly, filers := richFilers,
+    filingDetails := { combatPayElectionMade := true, isWidowedInTaxYear := some false } }
+
+#guard parsesTo (withSingle "\"social_security\":{\"net_benefits\":[5,6],\"federal_tax_withheld\":[3]}")
+  { filingStatus := .single,
+    socialSecurity := some { netBenefits := [5, 6], federalTaxWithheld := [3] } }
+
+/-! ### Warnings and the reason table -/
+
+/-- The `(code, path)` of each warning of a request body, or `[]` if it is not a 200. -/
+def warningsOf (s : String) : List (String × String) :=
+  match calculate s with
+  | .success _ ws => ws.map fun w => (w.code, w.path)
+  | _ => []
+
+private def singleW2 : String :=
+  "{\"api_version\":1,\"tax_year\":2024,\"filing_status\":\"Single\"," ++
+  "\"w2s\":[{\"filer\":\"PrimaryFiler\",\"wages\":5000000}]"
+
+-- a superseded schema 1.0 field is answered with `field_superseded`, in schema order
+#guard warningsOf (singleW2 ++ ",\"filing_details\":{\"treat_as_mfs\":false,\"treat_filers_as_dependents\":false,\"is_widowed_in_tax_year\":false}}") ==
+  [("field_superseded", "/filing_details/treat_as_mfs"),
+   ("field_superseded", "/filing_details/is_widowed_in_tax_year"),
+   ("field_superseded", "/filing_details/treat_filers_as_dependents")]
+-- the fields that are not superseded do not warn
+#guard warningsOf (singleW2 ++ ",\"filing_details\":{\"has_foreign_accounts_or_trusts\":false,\"mfs_spouse_65_or_older\":true,\"combat_pay_election\":\"NoCombatPay\"}}") == []
+-- every new section is accepted and named as not used
+#guard warningsOf (singleW2 ++ ",\"dependents\":[" ++ dep "" ++ "],\"credits\":{},\"cdcc\":{},\"premium_tax_credit\":{},\"screening\":{},\"filing_answers\":{},\"adjustments\":{\"hsa\":{}}}") ==
+  [("section_not_used", "/adjustments/hsa"), ("section_not_used", "/filing_answers"),
+   ("section_not_used", "/dependents"), ("section_not_used", "/credits"), ("section_not_used", "/cdcc"),
+   ("section_not_used", "/premium_tax_credit"), ("section_not_used", "/screening")]
+-- the 1.0 flags of the filers are read; the new answers are not
+#guard warningsOf (singleW2 ++ ",\"filers\":{\"primary\":{\"is_blind\":true,\"age65_or_older\":true}}}") == []
+#guard warningsOf (singleW2 ++ ",\"filers\":{\"primary\":{\"is_blind\":true,\"date_of_birth\":\"1950-01-01\"}}}") ==
+  [("section_not_used", "/filers/primary")]
+-- an empty `dependents` list is nothing to say
+#guard warningsOf (singleW2 ++ ",\"dependents\":[]}") == []
+
+-- the reason table: 104 codes; a knocked-out request reports a code of the table with its category
+#guard KnockoutReason.all.length == 104
+#guard (match calculate (singleW2 ++ ",\"filing_details\":{\"has_foreign_accounts_or_trusts\":true}}") with
+  | .unsupported rs => rs.map (·.category) == ["income"] && rs.map (·.code) == ["HasForeignAccountsOrTrusts"]
+  | _ => false)
 
 end UsTax.Api.Tests
