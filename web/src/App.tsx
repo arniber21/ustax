@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router';
 import { DraftProvider } from './draft';
 import { AppShell } from './layout/AppShell';
@@ -9,6 +10,9 @@ import { ResultsPage } from './pages/ResultsPage';
 import { UnsupportedPage } from './pages/UnsupportedPage';
 import { TrustPage } from './pages/TrustPage';
 import { ButtonLink } from './components';
+
+// Docs (markdown, react-markdown, Shiki) load on first visit to /docs.
+const DocsRoutes = lazy(() => import('./docs/DocsRoutes'));
 
 function NotFound() {
   return (
@@ -32,6 +36,14 @@ export function App() {
           <Route path="results" element={<ResultsPage />} />
           <Route path="cant-do-yet" element={<UnsupportedPage />} />
           <Route path="trust" element={<TrustPage />} />
+          <Route
+            path="docs/*"
+            element={
+              <Suspense fallback={<p className="px-6 py-12 text-muted-foreground">Loading documentation...</p>}>
+                <DocsRoutes />
+              </Suspense>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

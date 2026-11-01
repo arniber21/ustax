@@ -1,0 +1,15 @@
+{
+  "$comment": "Ordered site navigation. Each entry: title, slug (URL is /docs/<slug>; 'index' is /docs), source (repo path of the markdown file), summary. Existing docs are listed here without being moved. Files in docs/site/ that are not listed are appended automatically, ordered by their front-matter `order`.",
+  "pages": [
+    { "title": "Documentation", "slug": "index", "source": "docs/site/index.md", "summary": "What these pages are and how to edit them." },
+    { "title": "How we built this", "slug": "how-we-built-this", "source": "docs/site/how-we-built-this.md", "summary": "The author's write-up of how Catala and Lean were used, and where this goes next." },
+    { "title": "Write-up (draft)", "slug": "writeup", "source": "docs/writeup.md", "summary": "Draft project write-up: why, what was built, what is proved, what is tested." },
+    { "title": "Spec surface", "slug": "spec-surface", "source": "docs/spec-surface.md", "summary": "For each main theorem, the definitions its statement depends on, reviewed in prose." },
+    { "title": "Catala to Lean", "slug": "catala-to-lean", "source": "docs/catala-to-lean.md", "summary": "How Catala and Lean are linked, the options considered, and the trust story." },
+    { "title": "Direct File bugs", "slug": "direct-file-bugs", "source": "docs/direct-file-bugs.md", "summary": "Log of places where the Direct File reference implementation disagrees with the law." },
+    { "title": "Comparator and lake check", "slug": "comparator", "source": "docs/comparator.md", "summary": "How lake check and lake comparator are run in a Linux container." },
+    { "title": "Proof audit", "slug": "audit", "source": "docs/audit.md", "summary": "What make audit checks, and how CI runs it." },
+    { "title": "Provenance index", "slug": "provenance", "source": "docs/provenance.md", "summary": "The machine-readable trail from each result line to the law, Catala rule, Lean proofs and tests." },
+    { "title": "JSON API contract", "slug": "api", "source": "docs/api.md", "summary": "Request and response shapes of the calculator API." }
+  ]
+}

@@ -169,6 +169,7 @@ confirmed by running the Direct File engine:
 | `sources/` | The law: forms, instructions, statute, revenue procedures |
 | `scripts/`, `deploy/` | Install, run, audit, Docker, Caddy, and the Comparator container |
 | `docs/` | Design notes; start with [`docs/writeup.md`](docs/writeup.md) |
+| `docs/site/` | Docs: markdown pages shown on the website at `/docs` (see [`docs/site/index.md`](docs/site/index.md)) |
 
 ## Running the checks
 
