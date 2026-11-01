@@ -1,0 +1,69 @@
+web/src/wizard/PersonDetails.tsx
+  s_3031b504518be3::t_5371c70ee28aa5 27,33,37-38,51,58
+  s_3031b504518be3::t_219976bb6fbcb8 1-26,28-32,34-36,39-50,52-57,59-64
+web/src/wizard/ReviewStep.tsx
+  s_3031b504518be3::t_7fa5541dc95e17 6,43-56,92-93,97,99-103,108-123,136-140
+  s_3031b504518be3::t_b480e6d56ad1a4 71
+  s_3031b504518be3::t_233063759c921e 141-143
+web/src/pages/StepPage.tsx
+  s_3031b504518be3::t_bd1ce522a22a37 4-5,18-19,24-25
+web/src/draft/draft.test.ts
+  s_3031b504518be3::t_72b6c297e8a96c 11-13,52,77,88,157-271
+  s_3031b504518be3::t_3687db66473a42 272-273
+web/src/wizard/wizard.test.tsx
+  s_3031b504518be3::t_b99ce823f02cc8 2-4,9,37,73-105,108-291,432,453-465
+  s_3031b504518be3::t_0481a5ce5952f6 466
+web/src/draft/fromRequest.ts
+  s_3031b504518be3::t_c482dc3bd3bb50 1,4-6,13-64,75-76,83-107
+  s_3031b504518be3::t_3d549d03ed30ac 108
+web/src/wizard/fields.tsx
+  s_3031b504518be3::t_44bedd0497ba8c 1-3,11-51
+web/src/wizard/ui.tsx
+  s_3031b504518be3::t_217fd55822887d 10,195-197,201,224
+web/src/draft/types.ts
+  s_3031b504518be3::t_5b07ea2cf7acc5 1,13-16,21-24,27,30-92,167,169-183,195-199,211-219,251-256,305-332
+  s_3031b504518be3::t_f69e9ec88ea3f0 333
+web/src/draft/buildRequest.ts
+  s_3031b504518be3::t_cfde55a317eb07 3,12,32-48,50-51,53-102,122,124,205-230,245
+web/src/draft/store.tsx
+  s_3031b504518be3::t_c482dc3bd3bb50 4,39-51
+web/src/wizard/AdjustmentsStep.tsx
+  s_3031b504518be3::t_b480e6d56ad1a4 16
+web/src/wizard/AboutStep.tsx
+  s_3031b504518be3::t_ca1fda4c0af66b 4,43,63-66,68-75
+web/src/App.test.tsx
+  s_3031b504518be3::t_b99ce823f02cc8 28,31-32,42
+web/src/draft/validate.ts
+  s_3031b504518be3::t_2df3bcf16a2792 2,7-14,32-42,45-83,149,152
+web/src/layout/steps.ts
+  s_3031b504518be3::t_2df3bcf16a2792 4-5,8
+web/src/wizard/CreditsStep.tsx
+  s_3031b504518be3::t_d16648d30243aa 1-208,210-213
+  s_3031b504518be3::t_bd1ce522a22a37 209
+web/src/wizard/IncomeStep.tsx
+  s_3031b504518be3::t_b480e6d56ad1a4 66
+web/src/wizard/HouseholdStep.tsx
+  s_3031b504518be3::t_c9ba7b6264df94 2-4,7,13-14,19-21,24-56,59-62,86,93-105,109-118,127-155
+web/src/wizard/DependentsStep.tsx
+  s_3031b504518be3::t_544aae7b5f194f 1-205
+web/README.md
+  s_3031b504518be3::t_1b88d1e31a2552 20
+web/src/draft/index.ts
+  s_3031b504518be3::t_2df3bcf16a2792 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "008468222d9cbf48ae778bcb45dfff5455bf56bc",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
