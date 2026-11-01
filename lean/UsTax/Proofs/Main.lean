@@ -2,11 +2,9 @@ import UsTax.Spec.TaxMonotone
 import UsTax.Spec.RefundBalance
 import UsTax.Spec.Credits
 import UsTax.Spec.TaxTable
-import UsTax.Spec.TaxWorksheet
 import UsTax.TaxRates.Lemmas
 import UsTax.Proofs.Form1040
 import UsTax.Proofs.TaxTable
-import UsTax.Proofs.TaxWorksheet
 import UsTax.Audit
 
 /-!
@@ -23,8 +21,6 @@ refers to a lemma proved elsewhere:
 | `totalTax_nonneg` | `Proofs.totalTax_eq` and the above |
 | `tentativeTax_matches_tax_table` | `Proofs.tentativeTaxFor_matchesTaxTable` (`Proofs/TaxTable.lean`) |
 | `line16_matches_tax_table` | the same, line 16 being `tentativeTaxFor` of line 15 |
-| `tentativeTax_matches_worksheet` | `Proofs.tentativeTaxFor_eq_worksheetTax` (`Proofs/TaxWorksheet.lean`) |
-| `line16_matches_worksheet` | the same |
 
 Below them: each theorem on a concrete return with every hypothesis
 discharged (CLAUDE.md section 4). The rejected bad outputs are next to each
@@ -69,20 +65,6 @@ theorem line16_matches_tax_table (i : Form1040In) :
     MatchesTaxTable i.filingStatus (form1040 i).taxableIncome
       (form1040 i).tentativeTaxFromTaxableIncome :=
   tentativeTax_matches_tax_table i.filingStatus (form1040 i).taxableIncome
-
-/-- (5c) From $100,000, line 16 is the Tax Computation Worksheet amount. -/
-theorem tentativeTax_matches_worksheet (fs : FilingStatus) (ti : Int)
-    (h1 : 100_000_00 ≤ ti) (h2 : ti ≤ 1_000_000_000_000_00) :
-    tentativeTaxFor ti fs = worksheetTax fs ti :=
-  Proofs.tentativeTaxFor_eq_worksheetTax fs h1 h2
-
-/-- (5d) The same on every return with line 15 from $100,000. -/
-theorem line16_matches_worksheet (i : Form1040In)
-    (h1 : 100_000_00 ≤ (form1040 i).taxableIncome)
-    (h2 : (form1040 i).taxableIncome ≤ 1_000_000_000_000_00) :
-    (form1040 i).tentativeTaxFromTaxableIncome =
-      worksheetTax i.filingStatus (form1040 i).taxableIncome :=
-  tentativeTax_matches_worksheet i.filingStatus (form1040 i).taxableIncome h1 h2
 
 /-! ## The theorems on a concrete return
 
@@ -140,32 +122,6 @@ example : ∃ r ∈ TaxTable.rows, InRow r (form1040 sampleReturn).taxableIncome
   rw [sampleReturn_lines.1] at this
   exact this hin
 
-/-- A single filer with one W-2 of $200,000 wages: line 15 is $185,400, at
-least $100,000, so the worksheet applies (Section A, 24% row): $185,400 ×
-0.24 − $6,957.50 = $37,538.50, line 16 $37,539. -/
-def highIncomeReturn : Form1040In :=
-  run [{ writableWages := 200_000_00, writableFederalWithholding := 40_000_00 }]
-
-/-- Its lines 15 and 16, computed by the kernel. -/
-theorem highIncomeReturn_lines :
-    (form1040 highIncomeReturn).taxableIncome = 185_400_00 ∧
-    (form1040 highIncomeReturn).tentativeTaxFromTaxableIncome = 37_539_00 ∧
-    highIncomeReturn.filingStatus = .single := by
-  decide +kernel
-
-/-- (5d) on the concrete return, both hypotheses discharged: line 16 is the
-worksheet amount, $37,539. -/
-example : (form1040 highIncomeReturn).tentativeTaxFromTaxableIncome =
-    worksheetTax .single 185_400_00 := by
-  have h := line16_matches_worksheet highIncomeReturn
-    (by rw [highIncomeReturn_lines.1]; decide) (by rw [highIncomeReturn_lines.1]; decide)
-  rwa [highIncomeReturn_lines.1, highIncomeReturn_lines.2.2] at h
-
-/-- (5c) at the bottom edge, $100,000 exactly, married filing jointly
-(Section B, 22% row): $22,000 − $9,894 = $12,106. -/
-example : tentativeTaxFor 100_000_00 .marriedFilingJointly = 12_106_00 := by
-  rw [tentativeTax_matches_worksheet _ _ (by decide) (by decide)]; decide
-
 end UsTax.Main
 
 #audit_axioms UsTax.Main.tentativeTax_nonneg_monotone
@@ -174,13 +130,9 @@ end UsTax.Main
 #audit_axioms UsTax.Main.totalTax_nonneg
 #audit_axioms UsTax.Main.tentativeTax_matches_tax_table
 #audit_axioms UsTax.Main.line16_matches_tax_table
-#audit_axioms UsTax.Main.tentativeTax_matches_worksheet
-#audit_axioms UsTax.Main.line16_matches_worksheet
 #spec_surface UsTax.Main.tentativeTax_nonneg_monotone
 #spec_surface UsTax.Main.refund_balanceDue_consistent
 #spec_surface UsTax.Main.credits_within_liability
 #spec_surface UsTax.Main.totalTax_nonneg
 #spec_surface UsTax.Main.tentativeTax_matches_tax_table
 #spec_surface UsTax.Main.line16_matches_tax_table
-#spec_surface UsTax.Main.tentativeTax_matches_worksheet
-#spec_surface UsTax.Main.line16_matches_worksheet

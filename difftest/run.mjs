@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { loadOracle, isKnockedOut, parseCatalaResult, compareOutputs, parseCatalaValue, buildInput, inputFileText } from './lib.mjs';
+import { loadOracle, freezeOracle, mappingFacts, isKnockedOut, parseCatalaResult, compareOutputs, parseCatalaValue, buildInput, inputFileText } from './lib.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -30,7 +30,7 @@ for (const n of available) if ((await import(pathToFileURL(join(mapDir, `${n}.mj
 const names = scopeArg === 'all' ? available.filter((n) => !reportOnly.has(n)) : scopeArg.split(',');
 for (const n of names) if (!available.includes(n)) { console.error(`unknown scope '${n}'; available: ${available.join(', ')}`); process.exit(2); }
 
-const oracle = loadOracle(oracleFile);
+const oracle = freezeOracle(loadOracle(oracleFile)); // shared by all mappings: read-only (lib.mjs freezeOracle)
 let exitCode = 0;
 
 for (const name of names) {
@@ -41,7 +41,8 @@ for (const name of names) {
   const failures = [];
   const knownDiv = [];
 
-  for (const [scenario, facts] of oracle) {
+  for (const [scenario, sharedFacts] of oracle) {
+    const facts = mappingFacts(sharedFacts); // private copy: a mapping may add derived rows
     if (only && scenario !== only) continue;
     // A mapping with `includeKnockedOut: true` (knockout aggregation, #36) also runs the knocked-out scenarios.
     if (isKnockedOut(facts) && !mapping.includeKnockedOut) { c.knockedOut.push(scenario); continue; }

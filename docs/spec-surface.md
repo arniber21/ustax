@@ -9,10 +9,10 @@ Where things are:
 
 | what | file | in `lake build` / `make audit` |
 |---|---|---|
-| the properties (`NonnegMonotone`, `RefundOrBalanceDue`, `CreditsWithinLiability`, `EitcWithinBounds`, `MatchesTaxTable`, `worksheetTax`), each with a satisfiable example and rejected bad outputs | `lean/UsTax/Spec/*.lean` | yes |
+| the properties (`NonnegMonotone`, `RefundOrBalanceDue`, `CreditsWithinLiability`, `EitcWithinBounds`, `MatchesTaxTable`), each with a satisfiable example and rejected bad outputs | `lean/UsTax/Spec/*.lean` | yes |
 | the main theorem statements, `sorry` proofs (trusted) | `lean/UsTax/Comparator/Challenge.lean` | no (comparator challenge) |
 | the same theorems, proved; concrete instances | `lean/UsTax/Proofs/Main.lean` (solution module) | yes |
-| lemmas they use | `lean/UsTax/Proofs/Form1040.lean`, `lean/UsTax/Proofs/TaxTable.lean`, `lean/UsTax/Proofs/TaxWorksheet.lean`, `lean/UsTax/TaxRates/Lemmas.lean` | yes |
+| lemmas they use | `lean/UsTax/Proofs/Form1040.lean`, `lean/UsTax/Proofs/TaxTable.lean`, `lean/UsTax/TaxRates/Lemmas.lean` | yes |
 | main theorems not proved yet | `lean/UsTax/Comparator/Pending.lean` | no |
 | names checked by `lake comparator` | `lean/comparator.json` | |
 
@@ -46,31 +46,13 @@ theorem tentativeTax_matches_tax_table (fs : FilingStatus) (ti : Int) :
 theorem line16_matches_tax_table (i : Form1040In) :
     MatchesTaxTable i.filingStatus (form1040 i).taxableIncome
       (form1040 i).tentativeTaxFromTaxableIncome
-
-theorem tentativeTax_matches_worksheet (fs : FilingStatus) (ti : Int)
-    (h1 : 100_000_00 ≤ ti) (h2 : ti ≤ 1_000_000_000_000_00) :
-    tentativeTaxFor ti fs = worksheetTax fs ti
-
-theorem line16_matches_worksheet (i : Form1040In)
-    (h1 : 100_000_00 ≤ (form1040 i).taxableIncome)
-    (h2 : (form1040 i).taxableIncome ≤ 1_000_000_000_000_00) :
-    (form1040 i).tentativeTaxFromTaxableIncome =
-      worksheetTax i.filingStatus (form1040 i).taxableIncome
 ```
 
-All in namespace `UsTax.Main`. The first six have no hypothesis besides their
-arguments (every `FilingStatus`, every `Int`, every `Form1040In`).
-`MatchesTaxTable` has two inside (`r ∈ rows`, `InRow r ti`); `Proofs/Main.lean`
-discharges both on a concrete return. (5c) and (5d) have two: line 15 is at
-least $100,000 (where the instructions switch from the Tax Table to the
-worksheet) and at most $1 trillion (the code's `noUpperBound` sentinel, above
-which the Catala marginal form, and so the code, stops taxing; see
-`TaxRates/Spec.lean`). `Proofs/Main.lean` discharges both on a concrete return
-(single, wages $200,000, line 15 $185,400, line 16 $37,539) and at $100,000
-exactly. Together (5b) and (5d) cover every line 15 from $0 to $1 trillion:
-below $100,000 the printed Tax Table, from $100,000 the printed worksheet.
-Axioms of all eight (`#audit_axioms`): `propext`, `Classical.choice`,
-`Quot.sound`.
+All in namespace `UsTax.Main`. None has a hypothesis besides its arguments
+(every `FilingStatus`, every `Int`, every `Form1040In`). `MatchesTaxTable` has
+two inside (`r ∈ rows`, `InRow r ti`); `Proofs/Main.lean` discharges both on a
+concrete return. Axioms of all six (`#audit_axioms`): `propext`,
+`Classical.choice`, `Quot.sound`.
 
 ## The properties (review these)
 
@@ -100,28 +82,6 @@ ti ∧ ti < dollars r.butLessThan` (cents), `dollars d := d * 100`, and
 filing jointly column, as the printed header says). Satisfied by single
 $50,000 → $6,059; rejects $6,053 (the tax on the exact income, without the
 row midpoint) and the single column used for a joint return.
-
-**`worksheetTax fs ti`** (`Spec/TaxWorksheet.lean`): the 2024 Tax Computation
-Worksheet (Form 1040 instructions p 76; p 33 says to use it when line 15 is
-$100,000 or more). `worksheetRow fs ti` is the p 76 table typed from the PDF:
-the section of the filing status (A single, B joint and qualifying surviving
-spouse, C separate, D head of household), the row whose "over $X but not over
-$Y" contains `ti`, and its (b) multiplication amount (percent) and (d)
-subtraction amount (cents). `worksheetTax` is `roundHalfUp (c - d) 100 * 100`
-with `c := roundHalfUp (ti * rate) 100`: column (c) rounded to the cent, the
-tax rounded to the whole dollar (p 23, "drop amounts under 50 cents and
-increase amounts from 50 to 99 cents"); `roundHalfUp n d := (2n + d) / (2d)`.
-Choice to confirm: (c) is rounded to the cent before subtracting. This only
-matters for a line 15 with cents, and is what the code (Catala `money *
-decimal`) does. Satisfied by single $185,400 → $37,539; rejects $37,538
-(rounded down), the Section B row for a single filer, 24% with nothing
-subtracted, and Section A for married filing separately at $400,000.
-Cross-check: each (d) equals `X × R − B` for the Rev. Proc. 2023-34 row "over
-$X: $B plus R% of the excess" (`#guard` in `Proofs/TaxWorksheet.lean`, and
-implied by the proof of `taxSpec_eq_worksheetTax`, which equates the worksheet
-with the rate schedules for every income from $100,000). `#guard`s also
-compare both at $100,000, every $1,000 to $2,000,000, and one cent either side
-of every bracket edge, for all five statuses.
 
 **`EitcWithinBounds c credit`** (`Spec/Eitc.lean`, pending): `0 ≤ credit ∧
 credit ≤ eitcMaxCredit children ∧ (eitcCompletedPhaseout children mfj ≤ max
@@ -181,22 +141,7 @@ comparator set; see "Choices to confirm").
 - `UsTax.Spec.TaxTable` and `UsTax.TaxRates.TaxTableData` as in (5a)
 - the calculator surface below
 
-### (5c) `tentativeTax_matches_worksheet`: 39 constants, 28 definitions and types
-
-- `UsTax.Spec.TaxWorksheet`: `roundHalfUp`, `worksheetRow`, `worksheetTax`
-- the line 16 surface of (1): `UsTax.TaxRates` and `UsTax.Money` as there,
-  `FilingStatus`
-
-### (5d) `line16_matches_worksheet`: 273 constants, 92 definitions and types
-
-- `UsTax.Spec.TaxWorksheet` as in (5c)
-- the calculator surface below
-
-Review. The three worksheet definitions are short and import nothing from the
-calculator; what to check is that `worksheetRow` matches p 76 (bounds, rates,
-subtraction amounts, "not over" inclusive) and the rounding.
-
-### The calculator surface (shared by 2, 3a, 3b, 5b, 5d)
+### The calculator surface (shared by 2, 3a, 3b, 5b)
 
 - `UsTax.Form1040`: `Form1040In`, `Form1040Out`, `form1040`
 - `UsTax.FormW2s`: `CombatPayElection`, `FormW2`, `FormW2Item`, `FormW2sIn`,
@@ -254,13 +199,11 @@ Each moves into `Challenge.lean` and `comparator.json` when proved.
 
 ## Choices to confirm (human)
 
-1. **(5) covers all taxable income up to $1 trillion.** Below $100,000 the
-   Tax Table (5a, 5b); from $100,000 the Tax Computation Worksheet (5c, 5d),
-   written from the printed worksheet, not from `taxSpec` (three definitions
-   on the surface instead of about ten). The upper bound is the code's
-   `noUpperBound` sentinel (from Catala); above it line 16 is wrong (proved,
-   `TaxRates/Spec.lean`), so (5c, 5d) need it. Removing it means changing the
-   Catala source and the code. Rounding (c) to the cent: see `worksheetTax`.
+1. **(5) covers taxable income below $100,000 only**, where the Tax Table
+   applies. Above it `MatchesTaxTable` is vacuous (no row). The rate-schedule
+   agreement above $100,000 is `TaxRates.tentativeTaxFor_eq_taxSpec` (proved,
+   `TaxRates/Spec.lean`), not in the comparator set because `taxSpec` would add
+   about ten definitions to the trusted surface. Add it?
 2. **The table data covers every cent below $100,000.** An earlier version
    of the CSV lacked the printed rows [$5, $15) ($1) and [$15, $25) ($2); fixed.
    `Proofs.rows_chain` (kernel) shows the 2,062 rows tile $0 to $100,000 with no

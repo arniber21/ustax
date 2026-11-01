@@ -260,34 +260,6 @@ table and every assertion of the matching `catala/tests/test_*.catala_en` as a `
   `make lean-difftest-filing-status-graphs`. `difftest/lean.mjs` needed no change (it already takes
   `--oracle`); knownDivergence lists are those of the Catala mappings (DF-BUG(15), (19)).
 
-## CDCC, Saver's credit and Schedule R (issue #46, second half)
-
-Hand-translations (strategy (c)) of three Catala modules, in the order of the Catala files. Each file
-has a Catala <-> Lean name table, and every assertion of the matching `catala/tests/test_*.catala_en`
-is a `#guard`. The figures are in `UsTax/ParamsCredits.lean` (namespace `UsTax.Params`, a separate
-file from `Params2024.lean`).
-
-- `UsTax/Cdcc.lean`: `CdccPersonTest`, `Form2441PartIII` (lines 12 to 31, Form 1040 line 1e) and
-  `Form2441` (lines 3 to 11, Schedule 3 line 2). The percentage table is `applicablePercentage`
-  (35 percent, minus one point per started `$2,000` of AGI over `$15,000`, floor 20 percent); caps are
-  `$3,000` / `$6,000` (one / two or more qualifying persons); deemed income is
-  `deemedIncomeUplift` (`$250` / `$500` a month, the higher of deemed and actual income per month).
-  DF-BUG(23) to (28) are reproduced as in Catala (Lean follows Catala).
-- `UsTax/SaversCredit.lean`: `SaversColumn` and `SaversCredit` (Form 8880 lines 1 to 12). DF-BUG(14)
-  reproduced.
-- `UsTax/ElderlyAndDisabled.lean`: `EdcFiler` and `ScheduleR` (lines 1 to 22). DF-BUG(13) reproduced.
-- `UsTax/Cli.lean` registers `Form2441`, `SaversCredit` and `ScheduleR` (section `Credits`).
-  `make lean-difftest SCOPE=<cdcc|savers_credit|elderly_and_disabled>`; the mappings are the Catala
-  ones, none changed. `Form2441PartIII` is Lean-only (no mapping reads it separately).
-- `UsTax/NonrefundableCredits/Props.lean` (plausible) and `Lemmas.lean` (proofs, axioms `propext`,
-  `Classical.choice`, `Quot.sound`): each credit is nonnegative and at most the tax limit its scope
-  was given (CDCC: `credit_le_limit`, `credit_pos_imp_le_tax`, `credit_le_2100`; Saver's:
-  `credit_le_limitation`, `credit_le_2000`, `sum_le_tax_of_covered`; Schedule R: `totalEdc_le_limit`,
-  `totalEdc_le_1125`, `cdcc_add_edc_le_tax`) and `credits_within_tax`, the three together within the
-  tax, in the wiring the Calculator uses (Schedule R line 3 is tax less CDCC). Feeds issue #66.
-  `CdccLemmas.credit_le_2100` takes the hypothesis `isFillingPartIii → 0 ≤ line28` (satisfied by
-  every return without Part III; negative benefits are not real).
-
 ## Pattern for Lean modules (follow this for every later scope)
 
 1. **One Lean file per Catala module**, `UsTax/<Module>.lean`, written by hand

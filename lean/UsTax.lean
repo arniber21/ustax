@@ -36,12 +36,6 @@ import UsTax.HohQssPersons
 import UsTax.FilingStatus
 import UsTax.Household.Props
 import UsTax.Household.Lemmas
-import UsTax.ParamsCredits
-import UsTax.SaversCredit
-import UsTax.ElderlyAndDisabled
-import UsTax.Cdcc
-import UsTax.NonrefundableCredits.Props
-import UsTax.NonrefundableCredits.Lemmas
 import UsTax.Form1040Full
 import UsTax.Income.Props
 import UsTax.Income.Lemmas
@@ -50,10 +44,8 @@ import UsTax.Spec.RefundBalance
 import UsTax.Spec.Credits
 import UsTax.Spec.Eitc
 import UsTax.Spec.TaxTable
-import UsTax.Spec.TaxWorksheet
 import UsTax.Proofs.Form1040
 import UsTax.Proofs.TaxTable
-import UsTax.Proofs.TaxWorksheet
 import UsTax.Proofs.Main
 import UsTax.Cli
 import UsTax.Api.Json

@@ -31,7 +31,7 @@ for (const line of inv.split('\n')) {
   if (fact === '/saversCreditKnockouts') cat = 'credits';
   const m = c[6].match(/\(reason `(\w+)`\)/);
   if (m) rows.set(m[1], { df_fact: fact, category: cat });
-  else if (!/constant false|no knockout/.test(c[5])) {
+  else if (!/constant false/.test(c[5])) {
     const name = fact.replace(/^\//, '').replace(/^\w/, (x) => x.toUpperCase());
     pending.push({ code: name, df_fact: fact, category: cat, pending: true });
   }
@@ -40,8 +40,7 @@ const human = (s) => s.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^\w/, (x)
 const reasons = codes.map((code) => {
   const r = rows.get(code) ?? {
     df_fact: null,
-    category: /Hsa/.test(code) ? 'hsa' : /1099Misc|Pfd/.test(code) ? 'income' : /Cdcc|CombatPay/.test(code) ? 'credits'
-      : /1095A/.test(code) ? 'health_coverage' : /FilingStatus|QualifyingChild/.test(code) ? 'household' : 'other',
+    category: /Hsa/.test(code) ? 'hsa' : /1099Misc|Pfd/.test(code) ? 'income' : 'other',
   };
   return { code, category: r.category, df_fact: r.df_fact, message: human(code), pending: false };
 });
