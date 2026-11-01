@@ -56,10 +56,12 @@ theorem line16_matches_worksheet (i : Form1040In)
     (h2 : (form1040 i).taxableIncome ≤ 1_000_000_000_000_00) :
     (form1040 i).tentativeTaxFromTaxableIncome =
       worksheetTax i.filingStatus (form1040 i).taxableIncome
+theorem eitc_within_bounds (i : Eitc.EitcTableIn) :
+    EitcWithinBounds (Eitc.caseOf i) (Eitc.eitc i)
 ```
 
-All in namespace `UsTax.Main`. The first six have no hypothesis besides their
-arguments (every `FilingStatus`, every `Int`, every `Form1040In`).
+All in namespace `UsTax.Main`. The first six and (4) have no hypothesis besides their
+arguments (every `FilingStatus`, every `Int`, every `Form1040In`, every `EitcTableIn`).
 `MatchesTaxTable` has two inside (`r ∈ rows`, `InRow r ti`); `Proofs/Main.lean`
 discharges both on a concrete return. (5c) and (5d) have two: line 15 is at
 least $100,000 (where the instructions switch from the Tax Table to the
@@ -69,7 +71,7 @@ which the Catala marginal form, and so the code, stops taxing; see
 (single, wages $200,000, line 15 $185,400, line 16 $37,539) and at $100,000
 exactly. Together (5b) and (5d) cover every line 15 from $0 to $1 trillion:
 below $100,000 the printed Tax Table, from $100,000 the printed worksheet.
-Axioms of all eight (`#audit_axioms`): `propext`, `Classical.choice`,
+Axioms of all nine (`#audit_axioms`): `propext`, `Classical.choice`,
 `Quot.sound`.
 
 ## The properties (review these)
@@ -123,7 +125,7 @@ with the rate schedules for every income from $100,000). `#guard`s also
 compare both at $100,000, every $1,000 to $2,000,000, and one cent either side
 of every bracket edge, for all five statuses.
 
-**`EitcWithinBounds c credit`** (`Spec/Eitc.lean`, pending): `0 ≤ credit ∧
+**`EitcWithinBounds c credit`** (`Spec/Eitc.lean`, now theorem (4), proved): `0 ≤ credit ∧
 credit ≤ eitcMaxCredit children ∧ (eitcCompletedPhaseout children mfj ≤ max
 earned agi → credit = 0)`. Amounts typed from Rev. Proc. 2023-34 § 3.06(1)
 (checked against `catala/params_2024.catala_en`). Rejects: $1 over the
@@ -196,6 +198,29 @@ Review. The three worksheet definitions are short and import nothing from the
 calculator; what to check is that `worksheetRow` matches p 76 (bounds, rates,
 subtraction amounts, "not over" inclusive) and the rounding.
 
+
+### (4) `eitc_within_bounds`: 54 constants (50 definitions and types)
+
+- `UsTax.Spec.Eitc`: `EitcWithinBounds`, `EitcCase`, `eitcMaxCredit`, `eitcCompletedPhaseout`
+- `UsTax.Eitc.Case`: `caseOf`, `eitc` (read off `EitcTableIn`, take `.amount`)
+- `UsTax.Eitc`: `EitcTableIn`, `EitcTableOut`, `eitcTable`, `phaseoutReduction`, `dollars`
+- `UsTax.Params.*` (`UsTax/Params2024/EitcCtc.lean`): the eight credit and phase-out
+  percentages (`decPct`), the four maximum credits, the four thresholds, the eight completed
+  phase-out amounts, `eitcTableRowWidth`, `eitcTableRowMidpoint`, `eitcTableRowLastDollarOffset`
+- `UsTax.Money`: `divMoney`, `mulRate`, `roundRat`, `roundDollar`, `stepwiseMultiply`, `truncate`,
+  `truncateRat`, `max`; `UsTax.TaxRates.usd`
+
+Review. This is the whole `EitcTable` scope (the printed-table emulation), not the
+eligibility rules of `EarnedIncomeCredit`: the property is about the credit for four facts
+(children, joint or not, earned income, AGI), as #67 asks. Two choices to confirm:
+(a) `caseOf` reads a *negative* child count as 3 (the code's `else` column), so the theorem
+needs no hypothesis; a count is never negative in a real return. (b) The maximum credits and
+completed phase-out amounts are typed twice, in `Spec/Eitc.lean` from the Rev. Proc. and in
+`Params2024/EitcCtc.lean` from `catala/params_2024.catala_en`; the proof (not the statement)
+shows they agree, so a typo in either makes the theorem unprovable, not wrong. The 1,337-row
+printed EIC Table golden test (`UsTax/Eitc/EicTable.lean`) is what ties `eitcTable` to the
+IRS table; the theorem does not claim that.
+
 ### The calculator surface (shared by 2, 3a, 3b, 5b, 5d)
 
 - `UsTax.Form1040`: `Form1040In`, `Form1040Out`, `form1040`
@@ -241,16 +266,13 @@ Lean. A wrong CSV row makes (5) say something wrong.
 
 Templates in `lean/UsTax/Comparator/Pending.lean`:
 
-- **(4) EITC bounds** (#67): `EitcWithinBounds (Eitc.caseOf i) (Eitc.eitc i)`
-  for every input. Needs the Lean EITC (#46). `EitcWithinBounds` and its
-  examples are written and built now.
 - **(3c) Credit wiring** (#66): each nonrefundable credit, computed by its own
   module, satisfies `CreditsWithinLiability` against the tax left after the
   credits before it (Schedule 8812 Credit Limit Worksheet A, Schedule 3 order),
   and line 21 is their sum. Needs CTC/ODC (#27) and Schedule 3 in Lean. Today
   line 21 is a plug-in slot, and (3a) holds for whatever value it has.
 
-Each moves into `Challenge.lean` and `comparator.json` when proved.
+Each moves into `Challenge.lean` and `comparator.json` when proved. (4), the EITC bounds, moved in with the Lean EITC (#46, #67).
 
 ## Choices to confirm (human)
 

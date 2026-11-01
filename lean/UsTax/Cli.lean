@@ -21,6 +21,9 @@ import UsTax.DependentsBenefitSplit
 import UsTax.QualifyingRelative
 import UsTax.HohQssPersons
 import UsTax.FilingStatus
+import UsTax.Eitc
+import UsTax.CtcOdc
+import UsTax.EitcCtcDifftest
 
 /-!
 # Command-line and JSON boundary of the Lean calculator
@@ -1173,6 +1176,321 @@ def runScheduleR (j : Json) : Except String Json := do
      ("is_receiving_edc", bj o.isReceivingEdc)]
 
 end Credits
+/-! ### EITC and CTC/ODC scopes (issue #46)
+
+Decoders for the Catala JSON of `Eitc.EarnedIncomeCredit`, `Ctc_odc.HouseholdMember`,
+`Ctc_odc.Schedule8812` and the two difftest scaffolds `EitcFromFilers`, `CtcOdcFromHousehold`. -/
+
+section EitcCtc
+
+open Filers QualifyingChild DependentsBenefitSplit QualifyingRelative Eitc CtcOdc EitcCtcDifftest
+
+/-- Catala `Eitc.ImproperClaimsNotice` field `k`. -/
+def noticeReq (j : Json) (k : String) : Except String ImproperClaimsNotice :=
+  enumReq j k "improper claims notice" ImproperClaimsNotice.ofString?
+
+/-- Catala `Ctc_odc.HouseholdMember`. -/
+def householdMemberOfJson (j : Json) : Except String HouseholdMember :=
+  return { member := ← depMemberOfJson (← field j "member")
+           ssnEmploymentValidity := ← enumReq j "ssn_employment_validity" "SSN employment validity"
+             SsnEmploymentValidity.ofString? }
+
+/-- The `EarnedIncomeCredit` inputs that `Filers` does not supply (shared by
+`EarnedIncomeCredit` and `EitcFromFilers`). -/
+structure EitcFigures where
+  employerIncomeSubtotal : Int
+  agi : Int
+  taxExemptInterest : Int
+  interestIncome : Int
+  ordinaryDividends : Int
+  capitalGainsOrLosses : Int
+  primaryFilerCombatPay : Int
+  mfjSpouseCombatPay : Int
+  allCombatPay : Int
+  combatPayElectionMade : Bool
+  combatPayElection : FormW2s.CombatPayElection
+  numEitcQualifyingChildren : Int
+  numEitcQualifyingChildrenForCalculation : Int
+  filersHaveValidSsnsForEitc : Bool
+  eitcQcOfAnother : Bool
+  eitcQcOfAnotherRequiredToFile : Bool
+  eitcQcOfAnotherIsFiling : Bool
+  eitcQcOfAnotherIsFilingRefundOnly : Bool
+  eitcHadImproperClaims : Bool
+  eitcImproperClaimsDueToQc : Bool
+  eitcImproperClaimTakenSinceDisallowal : Bool
+  eitcReceivedImproperClaimsNotice : ImproperClaimsNotice
+  eitcImproperClaimsNoticeExpired : Bool
+
+/-- Decode the figures shared by the two EITC scopes. -/
+def eitcFiguresOfJson (j : Json) : Except String EitcFigures :=
+  return {
+    employerIncomeSubtotal := ← moneyReq j "employer_income_subtotal", agi := ← moneyReq j "agi"
+    taxExemptInterest := ← moneyReq j "tax_exempt_interest"
+    interestIncome := ← moneyReq j "interest_income"
+    ordinaryDividends := ← moneyReq j "ordinary_dividends"
+    capitalGainsOrLosses := ← moneyReq j "capital_gains_or_losses"
+    primaryFilerCombatPay := ← moneyReq j "primary_filer_combat_pay"
+    mfjSpouseCombatPay := ← moneyReq j "mfj_spouse_combat_pay"
+    allCombatPay := ← moneyReq j "all_combat_pay"
+    combatPayElectionMade := ← boolReq j "combat_pay_election_made"
+    combatPayElection := ← combatPayElectionOfJson (← field j "combat_pay_election")
+    numEitcQualifyingChildren := ← (← field j "num_eitc_qualifying_children").getInt?
+    numEitcQualifyingChildrenForCalculation :=
+      ← (← field j "num_eitc_qualifying_children_for_calculation").getInt?
+    filersHaveValidSsnsForEitc := ← boolReq j "filers_have_valid_ssns_for_eitc"
+    eitcQcOfAnother := ← boolReq j "eitc_qc_of_another"
+    eitcQcOfAnotherRequiredToFile := ← boolReq j "eitc_qc_of_another_required_to_file"
+    eitcQcOfAnotherIsFiling := ← boolReq j "eitc_qc_of_another_is_filing"
+    eitcQcOfAnotherIsFilingRefundOnly := ← boolReq j "eitc_qc_of_another_is_filing_refund_only"
+    eitcHadImproperClaims := ← boolReq j "eitc_had_improper_claims"
+    eitcImproperClaimsDueToQc := ← boolReq j "eitc_improper_claims_due_to_qc"
+    eitcImproperClaimTakenSinceDisallowal := ← boolReq j "eitc_improper_claim_taken_since_disallowal"
+    eitcReceivedImproperClaimsNotice := ← noticeReq j "eitc_received_improper_claims_notice"
+    eitcImproperClaimsNoticeExpired := ← boolReq j "eitc_improper_claims_notice_expired" }
+
+/-- The Catala case name of a combat pay election. -/
+def combatPayElectionName : FormW2s.CombatPayElection → String
+  | .noCombatPay => "NoCombatPay"
+  | .usePrimaryCombatPay => "UsePrimaryCombatPay"
+  | .useSpouseCombatPay => "UseSpouseCombatPay"
+  | .useBothCombatPay => "UseBothCombatPay"
+  | .usePrimaryNotSpouseCombatPay => "UsePrimaryNotSpouseCombatPay"
+  | .useSpouseNotPrimaryCombatPay => "UseSpouseNotPrimaryCombatPay"
+
+/-- Catala scope `Eitc.EitcTable`. -/
+def runEitcTable (j : Json) : Except String Json := do
+  let o := eitcTable
+    { earnedIncome := ← moneyReq j "earned_income", agi := ← moneyReq j "agi"
+      isMfj := ← boolReq j "is_mfj"
+      qualifyingChildren := ← (← field j "qualifying_children").getInt? }
+  return Json.mkObj
+    [("completed_phaseout", mj o.completedPhaseout),
+     ("rounded_earned_income", mj o.roundedEarnedIncome), ("rounded_agi", mj o.roundedAgi),
+     ("row_reaches_max_credit", bj o.rowReachesMaxCredit), ("no_credit", bj o.noCredit),
+     ("amount", mj o.amount)]
+
+/-- Catala scope `Eitc.EarnedIncomeCredit`. -/
+def runEarnedIncomeCredit (j : Json) : Except String Json := do
+  let g ← eitcFiguresOfJson j
+  let o := earnedIncomeCredit
+    { filingStatus := ← filingStatusOfJson (← field j "filing_status")
+      employerIncomeSubtotal := g.employerIncomeSubtotal, agi := g.agi
+      taxExemptInterest := g.taxExemptInterest, interestIncome := g.interestIncome
+      ordinaryDividends := g.ordinaryDividends, capitalGainsOrLosses := g.capitalGainsOrLosses
+      primaryFilerCombatPay := g.primaryFilerCombatPay, mfjSpouseCombatPay := g.mfjSpouseCombatPay
+      allCombatPay := g.allCombatPay, combatPayElectionMade := g.combatPayElectionMade
+      combatPayElection := g.combatPayElection
+      numEitcQualifyingChildren := g.numEitcQualifyingChildren
+      numEitcQualifyingChildrenForCalculation := g.numEitcQualifyingChildrenForCalculation
+      isMarried := ← boolReq j "is_married", treatAsMfs := ← boolReq j "treat_as_mfs"
+      specialRuleForSeparatedSpouses := ← boolReq j "special_rule_for_separated_spouses"
+      treatFilersAsDependents := ← boolReq j "treat_filers_as_dependents"
+      isMfjDependent := ← boolReq j "is_mfj_dependent"
+      filersUsCitizenOrRaAllYear := ← boolReq j "filers_us_citizen_or_ra_all_year"
+      filersHaveValidSsnsForEitc := g.filersHaveValidSsnsForEitc
+      primaryFilerAge25OrOlderForEitc := ← boolReq j "primary_filer_age25_or_older_for_eitc"
+      primaryFilerAge64OrYoungerForEitc := ← boolReq j "primary_filer_age64_or_younger_for_eitc"
+      secondaryFilerAge25OrOlderForEitc := ← boolReq j "secondary_filer_age25_or_older_for_eitc"
+      secondaryFilerAge64OrYoungerForEitc := ← boolReq j "secondary_filer_age64_or_younger_for_eitc"
+      eitcQcOfAnother := g.eitcQcOfAnother
+      eitcQcOfAnotherRequiredToFile := g.eitcQcOfAnotherRequiredToFile
+      eitcQcOfAnotherIsFiling := g.eitcQcOfAnotherIsFiling
+      eitcQcOfAnotherIsFilingRefundOnly := g.eitcQcOfAnotherIsFilingRefundOnly
+      eitcHadImproperClaims := g.eitcHadImproperClaims
+      eitcImproperClaimsDueToQc := g.eitcImproperClaimsDueToQc
+      eitcImproperClaimTakenSinceDisallowal := g.eitcImproperClaimTakenSinceDisallowal
+      eitcReceivedImproperClaimsNotice := g.eitcReceivedImproperClaimsNotice
+      eitcImproperClaimsNoticeExpired := g.eitcImproperClaimsNoticeExpired }
+  return Json.mkObj
+    [("has_earned_income", bj o.hasEarnedIncome),
+     ("below_eitc_earned_income_limit", bj o.belowEitcEarnedIncomeLimit),
+     ("below_eitc_agi_limit", bj o.belowEitcAgiLimit),
+     ("below_eitc_investment_income_limit", bj o.belowEitcInvestmentIncomeLimit),
+     ("filers_could_qualify_for_eitc", bj o.filersCouldQualifyForEitc),
+     ("filers_age_test_for_eitc_with_no_qc", bj o.filersAgeTestForEitcWithNoQc),
+     ("no_eitc_due_to_separate_filing_from_spouse", bj o.noEitcDueToSeparateFilingFromSpouse),
+     ("maybe_eligible_for_eitc_base", bj o.maybeEligibleForEitcBase),
+     ("maybe_eligible_for_eitc_with_qc", bj o.maybeEligibleForEitcWithQc),
+     ("maybe_eligible_for_eitc_without_qc", bj o.maybeEligibleForEitcWithoutQc),
+     ("maybe_eligible_for_eitc", bj o.maybeEligibleForEitc),
+     ("eitc_qc_test", bj o.eitcQcTest), ("fails_eitc_qc_test", bj o.failsEitcQcTest),
+     ("eitc_notice_test", bj o.eitcNoticeTest), ("eitc_qualified", bj o.eitcQualified),
+     ("eitc_amount_without_combat_pay", mj o.eitcAmountWithoutCombatPay),
+     ("eitc_amount_with_primary_combat_pay", mj o.eitcAmountWithPrimaryCombatPay),
+     ("eitc_amount_with_secondary_combat_pay", mj o.eitcAmountWithSecondaryCombatPay),
+     ("eitc_amount_with_both_tp_combat_pay", mj o.eitcAmountWithBothTpCombatPay),
+     ("combat_pay_recommendation", Json.str (combatPayElectionName o.combatPayRecommendation)),
+     ("combat_pay_election_and_or_recommendation",
+       Json.str (combatPayElectionName o.combatPayElectionAndOrRecommendation)),
+     ("earned_income_credit", mj o.earnedIncomeCredit), ("is_receiving_eitc", bj o.isReceivingEitc),
+     ("eitc8862_required", bj o.eitc8862Required),
+     ("receiving_eitc_while_separated_checkbox", bj o.receivingEitcWhileSeparatedCheckbox),
+     ("ko_claimed_spouse_combat_pay_without_mfj", bj o.koClaimedSpouseCombatPayWithoutMfj),
+     ("unsupported", bj o.unsupported)]
+
+/-- Catala scope `EitcFromFilers` (difftest scaffold, `catala/tests/difftest_eitc.catala_en`). -/
+def runEitcFromFilers (j : Json) : Except String Json := do
+  let g ← eitcFiguresOfJson j
+  let o := eitcFromFilers
+    { toFilersIn := ← filersInOfJson j (← boolReq j "eligible_for_hoh")
+      employerIncomeSubtotal := g.employerIncomeSubtotal, agi := g.agi
+      taxExemptInterest := g.taxExemptInterest, interestIncome := g.interestIncome
+      ordinaryDividends := g.ordinaryDividends, capitalGainsOrLosses := g.capitalGainsOrLosses
+      primaryFilerCombatPay := g.primaryFilerCombatPay, mfjSpouseCombatPay := g.mfjSpouseCombatPay
+      allCombatPay := g.allCombatPay, combatPayElectionMade := g.combatPayElectionMade
+      combatPayElection := g.combatPayElection
+      numEitcQualifyingChildren := g.numEitcQualifyingChildren
+      numEitcQualifyingChildrenForCalculation := g.numEitcQualifyingChildrenForCalculation
+      filersHaveValidSsnsForEitc := g.filersHaveValidSsnsForEitc
+      eitcQcOfAnother := g.eitcQcOfAnother
+      eitcQcOfAnotherRequiredToFile := g.eitcQcOfAnotherRequiredToFile
+      eitcQcOfAnotherIsFiling := g.eitcQcOfAnotherIsFiling
+      eitcQcOfAnotherIsFilingRefundOnly := g.eitcQcOfAnotherIsFilingRefundOnly
+      eitcHadImproperClaims := g.eitcHadImproperClaims
+      eitcImproperClaimsDueToQc := g.eitcImproperClaimsDueToQc
+      eitcImproperClaimTakenSinceDisallowal := g.eitcImproperClaimTakenSinceDisallowal
+      eitcReceivedImproperClaimsNotice := g.eitcReceivedImproperClaimsNotice
+      eitcImproperClaimsNoticeExpired := g.eitcImproperClaimsNoticeExpired }
+  return Json.mkObj
+    [("earned_income_credit", mj o.earnedIncomeCredit), ("is_receiving_eitc", bj o.isReceivingEitc),
+     ("eitc8862_required", bj o.eitc8862Required), ("fails_eitc_qc_test", bj o.failsEitcQcTest),
+     ("receiving_eitc_while_separated_checkbox", bj o.receivingEitcWhileSeparatedCheckbox),
+     ("unsupported", bj o.unsupported)]
+
+/-- Catala scope `Ctc_odc.CtcOdcPersonTest`. -/
+def runCtcOdcPersonTest (j : Json) : Except String Json := do
+  let o := ctcOdcPersonTest
+    { householdMember := ← householdMemberOfJson (← field j "household_member")
+      minimumFilerDateOfBirth := ← dateReq j "minimum_filer_date_of_birth"
+      treatFilersAsDependents := ← boolReq j "treat_filers_as_dependents"
+      eitherFilerUsCitizenOrNational := ← boolReq j "either_filer_us_citizen_or_national"
+      treatAsMfj := ← boolReq j "treat_as_mfj" }
+  return Json.mkObj
+    [("ssn_valid_for_employment", bj o.ssnValidForEmployment),
+     ("eligible_ctc", bj o.eligibleCtc), ("eligible_odc", bj o.eligibleOdc)]
+
+/-- The `Schedule8812` inputs other than the two counts, shared with `CtcOdcFromHousehold`. -/
+structure Sched8812Figures where
+  filingStatus : FilingStatus
+  agi : Int
+  totalTentativeTax : Int
+  cdccTotalCredit : Int
+  qualifiedSaverCreditAmount : Int
+  totalEdc : Int
+  employerIncomeSubtotal : Int
+  allCombatPay : Int
+  socialSecurityTaxesWithheld : Int
+  earnedIncomeCredit : Int
+  receivedImproperClaims : Bool
+  receivedImproperClaimsNotice : ImproperClaimsNotice
+  improperClaimsNoticeExpired : Bool
+  hasFiledCtcOdcSinceNoticeExpired : Bool
+
+/-- Decode them. -/
+def sched8812FiguresOfJson (j : Json) : Except String Sched8812Figures :=
+  return {
+    filingStatus := ← filingStatusOfJson (← field j "filing_status"), agi := ← moneyReq j "agi"
+    totalTentativeTax := ← moneyReq j "total_tentative_tax"
+    cdccTotalCredit := ← moneyReq j "cdcc_total_credit"
+    qualifiedSaverCreditAmount := ← moneyReq j "qualified_saver_credit_amount"
+    totalEdc := ← moneyReq j "total_edc"
+    employerIncomeSubtotal := ← moneyReq j "employer_income_subtotal"
+    allCombatPay := ← moneyReq j "all_combat_pay"
+    socialSecurityTaxesWithheld := ← moneyReq j "social_security_taxes_withheld"
+    earnedIncomeCredit := ← moneyReq j "earned_income_credit"
+    receivedImproperClaims := ← boolReq j "received_improper_claims"
+    receivedImproperClaimsNotice := ← noticeReq j "received_improper_claims_notice"
+    improperClaimsNoticeExpired := ← boolReq j "improper_claims_notice_expired"
+    hasFiledCtcOdcSinceNoticeExpired := ← boolReq j "has_filed_ctc_odc_since_notice_expired" }
+
+/-- Catala scope `Ctc_odc.Schedule8812`. -/
+def runSchedule8812 (j : Json) : Except String Json := do
+  let g ← sched8812FiguresOfJson j
+  let o := schedule8812
+    { ctcEligibleDependents := ← (← field j "ctc_eligible_dependents").getInt?
+      odcEligibleDependents := ← (← field j "odc_eligible_dependents").getInt?
+      filingStatus := g.filingStatus, agi := g.agi, totalTentativeTax := g.totalTentativeTax
+      cdccTotalCredit := g.cdccTotalCredit
+      qualifiedSaverCreditAmount := g.qualifiedSaverCreditAmount, totalEdc := g.totalEdc
+      employerIncomeSubtotal := g.employerIncomeSubtotal, allCombatPay := g.allCombatPay
+      socialSecurityTaxesWithheld := g.socialSecurityTaxesWithheld
+      earnedIncomeCredit := g.earnedIncomeCredit
+      receivedImproperClaims := g.receivedImproperClaims
+      receivedImproperClaimsNotice := g.receivedImproperClaimsNotice
+      improperClaimsNoticeExpired := g.improperClaimsNoticeExpired
+      hasFiledCtcOdcSinceNoticeExpired := g.hasFiledCtcOdcSinceNoticeExpired }
+  return Json.mkObj
+    [("had_ctc_odc_improper_claims_ban", bj o.hadCtcOdcImproperClaimsBan),
+     ("ctc_odc_disqualified_for_improper_claims", bj o.ctcOdcDisqualifiedForImproperClaims),
+     ("maybe_eligible_for_ctc", bj o.maybeEligibleForCtc),
+     ("maybe_eligible_for_odc", bj o.maybeEligibleForOdc),
+     ("ctc_qualified", bj o.ctcQualified), ("odc_qualified", bj o.odcQualified),
+     ("dependent_credit_magi", mj o.dependentCreditMagi),
+     ("total_potential_ctc", mj o.totalPotentialCtc),
+     ("total_potential_odc", mj o.totalPotentialOdc),
+     ("total_potential_dependent_credits", mj o.totalPotentialDependentCredits),
+     ("dependent_credit_phaseout_threshold", mj o.dependentCreditPhaseoutThreshold),
+     ("dependent_credit_magi_above_threshold", mj o.dependentCreditMagiAboveThreshold),
+     ("rounded_dependent_credit_magi_above_threshold",
+       mj o.roundedDependentCreditMagiAboveThreshold),
+     ("dependent_credit_phaseout", mj o.dependentCreditPhaseout),
+     ("dependent_credit_less_phaseout", mj o.dependentCreditLessPhaseout),
+     ("dependent_credit_not_fully_phased_out", bj o.dependentCreditNotFullyPhasedOut),
+     ("sched8812_credit_limit", mj o.sched8812CreditLimit),
+     ("total_ctc_and_odc", mj o.totalCtcAndOdc),
+     ("max_potential_odc_after_phase_out", mj o.maxPotentialOdcAfterPhaseOut),
+     ("total_odc", mj o.totalOdc), ("total_ctc", mj o.totalCtc),
+     ("is_receiving_ctc", bj o.isReceivingCtc), ("is_receiving_odc", bj o.isReceivingOdc),
+     ("is_receiving_ctc_or_odc", bj o.isReceivingCtcOrOdc),
+     ("remaining_ctc_and_odc", mj o.remainingCtcAndOdc),
+     ("xml_has_remaining_ctc_and_odc", bj o.xmlHasRemainingCtcAndOdc),
+     ("total_potential_actc", mj o.totalPotentialActc),
+     ("xml_has_potential_actc", bj o.xmlHasPotentialActc),
+     ("remaining_potential_actc", mj o.remainingPotentialActc),
+     ("earned_income_with_all_combat_pay", mj o.earnedIncomeWithAllCombatPay),
+     ("earned_income_above_actc_refundability_threshold",
+       mj o.earnedIncomeAboveActcRefundabilityThreshold),
+     ("earned_income_exceeds_actc_refundability_threshold",
+       bj o.earnedIncomeExceedsActcRefundabilityThreshold),
+     ("regular_maximum_actc", mj o.regularMaximumActc),
+     ("three_or_more_ctc_eligible_dependents", bj o.threeOrMoreCtcEligibleDependents),
+     ("xml_three_or_more_ctc_eligible_dependents", bj o.xmlThreeOrMoreCtcEligibleDependents),
+     ("social_security_over_eitc", mj o.socialSecurityOverEitc),
+     ("maximum_actc", mj o.maximumActc), ("additional_ctc", mj o.additionalCtc),
+     ("is_receiving_actc", bj o.isReceivingActc), ("ctc8862_required", bj o.ctc8862Required)]
+
+/-- Catala scope `CtcOdcFromHousehold` (difftest scaffold,
+`catala/tests/difftest_ctc_odc.catala_en`). -/
+def runCtcOdcFromHousehold (j : Json) : Except String Json := do
+  let g ← sched8812FiguresOfJson j
+  let o := ctcOdcFromHousehold
+    { householdMembers := ← listReq j "household_members" householdMemberOfJson
+      minimumFilerDateOfBirth := ← dateReq j "minimum_filer_date_of_birth"
+      treatFilersAsDependents := ← boolReq j "treat_filers_as_dependents"
+      eitherFilerUsCitizenOrNational := ← boolReq j "either_filer_us_citizen_or_national"
+      treatAsMfj := ← boolReq j "treat_as_mfj"
+      filingStatus := g.filingStatus, agi := g.agi, totalTentativeTax := g.totalTentativeTax
+      cdccTotalCredit := g.cdccTotalCredit
+      qualifiedSaverCreditAmount := g.qualifiedSaverCreditAmount, totalEdc := g.totalEdc
+      employerIncomeSubtotal := g.employerIncomeSubtotal, allCombatPay := g.allCombatPay
+      socialSecurityTaxesWithheld := g.socialSecurityTaxesWithheld
+      earnedIncomeCredit := g.earnedIncomeCredit
+      receivedImproperClaims := g.receivedImproperClaims
+      receivedImproperClaimsNotice := g.receivedImproperClaimsNotice
+      improperClaimsNoticeExpired := g.improperClaimsNoticeExpired
+      hasFiledCtcOdcSinceNoticeExpired := g.hasFiledCtcOdcSinceNoticeExpired }
+  return Json.mkObj
+    [("ctc_eligible_dependents", toJson o.ctcEligibleDependents),
+     ("odc_eligible_dependents", toJson o.odcEligibleDependents),
+     ("total_potential_ctc", mj o.totalPotentialCtc),
+     ("total_potential_odc", mj o.totalPotentialOdc),
+     ("total_ctc_and_odc", mj o.totalCtcAndOdc),
+     ("total_potential_actc", mj o.totalPotentialActc),
+     ("three_or_more_ctc_eligible_dependents", bj o.threeOrMoreCtcEligibleDependents),
+     ("additional_ctc", mj o.additionalCtc)]
+
+end EitcCtc
 
 /-- The scopes implemented in Lean, by Catala scope name. Add one line per
 new module. -/
@@ -1198,7 +1516,13 @@ def scopes : List (String × (Json → Except String Json)) :=
    ("FilingStatusReturn", runFilingStatusReturn),
    ("Form2441", runForm2441),
    ("SaversCredit", runSaversCredit),
-   ("ScheduleR", runScheduleR)]
+   ("ScheduleR", runScheduleR),
+   ("EitcTable", runEitcTable),
+   ("EarnedIncomeCredit", runEarnedIncomeCredit),
+   ("EitcFromFilers", runEitcFromFilers),
+   ("CtcOdcPersonTest", runCtcOdcPersonTest),
+   ("Schedule8812", runSchedule8812),
+   ("CtcOdcFromHousehold", runCtcOdcFromHousehold)]
 
 /-- Run scope `name` on one JSON input. -/
 def runScope (name : String) (input : Json) : Except String Json :=

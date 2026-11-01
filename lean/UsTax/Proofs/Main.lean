@@ -7,6 +7,7 @@ import UsTax.TaxRates.Lemmas
 import UsTax.Proofs.Form1040
 import UsTax.Proofs.TaxTable
 import UsTax.Proofs.TaxWorksheet
+import UsTax.Proofs.Eitc
 import UsTax.Audit
 
 /-!
@@ -25,6 +26,7 @@ refers to a lemma proved elsewhere:
 | `line16_matches_tax_table` | the same, line 16 being `tentativeTaxFor` of line 15 |
 | `tentativeTax_matches_worksheet` | `Proofs.tentativeTaxFor_eq_worksheetTax` (`Proofs/TaxWorksheet.lean`) |
 | `line16_matches_worksheet` | the same |
+| `eitc_within_bounds` | `Proofs.eitc_within_bounds` (`Proofs/Eitc.lean`) |
 
 Below them: each theorem on a concrete return with every hypothesis
 discharged (CLAUDE.md section 4). The rejected bad outputs are next to each
@@ -83,6 +85,11 @@ theorem line16_matches_worksheet (i : Form1040In)
     (form1040 i).tentativeTaxFromTaxableIncome =
       worksheetTax i.filingStatus (form1040 i).taxableIncome :=
   tentativeTax_matches_worksheet i.filingStatus (form1040 i).taxableIncome h1 h2
+/-- (4) The earned income credit is between `$0` and the maximum credit, and `$0` at or after
+the completed phase-out amount. -/
+theorem eitc_within_bounds (i : Eitc.EitcTableIn) :
+    EitcWithinBounds (Eitc.caseOf i) (Eitc.eitc i) :=
+  Proofs.eitc_within_bounds i
 
 /-! ## The theorems on a concrete return
 
@@ -165,6 +172,24 @@ example : (form1040 highIncomeReturn).tentativeTaxFromTaxableIncome =
 (Section B, 22% row): $22,000 − $9,894 = $12,106. -/
 example : tentativeTaxFor 100_000_00 .marriedFilingJointly = 12_106_00 := by
   rw [tentativeTax_matches_worksheet _ _ (by decide) (by decide)]; decide
+/-! ### (4) on concrete returns
+
+Single, one child, $15,000 earned income and AGI: the credit is the maximum, $4,213 (the
+hypothesis-free statement instantiated; the printed EIC Table row gives $4,213). At the
+completed phase-out, $49,084, it is `$0`. Computed by the kernel. -/
+
+/-- Single, one child, $15,000: $4,213. -/
+theorem eitc_example_max :
+    Eitc.eitc ⟨15_000_00, 15_000_00, false, 1⟩ = 4_213_00 := by decide +kernel
+
+/-- Single, one child, $49,084 (the completed phase-out amount): $0. -/
+theorem eitc_example_phased_out :
+    Eitc.eitc ⟨49_084_00, 49_084_00, false, 1⟩ = 0 := by decide +kernel
+
+/-- (4) on the first: the statement holds with a concrete credit. -/
+example : EitcWithinBounds (Eitc.caseOf ⟨15_000_00, 15_000_00, false, 1⟩) 4_213_00 := by
+  have h := eitc_within_bounds ⟨15_000_00, 15_000_00, false, 1⟩
+  rwa [eitc_example_max] at h
 
 end UsTax.Main
 
@@ -176,6 +201,7 @@ end UsTax.Main
 #audit_axioms UsTax.Main.line16_matches_tax_table
 #audit_axioms UsTax.Main.tentativeTax_matches_worksheet
 #audit_axioms UsTax.Main.line16_matches_worksheet
+#audit_axioms UsTax.Main.eitc_within_bounds
 #spec_surface UsTax.Main.tentativeTax_nonneg_monotone
 #spec_surface UsTax.Main.refund_balanceDue_consistent
 #spec_surface UsTax.Main.credits_within_liability
@@ -184,3 +210,4 @@ end UsTax.Main
 #spec_surface UsTax.Main.line16_matches_tax_table
 #spec_surface UsTax.Main.tentativeTax_matches_worksheet
 #spec_surface UsTax.Main.line16_matches_worksheet
+#spec_surface UsTax.Main.eitc_within_bounds
