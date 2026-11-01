@@ -1,0 +1,40 @@
+web/package.json
+  s_3031b504518be3::t_22141ee57e091e 47
+  s_3031b504518be3::t_322078288749e0 14
+web/src/components/ui/calendar.tsx
+  s_3031b504518be3::t_efd5186fde6e2f 1-55
+web/src/components/ui/date-picker.test.tsx
+  s_3031b504518be3::t_a487626f1fecc2 1-183
+web/src/wizard/fields.tsx
+  s_3031b504518be3::t_ecc881ee504a87 3
+  s_3031b504518be3::t_f5204f577e0a21 19-21
+  s_3031b504518be3::t_dc5b684ba3a171 40,44,46
+web/src/components/ui/popover.tsx
+  s_3031b504518be3::t_71caf79e94ee15 1-29
+web/src/components/ui/date-picker.tsx
+  s_3031b504518be3::t_8e9c22885caf95 1-62,64-75,77-151
+  s_3031b504518be3::t_d06fa729a915a1 63
+  s_3031b504518be3::t_8e43a2b42e6269 76
+web/src/lib/isoDate.ts
+  s_3031b504518be3::t_7f7a6a27aa590b 1-44
+web/src/wizard/wizard.test.tsx
+  s_3031b504518be3::t_e6d0d24f7278ba 93,118,129-131,136,222,225
+web/package-lock.json
+  s_3031b504518be3::t_33704066a54e7c 20,348-353,3916-3925,5518-5543
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e002bac8cc118cbe96174d76ec93736b28281775",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
