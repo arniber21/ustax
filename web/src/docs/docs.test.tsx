@@ -244,7 +244,11 @@ describe('/docs routes', () => {
     const toc = screen.getByRole('navigation', { name: 'On this page' });
     expect(within(toc).getByRole('link', { name: 'Future directions' })).toHaveAttribute('href', '#future-directions');
     const pn = screen.getByRole('navigation', { name: 'Previous and next pages' });
-    expect(within(pn).getByRole('link', { name: /Documentation/ })).toHaveAttribute('href', '/docs');
+    // the page before the scaffold is 'What "verified" means here'; the one after is the write-up draft
+    expect(within(pn).getByRole('link', { name: /What "verified" means here/ })).toHaveAttribute(
+      'href',
+      '/docs/what-verified-means',
+    );
     expect(within(pn).getByRole('link', { name: /Write-up/ })).toHaveAttribute('href', '/docs/writeup');
     const sidebar = screen.getByRole('navigation', { name: 'Documentation' });
     expect(within(sidebar).getByRole('link', { name: 'How we built this' })).toHaveAttribute('aria-current', 'page');
