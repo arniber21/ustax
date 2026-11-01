@@ -69,9 +69,12 @@ oracle:    ## regenerate oracle/facts.csv from the Direct File scenarios
 
 # API contract (see docs/api.md): validate api/examples and api/fixtures against api/schema.json.
 # Needs node >= 18; ajv is installed locally under api/ (pinned by api/package-lock.json).
-.PHONY: api-check api-reasons api-conformance api-examples api-catala-schema
+.PHONY: openapi-check api-check api-reasons api-conformance api-examples api-catala-schema
 api-check: ## validate JSON examples and mock fixtures against api/schema.json
 	cd api && npm ci --ignore-scripts --no-audit --no-fund && node scripts/check.mjs
+openapi-check: ## regenerate api/openapi.json (scripts/gen_openapi.mjs), fail if stale, validate it as OpenAPI 3.1 (offline)
+	node scripts/gen_openapi.mjs --check
+	cd api && npm ci --ignore-scripts --no-audit --no-fund && node scripts/validate-openapi.mjs
 api-conformance: ## Lean request validator vs api/schema.json via ajv (examples + generated mutants); reason table vs api/knockout-reasons.json
 	python3 scripts/gen_lean_api_reasons.py --check
 	cd lean && lake build ustax

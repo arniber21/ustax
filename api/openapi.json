@@ -1,0 +1,3294 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "US Tax API",
+    "version": "1.2.0",
+    "summary": "Tax year 2024 federal return calculator.",
+    "description": "JSON API in front of the Lean calculator. Every money value is an integer number of cents. There is no authentication. Bodies are limited to 256 KiB. The contract is `api/schema.json`; this document is generated from it by `scripts/gen_openapi.mjs`."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local server (`make server`)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Calculator",
+      "description": "Compute a federal return."
+    },
+    {
+      "name": "Service",
+      "description": "Liveness and version."
+    }
+  ],
+  "paths": {
+    "/calculate": {
+      "post": {
+        "operationId": "calculate",
+        "tags": [
+          "Calculator"
+        ],
+        "summary": "Calculate a federal return",
+        "description": "Takes the filer's facts and answers 200 with every Form 1040 line, 422 when something in the request is outside what the calculator supports, or an error body.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculateRequest"
+              },
+              "examples": {
+                "balance-due-single-w2-50k": {
+                  "summary": "balance due single w2 50k",
+                  "description": "Answered with HTTP 200.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "Single",
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 5000000,
+                        "federal_withholding": 300000
+                      }
+                    ]
+                  },
+                  "x-expected-status": 200
+                },
+                "hoh-w2-60k": {
+                  "summary": "hoh w2 60k",
+                  "description": "Answered with HTTP 200.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "HeadOfHousehold",
+                    "dependents": [
+                      {
+                        "relationship": "BiologicalChild",
+                        "date_of_birth": "2014-09-10",
+                        "tin_type": "Ssn",
+                        "tp_paid_most_of_home_upkeep": true
+                      }
+                    ],
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 6000000,
+                        "federal_withholding": 400000
+                      }
+                    ]
+                  },
+                  "x-expected-status": 200
+                },
+                "knocked-out-bond-interest": {
+                  "summary": "bond interest",
+                  "description": "Answered with HTTP 422.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "Single",
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 5000000,
+                        "federal_withholding": 500000
+                      }
+                    ],
+                    "interest_reports": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "has_1099": true,
+                        "interest_income": 100000,
+                        "private_activity_bond_interest": 50000
+                      }
+                    ]
+                  },
+                  "x-expected-status": 422
+                },
+                "mfj-two-w2s": {
+                  "summary": "mfj two w2s",
+                  "description": "Answered with HTTP 200.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "MarriedFilingJointly",
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 4000000
+                      },
+                      {
+                        "filer": "SecondaryFiler",
+                        "wages": 3000000
+                      }
+                    ]
+                  },
+                  "x-expected-status": 200
+                },
+                "mfs-w2-40k": {
+                  "summary": "mfs w2 40k",
+                  "description": "Answered with HTTP 200.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "MarriedFilingSeparately",
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 4000000,
+                        "federal_withholding": 300000
+                      }
+                    ]
+                  },
+                  "x-expected-status": 200
+                },
+                "qss-w2-80k": {
+                  "summary": "qss w2 80k",
+                  "description": "Answered with HTTP 200.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "QualifyingSurvivingSpouse",
+                    "dependents": [
+                      {
+                        "relationship": "BiologicalChild",
+                        "date_of_birth": "2012-02-20",
+                        "tin_type": "Ssn",
+                        "tp_paid_most_of_home_upkeep": true
+                      }
+                    ],
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 8000000,
+                        "federal_withholding": 600000
+                      }
+                    ]
+                  },
+                  "x-expected-status": 200
+                },
+                "refund-single-w2-50k": {
+                  "summary": "refund single w2 50k",
+                  "description": "Answered with HTTP 200.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "Single",
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 5000000,
+                        "federal_withholding": 500000
+                      }
+                    ]
+                  },
+                  "x-expected-status": 200
+                },
+                "single-w2-50k": {
+                  "summary": "single w2 50k",
+                  "description": "Answered with HTTP 200.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "Single",
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 5000000
+                      }
+                    ]
+                  },
+                  "x-expected-status": 200
+                },
+                "single-w2-and-interest": {
+                  "summary": "single w2 and interest",
+                  "description": "Answered with HTTP 200.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "Single",
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 5000000
+                      }
+                    ],
+                    "interest_reports": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "has_1099": true,
+                        "interest_income": 100000,
+                        "federal_tax_withheld": 10000
+                      }
+                    ]
+                  },
+                  "x-expected-status": 200
+                },
+                "error-400-money-not-integer": {
+                  "summary": "400 money not integer",
+                  "description": "Answered with HTTP 400.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "Single",
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 5000000.5
+                      }
+                    ]
+                  },
+                  "x-expected-status": 400
+                },
+                "error-400-negative-wages": {
+                  "summary": "400 negative wages",
+                  "description": "Answered with HTTP 400.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "Single",
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": -100
+                      }
+                    ]
+                  },
+                  "x-expected-status": 400
+                },
+                "error-400-secondary-filer-on-single": {
+                  "summary": "400 secondary filer on single",
+                  "description": "Answered with HTTP 400.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "Single",
+                    "w2s": [
+                      {
+                        "filer": "SecondaryFiler",
+                        "wages": 5000000
+                      }
+                    ]
+                  },
+                  "x-expected-status": 400
+                },
+                "error-400-unknown-field": {
+                  "summary": "400 unknown field",
+                  "description": "Answered with HTTP 400.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "Single",
+                    "w3s": []
+                  },
+                  "x-expected-status": 400
+                },
+                "error-400-unsupported-tax-year": {
+                  "summary": "400 unsupported tax year",
+                  "description": "Answered with HTTP 400.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2023,
+                    "filing_status": "Single"
+                  },
+                  "x-expected-status": 400
+                },
+                "knocked-out-foreign-accounts": {
+                  "summary": "foreign accounts",
+                  "description": "Answered with HTTP 422.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "Single",
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 5000000,
+                        "federal_withholding": 500000
+                      }
+                    ],
+                    "filing_details": {
+                      "has_foreign_accounts_or_trusts": true
+                    }
+                  },
+                  "x-expected-status": 422
+                },
+                "knocked-out-multiple-reasons": {
+                  "summary": "multiple reasons",
+                  "description": "Answered with HTTP 422.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "Single",
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 5000000,
+                        "federal_withholding": 500000,
+                        "statutory_employee": true
+                      }
+                    ],
+                    "interest_reports": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "has_1099": true,
+                        "interest_income": 100000,
+                        "foreign_tax_paid": 2000,
+                        "state_tax_withheld": 1000
+                      }
+                    ],
+                    "filing_details": {
+                      "has_foreign_accounts_or_trusts": true
+                    }
+                  },
+                  "x-expected-status": 422
+                },
+                "knocked-out-hoh-no-qualifying-person": {
+                  "summary": "hoh no qualifying person",
+                  "description": "Answered with HTTP 422.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "HeadOfHousehold",
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 6000000,
+                        "federal_withholding": 400000
+                      }
+                    ]
+                  },
+                  "x-expected-status": 422
+                },
+                "family-mfj-two-kids": {
+                  "summary": "family mfj two kids",
+                  "description": "Answered with HTTP 200.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "MarriedFilingJointly",
+                    "filers": {
+                      "primary": {
+                        "date_of_birth": "1986-04-12"
+                      },
+                      "secondary": {
+                        "date_of_birth": "1987-09-30"
+                      }
+                    },
+                    "filing_answers": {
+                      "marital_status": "Married"
+                    },
+                    "dependents": [
+                      {
+                        "relationship": "BiologicalChild",
+                        "date_of_birth": "2016-03-01",
+                        "tin_type": "Ssn"
+                      },
+                      {
+                        "relationship": "BiologicalChild",
+                        "date_of_birth": "2019-05-01",
+                        "tin_type": "Ssn"
+                      }
+                    ],
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 8000000,
+                        "federal_withholding": 300000
+                      }
+                    ]
+                  },
+                  "x-expected-status": 200
+                },
+                "eitc-hoh-one-child": {
+                  "summary": "eitc hoh one child",
+                  "description": "Answered with HTTP 200.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "HeadOfHousehold",
+                    "filers": {
+                      "primary": {
+                        "date_of_birth": "1990-06-15"
+                      }
+                    },
+                    "filing_answers": {
+                      "marital_status": "NeverMarried"
+                    },
+                    "dependents": [
+                      {
+                        "relationship": "BiologicalChild",
+                        "date_of_birth": "2014-09-10",
+                        "tin_type": "Ssn",
+                        "tp_paid_most_of_home_upkeep": true
+                      }
+                    ],
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 4000000,
+                        "federal_withholding": 200000
+                      }
+                    ]
+                  },
+                  "x-expected-status": 200
+                },
+                "refund-below-standard-deduction": {
+                  "summary": "refund below standard deduction",
+                  "description": "Answered with HTTP 200.",
+                  "value": {
+                    "api_version": 1,
+                    "tax_year": 2024,
+                    "filing_status": "Single",
+                    "w2s": [
+                      {
+                        "filer": "PrimaryFiler",
+                        "wages": 1000000,
+                        "federal_withholding": 50000
+                      }
+                    ]
+                  },
+                  "x-expected-status": 200
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Calculated. Every money value is integer cents; `warnings` lists non-fatal notes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculateSuccess"
+                },
+                "examples": {
+                  "balance-due-single-w2-50k": {
+                    "summary": "balance due single w2 50k",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": true,
+                      "reasons": [],
+                      "outcome": "balance_due",
+                      "lines": {
+                        "wages": 5000000,
+                        "employer_income_subtotal": 5000000,
+                        "interest_income": 0,
+                        "total_income": 5000000,
+                        "adjustments_to_income": 0,
+                        "agi": 5000000,
+                        "standard_or_itemized_deductions": 1460000,
+                        "total_deductions": 1460000,
+                        "taxable_income": 3540000,
+                        "tentative_tax_from_taxable_income": 401900,
+                        "total_tentative_tax": 401900,
+                        "non_refundable_credits": 0,
+                        "tax_less_non_refundable_credits": 401900,
+                        "total_tax": 401900,
+                        "total_withholding": 300000,
+                        "total_other_payments_refundable_credits": 0,
+                        "total_payments": 300000,
+                        "overpayment": 0,
+                        "balance_due": 101900
+                      }
+                    }
+                  },
+                  "hoh-w2-60k": {
+                    "summary": "hoh w2 60k",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": true,
+                      "reasons": [],
+                      "outcome": "refund",
+                      "lines": {
+                        "wages": 6000000,
+                        "employer_income_subtotal": 6000000,
+                        "interest_income": 0,
+                        "total_income": 6000000,
+                        "adjustments_to_income": 0,
+                        "agi": 6000000,
+                        "standard_or_itemized_deductions": 2190000,
+                        "total_deductions": 2190000,
+                        "taxable_income": 3810000,
+                        "tentative_tax_from_taxable_income": 424400,
+                        "total_tentative_tax": 424400,
+                        "non_refundable_credits": 200000,
+                        "tax_less_non_refundable_credits": 224400,
+                        "total_tax": 224400,
+                        "total_withholding": 400000,
+                        "total_other_payments_refundable_credits": 0,
+                        "total_payments": 400000,
+                        "overpayment": 175600,
+                        "balance_due": 0
+                      }
+                    }
+                  },
+                  "mfj-two-w2s": {
+                    "summary": "mfj two w2s",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": true,
+                      "reasons": [],
+                      "outcome": "balance_due",
+                      "lines": {
+                        "wages": 7000000,
+                        "employer_income_subtotal": 7000000,
+                        "interest_income": 0,
+                        "total_income": 7000000,
+                        "adjustments_to_income": 0,
+                        "agi": 7000000,
+                        "standard_or_itemized_deductions": 2920000,
+                        "total_deductions": 2920000,
+                        "taxable_income": 4080000,
+                        "tentative_tax_from_taxable_income": 443500,
+                        "total_tentative_tax": 443500,
+                        "non_refundable_credits": 0,
+                        "tax_less_non_refundable_credits": 443500,
+                        "total_tax": 443500,
+                        "total_withholding": 0,
+                        "total_other_payments_refundable_credits": 0,
+                        "total_payments": 0,
+                        "overpayment": 0,
+                        "balance_due": 443500
+                      }
+                    }
+                  },
+                  "mfs-w2-40k": {
+                    "summary": "mfs w2 40k",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": true,
+                      "reasons": [],
+                      "outcome": "refund",
+                      "lines": {
+                        "wages": 4000000,
+                        "employer_income_subtotal": 4000000,
+                        "interest_income": 0,
+                        "total_income": 4000000,
+                        "adjustments_to_income": 0,
+                        "agi": 4000000,
+                        "standard_or_itemized_deductions": 1460000,
+                        "total_deductions": 1460000,
+                        "taxable_income": 2540000,
+                        "tentative_tax_from_taxable_income": 281900,
+                        "total_tentative_tax": 281900,
+                        "non_refundable_credits": 0,
+                        "tax_less_non_refundable_credits": 281900,
+                        "total_tax": 281900,
+                        "total_withholding": 300000,
+                        "total_other_payments_refundable_credits": 0,
+                        "total_payments": 300000,
+                        "overpayment": 18100,
+                        "balance_due": 0
+                      }
+                    }
+                  },
+                  "qss-w2-80k": {
+                    "summary": "qss w2 80k",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": true,
+                      "reasons": [],
+                      "outcome": "refund",
+                      "lines": {
+                        "wages": 8000000,
+                        "employer_income_subtotal": 8000000,
+                        "interest_income": 0,
+                        "total_income": 8000000,
+                        "adjustments_to_income": 0,
+                        "agi": 8000000,
+                        "standard_or_itemized_deductions": 2920000,
+                        "total_deductions": 2920000,
+                        "taxable_income": 5080000,
+                        "tentative_tax_from_taxable_income": 563500,
+                        "total_tentative_tax": 563500,
+                        "non_refundable_credits": 200000,
+                        "tax_less_non_refundable_credits": 363500,
+                        "total_tax": 363500,
+                        "total_withholding": 600000,
+                        "total_other_payments_refundable_credits": 0,
+                        "total_payments": 600000,
+                        "overpayment": 236500,
+                        "balance_due": 0
+                      }
+                    }
+                  },
+                  "refund-single-w2-50k": {
+                    "summary": "refund single w2 50k",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": true,
+                      "reasons": [],
+                      "outcome": "refund",
+                      "lines": {
+                        "wages": 5000000,
+                        "employer_income_subtotal": 5000000,
+                        "interest_income": 0,
+                        "total_income": 5000000,
+                        "adjustments_to_income": 0,
+                        "agi": 5000000,
+                        "standard_or_itemized_deductions": 1460000,
+                        "total_deductions": 1460000,
+                        "taxable_income": 3540000,
+                        "tentative_tax_from_taxable_income": 401900,
+                        "total_tentative_tax": 401900,
+                        "non_refundable_credits": 0,
+                        "tax_less_non_refundable_credits": 401900,
+                        "total_tax": 401900,
+                        "total_withholding": 500000,
+                        "total_other_payments_refundable_credits": 0,
+                        "total_payments": 500000,
+                        "overpayment": 98100,
+                        "balance_due": 0
+                      }
+                    }
+                  },
+                  "single-w2-50k": {
+                    "summary": "single w2 50k",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": true,
+                      "reasons": [],
+                      "outcome": "balance_due",
+                      "lines": {
+                        "wages": 5000000,
+                        "employer_income_subtotal": 5000000,
+                        "interest_income": 0,
+                        "total_income": 5000000,
+                        "adjustments_to_income": 0,
+                        "agi": 5000000,
+                        "standard_or_itemized_deductions": 1460000,
+                        "total_deductions": 1460000,
+                        "taxable_income": 3540000,
+                        "tentative_tax_from_taxable_income": 401900,
+                        "total_tentative_tax": 401900,
+                        "non_refundable_credits": 0,
+                        "tax_less_non_refundable_credits": 401900,
+                        "total_tax": 401900,
+                        "total_withholding": 0,
+                        "total_other_payments_refundable_credits": 0,
+                        "total_payments": 0,
+                        "overpayment": 0,
+                        "balance_due": 401900
+                      }
+                    }
+                  },
+                  "single-w2-and-interest": {
+                    "summary": "single w2 and interest",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": true,
+                      "reasons": [],
+                      "outcome": "balance_due",
+                      "lines": {
+                        "wages": 5000000,
+                        "employer_income_subtotal": 5000000,
+                        "interest_income": 100000,
+                        "total_income": 5100000,
+                        "adjustments_to_income": 0,
+                        "agi": 5100000,
+                        "standard_or_itemized_deductions": 1460000,
+                        "total_deductions": 1460000,
+                        "taxable_income": 3640000,
+                        "tentative_tax_from_taxable_income": 413900,
+                        "total_tentative_tax": 413900,
+                        "non_refundable_credits": 0,
+                        "tax_less_non_refundable_credits": 413900,
+                        "total_tax": 413900,
+                        "total_withholding": 10000,
+                        "total_other_payments_refundable_credits": 0,
+                        "total_payments": 10000,
+                        "overpayment": 0,
+                        "balance_due": 403900
+                      }
+                    }
+                  },
+                  "family-mfj-two-kids": {
+                    "summary": "family mfj two kids",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": true,
+                      "reasons": [],
+                      "outcome": "refund",
+                      "lines": {
+                        "wages": 8000000,
+                        "employer_income_subtotal": 8000000,
+                        "interest_income": 0,
+                        "total_income": 8000000,
+                        "adjustments_to_income": 0,
+                        "agi": 8000000,
+                        "standard_or_itemized_deductions": 2920000,
+                        "total_deductions": 2920000,
+                        "taxable_income": 5080000,
+                        "tentative_tax_from_taxable_income": 563500,
+                        "total_tentative_tax": 563500,
+                        "non_refundable_credits": 400000,
+                        "tax_less_non_refundable_credits": 163500,
+                        "total_tax": 163500,
+                        "total_withholding": 300000,
+                        "total_other_payments_refundable_credits": 0,
+                        "total_payments": 300000,
+                        "overpayment": 136500,
+                        "balance_due": 0
+                      }
+                    }
+                  },
+                  "eitc-hoh-one-child": {
+                    "summary": "eitc hoh one child",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": true,
+                      "reasons": [],
+                      "outcome": "refund",
+                      "lines": {
+                        "wages": 4000000,
+                        "employer_income_subtotal": 4000000,
+                        "interest_income": 0,
+                        "total_income": 4000000,
+                        "adjustments_to_income": 0,
+                        "agi": 4000000,
+                        "standard_or_itemized_deductions": 2190000,
+                        "total_deductions": 2190000,
+                        "taxable_income": 1810000,
+                        "tentative_tax_from_taxable_income": 184400,
+                        "total_tentative_tax": 184400,
+                        "non_refundable_credits": 184400,
+                        "tax_less_non_refundable_credits": 0,
+                        "total_tax": 0,
+                        "total_withholding": 200000,
+                        "total_other_payments_refundable_credits": 160400,
+                        "total_payments": 360400,
+                        "overpayment": 360400,
+                        "balance_due": 0
+                      }
+                    }
+                  },
+                  "refund-below-standard-deduction": {
+                    "summary": "refund below standard deduction",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": true,
+                      "reasons": [],
+                      "outcome": "refund",
+                      "lines": {
+                        "wages": 1000000,
+                        "employer_income_subtotal": 1000000,
+                        "interest_income": 0,
+                        "total_income": 1000000,
+                        "adjustments_to_income": 0,
+                        "agi": 1000000,
+                        "standard_or_itemized_deductions": 1460000,
+                        "total_deductions": 1460000,
+                        "taxable_income": 0,
+                        "tentative_tax_from_taxable_income": 0,
+                        "total_tentative_tax": 0,
+                        "non_refundable_credits": 0,
+                        "tax_less_non_refundable_credits": 0,
+                        "total_tax": 0,
+                        "total_withholding": 50000,
+                        "total_other_payments_refundable_credits": 63200,
+                        "total_payments": 113200,
+                        "overpayment": 113200,
+                        "balance_due": 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body is not valid JSON, breaks the schema, has an unknown field, or fails a cross-field rule. `details` lists each problem by JSON pointer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "error-400-invalid-json": {
+                    "summary": "400 invalid json",
+                    "value": {
+                      "api_version": 1,
+                      "error": {
+                        "code": "invalid_json",
+                        "message": "offset 1: expected \""
+                      }
+                    }
+                  },
+                  "error-400-money-not-integer": {
+                    "summary": "400 money not integer",
+                    "value": {
+                      "api_version": 1,
+                      "error": {
+                        "code": "invalid_request",
+                        "message": "The request body is invalid.",
+                        "details": [
+                          {
+                            "path": "/w2s/0/wages",
+                            "code": "not_integer",
+                            "message": "money must be an integer number of cents"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "error-400-negative-wages": {
+                    "summary": "400 negative wages",
+                    "value": {
+                      "api_version": 1,
+                      "error": {
+                        "code": "invalid_request",
+                        "message": "The request body is invalid.",
+                        "details": [
+                          {
+                            "path": "/w2s/0/wages",
+                            "code": "range",
+                            "message": "must be >= 0"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "error-400-secondary-filer-on-single": {
+                    "summary": "400 secondary filer on single",
+                    "value": {
+                      "api_version": 1,
+                      "error": {
+                        "code": "invalid_request",
+                        "message": "The request body is invalid.",
+                        "details": [
+                          {
+                            "path": "/w2s/0/filer",
+                            "code": "filer_not_allowed",
+                            "message": "SecondaryFiler requires filing_status MarriedFilingJointly"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "error-400-unknown-field": {
+                    "summary": "400 unknown field",
+                    "value": {
+                      "api_version": 1,
+                      "error": {
+                        "code": "unknown_field",
+                        "message": "The request body is invalid.",
+                        "details": [
+                          {
+                            "path": "/w3s",
+                            "code": "unknown_field",
+                            "message": "unknown property"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "error-400-unsupported-tax-year": {
+                    "summary": "400 unsupported tax year",
+                    "value": {
+                      "api_version": 1,
+                      "error": {
+                        "code": "unsupported_tax_year",
+                        "message": "Only tax_year 2024 is supported.",
+                        "details": [
+                          {
+                            "path": "/tax_year",
+                            "code": "enum",
+                            "message": "must be 2024"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such path.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "error-404-not-found": {
+                    "summary": "404 not found",
+                    "value": {
+                      "api_version": 1,
+                      "error": {
+                        "code": "not_found",
+                        "message": "No such endpoint."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Wrong method for the path (`GET /calculate`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "error-405-method-not-allowed": {
+                    "summary": "405 method not allowed",
+                    "value": {
+                      "api_version": 1,
+                      "error": {
+                        "code": "method_not_allowed",
+                        "message": "Use POST for /calculate."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body larger than 256 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "error-413-payload-too-large": {
+                    "summary": "413 payload too large",
+                    "value": {
+                      "api_version": 1,
+                      "error": {
+                        "code": "payload_too_large",
+                        "message": "Request body exceeds 262144 bytes."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type is not `application/json`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "error-415-unsupported-media-type": {
+                    "summary": "415 unsupported media type",
+                    "value": {
+                      "api_version": 1,
+                      "error": {
+                        "code": "unsupported_media_type",
+                        "message": "Content-Type must be application/json."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request is valid but uses something the calculator does not support yet. No tax is computed; `reasons` says why.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculateUnsupported"
+                },
+                "examples": {
+                  "knocked-out-bond-interest": {
+                    "summary": "bond interest",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": false,
+                      "reasons": [
+                        {
+                          "code": "FlowKnockoutHasBonds",
+                          "category": "interest",
+                          "message": "Flow Knockout Has Bonds"
+                        }
+                      ]
+                    }
+                  },
+                  "knocked-out-foreign-accounts": {
+                    "summary": "foreign accounts",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": false,
+                      "reasons": [
+                        {
+                          "code": "HasForeignAccountsOrTrusts",
+                          "category": "income",
+                          "message": "Has Foreign Accounts Or Trusts"
+                        }
+                      ]
+                    }
+                  },
+                  "knocked-out-multiple-reasons": {
+                    "summary": "multiple reasons",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": false,
+                      "reasons": [
+                        {
+                          "code": "FlowKnockoutHasForeignTaxPaid",
+                          "category": "interest",
+                          "message": "Flow Knockout Has Foreign Tax Paid"
+                        },
+                        {
+                          "code": "FlowKnockoutStateTaxWithheld",
+                          "category": "interest",
+                          "message": "Flow Knockout State Tax Withheld"
+                        },
+                        {
+                          "code": "FlowKnockoutStatutoryEmployee",
+                          "category": "w2",
+                          "message": "Flow Knockout Statutory Employee"
+                        },
+                        {
+                          "code": "HasForeignAccountsOrTrusts",
+                          "category": "income",
+                          "message": "Has Foreign Accounts Or Trusts"
+                        }
+                      ]
+                    }
+                  },
+                  "knocked-out-hoh-no-qualifying-person": {
+                    "summary": "hoh no qualifying person",
+                    "value": {
+                      "api_version": 1,
+                      "tax_year": 2024,
+                      "supported": false,
+                      "reasons": [
+                        {
+                          "code": "ExtraFilingStatusNotEligible",
+                          "category": "household",
+                          "message": "Extra Filing Status Not Eligible"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server fault. Not reproducible from the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "error-500-internal": {
+                    "summary": "500 internal",
+                    "value": {
+                      "api_version": 1,
+                      "error": {
+                        "code": "internal_error",
+                        "message": "Internal error."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "tags": [
+          "Service"
+        ],
+        "summary": "Liveness check",
+        "description": "Answers 200 `{\"status\":\"ok\"}` when the server is up.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "examples": {
+                  "health": {
+                    "summary": "health",
+                    "value": {
+                      "status": "ok"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server fault.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "error-500-internal": {
+                    "summary": "500 internal",
+                    "value": {
+                      "api_version": 1,
+                      "error": {
+                        "code": "internal_error",
+                        "message": "Internal error."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "operationId": "version",
+        "tags": [
+          "Service"
+        ],
+        "summary": "Contract and build version",
+        "description": "Schema semver, tax year and the git commit of the calculator build.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionResponse"
+                },
+                "examples": {
+                  "version": {
+                    "summary": "version",
+                    "value": {
+                      "api_version": 1,
+                      "schema_version": "1.2.0",
+                      "tax_year": 2024,
+                      "calculator_version": "0000000"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server fault.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "error-500-internal": {
+                    "summary": "500 internal",
+                    "value": {
+                      "api_version": 1,
+                      "error": {
+                        "code": "internal_error",
+                        "message": "Internal error."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Money": {
+        "description": "Signed integer number of cents (Lean `Money`, Catala `money`). JSON integer literal only: no decimal point, no exponent, no string. |value| <= 10^13 (a hundred billion dollars), far below 2^53, so JavaScript numbers hold it exactly.",
+        "type": "integer",
+        "minimum": -10000000000000,
+        "maximum": 10000000000000,
+        "examples": [
+          0,
+          5000000,
+          -12345
+        ]
+      },
+      "NonNegMoney": {
+        "description": "Money that cannot be negative (a form box that is never negative).",
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 10000000000000
+      },
+      "ApiVersion": {
+        "description": "Major version of this contract. Breaking changes bump it; additive changes (new optional request fields, new response lines, new reason codes) do not.",
+        "const": 1
+      },
+      "FilingStatus": {
+        "description": "Catala `Types.FilingStatus`, constructor names unchanged.",
+        "enum": [
+          "Single",
+          "MarriedFilingJointly",
+          "MarriedFilingSeparately",
+          "HeadOfHousehold",
+          "QualifyingSurvivingSpouse"
+        ]
+      },
+      "FilerRole": {
+        "description": "Catala `Types.FilerRole`. Whose form this is. SecondaryFiler is allowed only when filing_status is MarriedFilingJointly.",
+        "enum": [
+          "PrimaryFiler",
+          "SecondaryFiler"
+        ]
+      },
+      "CombatPayElection": {
+        "description": "Catala `Form_w2s.CombatPayElection`.",
+        "enum": [
+          "NoCombatPay",
+          "UsePrimaryCombatPay",
+          "UseSpouseCombatPay",
+          "UseBothCombatPay",
+          "UsePrimaryNotSpouseCombatPay",
+          "UseSpouseNotPrimaryCombatPay"
+        ]
+      },
+      "FilerFlags": {
+        "description": "Per-filer answers (Catala ApiFiler, catala/api_calculator.catala_en; docs/api-mapping.md). The first three are the 1.0 fields. date_of_birth (1.2.0) replaces age65_or_older when given; absent, the filer is born 1950-06-15 if age65_or_older, else 1985-06-15.",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "is_blind": {
+            "type": "boolean",
+            "default": false
+          },
+          "age65_or_older": {
+            "type": "boolean",
+            "default": false
+          },
+          "can_be_claimed_as_dependent": {
+            "type": "boolean",
+            "default": false
+          },
+          "date_of_birth": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "ISO date YYYY-MM-DD"
+          },
+          "will_be_claimed": {
+            "type": "boolean",
+            "default": false,
+            "description": "Another taxpayer will claim this filer (Direct File /filers/*/willBeClaimed)"
+          },
+          "potential_claimer_must_file": {
+            "type": "boolean",
+            "default": false,
+            "description": "The person who could claim this filer must file a return"
+          },
+          "potential_claimer_did_file": {
+            "type": "boolean",
+            "default": false,
+            "description": "The person who could claim this filer did file"
+          },
+          "is_us_citizen_full_year": {
+            "type": "boolean",
+            "default": true,
+            "description": "A US citizen for the whole year"
+          },
+          "citizen_at_end_of_tax_year": {
+            "type": "boolean",
+            "default": false
+          },
+          "noncitizen_resident_full_year": {
+            "type": "boolean",
+            "default": false
+          },
+          "is_national": {
+            "type": "boolean",
+            "default": false
+          },
+          "is_student": {
+            "type": "boolean",
+            "default": false,
+            "description": "Full-time student (Saver's credit, IRC 25B(c)(2)(B))"
+          },
+          "tin": {
+            "$ref": "#/components/schemas/FilerTin"
+          },
+          "disability": {
+            "$ref": "#/components/schemas/DisabilityAnswers"
+          },
+          "hsa": {
+            "$ref": "#/components/schemas/HsaFilerAnswers"
+          },
+          "cdcc": {
+            "$ref": "#/components/schemas/CdccFilerAnswers"
+          }
+        }
+      },
+      "Filers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "primary": {
+            "$ref": "#/components/schemas/FilerFlags"
+          },
+          "secondary": {
+            "$ref": "#/components/schemas/FilerFlags"
+          }
+        }
+      },
+      "FilingDetails": {
+        "description": "Filing-status answers. Schema 1.0 fields (Catala Form1040 inputs); the calculator derives most of them, see the table in docs/api-mapping.md: treat_as_mfs is ignored (it is filing_status), is_widowed_in_tax_year / mfj_deceased_spouse_reached_age65 / mfs_spouse_provides_no_benefits / treat_filers_as_dependents fill the matching filers and filing_answers facts when those are not given. Omitted keys default to false.",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "treat_as_mfs": {
+            "type": "boolean"
+          },
+          "is_widowed_in_tax_year": {
+            "type": "boolean",
+            "default": false
+          },
+          "mfj_deceased_spouse_reached_age65": {
+            "type": "boolean",
+            "default": false
+          },
+          "mfs_spouse_65_or_older": {
+            "type": "boolean",
+            "default": false
+          },
+          "mfs_spouse_provides_no_benefits": {
+            "type": "boolean",
+            "default": false
+          },
+          "treat_filers_as_dependents": {
+            "type": "boolean",
+            "default": false
+          },
+          "has_foreign_accounts_or_trusts": {
+            "type": "boolean",
+            "default": false
+          },
+          "combat_pay_election": {
+            "$ref": "#/components/schemas/CombatPayElection",
+            "default": "NoCombatPay"
+          },
+          "combat_pay_election_made": {
+            "type": "boolean",
+            "default": false,
+            "description": "1.2.0. The combat pay election question was answered (true when combat_pay_election is not NoCombatPay)"
+          }
+        }
+      },
+      "W2Box12": {
+        "description": "Form W-2 box 12, keyed by code letter. Absent code = $0. Catala FormW2 fields by code: A uncollected_oasdi_tax_on_tips, B uncollected_medicare_tax_on_tips, C taxable_life_insurance_over_50k, D deferrals_401k, E deferrals_403b, F sarsep_deferrals, G deferrals_457b, H deferrals_501c18, J nontaxable_sick_pay, K golden_parachute_excise_tax, L expense_reimbursements, M uncollected_oasdi_tax_on_life_insurance_over_50k, N uncollected_medicare_tax_on_life_insurance_over_50k, P armed_forces_moving_expenses, Q writable_combat_pay, R archer_msa_contributions, S simple_contributions, T adoption_benefits, V nso_income, W employer_hsa_contributions, Y deferrals_409a, Z nqdc_deferrals, AA roth401k_contributions, BB roth403b_contributions, DD health_coverage_cost, EE roth457b_contributions, FF qsehra_benefits, GG income_83i, HH deferrals_83i, II non_taxable_medicaid_waiver_payments.",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "A": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "B": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "C": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "D": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "E": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "F": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "G": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "H": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "J": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "K": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "L": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "M": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "N": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "P": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "Q": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "R": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "S": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "T": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "V": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "W": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "Y": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "Z": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "AA": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "BB": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "DD": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "EE": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "FF": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "GG": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "HH": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "II": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          }
+        }
+      },
+      "FormW2": {
+        "description": "One Form W-2 (Catala Form_w2s.FormW2). Omitted money box = $0, omitted boolean = false.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "filer",
+          "wages"
+        ],
+        "properties": {
+          "filer": {
+            "$ref": "#/components/schemas/FilerRole"
+          },
+          "wages": {
+            "$ref": "#/components/schemas/NonNegMoney",
+            "description": "Box 1 (writable_wages)"
+          },
+          "federal_withholding": {
+            "$ref": "#/components/schemas/NonNegMoney",
+            "description": "Box 2 (writable_federal_withholding)"
+          },
+          "oasdi_wages": {
+            "$ref": "#/components/schemas/NonNegMoney",
+            "description": "Box 3 (writable_oasdi_wages)"
+          },
+          "oasdi_withholding": {
+            "$ref": "#/components/schemas/NonNegMoney",
+            "description": "Box 4 (writable_oasdi_withholding)"
+          },
+          "medicare_wages": {
+            "$ref": "#/components/schemas/NonNegMoney",
+            "description": "Box 5 (writable_medicare_wages)"
+          },
+          "medicare_withholding": {
+            "$ref": "#/components/schemas/NonNegMoney",
+            "description": "Box 6 (writable_medicare_withholding)"
+          },
+          "allocated_tips": {
+            "$ref": "#/components/schemas/NonNegMoney",
+            "description": "Box 8 (writable_allocated_tips)"
+          },
+          "dependent_care_benefits": {
+            "$ref": "#/components/schemas/NonNegMoney",
+            "description": "Box 10 (writable_dependent_care_benefits)"
+          },
+          "non_qualified_plans": {
+            "$ref": "#/components/schemas/NonNegMoney",
+            "description": "Box 11 (writable_non_qualified_plans)"
+          },
+          "box12": {
+            "$ref": "#/components/schemas/W2Box12"
+          },
+          "statutory_employee": {
+            "type": "boolean",
+            "description": "Box 13 (statutory_employee)"
+          },
+          "third_party_sick_pay": {
+            "type": "boolean",
+            "description": "Box 13 (third_party_sick_pay)"
+          },
+          "plan_457b_is_governmental": {
+            "type": "boolean",
+            "description": "Answer asked only when box 12 code G is present"
+          }
+        }
+      },
+      "Form1099Int": {
+        "description": "One interest report (Catala Interest.InterestReport). With has_1099 false only no_1099_amount is read. Catala fields: interest_income = writable_1099_amount (box 1), early_withdrawal_penalty = writable_early_withdrawl_penalty_amount (box 2), government_bond_interest = writable_interest_on_government_bonds (box 3), federal_tax_withheld = writable_tax_withheld (box 4), foreign_tax_paid (box 6), tax_exempt_interest (box 8), private_activity_bond_interest = writable_specified_private_activity_bond_interest (box 9), market_discount (box 10), bond_premium (box 11), bond_premium_treasury = writable_bond_premium_on_treasury_obligations (box 12), bond_premium_tax_exempt = writable_bond_premium_on_tax_exempt_bond (box 13), state_is_different = state_is_different_state (box 15), state_tax_withheld (box 17), facta_filing_required.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "filer",
+          "has_1099"
+        ],
+        "properties": {
+          "filer": {
+            "$ref": "#/components/schemas/FilerRole"
+          },
+          "has_1099": {
+            "type": "boolean"
+          },
+          "no_1099_amount": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "interest_income": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "early_withdrawal_penalty": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "government_bond_interest": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "federal_tax_withheld": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "foreign_tax_paid": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "tax_exempt_interest": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "private_activity_bond_interest": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "market_discount": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "bond_premium": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "bond_premium_treasury": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "bond_premium_tax_exempt": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "state_is_different": {
+            "type": "boolean"
+          },
+          "state_tax_withheld": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "facta_filing_required": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Form1099G": {
+        "description": "One Form 1099-G (Catala Unemployment.Form1099G). unemployment_compensation = amount (box 1); repaid_this_year_for_this_year = writable_amount_paid_back_for_benefits_in_tax_year; repaid_this_year_for_earlier_year = writable_amount_paid_back_for_benefits_before_tax_year; federal_tax_withheld = writable_federal_tax_withheld (box 4); state_is_different = state_is_different_state.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "filer",
+          "unemployment_compensation"
+        ],
+        "properties": {
+          "filer": {
+            "$ref": "#/components/schemas/FilerRole"
+          },
+          "unemployment_compensation": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "repaid_this_year_for_this_year": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "repaid_this_year_for_earlier_year": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "federal_tax_withheld": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "state_is_different": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Form1099Misc": {
+        "description": "One Form 1099-MISC (Catala Form1099_misc.Form1099Misc). other_income = writable_other_income (box 3); federal_withholding = writable_federal_withholding (box 4).",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "filer",
+          "is_alaska_pfd",
+          "other_income"
+        ],
+        "properties": {
+          "filer": {
+            "$ref": "#/components/schemas/FilerRole"
+          },
+          "is_alaska_pfd": {
+            "type": "boolean"
+          },
+          "other_income": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "federal_withholding": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          }
+        }
+      },
+      "Form1099RCodeChar": {
+        "description": "One character of box 7 (Catala CodeChar; OtherCode stands for every other character).",
+        "enum": [
+          "2",
+          "4",
+          "7",
+          "B",
+          "G",
+          "H",
+          "Other"
+        ]
+      },
+      "Form1099R": {
+        "description": "One Form 1099-R (Catala Form1099_rs.Form1099R). Money and booleans map 1:1 to the Catala fields minus the writable_/writeable_ prefix (gross_distribution, taxable_amount, capital_gain, federal_withholding, net_appreciation, other_dollar, amount_allocable_to_irr, state_tax_withheld, is_indirect_rollover, is_distribution_from_military_retirement_plan, qualified_disaster_distribution, public_safety_officer, public_safety_officer_premiums); the remaining names are the Catala names.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "filer",
+          "distribution_code",
+          "gross_distribution",
+          "taxable_amount"
+        ],
+        "properties": {
+          "filer": {
+            "$ref": "#/components/schemas/FilerRole"
+          },
+          "distribution_code": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "$ref": "#/components/schemas/Form1099RCodeChar"
+            }
+          },
+          "gross_distribution": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "taxable_amount": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "taxable_amount_blank": {
+            "type": "boolean"
+          },
+          "taxable_amount_not_determined": {
+            "type": "boolean"
+          },
+          "total_distribution": {
+            "type": "boolean"
+          },
+          "capital_gain": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "federal_withholding": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "net_appreciation": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "ira_sep_simple": {
+            "type": "boolean"
+          },
+          "other_dollar": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "other_percentage_nonzero": {
+            "type": "boolean"
+          },
+          "percentage_total_distribution_nonzero": {
+            "type": "boolean"
+          },
+          "amount_allocable_to_irr": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "facta_filing_requirement": {
+            "type": "boolean"
+          },
+          "state_tax_withheld": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "payer_state_is_different": {
+            "type": "boolean"
+          },
+          "has_death_benefit_payment_date": {
+            "type": "boolean"
+          },
+          "is_indirect_rollover": {
+            "type": "boolean"
+          },
+          "is_distribution_from_military_retirement_plan": {
+            "type": "boolean"
+          },
+          "qualified_disaster_distribution": {
+            "type": "boolean"
+          },
+          "public_safety_officer": {
+            "type": "boolean"
+          },
+          "public_safety_officer_premiums": {
+            "type": "boolean"
+          },
+          "recipient_date_of_birth": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "ISO date YYYY-MM-DD"
+          }
+        }
+      },
+      "SocialSecurity": {
+        "description": "Social Security benefits (Catala Social_security). net_benefits has one entry per Form SSA-1099 / RRB-1099: box 5 (net benefits), may be negative.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "net_benefits"
+        ],
+        "properties": {
+          "net_benefits": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "$ref": "#/components/schemas/Money"
+            }
+          },
+          "lived_apart_all_year": {
+            "type": "boolean",
+            "default": false
+          },
+          "federal_tax_withheld": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "$ref": "#/components/schemas/NonNegMoney"
+            },
+            "description": "1.2.0. Box 6 of each form, same order as net_benefits; a shorter list is padded with $0, a longer one is invalid."
+          }
+        }
+      },
+      "EducatorExpenses": {
+        "description": "Catala Educator_adjustment inputs (was_k12_educators, primary/secondary_educator_expenses_writable).",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "was_k12_educators"
+        ],
+        "properties": {
+          "was_k12_educators": {
+            "enum": [
+              "TpDid",
+              "SpouseDid",
+              "BothDid",
+              "Neither"
+            ]
+          },
+          "primary_expenses": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "secondary_expenses": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          }
+        }
+      },
+      "StudentLoanInterest": {
+        "description": "Catala Student_loan_adjustment inputs (had_student_loan_interest_payments, student_loans_qualify, student_loan_interest_amount).",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "had_payments"
+        ],
+        "properties": {
+          "had_payments": {
+            "type": "boolean"
+          },
+          "loans_qualify": {
+            "type": "boolean"
+          },
+          "interest_amount": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          }
+        }
+      },
+      "Adjustments": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "educator_expenses": {
+            "$ref": "#/components/schemas/EducatorExpenses"
+          },
+          "student_loan_interest": {
+            "$ref": "#/components/schemas/StudentLoanInterest"
+          },
+          "hsa": {
+            "$ref": "#/components/schemas/HsaInput"
+          }
+        }
+      },
+      "EstimatedPayments": {
+        "description": "Catala Estimated_payments inputs. amount = estimated_tax_payment_writable.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "paid_estimated_taxes_or_from_last_year"
+        ],
+        "properties": {
+          "paid_estimated_taxes_or_from_last_year": {
+            "type": "boolean"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "paid_under_different_name": {
+            "type": "boolean"
+          },
+          "paid_with_former_spouse": {
+            "enum": [
+              "SpouseDid",
+              "BothDid",
+              "TpDid",
+              "Neither"
+            ],
+            "default": "Neither"
+          }
+        }
+      },
+      "CalculateRequest": {
+        "description": "POST /calculate body. Inputs are the writable facts the Catala ApiCalculator scope reads (catala/api_calculator.catala_en; field-by-field mapping in docs/api-mapping.md). Schema 1.2.0 added filing_answers, dependents, credits, cdcc, premium_tax_credit, screening, adjustments.hsa and richer filers. Unknown properties are rejected with 400 unknown_field.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "api_version",
+          "tax_year",
+          "filing_status"
+        ],
+        "properties": {
+          "api_version": {
+            "$ref": "#/components/schemas/ApiVersion"
+          },
+          "tax_year": {
+            "const": 2024
+          },
+          "filing_status": {
+            "$ref": "#/components/schemas/FilingStatus"
+          },
+          "filers": {
+            "$ref": "#/components/schemas/Filers"
+          },
+          "filing_details": {
+            "$ref": "#/components/schemas/FilingDetails"
+          },
+          "w2s": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/FormW2"
+            }
+          },
+          "interest_reports": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/Form1099Int"
+            }
+          },
+          "form_1099g": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/Form1099G"
+            }
+          },
+          "form_1099misc": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/Form1099Misc"
+            }
+          },
+          "form_1099r": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/Form1099R"
+            }
+          },
+          "social_security": {
+            "$ref": "#/components/schemas/SocialSecurity"
+          },
+          "adjustments": {
+            "$ref": "#/components/schemas/Adjustments"
+          },
+          "estimated_payments": {
+            "$ref": "#/components/schemas/EstimatedPayments"
+          },
+          "filing_answers": {
+            "$ref": "#/components/schemas/FilingAnswers"
+          },
+          "dependents": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/Dependent"
+            }
+          },
+          "credits": {
+            "$ref": "#/components/schemas/CreditAnswers"
+          },
+          "cdcc": {
+            "$ref": "#/components/schemas/CdccInput"
+          },
+          "premium_tax_credit": {
+            "$ref": "#/components/schemas/PtcInput"
+          },
+          "screening": {
+            "$ref": "#/components/schemas/ScreeningAnswers"
+          }
+        }
+      },
+      "FilingAnswers": {
+        "description": "1.2.0. The marital and residence answers Direct File asks (filers.xml), Catala ApiFilingAnswers. Absent marital_status / year_of_spouse_death are derived from filing_status: Single and HeadOfHousehold are NeverMarried, MarriedFilingJointly and MarriedFilingSeparately Married, QualifyingSurvivingSpouse Widowed, died in 2023 (is_widowed_in_tax_year true: Widowed, died in 2024).",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "marital_status": {
+            "enum": [
+              "NeverMarried",
+              "Married",
+              "Divorced",
+              "Widowed"
+            ]
+          },
+          "year_of_spouse_death": {
+            "enum": [
+              "DiedInTaxYear",
+              "DiedTaxYearMinusOne",
+              "DiedTaxYearMinusTwo",
+              "DiedBeforeTaxYearMinusTwo"
+            ]
+          },
+          "secondary_filer_date_of_death": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "ISO date YYYY-MM-DD",
+            "default": "2024-12-31"
+          },
+          "primary_filer_potential_claimer_filed_only_for_refund": {
+            "type": "boolean",
+            "default": false
+          },
+          "mfj_required_to_file": {
+            "type": "boolean",
+            "default": false
+          },
+          "mfj_dependents_filing_for_credits": {
+            "type": "boolean",
+            "default": false
+          },
+          "lived_together_all_year_with_spouse": {
+            "type": "boolean",
+            "default": true
+          },
+          "spouse_lived_together_months": {
+            "enum": [
+              "LivedApartAllYear",
+              "LivedTogetherSixMonthsOrLess",
+              "LivedTogetherMoreThanSixMonths"
+            ],
+            "default": "LivedApartAllYear"
+          },
+          "lived_apart_last_six_months": {
+            "type": "boolean",
+            "default": false
+          },
+          "separation_agreement": {
+            "type": "boolean",
+            "default": false
+          },
+          "can_file_jointly_year_of_spouse_death": {
+            "type": "boolean",
+            "default": false,
+            "description": "True is implied for QualifyingSurvivingSpouse"
+          },
+          "in_registered_domestic_partnership": {
+            "type": "boolean",
+            "default": false
+          },
+          "residence_state": {
+            "enum": [
+              "MoreThanOne",
+              "AK",
+              "AZ",
+              "CA",
+              "CT",
+              "FL",
+              "ID",
+              "IL",
+              "KS",
+              "ME",
+              "MD",
+              "MA",
+              "NV",
+              "NH",
+              "NJ",
+              "NM",
+              "NY",
+              "NC",
+              "OR",
+              "PA",
+              "SD",
+              "TN",
+              "TX",
+              "WA",
+              "WI",
+              "WY",
+              "NoneOfThese"
+            ],
+            "default": "FL"
+          },
+          "spouse_itemizes": {
+            "type": "boolean",
+            "default": false
+          },
+          "mfs_living_spouse_filing_return": {
+            "type": "boolean",
+            "default": false
+          },
+          "mfs_deceased_spouse_filing_return": {
+            "type": "boolean",
+            "default": false
+          },
+          "mfs_spouse_has_gross_income": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "Dependent": {
+        "description": "1.2.0. One household member with the Direct File per-person facts (/familyAndHousehold/*), Catala ApiDependent. Required: relationship, date_of_birth, tin_type. Everything else defaults to the value shown; send the real answer whenever the person is claimed for a credit. The household, not the form, is the unit: a child who is also a qualifying relative is one entry.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "relationship",
+          "date_of_birth",
+          "tin_type"
+        ],
+        "properties": {
+          "relationship": {
+            "enum": [
+              "BiologicalChild",
+              "AdoptedChild",
+              "StepChild",
+              "FosterChild",
+              "GrandChildOrOtherDescendantOfChild",
+              "ChildInLaw",
+              "Sibling",
+              "ChildOfSibling",
+              "HalfSibling",
+              "ChildOfHalfSibling",
+              "StepSibling",
+              "ChildOfStepSibling",
+              "OtherDescendantOfSibling",
+              "OtherDescendantOfHalfSibling",
+              "OtherDescendantOfStepSibling",
+              "SiblingsSpouse",
+              "SiblingInLaw",
+              "Parent",
+              "FosterParent",
+              "SiblingOfParent",
+              "GrandParent",
+              "OtherAncestorOfParent",
+              "StepParent",
+              "ParentInLaw",
+              "NoneOfTheAbove"
+            ]
+          },
+          "date_of_birth": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "ISO date YYYY-MM-DD"
+          },
+          "full_time_student": {
+            "type": "boolean",
+            "default": false
+          },
+          "permanent_total_disability": {
+            "type": "boolean",
+            "default": false
+          },
+          "residency_duration": {
+            "enum": [
+              "AllYear",
+              "SixToElevenMonths",
+              "LessThanSixMonths"
+            ],
+            "default": "AllYear"
+          },
+          "own_support": {
+            "type": "boolean",
+            "default": false,
+            "description": "The person provided over half of their own support"
+          },
+          "married": {
+            "type": "boolean",
+            "default": false
+          },
+          "joint_return": {
+            "type": "boolean",
+            "default": false,
+            "description": "Files a joint return (other than to claim a refund)"
+          },
+          "required_to_file": {
+            "type": "boolean",
+            "default": false
+          },
+          "filing_only_for_refund": {
+            "type": "boolean",
+            "default": false
+          },
+          "could_be_qualifying_child_of_another": {
+            "type": "boolean",
+            "default": false
+          },
+          "potential_claimer_must_file": {
+            "type": "boolean",
+            "default": false
+          },
+          "potential_claimer_did_file": {
+            "type": "boolean",
+            "default": false
+          },
+          "potential_claimer_filed_only_for_refund": {
+            "type": "boolean",
+            "default": false
+          },
+          "gross_income": {
+            "$ref": "#/components/schemas/NonNegMoney",
+            "default": 0
+          },
+          "qr_support_test": {
+            "type": "boolean",
+            "default": false,
+            "description": "Qualifying relative support test (the filer provided over half the support)"
+          },
+          "tin_type": {
+            "enum": [
+              "Ssn",
+              "Itin",
+              "Atin",
+              "NoTin"
+            ],
+            "default": "Ssn"
+          },
+          "is_us_citizen_full_year": {
+            "type": "boolean",
+            "default": true
+          },
+          "us_resident": {
+            "type": "boolean",
+            "default": false
+          },
+          "us_national": {
+            "type": "boolean",
+            "default": false
+          },
+          "canada_mexico_resident": {
+            "type": "boolean",
+            "default": false
+          },
+          "tp_claims": {
+            "type": "boolean",
+            "default": true,
+            "description": "The filer chooses to claim this person"
+          },
+          "deceased": {
+            "type": "boolean",
+            "default": false,
+            "description": "The person died during the tax year (with date_of_birth and tin_type NoTin: the born-and-died knockout)"
+          },
+          "custody": {
+            "$ref": "#/components/schemas/BenefitSplitAnswers"
+          },
+          "tp_paid_most_of_home_upkeep": {
+            "type": "boolean",
+            "default": false,
+            "description": "Head of household: the filer paid over half the cost of keeping up the home"
+          },
+          "tp_paid_most_of_parent_home_upkeep": {
+            "type": "boolean",
+            "default": false
+          },
+          "ssn_employment_validity": {
+            "enum": [
+              "Neither",
+              "NotValid",
+              "ValidOnlyWithDhsAuthorizationInEffect",
+              "ValidOnlyWithDhsAuthorizationExpired"
+            ],
+            "default": "Neither"
+          },
+          "ssn_only_for_federally_funded_benefit": {
+            "type": "boolean",
+            "default": false
+          },
+          "months_lived_with_tp_in_us": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 12,
+            "default": 12,
+            "description": "Months the person lived with the filer in the US (6 to 12); 0 when not asked"
+          },
+          "cdcc": {
+            "$ref": "#/components/schemas/CdccMemberAnswers"
+          }
+        }
+      },
+      "FilerTin": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "tin_is_ssn": {
+            "type": "boolean",
+            "default": true
+          },
+          "ssn_employment_validity": {
+            "enum": [
+              "Neither",
+              "NotValid",
+              "ValidOnlyWithDhsAuthorization"
+            ],
+            "default": "Neither"
+          },
+          "has_ssn_only_for_benefits": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DisabilityAnswers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "is_retired_on_perm_or_total_disability": {
+            "type": "boolean"
+          },
+          "employer_has_mandatory_retirement_age": {
+            "type": "boolean"
+          },
+          "has_met_employer_mandatory_retirement_age": {
+            "type": "boolean"
+          },
+          "are_payments_taxable_disability_income": {
+            "type": "boolean"
+          },
+          "writable_total_taxable_disability_amount": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "has_w2_wages": {
+            "type": "boolean",
+            "description": "Ignored: recomputed from the W-2s (Schedule R line 13a)."
+          }
+        }
+      },
+      "HsaFilerAnswers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "writable_primary_filer_has_made_contributions_to_hsa": {
+            "type": "boolean"
+          },
+          "writable_secondary_filer_has_made_contributions_to_hsa": {
+            "type": "boolean"
+          },
+          "enrolled_in_medicare": {
+            "enum": [
+              "MedicareAllYear",
+              "MedicarePartOfYear",
+              "MedicareNoneOfYear"
+            ],
+            "default": "MedicareNoneOfYear"
+          },
+          "hsa_hdhp_coverage_status": {
+            "enum": [
+              "HdhpAllYear",
+              "HdhpPartOfYear",
+              "HdhpNoneOfYear"
+            ],
+            "default": "HdhpAllYear"
+          },
+          "type_of_hdhp": {
+            "enum": [
+              "SelfOnly",
+              "Family",
+              "BothSelfAndFamily"
+            ],
+            "default": "SelfOnly"
+          },
+          "had_other_coverage_ineligible_for_hsa": {
+            "enum": [
+              "OtherCoverageWholeYear",
+              "OtherCoveragePartOfYear",
+              "OtherCoverageNoneOfYear"
+            ],
+            "default": "OtherCoverageNoneOfYear"
+          },
+          "writable_mfs_line6_check": {
+            "type": "boolean"
+          },
+          "writable_change_in_marital_status_during_tax_year": {
+            "enum": [
+              "WasMarriedOrDivorcedThisYear",
+              "WasNotMarriedNorDivorcedThisYear"
+            ],
+            "default": "WasNotMarriedNorDivorcedThisYear"
+          },
+          "writable_marital_change_affect_contribution_limit_bool": {
+            "type": "boolean"
+          },
+          "has_made_qualified_hsa_funding_distribution": {
+            "type": "boolean"
+          },
+          "writable_hsa_nonemployer_contributions_tax_year": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "writable_hsa_nonemployer_contributions_tax_year_plus_one": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          }
+        }
+      },
+      "CdccFilerAnswers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "elect_combat_pay_for_credit": {
+            "type": "boolean"
+          },
+          "elect_combat_pay_for_benefits": {
+            "type": "boolean"
+          },
+          "dependent_care_plan_maximum": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "is_disabled": {
+            "type": "boolean"
+          },
+          "deemed_income_month_earnings": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/NonNegMoney"
+            }
+          },
+          "has_dependent_care_expenses": {
+            "type": "boolean"
+          },
+          "expenses_paid_to_qualifying_provider": {
+            "type": "boolean"
+          },
+          "writable_qualifying_expense_amount": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          }
+        }
+      },
+      "CdccMemberAnswers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "unable_to_care_for_self": {
+            "type": "boolean"
+          },
+          "has_dependent_care_expenses": {
+            "type": "boolean"
+          },
+          "expenses_paid_to_qualifying_provider": {
+            "type": "boolean"
+          },
+          "writable_qualifying_expense_amount": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          }
+        }
+      },
+      "HsaInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "some_filer_had_non_w2_hsa_activity": {
+            "type": "boolean"
+          },
+          "writable_primary_filer_had_non_w2_hsa_activity": {
+            "type": "boolean"
+          },
+          "writable_secondary_filer_had_non_w2_hsa_activity": {
+            "type": "boolean"
+          },
+          "has_hsa_medical_savings_account_type": {
+            "type": "boolean"
+          },
+          "writable_has_hsa_excess_contributions_previous_year": {
+            "type": "boolean"
+          },
+          "writable_has_hsa_withdrawn_excess_contributions_yes_no": {
+            "type": "boolean"
+          },
+          "some_filers_made_testing_period_contribution": {
+            "type": "boolean"
+          },
+          "some_filers_have_testing_period_additional_income": {
+            "type": "boolean"
+          },
+          "hsa_distributions": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/HsaDistribution"
+            }
+          }
+        }
+      },
+      "HsaDistribution": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "filer",
+          "writable_distributions_rollover_bool",
+          "writable_distributions_rollover_amount",
+          "writable_gross_distribution",
+          "has_withdrawn_excess_contributions",
+          "writable_withdrawn_excess_contributions_amount",
+          "writable_earnings_on_excess_contributions",
+          "hsa_distribution_code",
+          "writable_fmv_on_date_of_death",
+          "writable_qualified_med_expenses"
+        ],
+        "properties": {
+          "filer": {
+            "$ref": "#/components/schemas/FilerRole"
+          },
+          "writable_distributions_rollover_bool": {
+            "type": "boolean"
+          },
+          "writable_distributions_rollover_amount": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "writable_gross_distribution": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "has_withdrawn_excess_contributions": {
+            "type": "boolean"
+          },
+          "writable_withdrawn_excess_contributions_amount": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "writable_earnings_on_excess_contributions": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "hsa_distribution_code": {
+            "enum": [
+              "NormalDistribution",
+              "ExcessContributions",
+              "Disability",
+              "DeathOtherThanCode6",
+              "ProhibitedTransaction",
+              "DeathDistributionAfterYear"
+            ],
+            "default": "NormalDistribution"
+          },
+          "writable_fmv_on_date_of_death": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "writable_qualified_med_expenses": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          }
+        }
+      },
+      "CreditAnswers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "eitc_qc_of_another": {
+            "type": "boolean"
+          },
+          "eitc_qc_of_another_required_to_file": {
+            "type": "boolean"
+          },
+          "eitc_qc_of_another_is_filing": {
+            "type": "boolean"
+          },
+          "eitc_qc_of_another_is_filing_refund_only": {
+            "type": "boolean"
+          },
+          "eitc_had_improper_claims": {
+            "type": "boolean"
+          },
+          "eitc_improper_claims_due_to_qc": {
+            "type": "boolean"
+          },
+          "eitc_improper_claim_taken_since_disallowal": {
+            "type": "boolean"
+          },
+          "eitc_received_improper_claims_notice": {
+            "enum": [
+              "TwoYears",
+              "TenYears",
+              "ZeroYears",
+              "NotAnswered"
+            ],
+            "default": "NotAnswered"
+          },
+          "eitc_improper_claims_notice_expired": {
+            "type": "boolean"
+          },
+          "received_improper_claims": {
+            "type": "boolean"
+          },
+          "received_improper_claims_notice": {
+            "enum": [
+              "TwoYears",
+              "TenYears",
+              "ZeroYears",
+              "NotAnswered"
+            ],
+            "default": "NotAnswered"
+          },
+          "improper_claims_notice_expired": {
+            "type": "boolean"
+          },
+          "has_filed_ctc_odc_since_notice_expired": {
+            "type": "boolean"
+          },
+          "has_distributions_in_last_three_years": {
+            "type": "boolean"
+          },
+          "has_current_year_distributions": {
+            "type": "boolean"
+          },
+          "has_self_reported_contributions": {
+            "type": "boolean"
+          },
+          "has_self_reported_non_taxable_payments": {
+            "type": "boolean"
+          },
+          "self_reported_non_taxable_payment_amount": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          }
+        }
+      },
+      "CdccInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "has_mfs_spouse_earned_income": {
+            "type": "boolean"
+          },
+          "writable_mfs_spouse_earned_income": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "writable_total_qualified_dependent_care_expenses": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "writable_carryover_amount": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "writable_forfeited_amount": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "has_credit_for_prior_year_expenses": {
+            "type": "boolean"
+          },
+          "claimed_credit_for_prior_year_expenses": {
+            "type": "boolean"
+          },
+          "claimed_max_credit_for_prior_tax_year": {
+            "type": "boolean"
+          },
+          "has_household_employee": {
+            "type": "boolean"
+          },
+          "benefits_from_sole_proprietorship_or_partnership": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PtcInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "form1095_as": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/Form1095A"
+            }
+          },
+          "writable_has_ptc_qualifying_plan": {
+            "type": "boolean"
+          },
+          "writable_has_advanced_ptc": {
+            "type": "boolean"
+          },
+          "dependent_tp_self_enrolled": {
+            "type": "boolean"
+          },
+          "dependent_tp_enrolled_someone_else": {
+            "type": "boolean"
+          },
+          "writable_dependent_tp_other_members_are_part_of_different_tax_family": {
+            "type": "boolean"
+          },
+          "writable_has_mfs_exception": {
+            "type": "boolean"
+          },
+          "writable_claiming_mfs_exception_for_fourth_straight_year": {
+            "type": "boolean"
+          },
+          "writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status": {
+            "type": "boolean"
+          },
+          "writable_has_employer_sponsored_plan": {
+            "type": "boolean"
+          },
+          "writable_dependents_required_to_file": {
+            "type": "boolean"
+          },
+          "writable_self_reported_has_multiple1095_as": {
+            "type": "boolean"
+          },
+          "writable_is_additional_person_in_enrollment_family": {
+            "type": "boolean"
+          },
+          "writable_is_additional_person_partof_different_tax_family": {
+            "type": "boolean"
+          },
+          "writable_is_enrolled_with_other_family": {
+            "type": "boolean"
+          },
+          "writable_has_immigration_status_not_eligible_for_marketplace": {
+            "type": "boolean"
+          },
+          "writable_wants_to_use_alt_calculations": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Form1095A": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "writable_policy_start_date",
+          "writable_policy_end_date",
+          "writable_special_policy_modification_in_starting_month",
+          "writable_has_policy_date_exception",
+          "has_coverage_months",
+          "coverage_months",
+          "writable_premiums_or_slcsp_change",
+          "has_change_in_circumstance",
+          "writable_ptc_annual_premium",
+          "writable_slcsp_annual_premium",
+          "writable_aptc_annual_amount",
+          "writable_ptc_monthly_premium",
+          "writable_ptc_monthly_slcsp_premium",
+          "writable_ptc_monthly_aptc_premium"
+        ],
+        "properties": {
+          "writable_policy_start_date": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "ISO date YYYY-MM-DD"
+          },
+          "writable_policy_end_date": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "ISO date YYYY-MM-DD"
+          },
+          "writable_special_policy_modification_in_starting_month": {
+            "type": "boolean"
+          },
+          "writable_has_policy_date_exception": {
+            "type": "boolean"
+          },
+          "has_coverage_months": {
+            "type": "boolean"
+          },
+          "coverage_months": {
+            "type": "array",
+            "maxItems": 12,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          },
+          "writable_premiums_or_slcsp_change": {
+            "type": "boolean"
+          },
+          "has_change_in_circumstance": {
+            "type": "boolean"
+          },
+          "writable_ptc_annual_premium": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "writable_slcsp_annual_premium": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "writable_aptc_annual_amount": {
+            "$ref": "#/components/schemas/NonNegMoney"
+          },
+          "writable_ptc_monthly_premium": {
+            "type": "array",
+            "maxItems": 12,
+            "items": {
+              "$ref": "#/components/schemas/NonNegMoney"
+            }
+          },
+          "writable_ptc_monthly_slcsp_premium": {
+            "type": "array",
+            "maxItems": 12,
+            "items": {
+              "$ref": "#/components/schemas/NonNegMoney"
+            }
+          },
+          "writable_ptc_monthly_aptc_premium": {
+            "type": "array",
+            "maxItems": 12,
+            "items": {
+              "$ref": "#/components/schemas/NonNegMoney"
+            }
+          }
+        }
+      },
+      "ScreeningAnswers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "income_sources_supported": {
+            "type": "boolean",
+            "default": true
+          },
+          "received_digital_assets": {
+            "type": "boolean"
+          },
+          "disposed_digital_assets": {
+            "type": "boolean"
+          },
+          "has_foreign_accounts": {
+            "type": "boolean"
+          },
+          "is_foreign_trusts_grantor": {
+            "type": "boolean"
+          },
+          "has_foreign_trusts_transactions": {
+            "type": "boolean"
+          },
+          "made_ira_contributions": {
+            "type": "boolean"
+          },
+          "w2_box15_income_from_different_state": {
+            "type": "boolean"
+          },
+          "w2_has_box14_nyrrta_knockout_code": {
+            "type": "boolean"
+          },
+          "w2_has_rrta_codes_in_box14": {
+            "type": "boolean"
+          },
+          "lived_in_ny": {
+            "type": "boolean"
+          },
+          "w2_paid_yonkers_taxes": {
+            "type": "boolean"
+          },
+          "part_year_yonkers_resident": {
+            "type": "boolean"
+          },
+          "primary_filer_forms_another_state": {
+            "type": "boolean"
+          },
+          "received_alaska_pfd": {
+            "type": "boolean"
+          },
+          "spouse_received_alaska_pfd": {
+            "type": "boolean"
+          },
+          "spouse_lives_in_other_or_multiple_states": {
+            "type": "boolean"
+          },
+          "spouse_forms_another_state": {
+            "type": "boolean"
+          },
+          "is_after_tax_day_and_not_resubmitting": {
+            "type": "boolean"
+          },
+          "is_after_resubmission_deadline": {
+            "type": "boolean"
+          }
+        }
+      },
+      "BenefitSplitAnswers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "has_other_biological_or_adoptive_parent": {
+            "type": "boolean"
+          },
+          "non_parental_some_parent_not_claiming": {
+            "type": "boolean"
+          },
+          "which_parent_not_claiming": {
+            "enum": [
+              "IDid",
+              "TheyDid",
+              "NobodyDid"
+            ],
+            "default": "NobodyDid"
+          },
+          "in_parents_custody": {
+            "type": "boolean"
+          },
+          "lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months": {
+            "type": "boolean"
+          },
+          "biological_or_adoptive_parents_living": {
+            "type": "boolean"
+          },
+          "nights_with_tp_vs_other_parent": {
+            "enum": [
+              "More",
+              "Less",
+              "Equal"
+            ],
+            "default": "Less"
+          },
+          "tp_agi_higher_than_other_parent": {
+            "type": "boolean"
+          },
+          "parents_meet_reqs_rule_for_children_of_divorced_parents": {
+            "type": "boolean"
+          },
+          "special_rule_child_used_by_custodial_parent_as_qp": {
+            "type": "boolean"
+          },
+          "special_rule_agi_test": {
+            "type": "boolean"
+          },
+          "parental_situation": {
+            "enum": [
+              "DivorcedOrSeparated",
+              "LivedApartLastSixMonths",
+              "Other"
+            ],
+            "default": "Other"
+          },
+          "parental_support": {
+            "type": "boolean"
+          },
+          "multiple_support_agreement": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Lines": {
+        "description": "Form 1040 line items, one key per scalar output of the Catala Form1040 scope (catala/form_1040.catala_en, 'The scalar output list'). All Money, whole dollars as cents, never negative. Key to form line: api/line-catalog.json. New keys may appear in later minor versions; clients must ignore keys they do not know.",
+        "type": "object",
+        "required": [
+          "wages",
+          "employer_income_subtotal",
+          "interest_income",
+          "total_income",
+          "adjustments_to_income",
+          "agi",
+          "standard_or_itemized_deductions",
+          "total_deductions",
+          "taxable_income",
+          "tentative_tax_from_taxable_income",
+          "total_tentative_tax",
+          "non_refundable_credits",
+          "tax_less_non_refundable_credits",
+          "total_tax",
+          "total_withholding",
+          "total_other_payments_refundable_credits",
+          "total_payments",
+          "overpayment",
+          "balance_due"
+        ],
+        "additionalProperties": {
+          "$ref": "#/components/schemas/Money"
+        },
+        "properties": {
+          "wages": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "employer_income_subtotal": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "interest_income": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "total_income": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "adjustments_to_income": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "agi": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "standard_or_itemized_deductions": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "total_deductions": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "taxable_income": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "tentative_tax_from_taxable_income": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "total_tentative_tax": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "non_refundable_credits": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "tax_less_non_refundable_credits": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "total_tax": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "total_withholding": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "total_other_payments_refundable_credits": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "total_payments": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "overpayment": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "balance_due": {
+            "$ref": "#/components/schemas/Money"
+          }
+        }
+      },
+      "Outcome": {
+        "description": "Derived from lines: refund when overpayment > 0, balance_due when balance_due > 0, even otherwise. At most one of overpayment and balance_due is non-zero.",
+        "enum": [
+          "refund",
+          "balance_due",
+          "even"
+        ]
+      },
+      "CalculateSuccess": {
+        "description": "200 response: the return is supported.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "api_version",
+          "tax_year",
+          "supported",
+          "reasons",
+          "outcome",
+          "lines"
+        ],
+        "properties": {
+          "api_version": {
+            "$ref": "#/components/schemas/ApiVersion"
+          },
+          "tax_year": {
+            "const": 2024
+          },
+          "supported": {
+            "const": true
+          },
+          "reasons": {
+            "type": "array",
+            "maxItems": 0
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/Outcome"
+          },
+          "lines": {
+            "$ref": "#/components/schemas/Lines"
+          },
+          "warnings": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/Warning"
+            },
+            "description": "Optional (schema 1.1.0). Present only when something in the request was accepted but did not affect the result. Absent means every part of the request was used."
+          }
+        }
+      },
+      "Warning": {
+        "description": "A non-fatal note on a 200 response. code is stable: section_not_used = a request section is valid but its Lean module is not wired into the calculator yet, so its values are ignored (none since schema 1.2.0: every section is read); field_superseded (1.2.0) = a schema 1.0 filing_details field that the calculator now derives itself (docs/api-mapping.md), so the value is not used. New codes are additive.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "path",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "path": {
+            "type": "string",
+            "description": "RFC 6901 pointer to the part of the request concerned."
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ReasonCategory": {
+        "description": "Grouping for frontend copy (#80), derived from the Direct File module that owns the knockout. The authoritative list is api/knockout-reasons.json.",
+        "enum": [
+          "credits",
+          "estimated_payments",
+          "filers",
+          "health_coverage",
+          "household",
+          "hsa",
+          "income",
+          "interest",
+          "process",
+          "retirement",
+          "social_security",
+          "state",
+          "unemployment",
+          "w2"
+        ]
+      },
+      "UnsupportedReason": {
+        "description": "One knockout that fired. code is the Catala KnockoutReason constructor name (catala/knockouts_income.catala_en); the list of codes is api/knockout-reasons.json, generated from that enum. New codes are additive: clients must show a generic message for a code they do not know.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "category",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9]*$"
+          },
+          "category": {
+            "$ref": "#/components/schemas/ReasonCategory"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "description": "English fallback text; the frontend owns the final copy."
+          }
+        }
+      },
+      "CalculateUnsupported": {
+        "description": "422 response: at least one knockout fired, so no return is computed (no lines).",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "api_version",
+          "tax_year",
+          "supported",
+          "reasons"
+        ],
+        "properties": {
+          "api_version": {
+            "$ref": "#/components/schemas/ApiVersion"
+          },
+          "tax_year": {
+            "const": 2024
+          },
+          "supported": {
+            "const": false
+          },
+          "reasons": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/UnsupportedReason"
+            }
+          }
+        }
+      },
+      "ErrorCode": {
+        "enum": [
+          "invalid_json",
+          "invalid_request",
+          "unknown_field",
+          "unsupported_api_version",
+          "unsupported_tax_year",
+          "not_found",
+          "method_not_allowed",
+          "payload_too_large",
+          "unsupported_media_type",
+          "internal_error"
+        ]
+      },
+      "FieldError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "code",
+          "message"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^(/[^/]*)*$",
+            "description": "RFC 6901 JSON Pointer into the request body; empty string = the whole body."
+          },
+          "code": {
+            "enum": [
+              "required",
+              "type",
+              "enum",
+              "range",
+              "not_integer",
+              "unknown_field",
+              "duplicate_person",
+              "filer_not_allowed",
+              "too_many_items",
+              "invalid_date"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "description": "Every non-200, non-422 response. HTTP status: 400 invalid_json/invalid_request/unknown_field/unsupported_api_version/unsupported_tax_year, 404 not_found, 405 method_not_allowed, 413 payload_too_large (body > 256 KiB), 415 unsupported_media_type, 500 internal_error. details is present for 400 only.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "api_version",
+          "error"
+        ],
+        "properties": {
+          "api_version": {
+            "$ref": "#/components/schemas/ApiVersion"
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "$ref": "#/components/schemas/ErrorCode"
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/FieldError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "const": "ok"
+          }
+        }
+      },
+      "VersionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "api_version",
+          "schema_version",
+          "tax_year",
+          "calculator_version"
+        ],
+        "properties": {
+          "api_version": {
+            "$ref": "#/components/schemas/ApiVersion"
+          },
+          "schema_version": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+            "description": "Semver of this schema file: patch = docs only, minor = additive, major = breaking (equals api_version)."
+          },
+          "tax_year": {
+            "const": 2024
+          },
+          "calculator_version": {
+            "type": "string",
+            "description": "Git commit of the calculator build"
+          }
+        }
+      }
+    }
+  }
+}

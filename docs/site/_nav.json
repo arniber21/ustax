@@ -44,10 +44,10 @@
       "summary": "Log of places where the Direct File reference implementation disagrees with the law."
     },
     {
-      "title": "JSON API contract",
+      "title": "API reference",
       "slug": "api",
       "source": "docs/api.md",
-      "summary": "Request and response shapes of the calculator API."
+      "summary": "OpenAPI-style reference for the calculator API: operations, schemas, examples and a Try it panel. The prose contract stays in docs/api.md."
     }
   ]
 }
