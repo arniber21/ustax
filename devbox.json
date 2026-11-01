@@ -1,0 +1,43 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.18.0/.schema/devbox.schema.json",
+  "packages": {
+    "nodejs": "22",
+    "bun": "1.3.13",
+    "ninja": "1.13.1",
+    "poppler-utils": "25.10.0",
+    "git": "latest",
+    "curl": "latest",
+    "jq": "latest",
+    "python3": "3.12",
+    "elan": "4.2.4",
+    "opam": "2.5.2",
+    "gmp": { "version": "latest", "outputs": ["out", "dev"] },
+    "pkg-config": "latest",
+    "gnumake": "latest",
+    "unzip": "latest",
+    "caddy": "latest",
+    "bubblewrap": { "version": "latest", "platforms": ["x86_64-linux", "aarch64-linux"] }
+  },
+  "env": {
+    "OPAMROOT": "$DEVBOX_PROJECT_ROOT/.opam",
+    "OPAMYES": "1",
+    "OPAMCOLOR": "never",
+    "USTAX_CATALA_SWITCH": "ustax",
+    "USTAX_OCAML": "5.4.1",
+    "USTAX_CATALA": "1.3.0"
+  },
+  "shell": {
+    "init_hook": [
+      ". \"$DEVBOX_PROJECT_ROOT/scripts/devbox-env.sh\""
+    ],
+    "scripts": {
+      "install": "./scripts/install.sh",
+      "check": "make check",
+      "test": "make test-server && make web-test && make difftest-selftest",
+      "audit": "make audit",
+      "run": "make run",
+      "comparator": "make comparator",
+      "catala-setup": "./scripts/catala-setup.sh"
+    }
+  }
+}

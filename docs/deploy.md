@@ -63,3 +63,7 @@ Built and run with Apple `container` 1.0.0 (arm64). Docker/compose were not run 
 ## Trusted components
 
 Add to the README trusted base (#59): Docker/OCI runtime and base images (`ubuntu`, `node`, `caddy`), elan release download, Caddy (see `docs/tls.md`).
+
+## Devbox
+
+The Dockerfile does not use devbox: it installs elan and builds with Lean directly, so images stay small and the toolchain pin (`lean/lean-toolchain`) is the only input. Developer and CI tooling (Node, elan, bun, ninja, opam/Catala, bubblewrap, caddy) is managed by devbox instead; see `docs/devbox.md`. `make docker-build` and `make docker-run` run inside devbox like every other target, but still need a Docker (or `container`) daemon on the host; devbox does not provide one.

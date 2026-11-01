@@ -1,9 +1,10 @@
-# CI (issue #70). Two independent jobs:
+# CI (issue #70). All tools come from devbox.json (pinned in devbox.lock); jobs run the same
+# `devbox run` scripts as local development (docs/devbox.md).
 #   catala : type-check + run Catala tests, summarize the three-way difftest.
-#   lean   : lake build, lake check, lake comparator (Lean v4.35 kernel replay
-#            and Comparator, sandboxed by bubblewrap), then scripts/audit.sh.
+#   lean   : lake build, lake check, lake comparator (Lean kernel replay and Comparator,
+#            sandboxed by bubblewrap), then scripts/audit.sh.
 # See docs/audit.md and docs/comparator.md. This file cannot be run locally;
-# it was validated for syntax only (see docs/audit.md, "CI").
+# it was validated with actionlint (see docs/audit.md, "CI").
 name: ci
 
 on:
@@ -21,35 +22,36 @@ permissions:
 jobs:
   catala:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
-      # Same OCaml as the local switch (5.4.1). setup-ocaml caches the opam
-      # switch (and so the Catala build) between runs.
-      - uses: ocaml/setup-ocaml@v3
+      # Installs devbox and the packages of devbox.json/devbox.lock; the nix store is cached.
+      - uses: jetify-com/devbox-install-action@v0.15.0
         with:
-          ocaml-compiler: 5.4.1
-          dune-cache: false
+          enable-cache: true
+          devbox-version: 0.18.0
 
-      # `make install` = `opam install -y catala.1.3.0` + `clerk start`
-      # (the Makefile pins the version; Catala 1.3.0 is what the sources assume).
-      - name: Install Catala 1.3.0
-        run: opam exec -- make install
-
-      - name: make check (type-check, run #[test] scopes)
-        run: opam exec -- make check
-
-      - uses: actions/setup-node@v4
+      # Catala 1.3.0 is built into the project-local opam root .opam (nixpkgs has no Catala).
+      # Cached on the pinned versions, so only the first run compiles OCaml.
+      - name: Cache opam root (OCaml + Catala)
+        uses: actions/cache@v4
         with:
-          node-version: 20
+          path: .opam
+          key: opam-${{ runner.os }}-${{ hashFiles('devbox.lock', 'devbox.json', 'scripts/catala-setup.sh') }}
+
+      - name: Install Catala 1.3.0 (devbox run catala-setup)
+        run: devbox run catala-setup
+
+      - name: devbox run check (type-check, run #[test] scopes)
+        run: devbox run check
 
       # Report, do not gate: the difftest lists known Direct File differences
       # (see STATUS.md). The summary goes to the job page.
       - name: make difftest SCOPE=all (summary)
         run: |
           set -o pipefail
-          opam exec -- make difftest SCOPE=all 2>&1 | tee difftest.log || true
+          devbox run -- make difftest SCOPE=all 2>&1 | tee difftest.log || true
           {
             echo '### make difftest SCOPE=all'
             echo '```'
@@ -68,22 +70,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install bubblewrap and prepare directories
+      # bwrap itself comes from devbox.json (Linux only). The sandbox mounts tmpfs on
+      # /run/user, /home, /root and /tmp after binding / read-only, so they must exist.
+      - name: Prepare directories
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends bubblewrap zstd
-          # The sandbox mounts tmpfs on these after binding / read-only, so
-          # they must already exist.
           sudo mkdir -p /run/user /home /root /tmp
           sudo mkdir -p "$ELAN_HOME" "$LEAN_WORK"
           sudo chown -R "$USER" "$ELAN_HOME" "$LEAN_WORK"
 
+      - uses: jetify-com/devbox-install-action@v0.15.0
+        with:
+          enable-cache: true
+          devbox-version: 0.18.0
+
       # ubuntu-24.04 sets kernel.apparmor_restrict_unprivileged_userns=1, which
       # makes bwrap fail with "setting up uid map: Permission denied". Probe
-      # first; relax the sysctl only if the probe fails.
+      # first (with the devbox bwrap); relax the sysctl only if the probe fails.
       - name: Allow unprivileged user namespaces for bwrap
         run: |
-          probe() { bwrap --ro-bind / / --tmpfs /tmp --dev /dev --proc /proc \
+          probe() { devbox run -- bwrap --ro-bind / / --tmpfs /tmp --dev /dev --proc /proc \
                       --unshare-all --die-with-parent --new-session -- true; }
           if probe; then
             echo "bwrap works as is"
@@ -94,21 +99,15 @@ jobs:
             probe
           fi
 
+      # elan (nix package) installs the toolchain pinned by lean/lean-toolchain into ELAN_HOME.
       - name: Cache elan and the Lean toolchain
         uses: actions/cache@v4
         with:
           path: /opt/elan
           key: elan-${{ runner.os }}-${{ hashFiles('lean/lean-toolchain') }}
 
-      - name: Install elan and the pinned toolchain
-        run: |
-          echo "$ELAN_HOME/bin" >> "$GITHUB_PATH"
-          if [ ! -x "$ELAN_HOME/bin/elan" ]; then
-            curl -sSfL https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz \
-              | tar -xz -C /tmp
-            /tmp/elan-init -y --no-modify-path --default-toolchain "$(cat lean/lean-toolchain)"
-          fi
-          "$ELAN_HOME/bin/lean" --version
+      - name: Install the pinned Lean toolchain
+        run: devbox run -- elan toolchain install "$(cat lean/lean-toolchain)"
 
       # Build in a copy outside /home (as the container setup does with /work);
       # .lake (dependency clones and build output) is cached.
@@ -126,18 +125,13 @@ jobs:
           tar -C lean --exclude=./.lake -cf - . | tar -C "$LEAN_WORK" -xf -
 
       - name: lake build
-        working-directory: /opt/ustax-lean
-        run: lake build
+        run: devbox run -- make lean-build LEAN_DIR="$LEAN_WORK"
 
       - name: lake check (kernel replay, axiom allow-list)
-        working-directory: /opt/ustax-lean
-        run: lake check
+        run: devbox run -- make lean-check LEAN_DIR="$LEAN_WORK"
 
       - name: lake comparator (challenge vs solution)
-        working-directory: /opt/ustax-lean
-        run: lake comparator --config comparator.json
-
-      - uses: oven-sh/setup-bun@v2
+        run: devbox run -- make lean-comparator LEAN_DIR="$LEAN_WORK"
 
       - name: make audit (source scan, #audit_all, forensics)
-        run: LEAN_DIR="$LEAN_WORK" ./scripts/audit.sh
+        run: LEAN_DIR="$LEAN_WORK" devbox run audit

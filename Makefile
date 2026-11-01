@@ -1,5 +1,14 @@
 # ustax: Catala formalization of the US income tax subset covered by IRS Direct File.
-# Requires opam; run `eval $(opam env --switch=default)` (or your switch) first.
+# Dependencies are managed by devbox (devbox.json, docs/devbox.md). Every target below runs inside
+# `devbox run` automatically: from a plain shell the rule just below re-invokes `make <goal>` through
+# scripts/devbox-exec.sh (which explains how to install devbox if it is missing, or does it with
+# INSTALL_DEVBOX=1). USTAX_NO_DEVBOX=1 skips devbox and uses the tools on your PATH.
+ifeq ($(DEVBOX_SHELL_ENABLED)$(USTAX_NO_DEVBOX),)
+.DEFAULT_GOAL := install
+.PHONY: $(or $(MAKECMDGOALS),install)
+$(or $(MAKECMDGOALS),install):
+	@./scripts/devbox-exec.sh make $@
+else
 SRC := $(wildcard catala/*.catala_en catala/tests/*.catala_en)
 
 .PHONY: install check run server test-server clean
@@ -24,12 +33,21 @@ clean:
 
 # --- Lean (see lean/README.md) ---
 .PHONY: lean-build forensics
-lean-build:  ## build the Lean library (core + Batteries + plausible)
-	cd lean && lake build
+lean-build:  ## build the Lean library (core + Batteries + plausible); LEAN_DIR=<copy> for another checkout
+	cd $(LEAN_DIR) && lake build
 # Audit Lean with for-all-dev/forensics; clone lives in gitignored .forensics-tool/
 forensics:   ## run forensics extractor on lean/, writing forensics-out.json
 	@test -d .forensics-tool || git clone https://github.com/for-all-dev/forensics .forensics-tool
 	cd .forensics-tool/app && bun server.ts $(CURDIR)/lean --roots UsTax --dump $(CURDIR)/forensics-out.json
+
+# Native kernel replay + Comparator (Linux only: needs bubblewrap, which devbox provides there).
+# LEAN_DIR=<copy of lean/> to run outside /home (see docs/audit.md, "bwrap").
+LEAN_DIR ?= lean
+.PHONY: lean-check lean-comparator
+lean-check:      ## lake check: replay the build through the kernel, axiom allow-list (Linux, bwrap)
+	cd $(LEAN_DIR) && lake check
+lean-comparator: ## lake comparator: challenge vs solution (Linux, bwrap)
+	cd $(LEAN_DIR) && lake comparator --config comparator.json
 
 # lake build + lake check + lake comparator in a Linux container (see docs/comparator.md).
 # Needs Apple's `container` CLI with `container system start` done once. MODE=check|comparator|all.
@@ -86,7 +104,7 @@ lean-difftest-rates:  ## Lean TentativeTax vs Catala and vs oracle/facts.csv
 	node difftest/lean_rates.mjs $(ARGS)
 
 # --- TLS (see docs/tls.md): Caddy terminates HTTPS, Lean server stays on plain loopback HTTP ---
-# Requires `caddy` on PATH (brew install caddy); not installed by `make install`.
+# caddy comes from devbox.
 .PHONY: tls tls-trust tls-check
 tls:       ## HTTPS front for the Lean server: https://localhost:8443 -> 127.0.0.1:8080
 	caddy run --config deploy/Caddyfile --adapter caddyfile
@@ -119,3 +137,4 @@ web-test:  ## frontend unit tests (vitest + testing-library)
 	cd web && npm ci --no-audit --no-fund && npm test
 web-dev:   ## frontend dev server on the api/fixtures mock (VITE_API_MOCK=1)
 	cd web && npm ci --no-audit --no-fund && VITE_API_MOCK=1 npm run dev
+endif
