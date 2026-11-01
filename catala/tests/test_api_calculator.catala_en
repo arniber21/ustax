@@ -1,0 +1,638 @@
+# Tests for the API-facing calculator, scope ApiCalculator (issue #38)
+
+Run with `clerk test`. The request is an `ApiRequest`, the API request after
+JSON decoding (docs/api-mapping.md: money in dollars, absent properties at their
+schema default). Every expected number is the one of the matching
+`test_calculator.catala_en` return, worked out there by hand from the TY2024
+figures (Rev. Proc. 2023-34; the Tax Table row-midpoint rule; the EIC Table),
+so these tests check that the API shape reaches the same return; the oracle
+comparison of all 157 scenarios is `make difftest SCOPE=api_calculator`.
+
+> Using Types
+> Using Filers as F
+> Using Form_w2s as W
+> Using Hsa as H
+> Using Qualifying_child as Q
+> Using Qualifying_relative as QR
+> Using Dependents_benefit_split as B
+> Using Ctc_odc as C
+> Using Eitc as E
+> Using Educator_adjustment as EA
+> Using Estimated_payments as EP
+> Using Elderly_and_disabled as ED
+> Using Knockouts_income as KI
+> Using Calculator as Calc
+> Using Api_reasons as AR
+> Using Api_calculator as Api
+
+## Helpers
+
+`MkApiW2` is a W-2 with box 1 (wages), box 2 (withholding), boxes 3 to 6 as
+`MkW2` of the Calculator tests, every other box `$0`. `MkApiChild` is the
+filer's biological child who lived with the filer all year, has an SSN and is
+claimed. `ApiDefaults` is the request with every optional property absent
+(its schema default): a single filer born 1985, no income, no household.
+
+```catala
+declaration scope MkApiW2:
+  input wages content money
+  input withholding content money
+  output w2 content Api.ApiW2
+
+scope MkApiW2:
+  definition w2 equals Api.ApiW2 {
+    -- filer: Types.FilerRole.PrimaryFiler
+    -- wages: wages
+    -- federal_withholding: withholding
+    -- oasdi_wages: wages
+    -- oasdi_withholding: wages * 6.2%
+    -- medicare_wages: wages
+    -- medicare_withholding: wages * 1.45%
+    -- allocated_tips: $0
+    -- dependent_care_benefits: $0
+    -- non_qualified_plans: $0
+    -- plan_457b_is_governmental: false
+    -- statutory_employee: false
+    -- third_party_sick_pay: false
+    -- box12: Api.ApiBox12 {
+    -- code_a: $0
+    -- code_b: $0
+    -- code_c: $0
+    -- code_d: $0
+    -- code_e: $0
+    -- code_f: $0
+    -- code_g: $0
+    -- code_h: $0
+    -- code_j: $0
+    -- code_k: $0
+    -- code_l: $0
+    -- code_m: $0
+    -- code_n: $0
+    -- code_p: $0
+    -- code_q: $0
+    -- code_r: $0
+    -- code_s: $0
+    -- code_t: $0
+    -- code_v: $0
+    -- code_w: $0
+    -- code_y: $0
+    -- code_z: $0
+    -- code_aa: $0
+    -- code_bb: $0
+    -- code_dd: $0
+    -- code_ee: $0
+    -- code_ff: $0
+    -- code_gg: $0
+    -- code_hh: $0
+    -- code_ii: $0
+
+    } }
+
+declaration scope MkApiChild:
+  input date_of_birth content date
+  input upkeep content boolean
+  output child content Api.ApiDependent
+
+scope MkApiChild:
+  definition child equals Api.ApiDependent {
+    -- relationship: Q.Relationship.BiologicalChild
+    -- date_of_birth: date_of_birth
+    -- full_time_student: false
+    -- permanent_total_disability: false
+    -- residency_duration: Q.ResidencyDuration.AllYear
+    -- own_support: false
+    -- married: false
+    -- joint_return: false
+    -- required_to_file: false
+    -- filing_only_for_refund: false
+    -- could_be_qualifying_child_of_another: false
+    -- potential_claimer_must_file: false
+    -- potential_claimer_did_file: false
+    -- potential_claimer_filed_only_for_refund: false
+    -- gross_income: $0
+    -- qr_support_test: false
+    -- tin_type: QR.TinType.Ssn
+    -- is_us_citizen_full_year: true
+    -- us_resident: false
+    -- us_national: false
+    -- canada_mexico_resident: false
+    -- tp_claims: true
+    -- deceased: false
+    -- custody: B.BenefitSplitAnswers {
+         -- has_other_biological_or_adoptive_parent: false
+         -- non_parental_some_parent_not_claiming: false
+         -- which_parent_not_claiming: B.WrittenDeclaration.NobodyDid
+         -- in_parents_custody: false
+         -- lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months: false
+         -- biological_or_adoptive_parents_living: false
+         -- nights_with_tp_vs_other_parent: B.NightsComparison.Less
+         -- tp_agi_higher_than_other_parent: false
+         -- parents_meet_reqs_rule_for_children_of_divorced_parents: false
+         -- special_rule_child_used_by_custodial_parent_as_qp: false
+         -- special_rule_agi_test: false
+         -- parental_situation: B.ParentalSituation.Other
+         -- parental_support: false
+         -- multiple_support_agreement: false }
+    -- tp_paid_most_of_home_upkeep: upkeep
+    -- tp_paid_most_of_parent_home_upkeep: false
+    -- ssn_employment_validity: C.SsnEmploymentValidity.Neither
+    -- ssn_only_for_federally_funded_benefit: false
+    -- months_lived_with_tp_in_us: 12
+    -- cdcc: Calc.CdccMemberAnswers {
+         -- unable_to_care_for_self: false
+         -- has_dependent_care_expenses: false
+         -- expenses_paid_to_qualifying_provider: false
+         -- writable_qualifying_expense_amount: $0 } }
+```
+
+```catala
+declaration scope ApiDefaults:
+  output filer content Api.ApiFiler
+  output request content Api.ApiRequest
+
+scope ApiDefaults:
+  definition filer equals Api.ApiFiler {
+    -- is_blind: false
+    -- age65_or_older: false
+    -- can_be_claimed_as_dependent: false
+    -- date_of_birth_given: false
+    -- date_of_birth: |1985-06-15|
+    -- will_be_claimed: false
+    -- potential_claimer_must_file: false
+    -- potential_claimer_did_file: false
+    -- is_us_citizen_full_year: true
+    -- citizen_at_end_of_tax_year: false
+    -- noncitizen_resident_full_year: false
+    -- is_national: false
+    -- is_student: false
+    -- tin: Calc.FilerTin {
+         -- tin_is_ssn: true
+         -- ssn_employment_validity: Calc.FilerSsnEmploymentValidity.Neither
+         -- has_ssn_only_for_benefits: false }
+    -- disability: ED.DisabilityAnswers {
+         -- is_retired_on_perm_or_total_disability: false
+         -- employer_has_mandatory_retirement_age: false
+         -- has_met_employer_mandatory_retirement_age: false
+         -- are_payments_taxable_disability_income: false
+         -- writable_total_taxable_disability_amount: $0
+         -- has_w2_wages: false }
+    -- hsa: H.HsaFilerAnswers {
+         -- writable_primary_filer_has_made_contributions_to_hsa: false
+         -- writable_secondary_filer_has_made_contributions_to_hsa: false
+         -- enrolled_in_medicare: H.MedicareEnrollment.MedicareNoneOfYear
+         -- hsa_hdhp_coverage_status: H.HdhpCoverageStatus.HdhpAllYear
+         -- type_of_hdhp: H.TypeOfHdhp.SelfOnly
+         -- had_other_coverage_ineligible_for_hsa: H.OtherCoverageIneligible.OtherCoverageNoneOfYear
+         -- writable_mfs_line6_check: false
+         -- writable_change_in_marital_status_during_tax_year:
+              H.MaritalStatusChange.WasNotMarriedNorDivorcedThisYear
+         -- writable_marital_change_affect_contribution_limit_bool: false
+         -- has_made_qualified_hsa_funding_distribution: false
+         -- writable_hsa_nonemployer_contributions_tax_year: $0
+         -- writable_hsa_nonemployer_contributions_tax_year_plus_one: $0 }
+    -- cdcc: Calc.CdccFilerAnswers {
+         -- elect_combat_pay_for_credit: false
+         -- elect_combat_pay_for_benefits: false
+         -- dependent_care_plan_maximum: $0
+         -- is_disabled: false
+         -- deemed_income_month_earnings: []
+         -- has_dependent_care_expenses: false
+         -- expenses_paid_to_qualifying_provider: false
+         -- writable_qualifying_expense_amount: $0 } }
+  definition request equals Api.ApiRequest {
+    -- filing_status: Types.FilingStatus.Single
+    -- filers: Api.ApiFilers { -- primary: filer -- secondary: filer }
+    -- filing_details: Api.ApiFilingDetails {
+         -- treat_as_mfs: false
+         -- is_widowed_in_tax_year: false
+         -- mfj_deceased_spouse_reached_age65: false
+         -- mfs_spouse_65_or_older: false
+         -- mfs_spouse_provides_no_benefits: false
+         -- treat_filers_as_dependents: false
+         -- has_foreign_accounts_or_trusts: false
+         -- combat_pay_election: W.CombatPayElection.NoCombatPay
+         -- combat_pay_election_made: false }
+    -- filing_answers: Api.ApiFilingAnswers {
+         -- marital_status: Api.ApiMaritalStatus.Unspecified
+         -- year_of_spouse_death: Api.ApiYearOfSpouseDeath.Unspecified
+         -- secondary_filer_date_of_death: |2024-12-31|
+         -- primary_filer_potential_claimer_filed_only_for_refund: false
+         -- mfj_required_to_file: false
+         -- mfj_dependents_filing_for_credits: false
+         -- lived_together_all_year_with_spouse: true
+         -- spouse_lived_together_months: F.SpouseLivedTogetherMonths.LivedApartAllYear
+         -- lived_apart_last_six_months: false
+         -- separation_agreement: false
+         -- can_file_jointly_year_of_spouse_death: false
+         -- in_registered_domestic_partnership: false
+         -- residence_state: Types.ScopedState.FL
+         -- spouse_itemizes: false
+         -- mfs_living_spouse_filing_return: false
+         -- mfs_deceased_spouse_filing_return: false
+         -- mfs_spouse_has_gross_income: false }
+    -- dependents: []
+    -- w2s: []
+    -- interest_reports: []
+    -- form_1099g: []
+    -- form_1099misc: []
+    -- form_1099r: []
+    -- social_security: Api.ApiSocialSecurity {
+         -- net_benefits: [] -- federal_tax_withheld: [] -- lived_apart_all_year: false }
+    -- adjustments: Api.ApiAdjustments {
+         -- educator_expenses: Api.ApiEducator {
+              -- was_k12_educators: EA.K12EducatorOptions.Neither
+              -- primary_expenses: $0
+              -- secondary_expenses: $0 }
+         -- student_loan_interest: Api.ApiStudentLoan {
+              -- had_payments: false -- loans_qualify: false -- interest_amount: $0 }
+         -- hsa: Calc.HsaInput {
+              -- some_filer_had_non_w2_hsa_activity: false
+              -- writable_primary_filer_had_non_w2_hsa_activity: false
+              -- writable_secondary_filer_had_non_w2_hsa_activity: false
+              -- has_hsa_medical_savings_account_type: false
+              -- writable_has_hsa_excess_contributions_previous_year: false
+              -- writable_has_hsa_withdrawn_excess_contributions_yes_no: false
+              -- some_filers_made_testing_period_contribution: false
+              -- some_filers_have_testing_period_additional_income: false
+              -- hsa_distributions: [] } }
+    -- estimated_payments: Api.ApiEstimatedPayments {
+         -- paid_estimated_taxes_or_from_last_year: false
+         -- amount: $0
+         -- paid_under_different_name: false
+         -- paid_with_former_spouse: EP.PaidWithFormerSpouse.Neither }
+    -- credits: Calc.CreditAnswers {
+         -- eitc_qc_of_another: false
+         -- eitc_qc_of_another_required_to_file: false
+         -- eitc_qc_of_another_is_filing: false
+         -- eitc_qc_of_another_is_filing_refund_only: false
+         -- eitc_had_improper_claims: false
+         -- eitc_improper_claims_due_to_qc: false
+         -- eitc_improper_claim_taken_since_disallowal: false
+         -- eitc_received_improper_claims_notice: E.ImproperClaimsNotice.NotAnswered
+         -- eitc_improper_claims_notice_expired: false
+         -- received_improper_claims: false
+         -- received_improper_claims_notice: E.ImproperClaimsNotice.NotAnswered
+         -- improper_claims_notice_expired: false
+         -- has_filed_ctc_odc_since_notice_expired: false
+         -- has_distributions_in_last_three_years: false
+         -- has_current_year_distributions: false
+         -- has_self_reported_contributions: false
+         -- has_self_reported_non_taxable_payments: false
+         -- self_reported_non_taxable_payment_amount: $0 }
+    -- cdcc: Calc.CdccInput {
+         -- has_mfs_spouse_earned_income: false
+         -- writable_mfs_spouse_earned_income: $0
+         -- writable_total_qualified_dependent_care_expenses: $0
+         -- writable_carryover_amount: $0
+         -- writable_forfeited_amount: $0
+         -- has_credit_for_prior_year_expenses: false
+         -- claimed_credit_for_prior_year_expenses: false
+         -- claimed_max_credit_for_prior_tax_year: false
+         -- has_household_employee: false
+         -- benefits_from_sole_proprietorship_or_partnership: false }
+    -- premium_tax_credit: Calc.PtcInput {
+         -- form1095_as: []
+         -- writable_has_ptc_qualifying_plan: false
+         -- writable_has_advanced_ptc: false
+         -- dependent_tp_self_enrolled: false
+         -- dependent_tp_enrolled_someone_else: false
+         -- writable_dependent_tp_other_members_are_part_of_different_tax_family: false
+         -- writable_has_mfs_exception: false
+         -- writable_claiming_mfs_exception_for_fourth_straight_year: false
+         -- writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status: false
+         -- writable_has_employer_sponsored_plan: false
+         -- writable_dependents_required_to_file: false
+         -- writable_self_reported_has_multiple1095_as: false
+         -- writable_is_additional_person_in_enrollment_family: false
+         -- writable_is_additional_person_partof_different_tax_family: false
+         -- writable_is_enrolled_with_other_family: false
+         -- writable_has_immigration_status_not_eligible_for_marketplace: false
+         -- writable_wants_to_use_alt_calculations: false }
+    -- screening: Api.ApiScreening {
+         -- income_sources_supported: true
+         -- received_digital_assets: false
+         -- disposed_digital_assets: false
+         -- has_foreign_accounts: false
+         -- is_foreign_trusts_grantor: false
+         -- has_foreign_trusts_transactions: false
+         -- made_ira_contributions: false
+         -- w2_box15_income_from_different_state: false
+         -- w2_has_box14_nyrrta_knockout_code: false
+         -- w2_has_rrta_codes_in_box14: false
+         -- lived_in_ny: false
+         -- w2_paid_yonkers_taxes: false
+         -- part_year_yonkers_resident: false
+         -- primary_filer_forms_another_state: false
+         -- received_alaska_pfd: false
+         -- spouse_received_alaska_pfd: false
+         -- spouse_lives_in_other_or_multiple_states: false
+         -- spouse_forms_another_state: false
+         -- is_after_tax_day_and_not_resubmitting: false
+         -- is_after_resubmission_deadline: false } }
+```
+
+## Single: W-2 only
+
+The API example `single-w2-50k` with $5,000 withheld (`refund-single-w2-50k`).
+Calculator test `TestSingle`: wages $50,000, standard deduction $14,600, line 15
+$35,400, tax $4,019 (Tax Table row $35,400 to $35,450, midpoint $35,425),
+refund $5,000 - $4,019 = $981.
+
+```catala
+#[test]
+declaration scope TestApiSingle:
+  d scope ApiDefaults
+  output r content Api.ApiCalculator
+
+scope TestApiSingle:
+  definition r equals output of Api.ApiCalculator with {
+    -- request: d.request but replace {
+         -- w2s: [(output of MkApiW2 with { -- wages: $50,000 -- withholding: $5,000 }).w2] } }
+  assertion r.supported
+  assertion r.reasons = []
+  assertion r.outcome = Api.ApiOutcome.Refund
+  assertion r.lines.wages = $50,000
+  assertion r.lines.agi = $50,000
+  assertion r.lines.standard_or_itemized_deductions = $14,600
+  assertion r.lines.taxable_income = $35,400
+  assertion r.lines.total_tax = $4,019
+  assertion r.lines.total_withholding = $5,000
+  assertion r.lines.total_payments = $5,000
+  assertion r.lines.overpayment = $981
+  assertion r.lines.balance_due = $0
+```
+
+## Family with two children (MFJ)
+
+Calculator test `TestMfj`: joint, primary wages $80,000, withholding $3,000, two
+children born 2016 and 2019 with SSNs, claimed. Standard deduction $29,200,
+line 15 $50,800, tax $5,635 (midpoint $50,825: 10% x $23,200 + 12% x $27,625),
+child tax credit 2 x $2,000 = $4,000, total tax $1,635. No earned income credit
+(2 children, joint: ends at AGI $62,688) and no additional child tax credit.
+Refund $3,000 - $1,635 = $1,365. The filing status gives the defaults: married,
+lived together all year.
+
+```catala
+#[test]
+declaration scope TestApiFamilyTwoKids:
+  d scope ApiDefaults
+  output r content Api.ApiCalculator
+
+scope TestApiFamilyTwoKids:
+  definition r equals output of Api.ApiCalculator with {
+    -- request: d.request but replace {
+         -- filing_status: Types.FilingStatus.MarriedFilingJointly
+         -- dependents: [ (output of MkApiChild with { -- date_of_birth: |2016-03-01| -- upkeep: true }).child
+                        ; (output of MkApiChild with { -- date_of_birth: |2019-05-01| -- upkeep: true }).child ]
+         -- w2s: [(output of MkApiW2 with { -- wages: $80,000 -- withholding: $3,000 }).w2] } }
+  assertion r.supported
+  assertion r.lines.standard_or_itemized_deductions = $29,200
+  assertion r.lines.taxable_income = $50,800
+  assertion r.lines.total_tentative_tax = $5,635
+  assertion r.lines.non_refundable_credits = $4,000
+  assertion r.lines.total_tax = $1,635
+  assertion r.lines.total_other_payments_refundable_credits = $0
+  assertion r.lines.total_payments = $3,000
+  assertion r.lines.overpayment = $1,365
+  assertion r.outcome = Api.ApiOutcome.Refund
+```
+
+## Earned income credit and additional child tax credit (head of household)
+
+Calculator test `TestHoh`: never married, one child born 2014 for whom the
+filer paid most of the upkeep, wages $40,000, withholding $2,000. Standard
+deduction $21,900, line 15 $18,100, tax $1,844 (midpoint $18,125). The child tax
+credit is limited to the $1,844 of tax, so total tax is $0 and line 21 is
+$1,844. Additional child tax credit $156 ($2,000 - $1,844). EIC Table, $40,000
+to $40,050, one child, single or head of household: $1,448. Line 32 is
+$1,448 + $156 = $1,604; payments $2,000 + $1,604 = $3,604; refund $3,604.
+
+```catala
+#[test]
+declaration scope TestApiEitcHoh:
+  d scope ApiDefaults
+  output r content Api.ApiCalculator
+
+scope TestApiEitcHoh:
+  definition r equals output of Api.ApiCalculator with {
+    -- request: d.request but replace {
+         -- filing_status: Types.FilingStatus.HeadOfHousehold
+         -- dependents: [(output of MkApiChild with { -- date_of_birth: |2014-09-10| -- upkeep: true }).child]
+         -- w2s: [(output of MkApiW2 with { -- wages: $40,000 -- withholding: $2,000 }).w2] } }
+  assertion r.supported
+  assertion r.lines.taxable_income = $18,100
+  assertion r.lines.total_tentative_tax = $1,844
+  assertion r.lines.non_refundable_credits = $1,844
+  assertion r.lines.total_tax = $0
+  assertion r.lines.total_other_payments_refundable_credits = $1,604
+  assertion r.lines.total_payments = $3,604
+  assertion r.lines.overpayment = $3,604
+  assertion r.outcome = Api.ApiOutcome.Refund
+```
+
+## Qualifying surviving spouse: the marital defaults
+
+Calculator test `TestQss`. The request leaves `marital_status` and
+`year_of_spouse_death` unspecified: the filing status gives Widowed, died in
+2023, and `can_file_jointly_year_of_spouse_death` is implied, so the status is
+eligible. Wages $60,000, withholding $4,000, one child born 2012. Standard
+deduction $29,200, line 15 $30,800, tax $3,235, child tax credit $2,000, total
+tax $1,235, refund $4,000 - $1,235 = $2,765.
+
+```catala
+#[test]
+declaration scope TestApiQss:
+  d scope ApiDefaults
+  output r content Api.ApiCalculator
+
+scope TestApiQss:
+  definition r equals output of Api.ApiCalculator with {
+    -- request: d.request but replace {
+         -- filing_status: Types.FilingStatus.QualifyingSurvivingSpouse
+         -- dependents: [(output of MkApiChild with { -- date_of_birth: |2012-02-20| -- upkeep: true }).child]
+         -- w2s: [(output of MkApiW2 with { -- wages: $60,000 -- withholding: $4,000 }).w2] } }
+  assertion r.supported
+  assertion r.lines.taxable_income = $30,800
+  assertion r.lines.total_tax = $1,235
+  assertion r.lines.overpayment = $2,765
+```
+
+
+## Legacy flags (schema 1.0 and 1.1)
+
+A filer who is 65 or older (`age65_or_older`, no date of birth) gets the
+additional standard deduction of $1,950 (Rev. Proc. 2023-34, single): $14,600 +
+$1,950 = $16,550. `filing_details.has_foreign_accounts_or_trusts` is or-ed into
+the screening answer and knocks the return out.
+
+```catala
+#[test]
+declaration scope TestApiAge65:
+  d scope ApiDefaults
+  output r content Api.ApiCalculator
+
+scope TestApiAge65:
+  definition r equals output of Api.ApiCalculator with {
+    -- request: d.request but replace {
+         -- filers: Api.ApiFilers {
+              -- primary: d.filer but replace { -- age65_or_older: true }
+              -- secondary: d.filer }
+         -- w2s: [(output of MkApiW2 with { -- wages: $50,000 -- withholding: $5,000 }).w2] } }
+  assertion r.supported
+  assertion r.lines.standard_or_itemized_deductions = $16,550
+  assertion r.lines.taxable_income = $33,450
+
+#[test]
+declaration scope TestApiLegacyForeignAccounts:
+  d scope ApiDefaults
+  output r content Api.ApiCalculator
+
+scope TestApiLegacyForeignAccounts:
+  definition r equals output of Api.ApiCalculator with {
+    -- request: d.request but replace {
+         -- filing_details: d.request.filing_details but replace {
+              -- has_foreign_accounts_or_trusts: true }
+         -- w2s: [(output of MkApiW2 with { -- wages: $50,000 -- withholding: $5,000 }).w2] } }
+  assertion not r.supported
+  assertion r.reasons = [
+    Api.ApiReason {
+      -- code: Calc.CalculatorKnockout.IncomeOrHsa content KI.KnockoutReason.HasForeignAccountsOrTrusts
+      -- category: AR.ApiReasonCategory.Income } ]
+```
+
+## Unsupported: reasons, their categories, and no lines
+
+A filer who answers that Direct File does not support all of their income
+sources is knocked out with exactly that reason, in the category `income`
+(`api/knockout-reasons.json`). Head of household with no household member is
+not an eligible status (IRC 2(b)(1)): `FilingStatusNotEligible`, category
+`filers`. With both, every reason is listed, in the order of the Calculator's
+knockout table (the income, HSA and process reasons first). An unsupported
+return has no lines: all `$0`, outcome `Even`.
+
+```catala
+#[test]
+declaration scope TestApiUnsupportedIncome:
+  d scope ApiDefaults
+  output r content Api.ApiCalculator
+
+scope TestApiUnsupportedIncome:
+  definition r equals output of Api.ApiCalculator with {
+    -- request: d.request but replace {
+         -- w2s: [(output of MkApiW2 with { -- wages: $50,000 -- withholding: $5,000 }).w2]
+         -- screening: d.request.screening but replace { -- income_sources_supported: false } } }
+  assertion not r.supported
+  assertion r.reasons = [
+    Api.ApiReason {
+      -- code: Calc.CalculatorKnockout.IncomeOrHsa content KI.KnockoutReason.IncomeSourcesNotSupported
+      -- category: AR.ApiReasonCategory.Income } ]
+  assertion r.outcome = Api.ApiOutcome.Even
+  assertion r.lines.wages = $0
+  assertion r.lines.total_tax = $0
+  assertion r.lines.total_payments = $0
+  assertion r.lines.overpayment = $0
+  assertion r.lines.balance_due = $0
+
+#[test]
+declaration scope TestApiUnsupportedMultiple:
+  d scope ApiDefaults
+  output r content Api.ApiCalculator
+
+scope TestApiUnsupportedMultiple:
+  definition r equals output of Api.ApiCalculator with {
+    -- request: d.request but replace {
+         -- filing_status: Types.FilingStatus.HeadOfHousehold
+         -- w2s: [(output of MkApiW2 with { -- wages: $50,000 -- withholding: $5,000 }).w2]
+         -- screening: d.request.screening but replace { -- income_sources_supported: false } } }
+  assertion not r.supported
+  assertion r.reasons = [
+    Api.ApiReason {
+      -- code: Calc.CalculatorKnockout.IncomeOrHsa content KI.KnockoutReason.IncomeSourcesNotSupported
+      -- category: AR.ApiReasonCategory.Income };
+    Api.ApiReason {
+      -- code: Calc.CalculatorKnockout.Household content KI.KnockoutReason.ExtraFilingStatusNotEligible
+      -- category: AR.ApiReasonCategory.Household } ]
+  assertion r.lines.total_income = $0
+```
+
+## The category of a reason
+
+One constructor of each kind: an income-or-HSA reason (the category is that of
+the inner reason), and the reasons the other modules add.
+
+```catala
+#[test]
+declaration scope TestApiReasonCategories:
+  c1 scope AR.ApiReasonCategoryOf
+  c2 scope AR.ApiReasonCategoryOf
+  c3 scope AR.ApiReasonCategoryOf
+  c4 scope AR.ApiReasonCategoryOf
+  c5 scope AR.ApiReasonCategoryOf
+  output ok condition
+
+scope TestApiReasonCategories:
+  definition c1.reason equals
+    Calc.CalculatorKnockout.IncomeOrHsa content KI.KnockoutReason.FlowKnockoutHasBonds
+  definition c2.reason equals Calc.CalculatorKnockout.Household content KI.KnockoutReason.ExtraTpNeedsToAdd1095A
+  definition c3.reason equals Calc.CalculatorKnockout.Household content KI.KnockoutReason.ExtraFilingStatusNotEligible
+  definition c4.reason equals Calc.CalculatorKnockout.Household content KI.KnockoutReason.ExtraQualifyingChildTieBreaker
+  definition c5.reason equals Calc.CalculatorKnockout.Household content KI.KnockoutReason.SaversCreditKnockouts
+  rule ok under condition
+    c1.category = AR.ApiReasonCategory.Interest
+    and c2.category = AR.ApiReasonCategory.HealthCoverage
+    and c3.category = AR.ApiReasonCategory.Household
+    and c4.category = AR.ApiReasonCategory.Household
+    and c5.category = AR.ApiReasonCategory.Credits
+  consequence fulfilled
+  assertion ok
+```
+
+## The outcome
+
+`Refund` if line 34 is positive, `BalanceDue` if line 37 is positive, else
+`Even`; for a return Form 1040 never has both. The test also rejects the wrong
+outcome for each case.
+
+```catala
+#[test]
+declaration scope TestApiOutcomes:
+  a scope Api.OutcomeOf
+  b scope Api.OutcomeOf
+  c scope Api.OutcomeOf
+  output ok condition
+
+scope TestApiOutcomes:
+  definition a.overpayment equals $981
+  definition a.balance_due equals $0
+  definition b.overpayment equals $0
+  definition b.balance_due equals $619
+  definition c.overpayment equals $0
+  definition c.balance_due equals $0
+  rule ok under condition
+    a.outcome = Api.ApiOutcome.Refund and a.outcome != Api.ApiOutcome.BalanceDue
+    and b.outcome = Api.ApiOutcome.BalanceDue and b.outcome != Api.ApiOutcome.Refund
+    and c.outcome = Api.ApiOutcome.Even and c.outcome != Api.ApiOutcome.Refund
+  consequence fulfilled
+  assertion ok
+```
+
+## The spec rejects wrong outputs
+
+Known-bad outputs for the single return above: the tax without the Tax Table
+midpoint ($35,400 x rates = $4,016), the refund with the standard deduction
+left out, and a balance due where the filer overpaid.
+
+```catala
+#[test]
+declaration scope TestApiRejectsBadOutputs:
+  s scope TestApiSingle
+  output ok condition
+
+scope TestApiRejectsBadOutputs:
+  rule ok under condition
+    s.r.lines.total_tax != $4,016 and s.r.lines.overpayment != $0
+    and s.r.lines.agi != $35,400 and s.r.lines.balance_due != $981
+    and s.r.outcome != Api.ApiOutcome.BalanceDue and s.r.supported
+  consequence fulfilled
+  assertion ok
+```

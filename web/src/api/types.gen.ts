@@ -13,13 +13,13 @@ export type ApiVersion = 1
  */
 export type FilingStatus = ("Single" | "MarriedFilingJointly" | "MarriedFilingSeparately" | "HeadOfHousehold" | "QualifyingSurvivingSpouse")
 /**
- * Catala `Types.FilerRole`. Whose form this is. SecondaryFiler is allowed only when filing_status is MarriedFilingJointly.
- */
-export type FilerRole = ("PrimaryFiler" | "SecondaryFiler")
-/**
  * Money that cannot be negative (a form box that is never negative).
  */
 export type NonNegMoney = number
+/**
+ * Catala `Types.FilerRole`. Whose form this is. SecondaryFiler is allowed only when filing_status is MarriedFilingJointly.
+ */
+export type FilerRole = ("PrimaryFiler" | "SecondaryFiler")
 /**
  * One character of box 7 (Catala CodeChar; OtherCode stands for every other character).
  */
@@ -39,7 +39,7 @@ export type ReasonCategory = ("credits" | "estimated_payments" | "filers" | "hea
 export type ErrorCode = ("invalid_json" | "invalid_request" | "unknown_field" | "unsupported_api_version" | "unsupported_tax_year" | "not_found" | "method_not_allowed" | "payload_too_large" | "unsupported_media_type" | "internal_error")
 
 /**
- * POST /calculate body. Inputs are the writable facts the Catala Form1040 scope reads; sections are added in later minor versions (see docs/api.md, coverage table). Unknown properties are rejected with 400 unknown_field.
+ * POST /calculate body. Inputs are the writable facts the Catala ApiCalculator scope reads (catala/api_calculator.catala_en; field-by-field mapping in docs/api-mapping.md). Schema 1.2.0 added filing_answers, dependents, credits, cdcc, premium_tax_credit, screening, adjustments.hsa and richer filers. Unknown properties are rejected with 400 unknown_field.
  */
 export interface CalculateRequest {
 api_version: ApiVersion
@@ -70,21 +70,104 @@ form_1099r?: []|[Form1099R]|[Form1099R, Form1099R]|[Form1099R, Form1099R, Form10
 social_security?: SocialSecurity
 adjustments?: Adjustments
 estimated_payments?: EstimatedPayments
+filing_answers?: FilingAnswers
+/**
+ * @maxItems 20
+ */
+dependents?: []|[Dependent]|[Dependent, Dependent]|[Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]|[Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent, Dependent]
+credits?: CreditAnswers
+cdcc?: CdccInput
+premium_tax_credit?: PtcInput
+screening?: ScreeningAnswers
 }
 export interface Filers {
 primary?: FilerFlags
 secondary?: FilerFlags
 }
 /**
- * Per-filer answers the standard deduction needs (Catala Form1040 inputs primary_filer_*, secondary_filer_*).
+ * Per-filer answers (Catala ApiFiler, catala/api_calculator.catala_en; docs/api-mapping.md). The first three are the 1.0 fields. date_of_birth (1.2.0) replaces age65_or_older when given; absent, the filer is born 1950-06-15 if age65_or_older, else 1985-06-15.
  */
 export interface FilerFlags {
 is_blind?: boolean
 age65_or_older?: boolean
 can_be_claimed_as_dependent?: boolean
+/**
+ * ISO date YYYY-MM-DD
+ */
+date_of_birth?: string
+/**
+ * Another taxpayer will claim this filer (Direct File /filers/* /willBeClaimed)
+ */
+will_be_claimed?: boolean
+/**
+ * The person who could claim this filer must file a return
+ */
+potential_claimer_must_file?: boolean
+/**
+ * The person who could claim this filer did file
+ */
+potential_claimer_did_file?: boolean
+/**
+ * A US citizen for the whole year
+ */
+is_us_citizen_full_year?: boolean
+citizen_at_end_of_tax_year?: boolean
+noncitizen_resident_full_year?: boolean
+is_national?: boolean
+/**
+ * Full-time student (Saver's credit, IRC 25B(c)(2)(B))
+ */
+is_student?: boolean
+tin?: FilerTin
+disability?: DisabilityAnswers
+hsa?: HsaFilerAnswers
+cdcc?: CdccFilerAnswers
+}
+export interface FilerTin {
+tin_is_ssn?: boolean
+ssn_employment_validity?: ("Neither" | "NotValid" | "ValidOnlyWithDhsAuthorization")
+has_ssn_only_for_benefits?: boolean
+}
+export interface DisabilityAnswers {
+is_retired_on_perm_or_total_disability?: boolean
+employer_has_mandatory_retirement_age?: boolean
+has_met_employer_mandatory_retirement_age?: boolean
+are_payments_taxable_disability_income?: boolean
+writable_total_taxable_disability_amount?: NonNegMoney
+/**
+ * Ignored: recomputed from the W-2s (Schedule R line 13a).
+ */
+has_w2_wages?: boolean
+}
+export interface HsaFilerAnswers {
+writable_primary_filer_has_made_contributions_to_hsa?: boolean
+writable_secondary_filer_has_made_contributions_to_hsa?: boolean
+enrolled_in_medicare?: ("MedicareAllYear" | "MedicarePartOfYear" | "MedicareNoneOfYear")
+hsa_hdhp_coverage_status?: ("HdhpAllYear" | "HdhpPartOfYear" | "HdhpNoneOfYear")
+type_of_hdhp?: ("SelfOnly" | "Family" | "BothSelfAndFamily")
+had_other_coverage_ineligible_for_hsa?: ("OtherCoverageWholeYear" | "OtherCoveragePartOfYear" | "OtherCoverageNoneOfYear")
+writable_mfs_line6_check?: boolean
+writable_change_in_marital_status_during_tax_year?: ("WasMarriedOrDivorcedThisYear" | "WasNotMarriedNorDivorcedThisYear")
+writable_marital_change_affect_contribution_limit_bool?: boolean
+has_made_qualified_hsa_funding_distribution?: boolean
+writable_hsa_nonemployer_contributions_tax_year?: NonNegMoney
+writable_hsa_nonemployer_contributions_tax_year_plus_one?: NonNegMoney
+}
+export interface CdccFilerAnswers {
+elect_combat_pay_for_credit?: boolean
+elect_combat_pay_for_benefits?: boolean
+dependent_care_plan_maximum?: NonNegMoney
+is_disabled?: boolean
+/**
+ * @maxItems 20
+ */
+deemed_income_month_earnings?: []|[NonNegMoney]|[NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]
+has_dependent_care_expenses?: boolean
+expenses_paid_to_qualifying_provider?: boolean
+writable_qualifying_expense_amount?: NonNegMoney
 }
 /**
- * Filing-status answers (Catala Form1040 inputs). Omitted keys default to false; treat_as_mfs defaults to filing_status = MarriedFilingSeparately. These move into the calculator when the filers module (#15) is wired.
+ * Filing-status answers. Schema 1.0 fields (Catala Form1040 inputs); the calculator derives most of them, see the table in docs/api-mapping.md: treat_as_mfs is ignored (it is filing_status), is_widowed_in_tax_year / mfj_deceased_spouse_reached_age65 / mfs_spouse_provides_no_benefits / treat_filers_as_dependents fill the matching filers and filing_answers facts when those are not given. Omitted keys default to false.
  */
 export interface FilingDetails {
 treat_as_mfs?: boolean
@@ -98,6 +181,10 @@ has_foreign_accounts_or_trusts?: boolean
  * Catala `Form_w2s.CombatPayElection`.
  */
 combat_pay_election?: ("NoCombatPay" | "UsePrimaryCombatPay" | "UseSpouseCombatPay" | "UseBothCombatPay" | "UsePrimaryNotSpouseCombatPay" | "UseSpouseNotPrimaryCombatPay")
+/**
+ * 1.2.0. The combat pay election question was answered (true when combat_pay_election is not NoCombatPay)
+ */
+combat_pay_election_made?: boolean
 }
 /**
  * One Form W-2 (Catala Form_w2s.FormW2). Omitted money box = $0, omitted boolean = false.
@@ -105,39 +192,39 @@ combat_pay_election?: ("NoCombatPay" | "UsePrimaryCombatPay" | "UseSpouseCombatP
 export interface FormW2 {
 filer: FilerRole
 /**
- * Box 1 (writable_wages)
+ * Money that cannot be negative (a form box that is never negative).
  */
 wages: number
 /**
- * Box 2 (writable_federal_withholding)
+ * Money that cannot be negative (a form box that is never negative).
  */
 federal_withholding?: number
 /**
- * Box 3 (writable_oasdi_wages)
+ * Money that cannot be negative (a form box that is never negative).
  */
 oasdi_wages?: number
 /**
- * Box 4 (writable_oasdi_withholding)
+ * Money that cannot be negative (a form box that is never negative).
  */
 oasdi_withholding?: number
 /**
- * Box 5 (writable_medicare_wages)
+ * Money that cannot be negative (a form box that is never negative).
  */
 medicare_wages?: number
 /**
- * Box 6 (writable_medicare_withholding)
+ * Money that cannot be negative (a form box that is never negative).
  */
 medicare_withholding?: number
 /**
- * Box 8 (writable_allocated_tips)
+ * Money that cannot be negative (a form box that is never negative).
  */
 allocated_tips?: number
 /**
- * Box 10 (writable_dependent_care_benefits)
+ * Money that cannot be negative (a form box that is never negative).
  */
 dependent_care_benefits?: number
 /**
- * Box 11 (writable_non_qualified_plans)
+ * Money that cannot be negative (a form box that is never negative).
  */
 non_qualified_plans?: number
 box12?: W2Box12
@@ -276,10 +363,17 @@ export interface SocialSecurity {
  */
 net_benefits: []|[Money]|[Money, Money]|[Money, Money, Money]|[Money, Money, Money, Money]
 lived_apart_all_year?: boolean
+/**
+ * 1.2.0. Box 6 of each form, same order as net_benefits; a shorter list is padded with $0, a longer one is invalid.
+ * 
+ * @maxItems 4
+ */
+federal_tax_withheld?: []|[NonNegMoney]|[NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]
 }
 export interface Adjustments {
 educator_expenses?: EducatorExpenses
 student_loan_interest?: StudentLoanInterest
+hsa?: HsaInput
 }
 /**
  * Catala Educator_adjustment inputs (was_k12_educators, primary/secondary_educator_expenses_writable).
@@ -297,6 +391,32 @@ had_payments: boolean
 loans_qualify?: boolean
 interest_amount?: NonNegMoney
 }
+export interface HsaInput {
+some_filer_had_non_w2_hsa_activity?: boolean
+writable_primary_filer_had_non_w2_hsa_activity?: boolean
+writable_secondary_filer_had_non_w2_hsa_activity?: boolean
+has_hsa_medical_savings_account_type?: boolean
+writable_has_hsa_excess_contributions_previous_year?: boolean
+writable_has_hsa_withdrawn_excess_contributions_yes_no?: boolean
+some_filers_made_testing_period_contribution?: boolean
+some_filers_have_testing_period_additional_income?: boolean
+/**
+ * @maxItems 20
+ */
+hsa_distributions?: []|[HsaDistribution]|[HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]|[HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution, HsaDistribution]
+}
+export interface HsaDistribution {
+filer: FilerRole
+writable_distributions_rollover_bool: boolean
+writable_distributions_rollover_amount: NonNegMoney
+writable_gross_distribution: NonNegMoney
+has_withdrawn_excess_contributions: boolean
+writable_withdrawn_excess_contributions_amount: NonNegMoney
+writable_earnings_on_excess_contributions: NonNegMoney
+hsa_distribution_code: ("NormalDistribution" | "ExcessContributions" | "Disability" | "DeathOtherThanCode6" | "ProhibitedTransaction" | "DeathDistributionAfterYear")
+writable_fmv_on_date_of_death: NonNegMoney
+writable_qualified_med_expenses: NonNegMoney
+}
 /**
  * Catala Estimated_payments inputs. amount = estimated_tax_payment_writable.
  */
@@ -305,6 +425,228 @@ paid_estimated_taxes_or_from_last_year: boolean
 amount?: NonNegMoney
 paid_under_different_name?: boolean
 paid_with_former_spouse?: ("SpouseDid" | "BothDid" | "TpDid" | "Neither")
+}
+/**
+ * 1.2.0. The marital and residence answers Direct File asks (filers.xml), Catala ApiFilingAnswers. Absent marital_status / year_of_spouse_death are derived from filing_status: Single and HeadOfHousehold are NeverMarried, MarriedFilingJointly and MarriedFilingSeparately Married, QualifyingSurvivingSpouse Widowed, died in 2023 (is_widowed_in_tax_year true: Widowed, died in 2024).
+ */
+export interface FilingAnswers {
+marital_status?: ("NeverMarried" | "Married" | "Divorced" | "Widowed")
+year_of_spouse_death?: ("DiedInTaxYear" | "DiedTaxYearMinusOne" | "DiedTaxYearMinusTwo" | "DiedBeforeTaxYearMinusTwo")
+/**
+ * ISO date YYYY-MM-DD
+ */
+secondary_filer_date_of_death?: string
+primary_filer_potential_claimer_filed_only_for_refund?: boolean
+mfj_required_to_file?: boolean
+mfj_dependents_filing_for_credits?: boolean
+lived_together_all_year_with_spouse?: boolean
+spouse_lived_together_months?: ("LivedApartAllYear" | "LivedTogetherSixMonthsOrLess" | "LivedTogetherMoreThanSixMonths")
+lived_apart_last_six_months?: boolean
+separation_agreement?: boolean
+/**
+ * True is implied for QualifyingSurvivingSpouse
+ */
+can_file_jointly_year_of_spouse_death?: boolean
+in_registered_domestic_partnership?: boolean
+residence_state?: ("MoreThanOne" | "AK" | "AZ" | "CA" | "CT" | "FL" | "ID" | "IL" | "KS" | "ME" | "MD" | "MA" | "NV" | "NH" | "NJ" | "NM" | "NY" | "NC" | "OR" | "PA" | "SD" | "TN" | "TX" | "WA" | "WI" | "WY" | "NoneOfThese")
+spouse_itemizes?: boolean
+mfs_living_spouse_filing_return?: boolean
+mfs_deceased_spouse_filing_return?: boolean
+mfs_spouse_has_gross_income?: boolean
+}
+/**
+ * 1.2.0. One household member with the Direct File per-person facts (/familyAndHousehold/*), Catala ApiDependent. Required: relationship, date_of_birth, tin_type. Everything else defaults to the value shown; send the real answer whenever the person is claimed for a credit. The household, not the form, is the unit: a child who is also a qualifying relative is one entry.
+ */
+export interface Dependent {
+relationship: ("BiologicalChild" | "AdoptedChild" | "StepChild" | "FosterChild" | "GrandChildOrOtherDescendantOfChild" | "ChildInLaw" | "Sibling" | "ChildOfSibling" | "HalfSibling" | "ChildOfHalfSibling" | "StepSibling" | "ChildOfStepSibling" | "OtherDescendantOfSibling" | "OtherDescendantOfHalfSibling" | "OtherDescendantOfStepSibling" | "SiblingsSpouse" | "SiblingInLaw" | "Parent" | "FosterParent" | "SiblingOfParent" | "GrandParent" | "OtherAncestorOfParent" | "StepParent" | "ParentInLaw" | "NoneOfTheAbove")
+/**
+ * ISO date YYYY-MM-DD
+ */
+date_of_birth: string
+full_time_student?: boolean
+permanent_total_disability?: boolean
+residency_duration?: ("AllYear" | "SixToElevenMonths" | "LessThanSixMonths")
+/**
+ * The person provided over half of their own support
+ */
+own_support?: boolean
+married?: boolean
+/**
+ * Files a joint return (other than to claim a refund)
+ */
+joint_return?: boolean
+required_to_file?: boolean
+filing_only_for_refund?: boolean
+could_be_qualifying_child_of_another?: boolean
+potential_claimer_must_file?: boolean
+potential_claimer_did_file?: boolean
+potential_claimer_filed_only_for_refund?: boolean
+/**
+ * Money that cannot be negative (a form box that is never negative).
+ */
+gross_income?: number
+/**
+ * Qualifying relative support test (the filer provided over half the support)
+ */
+qr_support_test?: boolean
+tin_type: ("Ssn" | "Itin" | "Atin" | "NoTin")
+is_us_citizen_full_year?: boolean
+us_resident?: boolean
+us_national?: boolean
+canada_mexico_resident?: boolean
+/**
+ * The filer chooses to claim this person
+ */
+tp_claims?: boolean
+/**
+ * The person died during the tax year (with date_of_birth and tin_type NoTin: the born-and-died knockout)
+ */
+deceased?: boolean
+custody?: BenefitSplitAnswers
+/**
+ * Head of household: the filer paid over half the cost of keeping up the home
+ */
+tp_paid_most_of_home_upkeep?: boolean
+tp_paid_most_of_parent_home_upkeep?: boolean
+ssn_employment_validity?: ("Neither" | "NotValid" | "ValidOnlyWithDhsAuthorizationInEffect" | "ValidOnlyWithDhsAuthorizationExpired")
+ssn_only_for_federally_funded_benefit?: boolean
+/**
+ * Months the person lived with the filer in the US (6 to 12); 0 when not asked
+ */
+months_lived_with_tp_in_us?: number
+cdcc?: CdccMemberAnswers
+}
+export interface BenefitSplitAnswers {
+has_other_biological_or_adoptive_parent?: boolean
+non_parental_some_parent_not_claiming?: boolean
+which_parent_not_claiming?: ("IDid" | "TheyDid" | "NobodyDid")
+in_parents_custody?: boolean
+lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months?: boolean
+biological_or_adoptive_parents_living?: boolean
+nights_with_tp_vs_other_parent?: ("More" | "Less" | "Equal")
+tp_agi_higher_than_other_parent?: boolean
+parents_meet_reqs_rule_for_children_of_divorced_parents?: boolean
+special_rule_child_used_by_custodial_parent_as_qp?: boolean
+special_rule_agi_test?: boolean
+parental_situation?: ("DivorcedOrSeparated" | "LivedApartLastSixMonths" | "Other")
+parental_support?: boolean
+multiple_support_agreement?: boolean
+}
+export interface CdccMemberAnswers {
+unable_to_care_for_self?: boolean
+has_dependent_care_expenses?: boolean
+expenses_paid_to_qualifying_provider?: boolean
+writable_qualifying_expense_amount?: NonNegMoney
+}
+export interface CreditAnswers {
+eitc_qc_of_another?: boolean
+eitc_qc_of_another_required_to_file?: boolean
+eitc_qc_of_another_is_filing?: boolean
+eitc_qc_of_another_is_filing_refund_only?: boolean
+eitc_had_improper_claims?: boolean
+eitc_improper_claims_due_to_qc?: boolean
+eitc_improper_claim_taken_since_disallowal?: boolean
+eitc_received_improper_claims_notice?: ("TwoYears" | "TenYears" | "ZeroYears" | "NotAnswered")
+eitc_improper_claims_notice_expired?: boolean
+received_improper_claims?: boolean
+received_improper_claims_notice?: ("TwoYears" | "TenYears" | "ZeroYears" | "NotAnswered")
+improper_claims_notice_expired?: boolean
+has_filed_ctc_odc_since_notice_expired?: boolean
+has_distributions_in_last_three_years?: boolean
+has_current_year_distributions?: boolean
+has_self_reported_contributions?: boolean
+has_self_reported_non_taxable_payments?: boolean
+self_reported_non_taxable_payment_amount?: NonNegMoney
+}
+export interface CdccInput {
+has_mfs_spouse_earned_income?: boolean
+writable_mfs_spouse_earned_income?: NonNegMoney
+writable_total_qualified_dependent_care_expenses?: NonNegMoney
+writable_carryover_amount?: NonNegMoney
+writable_forfeited_amount?: NonNegMoney
+has_credit_for_prior_year_expenses?: boolean
+claimed_credit_for_prior_year_expenses?: boolean
+claimed_max_credit_for_prior_tax_year?: boolean
+has_household_employee?: boolean
+benefits_from_sole_proprietorship_or_partnership?: boolean
+}
+export interface PtcInput {
+/**
+ * @maxItems 20
+ */
+form1095_as?: []|[Form1095A]|[Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]|[Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A, Form1095A]
+writable_has_ptc_qualifying_plan?: boolean
+writable_has_advanced_ptc?: boolean
+dependent_tp_self_enrolled?: boolean
+dependent_tp_enrolled_someone_else?: boolean
+writable_dependent_tp_other_members_are_part_of_different_tax_family?: boolean
+writable_has_mfs_exception?: boolean
+writable_claiming_mfs_exception_for_fourth_straight_year?: boolean
+writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status?: boolean
+writable_has_employer_sponsored_plan?: boolean
+writable_dependents_required_to_file?: boolean
+writable_self_reported_has_multiple1095_as?: boolean
+writable_is_additional_person_in_enrollment_family?: boolean
+writable_is_additional_person_partof_different_tax_family?: boolean
+writable_is_enrolled_with_other_family?: boolean
+writable_has_immigration_status_not_eligible_for_marketplace?: boolean
+writable_wants_to_use_alt_calculations?: boolean
+}
+export interface Form1095A {
+/**
+ * ISO date YYYY-MM-DD
+ */
+writable_policy_start_date: string
+/**
+ * ISO date YYYY-MM-DD
+ */
+writable_policy_end_date: string
+writable_special_policy_modification_in_starting_month: boolean
+writable_has_policy_date_exception: boolean
+has_coverage_months: boolean
+/**
+ * @maxItems 12
+ */
+coverage_months: []|[number]|[number, number]|[number, number, number]|[number, number, number, number]|[number, number, number, number, number]|[number, number, number, number, number, number]|[number, number, number, number, number, number, number]|[number, number, number, number, number, number, number, number]|[number, number, number, number, number, number, number, number, number]|[number, number, number, number, number, number, number, number, number, number]|[number, number, number, number, number, number, number, number, number, number, number]|[number, number, number, number, number, number, number, number, number, number, number, number]
+writable_premiums_or_slcsp_change: boolean
+has_change_in_circumstance: boolean
+writable_ptc_annual_premium: NonNegMoney
+writable_slcsp_annual_premium: NonNegMoney
+writable_aptc_annual_amount: NonNegMoney
+/**
+ * @maxItems 12
+ */
+writable_ptc_monthly_premium: []|[NonNegMoney]|[NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]
+/**
+ * @maxItems 12
+ */
+writable_ptc_monthly_slcsp_premium: []|[NonNegMoney]|[NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]
+/**
+ * @maxItems 12
+ */
+writable_ptc_monthly_aptc_premium: []|[NonNegMoney]|[NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]|[NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney, NonNegMoney]
+}
+export interface ScreeningAnswers {
+income_sources_supported?: boolean
+received_digital_assets?: boolean
+disposed_digital_assets?: boolean
+has_foreign_accounts?: boolean
+is_foreign_trusts_grantor?: boolean
+has_foreign_trusts_transactions?: boolean
+made_ira_contributions?: boolean
+w2_box15_income_from_different_state?: boolean
+w2_has_box14_nyrrta_knockout_code?: boolean
+w2_has_rrta_codes_in_box14?: boolean
+lived_in_ny?: boolean
+w2_paid_yonkers_taxes?: boolean
+part_year_yonkers_resident?: boolean
+primary_filer_forms_another_state?: boolean
+received_alaska_pfd?: boolean
+spouse_received_alaska_pfd?: boolean
+spouse_lives_in_other_or_multiple_states?: boolean
+spouse_forms_another_state?: boolean
+is_after_tax_day_and_not_resubmitting?: boolean
+is_after_resubmission_deadline?: boolean
 }
 /**
  * 200 response: the return is supported.
@@ -352,7 +694,7 @@ balance_due: Money
 [k: string]: Money
 }
 /**
- * A non-fatal note on a 200 response. code is stable: section_not_used = a request section is valid but its Lean module is not wired into the calculator yet, so its values are ignored. New codes are additive.
+ * A non-fatal note on a 200 response. code is stable: section_not_used = a request section is valid but its Lean module is not wired into the calculator yet, so its values are ignored (none since schema 1.2.0: every section is read); field_superseded (1.2.0) = a schema 1.0 filing_details field that the calculator now derives itself (docs/api-mapping.md), so the value is not used. New codes are additive.
  */
 export interface Warning {
 code: string

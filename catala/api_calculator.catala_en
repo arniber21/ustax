@@ -1,0 +1,858 @@
+> Module Api_calculator
+
+> Using Types
+> Using Filers as F
+> Using Form_w2s as W
+> Using Interest as I
+> Using Unemployment as U
+> Using Form1099_misc as M
+> Using Form1099_rs as RS
+> Using Educator_adjustment as EA
+> Using Estimated_payments as EP
+> Using Hsa as H
+> Using Qualifying_child as Q
+> Using Qualifying_relative as QR
+> Using Dependents_benefit_split as B
+> Using Hoh_qss_persons as HQ
+> Using Ctc_odc as C
+> Using Elderly_and_disabled as ED
+> Using Knockouts_household as KH
+> Using Calculator as Calc
+> Using Api_reasons as AR
+
+# The API-facing calculator (issue #38)
+
+`ApiCalculator` is the one reference mapping between the JSON API
+(`api/schema.json`, `docs/api.md`) and the whole-return scope `Calculator`
+(`catala/calculator.catala_en`). Its input `request` is the API request
+(`CalculateRequest`) after the JSON decoding step that `docs/api-mapping.md`
+specifies; its outputs are the fields of the API response:
+
+| Output | API response field |
+|---|---|
+| `supported` | `supported` (false: HTTP 422 `CalculateUnsupported`) |
+| `reasons` | `reasons[]`: `code` is the name of the constructor (the one inside `IncomeOrHsa` for an income, HSA or process knockout), `category` the snake_case of the `ApiReasonCategory` constructor |
+| `outcome` | `outcome`: `Refund` is `refund`, `BalanceDue` is `balance_due`, `Even` is `even` |
+| `lines` | `lines` (nineteen Form 1040 line items) |
+
+Calculator takes no part of the request on faith: every request field is
+mapped here, either into a `Calculator` input or (for the legacy
+`filing_details` flags that `Calculator` derives itself) documented below.
+
+## Units: cents on the wire, dollars here
+
+The API carries every money value as an integer number of cents (docs/api.md,
+"Money: integer cents"). Catala `money` is a decimal amount of dollars with
+cent precision, so the JSON decoding step (not this file) divides each money
+field by 100 on the way in (`5000000` becomes `$50,000.00`) and multiplies each
+`lines` field by 100 on the way out. The conversion is exact: no rounding
+happens on the wire. `Calculator` rounds every box and line to whole dollars as
+Direct File does (CONVENTIONS section 4), so every `lines` value is a whole
+number of dollars, a multiple of 100 cents.
+
+## Absent means a documented default
+
+An API request leaves out optional properties. The decoding step fills each
+absent property with the `default` of `api/schema.json` (false, 0, the empty
+list, or the named constructor) before this scope sees it, so `Api_calculator`
+inputs are complete. Two kinds of default depend on the rest of the request and
+are decided here, not by the decoder:
+
+- an absent `date_of_birth` (decoder: `date_of_birth_given` is false): the
+  filer is born 1950-06-15 if `age65_or_older` (so 74 at the end of 2024),
+  else 1985-06-15;
+- an absent `marital_status` or `year_of_spouse_death` (the constructor
+  `Unspecified`): derived from the filing status, see `MaritalOf` below.
+
+## The legacy `filing_details` flags (schema 1.0 and 1.1)
+
+Schema 1.0 took the standard deduction's answers as inputs. `Calculator`
+derives them from the filers' facts, so they map as follows. Nothing is
+silently dropped: `docs/api-mapping.md` lists each one.
+
+| Legacy field | Now |
+|---|---|
+| `treat_as_mfs` | ignored: it is `filing_status = MarriedFilingSeparately` |
+| `is_widowed_in_tax_year` | `marital_status` Widowed and `year_of_spouse_death` `DiedInTaxYear` when those are `Unspecified` |
+| `mfj_deceased_spouse_reached_age65` | the secondary filer counts as 65 or older (when no date of birth is given) |
+| `mfs_spouse_65_or_older` | passed to `Filers.mfs_spouse_65_or_older` |
+| `mfs_spouse_provides_no_benefits` | counts as `mfs_spouse_has_gross_income` |
+| `treat_filers_as_dependents` | both filers can be claimed, will be claimed, and the claimer must file |
+| `has_foreign_accounts_or_trusts` | or-ed into `screening.has_foreign_accounts` |
+| `combat_pay_election` | `income.combat_pay_election`; `combat_pay_election_made` is true when it is not `NoCombatPay` |
+| `social_security.lived_apart_all_year` | the spouses did not live together at any time: `lived_together_all_year_with_spouse` false and `spouse_lived_together_months` `LivedApartAllYear` |
+
+## API structures
+
+```catala-metadata
+## The marital status the filer reports; `Unspecified` takes the default of the
+## filing status (see `MaritalOf`).
+declaration enumeration ApiMaritalStatus:
+  -- Unspecified
+  -- NeverMarried
+  -- Married
+  -- Divorced
+  -- Widowed
+
+declaration enumeration ApiYearOfSpouseDeath:
+  -- Unspecified
+  -- DiedInTaxYear
+  -- DiedTaxYearMinusOne
+  -- DiedTaxYearMinusTwo
+  -- DiedBeforeTaxYearMinusTwo
+
+## API `filers.primary` and `filers.secondary` (schema `FilerFlags`).
+declaration structure ApiFiler:
+  data is_blind content boolean
+  data age65_or_older content boolean
+  data can_be_claimed_as_dependent content boolean
+  # The decoder sets this to whether the request had `date_of_birth`
+  data date_of_birth_given content boolean
+  data date_of_birth content date
+  data will_be_claimed content boolean
+  data potential_claimer_must_file content boolean
+  data potential_claimer_did_file content boolean
+  data is_us_citizen_full_year content boolean
+  data citizen_at_end_of_tax_year content boolean
+  data noncitizen_resident_full_year content boolean
+  data is_national content boolean
+  data is_student content boolean
+  data tin content Calc.FilerTin
+  data disability content ED.DisabilityAnswers
+  data hsa content H.HsaFilerAnswers
+  data cdcc content Calc.CdccFilerAnswers
+
+declaration structure ApiFilers:
+  data primary content ApiFiler
+  data secondary content ApiFiler
+
+## API `filing_details` (the 1.0 fields, plus `combat_pay_election_made`).
+declaration structure ApiFilingDetails:
+  data treat_as_mfs content boolean
+  data is_widowed_in_tax_year content boolean
+  data mfj_deceased_spouse_reached_age65 content boolean
+  data mfs_spouse_65_or_older content boolean
+  data mfs_spouse_provides_no_benefits content boolean
+  data treat_filers_as_dependents content boolean
+  data has_foreign_accounts_or_trusts content boolean
+  data combat_pay_election content W.CombatPayElection
+  data combat_pay_election_made content boolean
+
+## API `filing_answers` (schema 1.2.0): the marital and residence answers
+## `Filers.Filers` reads.
+declaration structure ApiFilingAnswers:
+  data marital_status content ApiMaritalStatus
+  data year_of_spouse_death content ApiYearOfSpouseDeath
+  data secondary_filer_date_of_death content date
+  data primary_filer_potential_claimer_filed_only_for_refund content boolean
+  data mfj_required_to_file content boolean
+  data mfj_dependents_filing_for_credits content boolean
+  data lived_together_all_year_with_spouse content boolean
+  data spouse_lived_together_months content F.SpouseLivedTogetherMonths
+  data lived_apart_last_six_months content boolean
+  data separation_agreement content boolean
+  data can_file_jointly_year_of_spouse_death content boolean
+  data in_registered_domestic_partnership content boolean
+  data residence_state content Types.ScopedState
+  data spouse_itemizes content boolean
+  data mfs_living_spouse_filing_return content boolean
+  data mfs_deceased_spouse_filing_return content boolean
+  data mfs_spouse_has_gross_income content boolean
+
+## API `dependents[]` (schema 1.2.0): one household member with the Direct
+## File per-person facts (`/familyAndHousehold/*`), flat. Money in dollars here.
+declaration structure ApiDependent:
+  data relationship content Q.Relationship
+  data date_of_birth content date
+  data full_time_student content boolean
+  data permanent_total_disability content boolean
+  data residency_duration content Q.ResidencyDuration
+  data own_support content boolean
+  data married content boolean
+  data joint_return content boolean
+  data required_to_file content boolean
+  data filing_only_for_refund content boolean
+  data could_be_qualifying_child_of_another content boolean
+  data potential_claimer_must_file content boolean
+  data potential_claimer_did_file content boolean
+  data potential_claimer_filed_only_for_refund content boolean
+  data gross_income content money
+  data qr_support_test content boolean
+  data tin_type content QR.TinType
+  data is_us_citizen_full_year content boolean
+  data us_resident content boolean
+  data us_national content boolean
+  data canada_mexico_resident content boolean
+  data tp_claims content boolean
+  data deceased content boolean
+  data custody content B.BenefitSplitAnswers
+  data tp_paid_most_of_home_upkeep content boolean
+  data tp_paid_most_of_parent_home_upkeep content boolean
+  data ssn_employment_validity content C.SsnEmploymentValidity
+  data ssn_only_for_federally_funded_benefit content boolean
+  data months_lived_with_tp_in_us content integer
+  data cdcc content Calc.CdccMemberAnswers
+
+## API `screening` (1.2.0): `Calculator.ScreeningAnswers` without `member_vitals`, which
+## is derived from `dependents[]` (date of birth, `deceased`, `tin_type` NoTin).
+declaration structure ApiScreening:
+  data income_sources_supported content boolean
+  data received_digital_assets content boolean
+  data disposed_digital_assets content boolean
+  data has_foreign_accounts content boolean
+  data is_foreign_trusts_grantor content boolean
+  data has_foreign_trusts_transactions content boolean
+  data made_ira_contributions content boolean
+  data w2_box15_income_from_different_state content boolean
+  data w2_has_box14_nyrrta_knockout_code content boolean
+  data w2_has_rrta_codes_in_box14 content boolean
+  data lived_in_ny content boolean
+  data w2_paid_yonkers_taxes content boolean
+  data part_year_yonkers_resident content boolean
+  data primary_filer_forms_another_state content boolean
+  data received_alaska_pfd content boolean
+  data spouse_received_alaska_pfd content boolean
+  data spouse_lives_in_other_or_multiple_states content boolean
+  data spouse_forms_another_state content boolean
+  data is_after_tax_day_and_not_resubmitting content boolean
+  data is_after_resubmission_deadline content boolean
+
+## API `social_security`.
+declaration structure ApiSocialSecurity:
+  data net_benefits content list of money
+  data federal_tax_withheld content list of money
+  data lived_apart_all_year content boolean
+
+declaration structure ApiEducator:
+  data was_k12_educators content EA.K12EducatorOptions
+  data primary_expenses content money
+  data secondary_expenses content money
+
+declaration structure ApiStudentLoan:
+  data had_payments content boolean
+  data loans_qualify content boolean
+  data interest_amount content money
+
+## API `adjustments`: educator expenses, student loan interest, and (1.2.0) HSA.
+declaration structure ApiAdjustments:
+  data educator_expenses content ApiEducator
+  data student_loan_interest content ApiStudentLoan
+  data hsa content Calc.HsaInput
+
+declaration structure ApiEstimatedPayments:
+  data paid_estimated_taxes_or_from_last_year content boolean
+  data amount content money
+  data paid_under_different_name content boolean
+  data paid_with_former_spouse content EP.PaidWithFormerSpouse
+
+```
+
+## The forms
+
+Box names of the API on the left, `Calculator` input fields in the mapping
+scopes (`docs/api-mapping.md` has the full table).
+
+```catala-metadata
+declaration structure ApiBox12:
+  data code_a content money
+  data code_b content money
+  data code_c content money
+  data code_d content money
+  data code_e content money
+  data code_f content money
+  data code_g content money
+  data code_h content money
+  data code_j content money
+  data code_k content money
+  data code_l content money
+  data code_m content money
+  data code_n content money
+  data code_p content money
+  data code_q content money
+  data code_r content money
+  data code_s content money
+  data code_t content money
+  data code_v content money
+  data code_w content money
+  data code_y content money
+  data code_z content money
+  data code_aa content money
+  data code_bb content money
+  data code_dd content money
+  data code_ee content money
+  data code_ff content money
+  data code_gg content money
+  data code_hh content money
+  data code_ii content money
+
+declaration structure ApiW2:
+  data filer content Types.FilerRole
+  data wages content money
+  data federal_withholding content money
+  data oasdi_wages content money
+  data oasdi_withholding content money
+  data medicare_wages content money
+  data medicare_withholding content money
+  data allocated_tips content money
+  data dependent_care_benefits content money
+  data non_qualified_plans content money
+  data plan_457b_is_governmental content boolean
+  data statutory_employee content boolean
+  data third_party_sick_pay content boolean
+  data box12 content ApiBox12
+
+declaration scope ApiW2ToCalc:
+  input api content ApiW2
+  output w2 content W.FormW2
+
+declaration structure ApiInterest:
+  data filer content Types.FilerRole
+  data has_1099 content boolean
+  data no_1099_amount content money
+  data interest_income content money
+  data early_withdrawal_penalty content money
+  data government_bond_interest content money
+  data federal_tax_withheld content money
+  data foreign_tax_paid content money
+  data tax_exempt_interest content money
+  data private_activity_bond_interest content money
+  data market_discount content money
+  data bond_premium content money
+  data bond_premium_treasury content money
+  data bond_premium_tax_exempt content money
+  data state_is_different content boolean
+  data state_tax_withheld content money
+  data facta_filing_required content boolean
+
+declaration scope ApiInterestToCalc:
+  input api content ApiInterest
+  output form content I.InterestReport
+
+declaration structure ApiForm1099G:
+  data filer content Types.FilerRole
+  data unemployment_compensation content money
+  data repaid_this_year_for_this_year content money
+  data repaid_this_year_for_earlier_year content money
+  data federal_tax_withheld content money
+  data state_is_different content boolean
+
+declaration scope ApiForm1099GToCalc:
+  input api content ApiForm1099G
+  output form content U.Form1099G
+
+declaration structure ApiForm1099Misc:
+  data filer content Types.FilerRole
+  data is_alaska_pfd content boolean
+  data other_income content money
+  data federal_withholding content money
+
+declaration scope ApiForm1099MiscToCalc:
+  input api content ApiForm1099Misc
+  output form content M.Form1099Misc
+
+declaration structure ApiForm1099R:
+  data filer content Types.FilerRole
+  data distribution_code content list of RS.CodeChar
+  data gross_distribution content money
+  data taxable_amount content money
+  data taxable_amount_blank content boolean
+  data taxable_amount_not_determined content boolean
+  data total_distribution content boolean
+  data capital_gain content money
+  data federal_withholding content money
+  data net_appreciation content money
+  data ira_sep_simple content boolean
+  data other_dollar content money
+  data other_percentage_nonzero content boolean
+  data percentage_total_distribution_nonzero content boolean
+  data amount_allocable_to_irr content money
+  data facta_filing_requirement content boolean
+  data state_tax_withheld content money
+  data payer_state_is_different content boolean
+  data has_death_benefit_payment_date content boolean
+  data is_indirect_rollover content boolean
+  data is_distribution_from_military_retirement_plan content boolean
+  data qualified_disaster_distribution content boolean
+  data public_safety_officer content boolean
+  data public_safety_officer_premiums content boolean
+  data recipient_date_of_birth_given content boolean
+  data recipient_date_of_birth content date
+
+declaration scope ApiForm1099RToCalc:
+  input api content ApiForm1099R
+  output form content RS.Form1099R
+```
+
+```catala
+scope ApiW2ToCalc:
+  definition w2 equals W.FormW2 {
+    -- filer: api.filer
+    -- writable_wages: api.wages
+    -- writable_federal_withholding: api.federal_withholding
+    -- writable_oasdi_wages: api.oasdi_wages
+    -- writable_oasdi_withholding: api.oasdi_withholding
+    -- writable_medicare_wages: api.medicare_wages
+    -- writable_medicare_withholding: api.medicare_withholding
+    -- writable_allocated_tips: api.allocated_tips
+    -- writable_dependent_care_benefits: api.dependent_care_benefits
+    -- writable_non_qualified_plans: api.non_qualified_plans
+    -- plan_457b_is_governmental: api.plan_457b_is_governmental
+    -- statutory_employee: api.statutory_employee
+    -- third_party_sick_pay: api.third_party_sick_pay
+    -- uncollected_oasdi_tax_on_tips: api.box12.code_a
+    -- uncollected_medicare_tax_on_tips: api.box12.code_b
+    -- taxable_life_insurance_over_50k: api.box12.code_c
+    -- deferrals_401k: api.box12.code_d
+    -- deferrals_403b: api.box12.code_e
+    -- sarsep_deferrals: api.box12.code_f
+    -- deferrals_457b: api.box12.code_g
+    -- deferrals_501c18: api.box12.code_h
+    -- nontaxable_sick_pay: api.box12.code_j
+    -- golden_parachute_excise_tax: api.box12.code_k
+    -- expense_reimbursements: api.box12.code_l
+    -- uncollected_oasdi_tax_on_life_insurance_over_50k: api.box12.code_m
+    -- uncollected_medicare_tax_on_life_insurance_over_50k: api.box12.code_n
+    -- armed_forces_moving_expenses: api.box12.code_p
+    -- writable_combat_pay: api.box12.code_q
+    -- archer_msa_contributions: api.box12.code_r
+    -- simple_contributions: api.box12.code_s
+    -- adoption_benefits: api.box12.code_t
+    -- nso_income: api.box12.code_v
+    -- employer_hsa_contributions: api.box12.code_w
+    -- deferrals_409a: api.box12.code_y
+    -- nqdc_deferrals: api.box12.code_z
+    -- roth401k_contributions: api.box12.code_aa
+    -- roth403b_contributions: api.box12.code_bb
+    -- health_coverage_cost: api.box12.code_dd
+    -- roth457b_contributions: api.box12.code_ee
+    -- qsehra_benefits: api.box12.code_ff
+    -- income_83i: api.box12.code_gg
+    -- deferrals_83i: api.box12.code_hh
+    -- non_taxable_medicaid_waiver_payments: api.box12.code_ii
+  }
+
+scope ApiInterestToCalc:
+  definition form equals I.InterestReport {
+    -- filer: api.filer
+    -- has_1099: api.has_1099
+    -- no_1099_amount: api.no_1099_amount
+    -- writable_1099_amount: api.interest_income
+    -- writable_early_withdrawl_penalty_amount: api.early_withdrawal_penalty
+    -- writable_interest_on_government_bonds: api.government_bond_interest
+    -- writable_tax_withheld: api.federal_tax_withheld
+    -- writable_foreign_tax_paid: api.foreign_tax_paid
+    -- writable_tax_exempt_interest: api.tax_exempt_interest
+    -- writable_specified_private_activity_bond_interest: api.private_activity_bond_interest
+    -- writable_market_discount: api.market_discount
+    -- writable_bond_premium: api.bond_premium
+    -- writable_bond_premium_on_treasury_obligations: api.bond_premium_treasury
+    -- writable_bond_premium_on_tax_exempt_bond: api.bond_premium_tax_exempt
+    -- state_is_different_state: api.state_is_different
+    -- writable_state_tax_withheld: api.state_tax_withheld
+    -- facta_filing_required: api.facta_filing_required
+  }
+
+scope ApiForm1099GToCalc:
+  definition form equals U.Form1099G {
+    -- filer: api.filer
+    -- amount: api.unemployment_compensation
+    -- writable_amount_paid_back_for_benefits_in_tax_year: api.repaid_this_year_for_this_year
+    -- writable_amount_paid_back_for_benefits_before_tax_year: api.repaid_this_year_for_earlier_year
+    -- writable_federal_tax_withheld: api.federal_tax_withheld
+    -- state_is_different_state: api.state_is_different
+  }
+
+scope ApiForm1099MiscToCalc:
+  definition form equals M.Form1099Misc {
+    -- filer: api.filer
+    -- is_alaska_pfd: api.is_alaska_pfd
+    -- writable_other_income: api.other_income
+    -- writable_federal_withholding: api.federal_withholding
+  }
+
+scope ApiForm1099RToCalc:
+  definition form equals RS.Form1099R {
+    -- filer: api.filer
+    -- distribution_code: api.distribution_code
+    -- writable_gross_distribution: api.gross_distribution
+    -- writable_taxable_amount: api.taxable_amount
+    -- taxable_amount_blank: api.taxable_amount_blank
+    -- taxable_amount_not_determined: api.taxable_amount_not_determined
+    -- total_distribution: api.total_distribution
+    -- writable_capital_gain: api.capital_gain
+    -- writable_federal_withholding: api.federal_withholding
+    -- writable_net_appreciation: api.net_appreciation
+    -- ira_sep_simple: api.ira_sep_simple
+    -- writable_other_dollar: api.other_dollar
+    -- other_percentage_nonzero: api.other_percentage_nonzero
+    -- percentage_total_distribution_nonzero: api.percentage_total_distribution_nonzero
+    -- writable_amount_allocable_to_irr: api.amount_allocable_to_irr
+    -- facta_filing_requirement: api.facta_filing_requirement
+    -- writable_state_tax_withheld: api.state_tax_withheld
+    -- payer_state_is_different: api.payer_state_is_different
+    -- has_death_benefit_payment_date: api.has_death_benefit_payment_date
+    -- writable_is_indirect_rollover: api.is_indirect_rollover
+    -- writable_is_distribution_from_military_retirement_plan: api.is_distribution_from_military_retirement_plan
+    -- writable_qualified_disaster_distribution: api.qualified_disaster_distribution
+    -- writeable_public_safety_officer: api.public_safety_officer
+    -- writeable_public_safety_officer_premiums: api.public_safety_officer_premiums
+    -- recipient_date_of_birth: if api.recipient_date_of_birth_given then api.recipient_date_of_birth else |1980-01-01|
+  }
+```
+
+## The request, and the response
+
+```catala-metadata
+## The API request (`CalculateRequest`) after decoding. `api_version` and
+## `tax_year` are checked by the server and carry no tax fact.
+declaration structure ApiRequest:
+  data filing_status content Types.FilingStatus
+  data filers content ApiFilers
+  data filing_details content ApiFilingDetails
+  data filing_answers content ApiFilingAnswers
+  data dependents content list of ApiDependent
+  data w2s content list of ApiW2
+  data interest_reports content list of ApiInterest
+  data form_1099g content list of ApiForm1099G
+  data form_1099misc content list of ApiForm1099Misc
+  data form_1099r content list of ApiForm1099R
+  data social_security content ApiSocialSecurity
+  data adjustments content ApiAdjustments
+  data estimated_payments content ApiEstimatedPayments
+  data credits content Calc.CreditAnswers
+  data cdcc content Calc.CdccInput
+  data premium_tax_credit content Calc.PtcInput
+  data screening content ApiScreening
+
+## The response `outcome`.
+declaration enumeration ApiOutcome:
+  -- Refund
+  -- BalanceDue
+  -- Even
+
+## One entry of the response `reasons`: the knockout that fired and its category.
+declaration structure ApiReason:
+  data code content Calc.CalculatorKnockout
+  data category content AR.ApiReasonCategory
+
+## The response `lines`: one entry per scalar Form 1040 line item of
+## `api/line-catalog.json`, in dollars (the wire carries cents).
+declaration structure ApiLines:
+  data wages content money
+  data employer_income_subtotal content money
+  data interest_income content money
+  data total_income content money
+  data adjustments_to_income content money
+  data agi content money
+  data standard_or_itemized_deductions content money
+  data total_deductions content money
+  data taxable_income content money
+  data tentative_tax_from_taxable_income content money
+  data total_tentative_tax content money
+  data non_refundable_credits content money
+  data tax_less_non_refundable_credits content money
+  data total_tax content money
+  data total_withholding content money
+  data total_other_payments_refundable_credits content money
+  data total_payments content money
+  data overpayment content money
+  data balance_due content money
+
+## `outcome` of a supported return from lines 34 and 37 (Form 1040):
+## `Refund` if line 34 is positive, `BalanceDue` if line 37 is positive, else `Even`.
+declaration scope OutcomeOf:
+  input overpayment content money
+  input balance_due content money
+  output outcome content ApiOutcome
+
+## The marital status of the request, defaulted from the filing status when the
+## request leaves it unspecified.
+declaration scope MaritalOf:
+  input filing_status content Types.FilingStatus
+  input marital_status content ApiMaritalStatus
+  input year_of_spouse_death content ApiYearOfSpouseDeath
+  input is_widowed_in_tax_year content boolean
+  output marital_status_used content F.MaritalStatus
+  output year_of_spouse_death_used content F.YearOfSpouseDeath
+
+## One filer's answers, with the legacy flags folded in.
+declaration scope ApiFilerToCalc:
+  input api content ApiFiler
+  # `filing_details.treat_filers_as_dependents`
+  input treat_as_dependent content boolean
+  # the legacy 65-or-older flag for the spouse (`mfj_deceased_spouse_reached_age65`)
+  input also_age65 content boolean
+  output answers content F.FilerAnswers
+  output extra content Calc.FilerExtra
+
+declaration scope ApiDependentToCalc:
+  input api content ApiDependent
+  output member content Calc.HouseholdMember
+
+declaration scope ApiCalculator:
+  input request content ApiRequest
+
+  internal primary content ApiFilerToCalc
+  internal secondary content ApiFilerToCalc
+  internal marital content MaritalOf
+  internal calc content Calc.Calculator
+
+  output supported content boolean
+  output outcome content ApiOutcome
+  output reasons content list of ApiReason
+  output lines content ApiLines
+```
+
+```catala
+scope OutcomeOf:
+  definition outcome equals
+    if overpayment > $0 then Refund
+    else if balance_due > $0 then BalanceDue
+    else Even
+
+scope MaritalOf:
+  definition marital_status_used equals
+    match marital_status with pattern
+    -- NeverMarried: F.MaritalStatus.NeverMarried
+    -- Married: F.MaritalStatus.Married
+    -- Divorced: F.MaritalStatus.Divorced
+    -- Widowed: F.MaritalStatus.Widowed
+    -- ApiMaritalStatus.Unspecified:
+         (if is_widowed_in_tax_year then F.MaritalStatus.Widowed
+          else match filing_status with pattern
+               -- Single: F.MaritalStatus.NeverMarried
+               -- HeadOfHousehold: F.MaritalStatus.NeverMarried
+               -- MarriedFilingJointly: F.MaritalStatus.Married
+               -- MarriedFilingSeparately: F.MaritalStatus.Married
+               -- QualifyingSurvivingSpouse: F.MaritalStatus.Widowed)
+  definition year_of_spouse_death_used equals
+    match year_of_spouse_death with pattern
+    -- DiedInTaxYear: F.YearOfSpouseDeath.DiedInTaxYear
+    -- DiedTaxYearMinusOne: F.YearOfSpouseDeath.DiedTaxYearMinusOne
+    -- DiedTaxYearMinusTwo: F.YearOfSpouseDeath.DiedTaxYearMinusTwo
+    -- DiedBeforeTaxYearMinusTwo: F.YearOfSpouseDeath.DiedBeforeTaxYearMinusTwo
+    -- ApiYearOfSpouseDeath.Unspecified:
+         (if is_widowed_in_tax_year then F.YearOfSpouseDeath.DiedInTaxYear
+          else if filing_status = Types.FilingStatus.QualifyingSurvivingSpouse
+          then F.YearOfSpouseDeath.DiedTaxYearMinusOne
+          else F.YearOfSpouseDeath.DiedBeforeTaxYearMinusTwo)
+
+scope ApiFilerToCalc:
+  definition answers equals F.FilerAnswers {
+    -- date_of_birth:
+         (if api.date_of_birth_given then api.date_of_birth
+          else if api.age65_or_older or also_age65 then |1950-06-15|
+          else |1985-06-15|)
+    -- is_blind: api.is_blind
+    -- can_be_claimed: api.can_be_claimed_as_dependent or treat_as_dependent
+    -- will_be_claimed: api.will_be_claimed or treat_as_dependent
+    -- potential_claimer_must_file: api.potential_claimer_must_file or treat_as_dependent
+    -- potential_claimer_did_file: api.potential_claimer_did_file
+    -- is_us_citizen_full_year: api.is_us_citizen_full_year
+    -- writable_citizen_at_end_of_tax_year: api.citizen_at_end_of_tax_year
+    -- writable_is_noncitizen_resident_full_year: api.noncitizen_resident_full_year
+    -- writable_is_national: api.is_national }
+  definition extra equals Calc.FilerExtra {
+    -- tin: api.tin
+    -- is_student: api.is_student
+    -- disability: api.disability
+    -- hsa: api.hsa
+    -- cdcc: api.cdcc }
+
+scope ApiDependentToCalc:
+  definition member equals Calc.HouseholdMember {
+    -- dependent: QR.Member {
+         -- person: Q.Person {
+              -- relationship: api.relationship
+              -- date_of_birth: api.date_of_birth
+              -- full_time_student: api.full_time_student
+              -- permanent_total_disability: api.permanent_total_disability
+              -- residency_duration: api.residency_duration
+              -- own_support: api.own_support
+              -- married: api.married
+              -- writable_joint_return: api.joint_return
+              -- writable_required_to_file: api.required_to_file
+              -- writable_filing_only_for_refund: api.filing_only_for_refund
+              -- writable_could_be_qualifying_child_of_another:
+                   api.could_be_qualifying_child_of_another
+              -- writable_potential_claimer_must_file: api.potential_claimer_must_file
+              -- writable_potential_claimer_did_file: api.potential_claimer_did_file
+              -- writable_potential_claimer_filed_only_for_refund:
+                   api.potential_claimer_filed_only_for_refund }
+         -- answers: QR.DependentAnswers {
+              -- gross_income: api.gross_income
+              -- writable_qr_support_test: api.qr_support_test
+              -- tin_type: api.tin_type
+              -- is_us_citizen_full_year: api.is_us_citizen_full_year
+              -- writable_us_resident: api.us_resident
+              -- writable_us_national: api.us_national
+              -- writable_canada_mexico_resident: api.canada_mexico_resident
+              -- tp_claims: api.tp_claims }
+         -- split: api.custody }
+    -- upkeep: HQ.UpkeepAnswers {
+         -- tp_paid_most_of_home_upkeep: api.tp_paid_most_of_home_upkeep
+         -- tp_paid_most_of_parent_home_upkeep: api.tp_paid_most_of_parent_home_upkeep }
+    -- ssn_employment_validity: api.ssn_employment_validity
+    -- ssn_only_for_federally_funded_benefit: api.ssn_only_for_federally_funded_benefit
+    -- months_lived_with_tp_in_us: api.months_lived_with_tp_in_us
+    -- cdcc: api.cdcc }
+
+scope ApiCalculator:
+  definition primary equals output of ApiFilerToCalc with {
+    -- api: request.filers.primary
+    -- treat_as_dependent: request.filing_details.treat_filers_as_dependents
+    -- also_age65: false }
+  definition secondary equals output of ApiFilerToCalc with {
+    -- api: request.filers.secondary
+    -- treat_as_dependent: request.filing_details.treat_filers_as_dependents
+    -- also_age65: request.filing_details.mfj_deceased_spouse_reached_age65 }
+  definition marital equals output of MaritalOf with {
+    -- filing_status: request.filing_status
+    -- marital_status: request.filing_answers.marital_status
+    -- year_of_spouse_death: request.filing_answers.year_of_spouse_death
+    -- is_widowed_in_tax_year: request.filing_details.is_widowed_in_tax_year }
+
+  definition calc equals output of Calc.Calculator with {
+    -- filing_status: request.filing_status
+    -- filers: Calc.FilersInput {
+         -- marital_status: marital.marital_status_used
+         -- year_of_spouse_death: marital.year_of_spouse_death_used
+         -- primary_filer: primary.answers
+         -- secondary_filer: secondary.answers
+         -- secondary_filer_date_of_death: request.filing_answers.secondary_filer_date_of_death
+         -- primary_filer_potential_claimer_filed_only_for_refund:
+              request.filing_answers.primary_filer_potential_claimer_filed_only_for_refund
+         -- mfj_required_to_file: request.filing_answers.mfj_required_to_file
+         -- mfj_dependents_filing_for_credits: request.filing_answers.mfj_dependents_filing_for_credits
+         -- lived_together_all_year_with_spouse:
+              request.filing_answers.lived_together_all_year_with_spouse
+              and not request.social_security.lived_apart_all_year
+         -- spouse_lived_together_months:
+              (if request.social_security.lived_apart_all_year
+               then F.SpouseLivedTogetherMonths.LivedApartAllYear
+               else request.filing_answers.spouse_lived_together_months)
+         -- writable_lived_apart_last_six_months: request.filing_answers.lived_apart_last_six_months
+         -- writable_separation_agreement: request.filing_answers.separation_agreement
+         -- can_file_jointly_year_of_spouse_death:
+              request.filing_answers.can_file_jointly_year_of_spouse_death
+              or request.filing_status = Types.FilingStatus.QualifyingSurvivingSpouse
+         -- in_registered_domestic_partnership: request.filing_answers.in_registered_domestic_partnership
+         -- filer_residence_and_income_state: request.filing_answers.residence_state
+         -- spouse_itemizes: request.filing_answers.spouse_itemizes
+         -- mfs_living_spouse_filing_return: request.filing_answers.mfs_living_spouse_filing_return
+         -- mfs_deceased_spouse_filing_return: request.filing_answers.mfs_deceased_spouse_filing_return
+         -- mfs_spouse_has_gross_income:
+              request.filing_answers.mfs_spouse_has_gross_income
+              or request.filing_details.mfs_spouse_provides_no_benefits
+         -- mfs_spouse_65_or_older: request.filing_details.mfs_spouse_65_or_older }
+    -- primary_extra: primary.extra
+    -- secondary_extra: secondary.extra
+    -- household: map each d among request.dependents to
+         (output of ApiDependentToCalc with { -- api: d }).member
+    -- income: Calc.IncomeInput {
+         -- w2s: map each x among request.w2s to (output of ApiW2ToCalc with { -- api: x }).w2
+         -- combat_pay_election: request.filing_details.combat_pay_election
+         -- combat_pay_election_made:
+              request.filing_details.combat_pay_election_made
+              or request.filing_details.combat_pay_election != W.CombatPayElection.NoCombatPay
+         -- interest_reports: map each x among request.interest_reports to
+              (output of ApiInterestToCalc with { -- api: x }).form
+         -- form_1099gs: map each x among request.form_1099g to
+              (output of ApiForm1099GToCalc with { -- api: x }).form
+         -- form_1099miscs: map each x among request.form_1099misc to
+              (output of ApiForm1099MiscToCalc with { -- api: x }).form
+         -- form_1099rs: map each x among request.form_1099r to
+              (output of ApiForm1099RToCalc with { -- api: x }).form
+         -- ssa_net_benefits: request.social_security.net_benefits
+         -- ssa_federal_tax_withheld: request.social_security.federal_tax_withheld }
+    -- adjustments: Calc.AdjustmentsInput {
+         -- was_k12_educators: request.adjustments.educator_expenses.was_k12_educators
+         -- primary_educator_expenses_writable: request.adjustments.educator_expenses.primary_expenses
+         -- secondary_educator_expenses_writable:
+              request.adjustments.educator_expenses.secondary_expenses
+         -- had_student_loan_interest_payments: request.adjustments.student_loan_interest.had_payments
+         -- student_loans_qualify: request.adjustments.student_loan_interest.loans_qualify
+         -- student_loan_interest_amount: request.adjustments.student_loan_interest.interest_amount
+         -- hsa: request.adjustments.hsa }
+    -- payments: Calc.PaymentsInput {
+         -- paid_estimated_taxes_or_from_last_year:
+              request.estimated_payments.paid_estimated_taxes_or_from_last_year
+         -- estimated_tax_payment_writable: request.estimated_payments.amount
+         -- paid_estimated_taxes_or_from_last_year_under_different_name:
+              request.estimated_payments.paid_under_different_name
+         -- paid_estimated_taxes_with_former_spouse: request.estimated_payments.paid_with_former_spouse }
+    -- credits: request.credits
+    -- cdcc_answers: request.cdcc
+    -- ptc_answers: request.premium_tax_credit
+    -- screening: Calc.ScreeningAnswers {
+         -- member_vitals: map each d among request.dependents to
+              KH.MemberVitals { -- date_of_birth: d.date_of_birth -- deceased: d.deceased
+                                -- has_tin_type_none: d.tin_type = QR.TinType.NoTin }
+         -- income_sources_supported: request.screening.income_sources_supported
+         -- received_digital_assets: request.screening.received_digital_assets
+         -- disposed_digital_assets: request.screening.disposed_digital_assets
+         -- is_foreign_trusts_grantor: request.screening.is_foreign_trusts_grantor
+         -- has_foreign_trusts_transactions: request.screening.has_foreign_trusts_transactions
+         -- made_ira_contributions: request.screening.made_ira_contributions
+         -- w2_box15_income_from_different_state: request.screening.w2_box15_income_from_different_state
+         -- w2_has_box14_nyrrta_knockout_code: request.screening.w2_has_box14_nyrrta_knockout_code
+         -- w2_has_rrta_codes_in_box14: request.screening.w2_has_rrta_codes_in_box14
+         -- lived_in_ny: request.screening.lived_in_ny
+         -- w2_paid_yonkers_taxes: request.screening.w2_paid_yonkers_taxes
+         -- part_year_yonkers_resident: request.screening.part_year_yonkers_resident
+         -- primary_filer_forms_another_state: request.screening.primary_filer_forms_another_state
+         -- received_alaska_pfd: request.screening.received_alaska_pfd
+         -- spouse_received_alaska_pfd: request.screening.spouse_received_alaska_pfd
+         -- spouse_lives_in_other_or_multiple_states: request.screening.spouse_lives_in_other_or_multiple_states
+         -- spouse_forms_another_state: request.screening.spouse_forms_another_state
+         -- is_after_tax_day_and_not_resubmitting: request.screening.is_after_tax_day_and_not_resubmitting
+         -- is_after_resubmission_deadline: request.screening.is_after_resubmission_deadline
+         -- has_foreign_accounts:
+              request.screening.has_foreign_accounts
+              or request.filing_details.has_foreign_accounts_or_trusts } }
+
+  definition supported equals not calc.unsupported
+
+  definition reasons equals
+    if calc.unsupported
+    then map each k among calc.fired_knockouts to
+           ApiReason { -- code: k -- category: (output of AR.ApiReasonCategoryOf with { -- reason: k }).category }
+    else []
+
+  # An unsupported return has no lines (the response is HTTP 422): all zero.
+  definition lines equals
+    if calc.unsupported
+    then ApiLines {
+      -- wages: $0 -- employer_income_subtotal: $0 -- interest_income: $0 -- total_income: $0
+      -- adjustments_to_income: $0 -- agi: $0 -- standard_or_itemized_deductions: $0
+      -- total_deductions: $0 -- taxable_income: $0 -- tentative_tax_from_taxable_income: $0
+      -- total_tentative_tax: $0 -- non_refundable_credits: $0 -- tax_less_non_refundable_credits: $0
+      -- total_tax: $0 -- total_withholding: $0 -- total_other_payments_refundable_credits: $0
+      -- total_payments: $0 -- overpayment: $0 -- balance_due: $0 }
+    else ApiLines {
+      -- wages: calc.wages
+      -- employer_income_subtotal: calc.employer_income_subtotal
+      -- interest_income: calc.interest_income
+      -- total_income: calc.total_income
+      -- adjustments_to_income: calc.adjustments_to_income
+      -- agi: calc.agi
+      -- standard_or_itemized_deductions: calc.standard_or_itemized_deductions
+      -- total_deductions: calc.total_deductions
+      -- taxable_income: calc.taxable_income
+      -- tentative_tax_from_taxable_income: calc.tentative_tax_from_taxable_income
+      -- total_tentative_tax: calc.total_tentative_tax
+      -- non_refundable_credits: calc.non_refundable_credits
+      -- tax_less_non_refundable_credits: calc.tax_less_non_refundable_credits
+      -- total_tax: calc.total_tax
+      -- total_withholding: calc.total_withholding
+      -- total_other_payments_refundable_credits: calc.total_other_payments_refundable_credits
+      -- total_payments: calc.total_payments
+      -- overpayment: calc.overpayment
+      -- balance_due: calc.balance_due }
+
+  definition outcome equals
+    if calc.unsupported then Even
+    else (output of OutcomeOf with {
+            -- overpayment: calc.overpayment
+            -- balance_due: calc.balance_due }).outcome
+```

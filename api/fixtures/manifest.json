@@ -187,6 +187,30 @@
       "response": "fixtures/knocked-out-multiple-reasons.response.json"
     },
     {
+      "name": "knocked-out-hoh-no-qualifying-person",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 422,
+      "request": "fixtures/knocked-out-hoh-no-qualifying-person.request.json",
+      "response": "fixtures/knocked-out-hoh-no-qualifying-person.response.json"
+    },
+    {
+      "name": "family-mfj-two-kids",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 200,
+      "request": "examples/family-mfj-two-kids.request.json",
+      "response": "examples/family-mfj-two-kids.response.json"
+    },
+    {
+      "name": "eitc-hoh-one-child",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 200,
+      "request": "examples/eitc-hoh-one-child.request.json",
+      "response": "examples/eitc-hoh-one-child.response.json"
+    },
+    {
       "name": "refund-below-standard-deduction",
       "method": "POST",
       "path": "/calculate",

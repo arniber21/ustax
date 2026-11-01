@@ -69,15 +69,19 @@ oracle:    ## regenerate oracle/facts.csv from the Direct File scenarios
 
 # API contract (see docs/api.md): validate api/examples and api/fixtures against api/schema.json.
 # Needs node >= 18; ajv is installed locally under api/ (pinned by api/package-lock.json).
-.PHONY: api-check api-reasons api-conformance
+.PHONY: api-check api-reasons api-conformance api-examples api-catala-schema
 api-check: ## validate JSON examples and mock fixtures against api/schema.json
 	cd api && npm ci --ignore-scripts --no-audit --no-fund && node scripts/check.mjs
 api-conformance: ## Lean request validator vs api/schema.json via ajv (examples + generated mutants)
 	cd lean && lake build ustax
 	cd api && npm ci --ignore-scripts --no-audit --no-fund
 	node scripts/api_conformance.mjs
-api-reasons: ## regenerate api/knockout-reasons.json from the Catala KnockoutReason enum
+api-reasons: ## regenerate api/knockout-reasons.json and catala/api_reasons.catala_en from the Catala KnockoutReason enums
 	node api/scripts/gen-reasons.mjs
+api-catala-schema: ## regenerate api/apicalculator.catala-schema.json (`catala json-schema -s ApiCalculator`): the decoded input and the output of the Catala scope
+	catala json-schema -s ApiCalculator catala/api_calculator.catala_en > api/apicalculator.catala-schema.json
+api-examples: ## recompute every api/examples and api/fixtures response with the Catala ApiCalculator and compare (needs clerk; ARGS=--write to update)
+	node scripts/api_check_examples.mjs $(ARGS)
 
 # Provenance index (docs/provenance.md): api/provenance.json links each API line to Catala, law, Lean theorems and tests.
 .PHONY: provenance provenance-check

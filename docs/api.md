@@ -1,7 +1,7 @@
 # JSON API contract (issue #49)
 
 Contract version: `api_version` 1, schema file `api/schema.json` (JSON Schema draft 2020-12,
-`schema_version` 1.1.0), tax year 2024. Consumers: the Lean server (#51 validation, #52 endpoint),
+`schema_version` 1.2.0), tax year 2024. Consumers: the Lean server (#51 validation, #52 endpoint),
 the React frontend (#72 to #82). Plain HTTP; TLS is terminated by a proxy (`docs/lean-http-server.md`).
 
 Files:
@@ -11,7 +11,8 @@ Files:
 | `api/schema.json` | The contract. Request, success, unsupported, error, health and version shapes in `$defs`. |
 | `api/knockout-reasons.json` | Every `UnsupportedReason.code` with category and Direct File fact. Generated from the Catala enum (`make api-reasons`). |
 | `api/line-catalog.json` | Key of each `lines` entry to Form 1040 line, label, Catala output, DF fact. |
-| `api/examples/*.json` | Request and response pairs: one per filing status, refund, balance due, W-2 plus interest, knocked out. |
+| `api/examples/*.json` | Request and response pairs: one per filing status, refund, balance due, W-2 plus interest, a family with two children, earned income credit, knocked out. Every response is the output of the Catala `ApiCalculator` (`make api-examples`). |
+| `docs/api-mapping.md` | The reference mapping from this contract to the Catala `Calculator` inputs (issue #38): field tables, decoding and encoding rules, the defaults. |
 | `api/fixtures/manifest.json` | Mock-server table (method, path, request, status, response) for the frontend (#74): supported, unsupported and every error status. |
 | `make api-check` | Validates all of the above against the schema (below). |
 
@@ -55,8 +56,8 @@ and must not recompute or re-round them. Tax Table lookups use the row midpoint
 
 ## Request: `POST /calculate`
 
-The request holds the writable facts the Catala top-level scope (`Form1040`) reads, with
-box-oriented names. Required: `api_version` (1), `tax_year` (2024), `filing_status`. Everything
+The request holds the writable facts the Catala top-level scope reads (`ApiCalculator`, which calls
+`Calculator`; `docs/api-mapping.md` has the field-by-field mapping), with box-oriented names. Required: `api_version` (1), `tax_year` (2024), `filing_status`. Everything
 else is optional; an absent list is empty, an absent money box is $0, an absent flag is `false`
 (CONVENTIONS section 3: inputs are complete, so absent means the value Direct File would use).
 
@@ -72,15 +73,18 @@ else is optional; an absent list is empty, an absent money box is $0, an absent 
 | Property | Type | Catala input |
 |---|---|---|
 | `filing_status` | `Single`, `MarriedFilingJointly`, `MarriedFilingSeparately`, `HeadOfHousehold`, `QualifyingSurvivingSpouse` | `filing_status` (`Types.FilingStatus`) |
-| `filers.primary` / `filers.secondary` | `{is_blind, age65_or_older, can_be_claimed_as_dependent}` | `primary_filer_is_blind`, `primary_filer_age65_or_older`, `primary_filer_can_be_claimed` and the `secondary_` ones |
-| `filing_details` | `treat_as_mfs`, `is_widowed_in_tax_year`, `mfj_deceased_spouse_reached_age65`, `mfs_spouse_65_or_older`, `mfs_spouse_provides_no_benefits`, `treat_filers_as_dependents`, `has_foreign_accounts_or_trusts`, `combat_pay_election` | same names |
+| `filers.primary` / `filers.secondary` | `{is_blind, age65_or_older, can_be_claimed_as_dependent}` and, since 1.2.0, `date_of_birth`, `will_be_claimed`, citizenship answers, `is_student`, `tin`, `disability`, `hsa`, `cdcc` | `FilerAnswers` and `FilerExtra` of `Calculator` |
+| `filing_details` | `treat_as_mfs`, `is_widowed_in_tax_year`, `mfj_deceased_spouse_reached_age65`, `mfs_spouse_65_or_older`, `mfs_spouse_provides_no_benefits`, `treat_filers_as_dependents`, `has_foreign_accounts_or_trusts`, `combat_pay_election`, `combat_pay_election_made` | the 1.0 flags are folded into the filers' facts (`docs/api-mapping.md`) |
+| `filing_answers` (1.2.0) | marital status, spouse's death, living apart, residence state, MFS answers | `Calculator.FilersInput` |
+| `dependents[]` (1.2.0) | `Dependent`: the Direct File per-person facts of a household member | `Calculator.HouseholdMember` |
+| `credits`, `cdcc`, `premium_tax_credit`, `screening` (1.2.0) | the credit, child care, premium tax credit (with Forms 1095-A) and screening answers, named as in Catala | `credits`, `cdcc_answers`, `ptc_answers`, `screening` |
 | `w2s[]` | `FormW2`: boxes 1 to 11, `box12` object keyed by code letter, box 13 flags | `w2s` (`Form_w2s.FormW2`) |
 | `interest_reports[]` | `Form1099Int` | `interest_reports` (`Interest.InterestReport`) |
 | `form_1099g[]` | `Form1099G` | `Unemployment.Form1099G` |
 | `form_1099misc[]` | `Form1099Misc` | `Form1099_misc.Form1099Misc` |
 | `form_1099r[]` | `Form1099R` | `Form1099_rs.Form1099R` |
-| `social_security` | `{net_benefits: [Money], lived_apart_all_year}` | `Social_security` inputs |
-| `adjustments` | `educator_expenses`, `student_loan_interest` | `Educator_adjustment`, `Student_loan_adjustment` inputs |
+| `social_security` | `{net_benefits: [Money], federal_tax_withheld: [NonNegMoney] (1.2.0), lived_apart_all_year}` | `Social_security` inputs |
+| `adjustments` | `educator_expenses`, `student_loan_interest`, `hsa` (1.2.0: Form 8889 answers and distributions) | `Educator_adjustment`, `Student_loan_adjustment`, `Hsa` inputs |
 | `estimated_payments` | `{paid_estimated_taxes_or_from_last_year, amount, paid_under_different_name, paid_with_former_spouse}` | `Estimated_payments` inputs |
 
 The mapping from each API key to the exact Catala field (for example W-2 `wages` is
@@ -98,28 +102,33 @@ knows both.
 - Beyond the schema: `SecondaryFiler` is allowed only for `MarriedFilingJointly`
   (`filer_not_allowed`); at most one `SecondaryFiler` and one `PrimaryFiler` filer object, and no
   `filers.secondary` unless joint; dates must exist (`invalid_date`); lists hold at most 20 items
-  (`too_many_items`); box 12 codes are the letters in the schema.
+  (`too_many_items`; `dependents` too); `social_security.federal_tax_withheld` is no longer than `net_benefits` (`range`); box 12 codes are the letters in the schema.
 - Implemented in Lean (#51, `lean/UsTax/Api`, spec `Request.Valid`); `make api-conformance` cross-checks it against this schema. The Lean reader is stricter than ajv in three documented ways: integer-valued float literals (`100.0`, `1e2`) are `not_integer`, duplicate object keys are `invalid_json`, and `SecondaryFiler`/impossible dates are refused (the schema cannot express them). Shape problems (phase 1) are reported before range/size/role problems (phase 2); a body with both shows the shape problems first.
 - Duplicate persons (`duplicate_person`) apply once the household section lands.
 - The body cap is 256 KiB: the server catches the `readAll` failure and answers 413.
 
 ### Coverage of the writable facts
 
-"In API" means the property exists in v1. The Catala module may not be plugged into `Form1040`
-yet; until it is, the calculator accepts the property and it has no effect on `lines` (the slot
-defaults to $0, see the plug-in table in `catala/form_1040.catala_en`). Each plug-in is a
-server-side change only, no schema change.
+Since schema 1.2.0 (issue #38) the calculator behind the API is the whole-return Catala scope
+`Calculator`: every section the contract accepts is read, none is "accepted but not used". The only
+requests whose sections are not all read are the ones that are knocked out (422), which stop at the
+reasons.
 
 | Writable facts | Status |
 |---|---|
-| Filing status, W-2s, 1099-INT, foreign accounts, combat pay | In API, computed now |
-| Per-filer blind, 65 or older, can be claimed; MFS/widow/dependent answers | In API, computed now |
-| 1099-G, 1099-MISC (Alaska PFD), 1099-R, SSA-1099, educator and student loan adjustments, estimated payments | In API; Catala module merged, plugs into `Form1040` slots (#21 to #25 wiring) |
-| HSA (Form 8889 answers, distributions) | Excluded from v1.0: input structure is large and its slot is not wired. Arrives as an optional `hsa` property in 1.x |
-| Household: qualifying children, qualifying relatives, dependents, EITC, CTC, CDCC, Saver's, PTC (1095-A) | Excluded from v1.0: modules (#16 to #20, #26 to #34) not merged. Arrive as optional properties (`household`, `credits`, `form_1095a`) in 1.x |
+| Filing status, W-2s, 1099-INT, foreign accounts, combat pay | In API, computed |
+| Per-filer blind, 65 or older, can be claimed, date of birth, citizenship; MFS/widow/dependent answers | In API, computed |
+| 1099-G, 1099-MISC (Alaska PFD), 1099-R, SSA-1099, educator and student loan adjustments, estimated payments | In API, computed |
+| HSA (Form 8889 answers, distributions) | In API since 1.2.0 (`adjustments.hsa`, `filers.*.hsa`), computed |
+| Household: qualifying children, qualifying relatives, dependents (`dependents[]`), earned income credit, child tax credit and credit for other dependents, child and dependent care credit (`cdcc`), Saver's credit, elderly or disabled credit (`credits`), premium tax credit with Forms 1095-A (`premium_tax_credit`) | In API since 1.2.0, computed |
+| Screening questions (digital assets, foreign trusts, IRA contributions, state questions) | In API since 1.2.0 (`screening`); they only feed knockouts |
 | Itemized deductions, Schedule C/D/E, capital gains, dividends | Not supported by Direct File; excluded permanently. Sending them is `unknown_field`; situations that need them are knockouts (`IncomeSourcesNotSupported`) |
-| Name, address, SSN, bank account, dates of birth (except 1099-R recipient) | Excluded: no tax effect; the calculator takes no personal data |
-| Process answers (`flowHasSeenDeductions`, residency state, too-late-to-file) | Excluded; the matching knockouts are decided server side or by the frontend flow |
+| Name, address, SSN, bank account, dates of birth (except filers', dependents' and the 1099-R recipient's) | Excluded: no tax effect; the calculator takes no personal data beyond the dates of birth the age tests need |
+| Process answers (`flowHasSeenDeductions`, too-late-to-file) | Part of `screening` where a knockout reads them; the rest is decided server side or by the frontend flow |
+
+Defaults for what a request leaves out are in `api/schema.json` (`default`) and in `docs/api-mapping.md`.
+A client that collects an answer should send it: a default is the ordinary-filer answer, not a guess
+about the person.
 
 ## Response 200: `CalculateSuccess`
 
@@ -147,15 +156,14 @@ server-side change only, no schema change.
   are added as new keys. Clients ignore keys they do not know; `line-catalog.json` says how to label them.
   A future optional `details` object may carry the "how we got this number" breakdown.
 
-### Warnings (schema 1.1.0, proposed in the server slice, #52)
+### Warnings (schema 1.1.0, #52; 1.2.0)
 
 `CalculateSuccess` may carry an optional `warnings` array: `{code, path, message}` per request part that
-validated but is not yet read by the calculator (`code` `section_not_used`; `path` is an RFC 6901
-pointer such as `/form_1099g`). It is omitted when empty, so a request that uses only wired sections gets
-exactly the body shown above. Reason: the "Coverage" table above promises that unwired sections have "no
-effect on `lines`"; without this field a client could not tell a $0 effect from an ignored one. The
-frontend should show the warning next to the result. It is additive (a minor bump); the field disappears
-as the sections are wired.
+validated but did not affect the result. `path` is an RFC 6901 pointer such as `/filing_details/treat_as_mfs`.
+It is omitted when empty, so a typical request gets exactly the body shown above. Codes: `section_not_used`
+(1.1.0: a section whose module was not wired yet; none since 1.2.0, every section is read) and
+`field_superseded` (1.2.0: a 1.0 `filing_details` flag that the calculator now derives from the filers' facts,
+see `docs/api-mapping.md`). The frontend should show the warning next to the result.
 
 ## Response 422: `CalculateUnsupported`
 
@@ -180,15 +188,16 @@ the supported subset. There is no `lines` property.
 - `message` is English fallback text (the constructor name split into words). The frontend owns
   the user-facing copy and keys it by `code`; for an unknown `code` it shows its category text.
 
-### How #38 plugs in
+### How the calculator plugs in (issue #38)
 
-The `Calculator` scope of #38 returns `{supported, reasons, lines}`. The mapping is one function in
-the server: `supported = not unsupported`; when false, `reasons` is the list of `KnockoutReason`
-constructors rendered by name, and the response is 422 without `lines`. Nothing in the schema
-changes when #37 (household, credit and PTC knockouts) lands: the new constructors already appear
-in `api/knockout-reasons.json` with `"pending": true` and a provisional code; when #37 adds the
-real constructor, `make api-reasons` replaces the entry and the code string in fixtures, if any,
-is updated. Reasons are additive (a minor version).
+The Catala scope `ApiCalculator` (`catala/api_calculator.catala_en`) is the reference for the response:
+its outputs `supported`, `reasons`, `outcome` and `lines` are the response fields (`docs/api-mapping.md`
+has the decode and encode rules). `supported = not unsupported`; when false, `reasons` is the list of
+`CalculatorKnockout` constructors with their categories, and the response is 422 without `lines`.
+`api/knockout-reasons.json` lists every code (the household, credit and premium tax credit reasons are
+`Extra...` constructors of `KnockoutReason`); `make api-reasons` regenerates it together with the reason
+to category function of the Catala side (`catala/api_reasons.catala_en`). Reasons are additive (a minor
+version).
 
 ## Errors: `ErrorResponse`
 
@@ -227,7 +236,8 @@ outcome, not a fault. A client switches on `status`, then on `supported` or `err
 
 ```sh
 make api-check     # cd api && npm ci --ignore-scripts && node scripts/check.mjs
-make api-reasons   # regenerate api/knockout-reasons.json after the Catala enum changes
+make api-reasons   # regenerate api/knockout-reasons.json and catala/api_reasons.catala_en after the Catala enums change
+make api-examples  # recompute every example/fixture response with the Catala ApiCalculator (needs clerk)
 ```
 
 `api-check` (Node 18 or later; `ajv` 8.17.1 pinned in `api/package-lock.json`, installed under
@@ -242,10 +252,11 @@ make api-reasons   # regenerate api/knockout-reasons.json after the Catala enum 
    fresh against the Catala enum, and the schema's `Lines.required` equals `api/line-catalog.json`;
 4. one example per filing status, and an example file for every status class (200, 400, 413, 422).
 
-The numbers in the five filing-status examples were checked against `Form1040` in Catala (Tax
-Table midpoints): Single $50,000 gives tax $4,019 (`TestSingle50k`), joint $70,000 gives $4,435
-(`TestMfjTwoW2s`); the separate, head of household and surviving spouse cases ($2,819, $4,244,
-$5,635) were run through the same scope. The unsupported examples show the response shape; their
+The numbers in the examples are the output of the Catala scope `ApiCalculator` (`make api-examples`
+recomputes them) and agree with the hand-worked returns of `catala/tests/test_calculator.catala_en`
+(Tax Table midpoints): Single $50,000 gives tax $4,019, joint $70,000 gives $4,435, the family of four
+$1,635 after the $4,000 child tax credit, the head of household with one child a $3,604 refund
+(earned income credit $1,448, additional child tax credit $156). The unsupported examples show the response shape; their
 exact reason lists are confirmed by `make test-server` (`scripts/server_integration.mjs`). That test found that box 3 (`government_bond_interest`) does not fire `FlowKnockoutHasBonds` (only boxes 9 to 13 do, `catala/interest.catala_en`), so `knocked-out-bond-interest.request.json` now uses box 9 (`private_activity_bond_interest`).
 
 ## Examples (curl)
@@ -263,6 +274,10 @@ curl -s -X POST http://localhost:8080/calculate -H 'Content-Type: application/js
 | `refund-single-w2-50k` | $5,000 withheld: overpayment 98100 |
 | `balance-due-single-w2-50k` | $3,000 withheld: balance due 101900 |
 | `mfj-two-w2s` | Joint, two W-2s, tax 443500 |
-| `mfs-w2-40k`, `hoh-w2-60k`, `qss-w2-80k` | One per remaining filing status |
+| `mfs-w2-40k`, `hoh-w2-60k`, `qss-w2-80k` | One per remaining filing status; head of household and surviving spouse each have one child (`dependents[]`), since those statuses need a qualifying person |
+| `family-mfj-two-kids` | Joint, $80,000 of wages, two children: child tax credit $4,000, tax 163500, refund 136500 |
+| `eitc-hoh-one-child` | Head of household, $40,000 of wages, one child: tax 0, earned income credit $1,448 plus additional child tax credit $156 (line 32 160400), refund 360400 |
+| `refund-below-standard-deduction` | $10,000 of wages, no children: tax 0, earned income credit $632 (line 32 63200), refund 113200 |
+| `knocked-out-hoh-no-qualifying-person` | 422, `ExtraFilingStatusNotEligible` (head of household without a qualifying person) |
 | `single-w2-and-interest` | W-2 plus 1099-INT, tax 413900 (oracle scenario `single-50k`) |
 | `knocked-out-bond-interest` | 422, `FlowKnockoutHasBonds` |

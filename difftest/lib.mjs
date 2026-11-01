@@ -130,13 +130,16 @@ export function parseCatalaValue(type, s) {
 export function parseCatalaResult(text) {
   const clean = text.replace(/\x1b\[[0-9;]*m/g, '');
   const out = new Map();
-  let inResult = false;
+  let inResult = false, top = null;
   for (const line of clean.split('\n')) {
     if (/^┌─\[RESULT\]/.test(line)) { inResult = true; continue; }
     if (!inResult) continue;
     if (line.startsWith('└')) break;
-    const m = /^│ ([A-Za-z_][A-Za-z0-9_]*) = (.*)$/.exec(line);
-    if (m) out.set(m[1], m[2]);
+    const m = /^│ ([A-Za-z_][A-Za-z0-9_]*) =(?: (.*))?$/.exec(line);
+    if (m) { out.set(m[1], m[2] ?? ''); top = (m[2] ?? '') === '' ? m[1] : null; continue; }
+    // A struct output prints as `name =` then `-- field: value` lines: exposed as `name.field` (scalar fields only).
+    const f = top && /^│\s+-- ([A-Za-z_][A-Za-z0-9_]*): (.*)$/.exec(line);
+    if (f) out.set(`${top}.${f[1]}`, f[2]);
   }
   return out;
 }
@@ -199,7 +202,8 @@ export function compareOutputs(mapping, facts, catalaOut) {
       results.push({ ...base, status: 'unchecked', expected: exp ? `<${exp.completeness}>` : '<no row>', actual: catalaOut.get(o.catala) ?? '<none>' });
       continue;
     }
-    const expected = parseOracleValue(o.type, exp.value);
+    // `invert` (bool outputs): the Catala output is the negation of the oracle fact (`supported` vs `/flowIsKnockedOut`).
+    const expected = o.invert ? !parseOracleValue(o.type, exp.value) : parseOracleValue(o.type, exp.value);
     if (!catalaOut.has(o.catala)) {
       results.push({ ...base, status: 'error', expected: showValue(o.type, expected), actual: '<no output>' });
       continue;
