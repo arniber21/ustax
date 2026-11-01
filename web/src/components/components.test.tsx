@@ -77,7 +77,7 @@ describe('MoneyInput', () => {
     const input = screen.getByLabelText('Wages');
     await userEvent.type(input, '50000');
     await userEvent.tab();
-    expect(input).toHaveValue('50000.00');
+    expect(input).toHaveValue('50,000.00');
     expect(screen.getByTestId('cents')).toHaveTextContent('5000000');
   });
   it('rejects extra decimals instead of rounding', async () => {
@@ -162,13 +162,13 @@ describe('Tooltip', () => {
   it('opens on focus and closes on Escape', async () => {
     render(<Tooltip content="A flat amount">Standard deduction</Tooltip>);
     const trigger = screen.getByRole('button', { name: 'Standard deduction' });
-    expect(screen.getByRole('tooltip', { hidden: true })).not.toBeVisible();
+    expect(screen.queryByRole('tooltip')).toBeNull();
     await userEvent.tab();
     expect(trigger).toHaveFocus();
-    expect(screen.getByRole('tooltip')).toBeVisible();
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('A flat amount');
     expect(trigger).toHaveAccessibleDescription('A flat amount');
     await userEvent.keyboard('{Escape}');
-    expect(screen.getByRole('tooltip', { hidden: true })).not.toBeVisible();
+    expect(screen.queryByRole('tooltip')).toBeNull();
   });
 });
 

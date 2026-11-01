@@ -8,14 +8,24 @@ export const SheetTrigger = SheetPrimitive.Trigger;
 export const SheetClose = SheetPrimitive.Close;
 
 /** A panel that slides in from the right (full width on phones). Radix Dialog supplies the focus trap, Esc and aria. */
-export function SheetContent({ className, children, ...props }: React.ComponentProps<typeof SheetPrimitive.Content>) {
+export function SheetContent({
+  className,
+  children,
+  side = 'right',
+  ...props
+}: React.ComponentProps<typeof SheetPrimitive.Content> & { side?: 'right' | 'bottom' }) {
   return (
     <SheetPrimitive.Portal>
-      <SheetPrimitive.Overlay data-slot="sheet-overlay" className="prov-overlay fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+      <SheetPrimitive.Overlay data-slot="sheet-overlay" className="prov-overlay fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-[1px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        data-side={side}
         className={cn(
-          'prov-sheet data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col gap-0 border-l bg-background shadow-lg outline-none sm:max-w-2xl',
+          'data-[state=open]:animate-in data-[state=closed]:animate-out transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 fixed z-50 flex flex-col gap-0 bg-background shadow-2xl outline-none',
+          side === 'right' &&
+            'prov-sheet data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 right-0 h-full w-full border-l sm:max-w-2xl',
+          side === 'bottom' &&
+            'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 max-h-[85vh] rounded-t-2xl border-t',
           className,
         )}
         {...props}

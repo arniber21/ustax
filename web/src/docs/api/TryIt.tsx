@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { Loader2, Send } from 'lucide-react';
-import { mockFetch } from '@/api';
+import { mockFetch } from '@/api/mock';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Snippet } from './Snippet';

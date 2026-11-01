@@ -1,3 +1,4 @@
+import { CalendarClock, GraduationCap, School } from 'lucide-react';
 import { isJoint, useDraft } from '../draft';
 import { MoneyField } from './fields';
 import { Check, FormSection, StepHeader, Where, YesNo } from './ui';
@@ -18,7 +19,7 @@ export function AdjustmentsStep() {
         intro="Amounts that come off your income before it is taxed, and tax you paid to the IRS yourself. Answer No to anything that does not apply."
       />
 
-      <FormSection title="Teacher expenses" note="Schedule 1, line 11">
+      <FormSection icon={School} title="Teacher expenses" note="Schedule 1, line 11">
         <YesNo
           legend="Did you work as a K-12 teacher, counselor, principal or aide, and buy classroom supplies yourself?"
           hint="Up to $300 of what you paid out of pocket comes off your income."
@@ -53,7 +54,7 @@ export function AdjustmentsStep() {
         )}
       </FormSection>
 
-      <FormSection title="Student loan interest" note="Schedule 1, line 21">
+      <FormSection icon={GraduationCap} title="Student loan interest" note="Schedule 1, line 21">
         <YesNo
           legend="Did you pay interest on a student loan in 2024?"
           hint="Your loan servicer sends Form 1098-E if you paid $600 or more."
@@ -83,7 +84,7 @@ export function AdjustmentsStep() {
         )}
       </FormSection>
 
-      <FormSection title="Tax you paid on your own" note="Form 1040, line 26">
+      <FormSection icon={CalendarClock} title="Tax you paid on your own" note="Form 1040, line 26">
         <YesNo
           legend="Did you send the IRS any tax payments during 2024, or apply last year’s refund to this year?"
           hint="People who freelance or have other income sometimes pay four times a year (“estimated taxes”)."

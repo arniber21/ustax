@@ -1,7 +1,7 @@
 export { Button, ButtonLink } from './Button';
 export { Field, type FieldControlProps, type FieldProps } from './Field';
 export { MoneyInput, type MoneyInputProps } from './MoneyInput';
-export { Select, type SelectOption, type SelectProps } from './Select';
+export { Select, ChoiceSelect, Combobox, type SelectOption, type SelectProps } from './Select';
 export { Stepper, ProgressBar, type StepperStep } from './Stepper';
 export { Card } from './Card';
 export { Callout, type CalloutTone } from './Callout';

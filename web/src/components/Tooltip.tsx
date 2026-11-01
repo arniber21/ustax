@@ -1,4 +1,5 @@
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { Tooltip as UiTooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 export interface TooltipProps {
   /** Supplementary explanation shown on hover, focus or tap. Never put essential information only here. */
@@ -8,41 +9,28 @@ export interface TooltipProps {
 }
 
 /**
- * Explains a term in place. The trigger is a real button (keyboard and touch friendly);
- * the bubble is wired with aria-describedby and closes on Escape.
+ * Explains a term in place (shadcn/ui Tooltip). The trigger is a real button with a dotted underline:
+ * hover or keyboard focus opens it, a tap toggles it on touch screens, Escape closes it.
  */
 export function Tooltip({ content, children }: TooltipProps) {
-  const id = useId();
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open]);
-
   return (
-    <span className="relative inline-block" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-      <button
-        type="button"
-        className="cursor-help border-0 border-b border-dotted border-current bg-transparent p-0 text-inherit"
-        aria-describedby={id}
-        aria-expanded={open}
-        onClick={() => setOpen(true)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-      >
-        {children}
-      </button>
-      <span
-        role="tooltip"
-        id={id}
-        hidden={!open}
-        className="absolute bottom-[calc(100%+6px)] left-0 z-20 w-max max-w-[min(18rem,80vw)] rounded-md bg-foreground px-3 py-2 text-xs leading-snug text-background"
-      >
-        {content}
-      </span>
-    </span>
+    <UiTooltip open={open} onOpenChange={setOpen}>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="cursor-help border-0 border-b border-dotted border-current bg-transparent p-0 text-inherit [font:inherit]"
+          // Radix closes on pointer down; a tap should toggle instead (touch has no hover).
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={(e) => {
+            e.preventDefault();
+            setOpen((o) => !o);
+          }}
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{content}</TooltipContent>
+    </UiTooltip>
   );
 }

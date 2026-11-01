@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { AS_OF, BUGS, EXTRA, MAIN, OTHER_PROOFS, STATUS_CLAIMS, TESTED, type ProofSet } from './facts';
+import { AS_OF, BUGS, CATALA, EXTRA, MAIN, OTHER_PROOFS, STATUS_CLAIMS, TESTED, type ProofSet } from './facts';
 
 /**
  * The trust page cannot drift silently: every theorem it lists is in the Comparator config in the
@@ -104,6 +104,44 @@ describe('test counts', () => {
     const lean = read('lean/README.md');
     expect(lean).toContain(fmt(TESTED.taxTable.checks));
     expect(lean).toContain(fmt(TESTED.rates.incomesPerStatus));
+  });
+});
+
+describe('Catala tier (verified by testing, not proved)', () => {
+  const count = (dir: string, ext: string) => readdirSync(join(root, dir)).filter((f) => f.endsWith(ext)).length;
+
+  it('file counts match the repository', () => {
+    expect(count('catala', '.catala_en')).toBe(CATALA.moduleFiles);
+    expect(count('catala/tests', '.catala_en')).toBe(CATALA.testFiles);
+    expect(count('difftest/mappings', '.mjs')).toBe(CATALA.mappings);
+    expect(CATALA.discrepancies).toBe(BUGS.total);
+  });
+
+  it('every item names a Catala file and a difftest mapping that exist, and the scope is in the file or mapping', () => {
+    for (const it of CATALA.items) {
+      expect(existsSync(join(root, it.file)), it.file).toBe(true);
+      const mapping = `difftest/mappings/${it.mapping}.mjs`;
+      expect(existsSync(join(root, mapping)), mapping).toBe(true);
+      const where = read(it.file) + read(mapping);
+      expect(where.includes(it.scope), `${it.scope} in ${it.file} or ${mapping}`).toBe(true);
+    }
+  });
+
+  it('the whole-return counts appear in STATUS.md, and the drawer lines exist in provenance.json', () => {
+    const status = read('STATUS.md');
+    expect(status).toContain(`157/157 non-knocked-out Direct File scenarios, ${TESTED.calculator.factChecks.toLocaleString('en-US')}/${TESTED.calculator.factChecks.toLocaleString('en-US')} fact checks`);
+    const lines = (JSON.parse(read('api/provenance.json')) as { lines: Record<string, unknown> }).lines;
+    for (const it of CATALA.items) if ('line' in it && it.line) expect(lines[it.line], it.line).toBeDefined();
+  });
+
+  it('never calls itself a proof', () => {
+    expect(CATALA.legend).toMatch(/not a proof/);
+    const words = [CATALA.legend, CATALA.caveat, ...CATALA.checks, ...CATALA.items.map((i) => `${i.title} ${i.result}`)].join(' ');
+    // "proved" may only refer to the Lean side, never to a Catala rule.
+    expect(words).not.toMatch(/catala[^.;]*\bproved\b/i);
+    const tier2 = STATUS_CLAIMS.find((c) => c.status === 'tested')!;
+    expect(tier2.title).toMatch(/verified against the IRS engine/i);
+    expect(tier2.detail).toMatch(/not a proof/i);
   });
 });
 

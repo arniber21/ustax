@@ -177,8 +177,11 @@ describe('opening from the results page', () => {
     const user = userEvent.setup();
     page();
     const walk = screen.getByRole('table');
-    expect(within(walk).getAllByRole('button', { name: /How was .* calculated\?/ })).toHaveLength(19);
-    await user.click(within(walk).getByRole('button', { name: 'How was line 15, Taxable income calculated?' }));
+    expect(within(walk).getAllByRole('button', { name: /^Law & proof for line / })).toHaveLength(19);
+    // Once provenance.json is in, each button says whether a Lean theorem covers the line.
+    const line15 = await within(walk).findByRole('button', { name: 'Law & proof for line 15, Taxable income: Proved' });
+    expect(within(walk).getByRole('button', { name: 'Law & proof for line 1a, Wages (W-2 box 1): Tested' })).toBeInTheDocument();
+    await user.click(line15);
     const dialog = await screen.findByRole('dialog', { name: /Line 15: / });
     expect(dialog).toHaveTextContent(`Your amount: ${formatCents(lines.taxable_income)}`);
   });
@@ -188,7 +191,7 @@ describe('opening from the results page', () => {
     page();
     await user.click(screen.getByRole('button', { name: /Line 15\s+Taxable income/ }));
     expect(screen.getByText(/This is the only part of your income that actually gets taxed/)).toBeInTheDocument();
-    const buttons = screen.getAllByRole('button', { name: 'How was line 15, Taxable income calculated?' });
+    const buttons = screen.getAllByRole('button', { name: /^Law & proof for line 15, Taxable income/ });
     expect(buttons).toHaveLength(2);
     await user.click(buttons[1]!);
     expect(await screen.findByRole('dialog')).toBeInTheDocument();

@@ -1,4 +1,5 @@
 import type { FilingStatus } from '../api';
+import { CalendarCheck, UserRound, Users } from 'lucide-react';
 import { Callout } from '../components';
 import { useDraft, type FlagsDraft } from '../draft';
 import { PersonDetails } from './PersonDetails';
@@ -44,7 +45,7 @@ export function AboutStep() {
         title="About you"
         intro="Your filing status sets your standard deduction (the part of income that is not taxed) and your tax rates. You can change any answer later."
       />
-      <FormSection title="Filing status">
+      <FormSection title="Filing status" icon={Users}>
         <ChoiceCards
           legend="Which one applies to you?"
           value={draft.filingStatus}
@@ -60,11 +61,11 @@ export function AboutStep() {
         )}
       </FormSection>
 
-      <FormSection title="You" note="A few facts about you on December 31, 2024. The credits you may qualify for depend on them.">
+      <FormSection icon={UserRound} title="You" note="A few facts about you on December 31, 2024. The credits you may qualify for depend on them.">
         <PersonDetails who="you" value={draft.primary} onChange={setPrimary} pathPrefix="primary" />
       </FormSection>
 
-      <FormSection title="Age, sight and dependency" note="Select anything that was true on December 31, 2024. Each one can change your standard deduction.">
+      <FormSection icon={CalendarCheck} title="Age, sight and dependency" note="Select anything that was true on December 31, 2024. Each one can change your standard deduction.">
         {draft.primary.dob === '' && (
           <Check
             label="I am 65 or older"

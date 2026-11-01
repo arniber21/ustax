@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { Baby, HeartPulse, ReceiptText } from 'lucide-react';
 import { Callout } from '../components';
 import { isJoint, useDraft, type DependentDraft, type FlagsDraft, type HsaFilerDraft } from '../draft';
 import { stepPath } from '../layout/steps';
@@ -137,7 +138,7 @@ export function CreditsStep() {
         intro="What you paid for child and dependent care, health savings accounts, and a few questions that decide which credits you can take. Answer No to anything that does not apply."
       />
 
-      <FormSection title="Child and dependent care" note="Form 2441. The credit is a share of what you paid, up to a limit.">
+      <FormSection icon={Baby} title="Child and dependent care" note="Form 2441. The credit is a share of what you paid, up to a limit.">
         <YesNo
           legend="Did you pay someone to care for a child under 13, or for a dependent who cannot care for themselves, so you could work or look for work?"
           hint="If you are married, this must also be true for your spouse (or they were a full-time student or disabled)."
@@ -162,7 +163,7 @@ export function CreditsStep() {
         )}
       </FormSection>
 
-      <FormSection title="Health savings account (HSA)" note="Form 8889">
+      <FormSection icon={HeartPulse} title="Health savings account (HSA)" note="Form 8889">
         <YesNo
           legend="Did you or your spouse have HSA activity that is not on a W-2?"
           hint="Money you put in yourself, or money you took out. Your employer’s deposits are already on the W-2."
@@ -182,6 +183,7 @@ export function CreditsStep() {
       </FormSection>
 
       <FormSection
+        icon={ReceiptText}
         title="Earned income and child tax credits"
         note="The credits themselves come from your income and the people you listed. These questions only rule you out."
       >

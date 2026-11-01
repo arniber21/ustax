@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Check, Copy } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { highlight, langOf, type Tok } from './highlight';
 import { loadSource } from './load';
@@ -62,10 +63,14 @@ export function SourcePane({ path, mark, window: win, expectedLines, label }: So
 
   const ref = `${path}:${mark.start}${mark.end > mark.start ? `-${mark.end}` : ''}`;
   const copy = () => {
-    void navigator.clipboard?.writeText(ref).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
+    void navigator.clipboard?.writeText(ref).then(
+      () => {
+        setCopied(true);
+        toast.success('Path copied', { description: ref });
+        setTimeout(() => setCopied(false), 1500);
+      },
+      () => toast.error('Could not copy the path'),
+    );
   };
 
   return (

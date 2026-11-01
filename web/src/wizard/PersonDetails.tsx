@@ -1,5 +1,5 @@
 import type { FlagsDraft } from '../draft';
-import { DateField, SelectField } from './fields';
+import { ChoiceSelectField, DateField } from './fields';
 import { Check } from './ui';
 
 /**
@@ -29,14 +29,14 @@ export function PersonDetails({
         onChange={(dob) => onChange({ dob })}
         path={`${pathPrefix}.dob`}
       />
-      <SelectField
+      <ChoiceSelectField
         label={`${you ? 'Your' : 'Your spouse’s'} citizenship`}
         hint="Most credits need a U.S. citizen or a resident alien."
         value={value.citizenship}
         options={[
-          { value: 'citizen', label: `${name} was a U.S. citizen all of 2024` },
-          { value: 'resident', label: `${name} was a resident alien all of 2024 (not a citizen)` },
-          { value: 'other', label: 'Neither of those' },
+          { value: 'citizen', label: `${name} was a U.S. citizen all of 2024`, desc: 'Born or naturalized in the U.S.' },
+          { value: 'resident', label: `${name} was a resident alien all of 2024`, desc: 'Not a citizen, but a green card holder or met the substantial presence test.' },
+          { value: 'other', label: 'Neither of those', desc: 'For example a nonresident alien. Several credits will not apply.' },
         ]}
         onChange={(citizenship) => onChange({ citizenship })}
         path={`${pathPrefix}.citizenship`}

@@ -1,13 +1,18 @@
-import { CircleAlert, TriangleAlert } from 'lucide-react';
-import type { CalculateError, CalculateRequest, ClientOptions, FilingStatus, Warning } from '../api';
+import { CircleAlert, ClipboardCopy, Pencil, Printer, TriangleAlert } from 'lucide-react';
+import { toast } from 'sonner';
+import type { CalculateError, CalculateRequest, CalculateSuccess, ClientOptions, FilingStatus, Warning } from '../api';
 import { Button, ButtonLink } from '../components';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
+import { Skeleton } from '../components/ui/skeleton';
 import { UnsupportedView } from '../knockout/UnsupportedView';
 import { Page, PageHeader } from '../layout/Page';
 import { ResultsHero } from '../pages/ResultsHero';
 import { FILING_STATUS_OPTIONS } from '../wizard/AboutStep';
 import { ProvenanceProvider } from '../provenance';
 import { HowCalculated, LineWalk } from './LineWalk';
+import { MoneyFlow } from './MoneyFlow';
+import { ProvenanceCallout, useProvenanceTour } from './ProvenanceTour';
+import { summaryText } from './summaryText';
 import { WhatIf } from './WhatIf';
 import { useLiveCalculation } from './useLiveCalculation';
 
@@ -69,6 +74,7 @@ export function WarningsAlert({ warnings }: { warnings: readonly Warning[] }) {
 /** The results screen for a request: summary, Form 1040 table, explanations, what-if, or the knockout / error experience. */
 export function ResultsView({ request, client, debounceMs }: { request: CalculateRequest; client?: ClientOptions; debounceMs?: number }) {
   const { state, retry } = useLiveCalculation(request, { client, debounceMs });
+  const tour = useProvenanceTour();
 
   if (state.status === 'knockout') return <UnsupportedView reasons={state.reasons} />;
 
@@ -77,34 +83,103 @@ export function ResultsView({ request, client, debounceMs }: { request: Calculat
 
   return (
     <Page>
-      <PageHeader eyebrow="Tax year 2024 · Form 1040" title="Your federal income tax" lead={fs ? `Filing status: ${fs}.` : undefined}>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <ButtonLink variant="secondary" to="/start/review">
-            Change answers
-          </ButtonLink>
-        </div>
-      </PageHeader>
+      <PageHeader
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Your return', to: '/start/review' }, { label: 'Result' }]}
+        eyebrow="Tax year 2024 · Form 1040"
+        title="Your federal income tax"
+        lead={fs ? `Filing status: ${fs}.` : undefined}
+        actions={
+          <>
+            <ButtonLink variant="secondary" to="/start/review">
+              <Pencil aria-hidden="true" />
+              Change answers
+            </ButtonLink>
+            {shown && <CopySummary data={shown} filingStatus={fs} />}
+            <Button variant="ghost" onClick={() => window.print()}>
+              <Printer aria-hidden="true" />
+              Print
+            </Button>
+          </>
+        }
+      />
 
-      {state.status === 'loading' && shown === null && (
-        <p role="status" className="py-16 text-center text-muted-foreground">
-          Calculating…
-        </p>
-      )}
+      {state.status === 'loading' && shown === null && <ResultsSkeleton />}
 
       {state.status === 'error' && <ErrorNotice error={state.error} onRetry={retry} hasPrevious={shown !== null} />}
 
       {shown && (
         <ProvenanceProvider lines={shown.lines}>
-          <div className="grid gap-10 [&>*]:animate-in [&>*]:fade-in-0 [&>*]:fill-mode-backwards [&>*]:duration-500 [&>:nth-child(2)]:delay-75 [&>:nth-child(3)]:delay-150 [&>:nth-child(n+4)]:delay-200">
-            <ResultsHero outcome={shown.outcome} lines={shown.lines} stale={state.status !== 'ok'} />
+          <div className="grid gap-8 [&>*]:animate-in [&>*]:fade-in-0 [&>*]:fill-mode-backwards [&>*]:duration-300 [&>:nth-child(2)]:delay-50 [&>:nth-child(3)]:delay-100 [&>:nth-child(n+4)]:delay-150">
+            <ResultsHero outcome={shown.outcome} lines={shown.lines} stale={state.status !== 'ok'} filingStatus={fs} />
+            {tour.show && <ProvenanceCallout onDismiss={tour.dismiss} onShowMe={tour.replay} />}
             {shown.warnings && shown.warnings.length > 0 && <WarningsAlert warnings={shown.warnings} />}
-            <LineWalk lines={shown.lines} filingStatus={request.filing_status} />
-            <HowCalculated lines={shown.lines} filingStatus={request.filing_status} />
-            <WhatIf request={request} client={client} />
+            <MoneyFlow lines={shown.lines} outcome={shown.outcome} />
+            <LineWalk lines={shown.lines} filingStatus={request.filing_status} tour={tour.pulse} />
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
+              <HowCalculated lines={shown.lines} filingStatus={request.filing_status} />
+              <WhatIf request={request} client={client} />
+            </div>
           </div>
         </ProvenanceProvider>
       )}
     </Page>
+  );
+}
+
+/** "Copy summary": the outcome and key lines as plain text, with a toast either way. */
+function CopySummary({ data, filingStatus }: { data: CalculateSuccess; filingStatus?: string }) {
+  return (
+    <Button
+      variant="ghost"
+      onClick={() => {
+        const text = summaryText(data, filingStatus);
+        const done = () => toast.success('Summary copied', { description: 'The outcome and key Form 1040 lines, as plain text.' });
+        const fail = () => toast.error('Could not copy', { description: 'Your browser blocked the clipboard. Use Print instead.' });
+        if (!navigator.clipboard?.writeText) return fail();
+        navigator.clipboard.writeText(text).then(done, fail);
+      }}
+    >
+      <ClipboardCopy aria-hidden="true" />
+      Copy summary
+    </Button>
+  );
+}
+
+/** Placeholder with the shape of the result while the first answer is on its way (no layout jump). */
+function ResultsSkeleton() {
+  return (
+    <div className="grid gap-8" aria-busy="true">
+      <p role="status" className="sr-only">
+        Calculating…
+      </p>
+      <div className="grid overflow-hidden rounded-2xl border bg-card md:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+        <div className="grid gap-4 p-6 sm:p-8">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-14 w-56" />
+          <Skeleton className="h-4 w-full max-w-md" />
+          <Skeleton className="h-8 w-72 max-w-full rounded-full" />
+        </div>
+        <div className="grid gap-4 border-t bg-muted/60 p-6 md:border-t-0 md:border-l">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex justify-between gap-4">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="grid gap-3 rounded-xl border bg-card p-6">
+        <Skeleton className="h-5 w-48" />
+        {[90, 70, 55, 40, 25].map((w) => (
+          <Skeleton key={w} className="h-2.5" style={{ width: `${w}%` }} />
+        ))}
+      </div>
+      <div className="grid gap-2 rounded-xl border bg-card p-4">
+        {Array.from({ length: 8 }, (_, i) => (
+          <Skeleton key={i} className="h-8 w-full" />
+        ))}
+      </div>
+    </div>
   );
 }
 

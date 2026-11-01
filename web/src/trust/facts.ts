@@ -182,6 +182,104 @@ export const TESTED = {
   caveat: 'Testing finds disagreements; it cannot rule them out. A scenario that Direct File does not contain is not tested.',
 } as const;
 
+/**
+ * Tier 2, "Verified in Catala": NOT a proof. The rules are written in Catala (literate source that quotes the
+ * statute; the Catala compiler checks types and default logic; unit tests in catala/tests) and are run against
+ * the IRS Direct File engine as an oracle (difftest/mappings). `facts.test.ts` counts the files on disk and
+ * checks each item's Catala file and mapping exist, and the numbers against STATUS.md and lean/README.md.
+ */
+export const CATALA = {
+  asOf: AS_OF,
+  /** catala/*.catala_en */
+  moduleFiles: 37,
+  /** catala/tests/*.catala_en */
+  testFiles: 42,
+  /** difftest/mappings/*.mjs (one per module or scope compared with Direct File) */
+  mappings: 37,
+  /** docs/direct-file-bugs.md entries (same as BUGS.total; checked in facts.test.ts). */
+  discrepancies: 33,
+  legend:
+    'Proved = a Lean theorem holds for every input. Verified = the Catala rules agree with IRS Direct File on every scenario we have; not a proof.',
+  checks: [
+    'Literate Catala source that quotes the statute and the IRS instructions it encodes',
+    'Type- and default-logic-checked by the Catala compiler (Catala 1.3.0)',
+    'Unit tests next to the rules (catala/tests)',
+    'Differential tests against the IRS Direct File engine, fact by fact',
+  ],
+  items: [
+    {
+      title: 'Whole return (Form 1040 and every module)',
+      file: 'catala/calculator.catala_en',
+      scope: 'Calculator',
+      mapping: 'calculator',
+      result: `${TESTED.calculator.scenarios}/${TESTED.calculator.scenarios} scenarios, ${TESTED.calculator.factChecks.toLocaleString('en-US')} fact checks agree`,
+      line: 'total_tax',
+    },
+    {
+      title: 'The same, through the API request shape',
+      file: 'catala/api_calculator.catala_en',
+      scope: 'ApiCalculator',
+      mapping: 'api_calculator',
+      result: `${TESTED.apiCalculator.scenarios}/${TESTED.apiCalculator.scenarios} scenarios, ${TESTED.apiCalculator.factChecks.toLocaleString('en-US')} fact checks agree`,
+      line: 'overpayment',
+    },
+    {
+      title: 'Form 1040 lines 1a to 37',
+      file: 'catala/form_1040.catala_en',
+      scope: 'Form1040',
+      mapping: 'form_1040',
+      result: 'Agrees on every Direct File scenario it applies to',
+      line: 'taxable_income',
+    },
+    {
+      title: 'Tax rates (line 16)',
+      file: 'catala/tax_rates.catala_en',
+      scope: 'TentativeTax',
+      mapping: 'tax_rates',
+      result: `${TESTED.rates.checks.toLocaleString('en-US')} checks against the rate schedules; the Lean side is also proved`,
+      line: 'tentative_tax_from_taxable_income',
+    },
+    {
+      title: 'Standard deduction (line 12)',
+      file: 'catala/standard_deduction.catala_en',
+      scope: 'StandardDeduction',
+      mapping: 'standard_deduction',
+      result: 'Agrees on every Direct File scenario it applies to',
+      line: 'standard_or_itemized_deductions',
+    },
+    {
+      title: 'Earned income credit',
+      file: 'catala/eitc.catala_en',
+      scope: 'EitcFromFilers',
+      mapping: 'eitc',
+      result: 'Agrees on every Direct File scenario it applies to',
+    },
+    {
+      title: 'Child tax credit and credit for other dependents',
+      file: 'catala/ctc_odc.catala_en',
+      scope: 'CtcOdc',
+      mapping: 'ctc_odc',
+      result: 'Agrees on every Direct File scenario it applies to',
+    },
+    {
+      title: 'Filing status, qualifying child and relative',
+      file: 'catala/filing_status.catala_en',
+      scope: 'FilingStatusReturn',
+      mapping: 'filing_status',
+      result: 'Agrees on every Direct File scenario it applies to',
+    },
+    {
+      title: 'Taxable Social Security (line 6b)',
+      file: 'catala/social_security.catala_en',
+      scope: 'SocialSecurity',
+      mapping: 'social_security',
+      result: 'Agrees on every Direct File scenario it applies to; the Lean side is also proved',
+    },
+  ],
+  caveat:
+    'Where Direct File and the statute differ we follow the statute and log the difference (33 entries in docs/direct-file-bugs.md). Testing finds disagreements; it cannot rule them out.',
+} as const;
+
 /** What a reader has to take on trust. README.md, "What you have to trust". */
 export const TRUSTED: readonly { what: string; why: string }[] = [
   { what: 'The Lean kernel, compiler and runtime', why: 'The kernel checks the proofs. The server runs compiled Lean code (Lean 4.35.0), so the compiler and runtime are trusted too.' },
@@ -255,8 +353,8 @@ export const STATUS_CLAIMS: readonly Claim[] = [
     status: 'proven',
   },
   {
-    title: `Tested against ${TESTED.calculator.scenarios} IRS Direct File scenarios`,
-    detail: `${TESTED.calculator.factChecks.toLocaleString('en-US')} fact checks agree between the Catala rules and the Direct File engine (as of ${AS_OF}). Testing, not a proof.`,
+    title: `${CATALA.moduleFiles} Catala rule files verified against the IRS engine`,
+    detail: `The law is written in Catala and run against IRS Direct File: on all ${TESTED.calculator.scenarios} scenarios, ${TESTED.calculator.factChecks.toLocaleString('en-US')} fact checks agree (as of ${AS_OF}). Differences are logged and we follow the statute. Testing, not a proof.`,
     status: 'tested',
   },
 ];

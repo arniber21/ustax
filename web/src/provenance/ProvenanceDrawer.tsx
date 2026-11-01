@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Scale } from 'lucide-react';
+import { StatusChip } from './StatusChip';
+import { lineStatus } from './status';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { loadProvenance } from './load';
@@ -253,12 +255,40 @@ export function ProvenanceDrawer({ lineKey, onOpenChange, amount }: ProvenanceDr
         }}
       >
         <div className="grid gap-1 border-b px-5 py-4 pr-12">
-          <p className="m-0 text-xs font-medium tracking-wide text-muted-foreground uppercase">How was this calculated?</p>
-          <SheetTitle>{title}</SheetTitle>
+          <p className="m-0 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-primary uppercase">
+            <Scale aria-hidden="true" className="size-3.5" />
+            Law &amp; proof
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <SheetTitle>{title}</SheetTitle>
+            {line && <StatusChip status={lineStatus(line)!} />}
+          </div>
           <SheetDescription id="prov-desc">
-            {line ? line.description : 'The trail from this number to the law.'}
+            {line ? line.description : 'How was this calculated? The trail from this number to the law.'}
             {amount ? ` Your amount: ${amount}.` : ''}
           </SheetDescription>
+          {line && (
+            <nav aria-label="Sections" className="prov-noprint mt-2 flex flex-wrap gap-1.5">
+              {[
+                ['prov-law', 'The law'],
+                ['prov-rule', 'Catala rule'],
+                ['prov-proved', 'Proofs'],
+                ['prov-tested', 'Tests'],
+              ].map(([id, text]) => (
+                <a
+                  key={id}
+                  href={`#${id}`}
+                  className="rounded-full border px-2.5 py-0.5 text-xs font-medium text-muted-foreground no-underline hover:border-primary/40 hover:text-foreground"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById(id!)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                >
+                  {text}
+                </a>
+              ))}
+            </nav>
+          )}
         </div>
         <div className="prov-scroll min-h-0 flex-1 overflow-y-auto px-5 py-5">
           {failed ? (

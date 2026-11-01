@@ -1,3 +1,4 @@
+import { Baby, UsersRound } from 'lucide-react';
 import { Callout, Field } from '../components';
 import { Input } from '../components/ui/input';
 import {
@@ -50,7 +51,7 @@ export function DependentsStep() {
         intro="A dependent is a child or another relative you support. Claiming one can lower your tax through the child tax credit, the earned income credit and more."
       />
 
-      <FormSection title="Who you support">
+      <FormSection icon={UsersRound} title="Who you support">
         <YesNo
           legend="Do you have children or other people you support?"
           hint="Include a child who lived with you more than half the year, and any relative whose living costs you mostly paid."
@@ -68,6 +69,7 @@ export function DependentsStep() {
       {draft.hasDependents && (
         <FormSection
           title="The people you support"
+          icon={Baby}
           note="Add everyone, even if you are not sure you can claim them. The calculator makes that call from your answers."
         >
           <Repeater
@@ -76,7 +78,9 @@ export function DependentsStep() {
             addAnotherLabel="Add another person"
             items={draft.dependents}
             max={LIMITS.maxDependents}
-            empty="Nobody added yet."
+            empty="Add each child or relative you support. You can remove anyone later."
+            emptyIcon={UsersRound}
+            titleFor={(p, i) => p.name.trim() || `Person ${i + 1}`}
             errorPath="dependents"
             onAdd={() => update((d) => ({ ...d, dependents: [...d.dependents, newDependent()] }))}
             onRemove={(id) => update((d) => ({ ...d, dependents: d.dependents.filter((p) => p.id !== id) }))}
