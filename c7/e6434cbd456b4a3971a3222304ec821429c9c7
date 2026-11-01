@@ -1,0 +1,19 @@
+api/provenance.json
+  s_3031b504518be3::t_853550ffee2978 1687-1688,1698-1699,1709-1710,1920-1921,2093-2094,2252-2253,2423-2424,2445-2446,2958-2959,3133-3134,3321-3322,3448-3449,3490-3491
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c7e6434cbd456b4a3971a3222304ec821429c9c7",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
