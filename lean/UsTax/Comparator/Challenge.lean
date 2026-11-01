@@ -99,7 +99,6 @@ column (joint or other filing status). `caseOf` reads the four facts off the inp
 is the credit (`UsTax/Eitc/Case.lean`). -/
 theorem eitc_within_bounds (i : Eitc.EitcTableIn) :
     EitcWithinBounds (Eitc.caseOf i) (Eitc.eitc i) := by
->>>>>>> 2b5d2f0 (Lean EITC and CTC/ODC/ACTC (Eitc, CtcOdc), EIC Table golden, EITC bounds proof (#46 #67))
   sorry
 
 end UsTax.Main
