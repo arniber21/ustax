@@ -1,0 +1,67 @@
+catala/DIFFTEST.md
+  s_3031b504518be3::t_190a20b9eef629 111-116
+lean/UsTax/PtcHsa/Props.lean
+  s_3031b504518be3::t_2fea1402bb952a 224-226,229-231,237-239,241-242
+  s_3031b504518be3::t_d2d11e26aed6f7 1-32,35-114,116-126,128-133,136-215,217-223,243-244
+  s_3031b504518be3::t_f294e9951265f4 33-34,115,127,134-135,216,227-228,232-236,240
+lean/UsTax/Params2024/PtcHsa.lean
+  s_3031b504518be3::t_8063ad66b5e543 1-71
+lean/UsTax/PtcAllowed.lean
+  s_3031b504518be3::t_c33b151081ef2b 100
+  s_3031b504518be3::t_5a696174fa0362 1-99,101-616
+lean/UsTax/PtcHsa/Spec.lean
+  s_3031b504518be3::t_b38b4fa6b918b7 1-68
+difftest/mappings/hsa.mjs
+  s_3031b504518be3::t_51dfb9ba3aa50b 133-140
+lean/UsTax/PtcFamily.lean
+  s_3031b504518be3::t_639ab1b69fa6a5 1-187,190-209,212-281
+  s_3031b504518be3::t_dd3d74f5f6206b 188-189,210-211
+lean/README.md
+  s_3031b504518be3::t_4360ed118f962a 339-368
+  s_3031b504518be3::t_b354bf5be1c744 338
+scripts/gen_lean_ptc_table2.py
+  s_3031b504518be3::t_393049532c1704 1-63
+lean/UsTax/Ptc/Table2.lean
+  s_3031b504518be3::t_a874de91a0ba64 1-39
+difftest/mappings/ptc_net.mjs
+  s_3031b504518be3::t_c22587b537cc93 1-47
+lean/UsTax/Cli.lean
+  s_3031b504518be3::t_0a3f6a896279d1 1844-1849
+  s_3031b504518be3::t_399b4e59afab8e 1499-1687,1689-1813
+  s_3031b504518be3::t_98626d4b2014a0 1688
+  s_3031b504518be3::t_9b83e7fef0105f 27-30
+lean/UsTax/PtcHsa/Lemmas.lean
+  s_3031b504518be3::t_d07d24dc638102 115-121,184,191,326-327,352,354
+  s_3031b504518be3::t_48c010b954d1e5 393-398,403,405-406
+  s_3031b504518be3::t_3d9761dc3d7f5a 114,140-173,175-177,182-183,185-189,198-219
+  s_3031b504518be3::t_1977cad262f9b1 1-56,58-62,64-105,107-113,122-139,174,178-181,190,192-197,220-325,328-351,353,355-385,387-388,391-392,402,404,407-481
+  s_3031b504518be3::t_c964c27904caaa 386,389-390
+  s_3031b504518be3::t_419d5afe71e518 57,63,106
+  s_3031b504518be3::t_3e19c5ea740aac 399-401
+lean/UsTax.lean
+  s_3031b504518be3::t_6004ced39d9540 84-93
+lean/UsTax/Hsa.lean
+  s_3031b504518be3::t_c9ff1be85e02d2 1-915,918-927,930-938,941-966,969-982
+  s_3031b504518be3::t_a83de8075f0f30 916-917,928-929,939-940,967-968
+lean/UsTax/PtcNet.lean
+  s_3031b504518be3::t_4be010aa880e6d 1-107,109-129,137,139-146,149,152-153
+  s_3031b504518be3::t_2bf4aa97a5c717 108,130-136,138,147-148,150-151
+lean/UsTax/Ptc/Table2Data.lean
+  s_3031b504518be3::t_8388cc782e892a 1-278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2e3b19e3bcd44ba519a4a1aa15c7cb83d660a5d",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
