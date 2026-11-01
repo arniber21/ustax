@@ -1,0 +1,108 @@
+catala/api_reasons.catala_en
+  s_3031b504518be3::t_e814e9ccba75b5 1-130
+api/examples/family-mfj-two-kids.response.json
+  s_3031b504518be3::t_371f6b381acccd 1-28
+docs/api-mapping.md
+  s_3031b504518be3::t_7513b1a50e4bb1 1-381,385-395
+  s_3031b504518be3::t_dead0654e5cd6b 382-384
+api/scripts/gen-reasons.mjs
+  s_3031b504518be3::t_e814e9ccba75b5 48-53,55-58,60-64,73-112,114,116-118,123
+  s_3031b504518be3::t_6caa292019fa67 54
+  s_3031b504518be3::t_129e36463eea50 59
+api/knockout-reasons.json
+  s_3031b504518be3::t_e814e9ccba75b5 556,563,570,577,584,591,605,612,675,689,705-732
+web/src/api/types.gen.ts
+  s_3031b504518be3::t_f391c3be0715c4 19-22,42,73-81,88,94-124,126-136,138-170,184-187,195,199,203,207,211,215,219,223,227,366-371,376,394-419,429-646,693
+api/examples/hoh-w2-60k.request.json
+  s_3031b504518be3::t_4eec220fc4a181 5-12
+difftest/lib.mjs
+  s_3031b504518be3::t_d96842a09b52d9 117-118
+  s_3031b504518be3::t_f098fbf44d6590 112,119-121,184-185
+api/fixtures/refund-below-standard-deduction.response.json
+  s_3031b504518be3::t_371f6b381acccd 23-25
+api/fixtures/version.response.json
+  s_3031b504518be3::t_c268af1c25eadf 3
+Makefile
+  s_3031b504518be3::t_dead0654e5cd6b 67,76-77
+  s_3031b504518be3::t_65b4a1da14504b 74,78-79
+lean/UsTax/Api/Response.lean
+  s_3031b504518be3::t_c268af1c25eadf 121
+web/src/knockout/reasonCopy.ts
+  s_3031b504518be3::t_9b5680e8afeb36 188,196,206,209
+scripts/api_decode.mjs
+  s_3031b504518be3::t_98d744504c824a 36
+  s_3031b504518be3::t_7ed69bbcae3dfa 27,29
+  s_3031b504518be3::t_ab58d1b14b5795 1-26,28,30-35,37-90
+catala/tests/test_api_calculator.catala_en
+  s_3031b504518be3::t_f1007e530eb2e3 555,616
+  s_3031b504518be3::t_e818a20da7b8de 125
+  s_3031b504518be3::t_bd93246b08ab79 1-124,126-554,556-615,617-637
+api/examples/eitc-hoh-one-child.response.json
+  s_3031b504518be3::t_371f6b381acccd 1-28
+api/examples/hoh-w2-60k.response.json
+  s_3031b504518be3::t_371f6b381acccd 6,19-21,25-26
+difftest/selftest.mjs
+  s_3031b504518be3::t_f1776848ae4e84 48-63
+scripts/oracle_to_api_request.mjs
+  s_3031b504518be3::t_ebcb9ef776eaab 1-196
+api/examples/family-mfj-two-kids.request.json
+  s_3031b504518be3::t_2f48e83d367663 1-17
+api/examples/eitc-hoh-one-child.request.json
+  s_3031b504518be3::t_3ecf8fc8dcc7e3 1-18
+api/fixtures/knocked-out-hoh-no-qualifying-person.response.json
+  s_3031b504518be3::t_371f6b381acccd 1-12
+api/examples/qss-w2-80k.response.json
+  s_3031b504518be3::t_b6f47ef688df0c 19-21,25
+scripts/api_check_examples.mjs
+  s_3031b504518be3::t_722dd1b73c1033 1-27
+web/src/draft/draft.test.ts
+  s_3031b504518be3::t_9b5680e8afeb36 49-52
+catala/api_calculator.catala_en
+  s_3031b504518be3::t_c235d74400ba10 594,608
+  s_3031b504518be3::t_eac0f20e3f6681 290-291,293-294,298,417-418,420-421,425
+  s_3031b504518be3::t_4b3fd3e4ce7a69 1-289,292,295-297,299-416,419,422-424,426-593,595-607,609-810
+difftest/mappings/api_calculator.mjs
+  s_3031b504518be3::t_7fa25faac3539b 35
+  s_3031b504518be3::t_ffd70a4cbd6490 20-29
+  s_3031b504518be3::t_31ce127fd0b331 1-19,30-34,36-46
+docs/api.md
+  s_3031b504518be3::t_aec5839519391e 4,14-15,59-60,76-80,86-87,112-115,119-124,126-131,159,162-166,191,193-201,278-282
+  s_3031b504518be3::t_0a1a776223935c 105
+  s_3031b504518be3::t_c4c13da5e42661 240-241,256-260
+scripts/api_wire_tables.mjs
+  s_3031b504518be3::t_9e9ea364f1b3b0 4-69
+  s_3031b504518be3::t_bb9b12a8ac389f 1-3
+api/schema.json
+  s_3031b504518be3::t_51d8af5adc5818 45,51-64,76,87-92,234-240,270-271,287,304-690
+  s_3031b504518be3::t_67ef6e999d89b2 283
+  s_3031b504518be3::t_9cf2aa5c6e50c0 740
+api/apicalculator.catala-schema.json
+  s_3031b504518be3::t_b6efe3abe6d176 1-1364
+scripts/api_catala.mjs
+  s_3031b504518be3::t_b7a2202b52edbb 1-69
+api/fixtures/manifest.json
+  s_3031b504518be3::t_c8a8d3b79f3c88 189-212
+api/examples/qss-w2-80k.request.json
+  s_3031b504518be3::t_2fe8ba45981d2d 6-11
+  s_3031b504518be3::t_5578b5b98a589b 5,12
+api/fixtures/knocked-out-hoh-no-qualifying-person.request.json
+  s_3031b504518be3::t_5d3ceb326b4eba 1-12
+catala/DIFFTEST.md
+  s_3031b504518be3::t_26f880ab19bb44 120-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "825437557ddc09b45188b8329bf7efde36997ef0",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
