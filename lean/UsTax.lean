@@ -21,6 +21,16 @@ import UsTax.Interest
 import UsTax.Form1040
 import UsTax.Form1040.Props
 import UsTax.Form1040.Lemmas
+import UsTax.Unemployment
+import UsTax.Form1099Misc
+import UsTax.Form1099Rs
+import UsTax.SocialSecurity
+import UsTax.EducatorAdjustment
+import UsTax.StudentLoanAdjustment
+import UsTax.EstimatedPayments
+import UsTax.Form1040Full
+import UsTax.Income.Props
+import UsTax.Income.Lemmas
 import UsTax.Cli
 import UsTax.Api.Json
 import UsTax.Api.Error

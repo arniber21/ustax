@@ -202,6 +202,31 @@ test), and that the exception text never reaches a client (by construction: `han
 `ServerMain` is outside `lean/UsTax`, so `make audit` neither scans nor lints it; the audit's forensics
 step runs with `--roots UsTax` because the extractor cannot import two modules that each define `main`.
 
+## Income types and adjustments (issue #45)
+
+Hand-translations (strategy (c)) of seven Catala modules; each file has a Catala <-> Lean
+name table, and every assertion of the matching `catala/tests/test_*.catala_en` is a `#guard`.
+
+- `UsTax/Unemployment.lean`: `Form1099GFacts`, `Unemployment` (Schedule 1 line 7, 1099-G part of 25b).
+- `UsTax/Form1099Misc.lean`: `Form1099Miscs` (Alaska PFD, line 8g).
+- `UsTax/Form1099Rs.lean`: `Form1099RItem`, `Form1099Rs` (lines 5a, 5b, 1099-R part of 25b, Form 8880 line 4).
+- `UsTax/SocialSecurity.lean`: `SocialSecurity` (the worksheet, lines 6a and 6b).
+- `UsTax/EducatorAdjustment.lean`, `UsTax/StudentLoanAdjustment.lean`: Schedule 1 lines 11 and 21.
+  The student loan phase-out is the exact fraction (DF-BUG(7)): Lean follows Catala, not Direct File.
+- `UsTax/EstimatedPayments.lean`: Form 1040 line 26.
+- `UsTax/Params2024.lean`: the extra figures. `UsTax/Cli.lean`: seven new `scopes` lines.
+- `make lean-difftest SCOPE=<unemployment|form1099_misc|form1099_rs|form1099_rs_withholding|social_security|educator_adjustment|student_loan_adjustment|estimated_payments>`
+  (same mappings as `make difftest`; none needed a change).
+- `UsTax/Form1040Full.lean`: the **composition layer**. `UsTax/Form1040.lean` is untouched (strict
+  difftests `form_1040` 441 and `form_1040_plugged` 3297 unchanged). `form1040Full` runs the seven
+  modules, fills the `Form1040In` slots they own and calls `form1040` (three passes: Social
+  Security needs lines 1z/2a/2b/8, student loan needs line 9). No Catala scope exists for this
+  composition, so it is `#guard`-tested only. Not wired: HSA, EITC, credits.
+- `UsTax/Income/Props.lean` (plausible, run first) and `UsTax/Income/Lemmas.lean`: line 7, 8g, 11,
+  21, 6b and 26 nonnegative (hypotheses stated where needed), line 11 at most $600, and refund/balance
+  due exclusive for `form1040Full`. Axioms: `propext`, `Classical.choice`, `Quot.sound`. The Rat
+  facts use `decide +kernel` (kernel evaluation, no extra axiom).
+
 ## Pattern for Lean modules (follow this for every later scope)
 
 1. **One Lean file per Catala module**, `UsTax/<Module>.lean`, written by hand
