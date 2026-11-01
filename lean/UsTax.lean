@@ -72,6 +72,15 @@ import UsTax.Proofs.Adjustments
 import UsTax.Proofs.Form1040Lines
 import UsTax.Proofs.SpecProps
 import UsTax.Proofs.Extra
+import UsTax.Params2024.EitcCtc
+import UsTax.Eitc
+import UsTax.Eitc.EicTable
+import UsTax.Eitc.Case
+import UsTax.CtcOdc
+import UsTax.EitcCtcDifftest
+import UsTax.Eitc.Props
+import UsTax.Proofs.Eitc
+import UsTax.Proofs.CtcOdc
 import UsTax.Cli
 import UsTax.Api.Json
 import UsTax.Api.Error

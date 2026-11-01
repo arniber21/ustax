@@ -1,4 +1,3 @@
-import UsTax.Spec.Eitc
 import UsTax.Spec.Credits
 
 /-!
@@ -13,32 +12,14 @@ to `lean/comparator.json`) when they are proved. Not imported by
 
 The statements are written as comments because the definitions they are about
 do not exist yet in Lean: a `theorem ... := by sorry` over a function
-variable would be a different (false) statement. The properties they use are
-defined, reviewed and tested now (`UsTax/Spec/Eitc.lean`,
-`UsTax/Spec/Credits.lean`).
+variable would be a different (false) statement. The property they use is
+defined, reviewed and tested now (`UsTax/Spec/Credits.lean`). (The EITC bounds, formerly
+pending here, were proved with the Lean EITC and moved to `Challenge.lean`, issues #46, #67.)
 -/
 
 namespace UsTax.Main
 
 open UsTax.Spec
-
-/-! ## (4) EITC bounds, issue #67 (needs the Lean EITC, #46)
-
-Template, with `Eitc.EitcIn` / `Eitc.eitc` the future Lean port of
-`catala/eitc.catala_en` (scope `EitcTable`) and `Eitc.caseOf` reading the
-four facts off its input:
-
-```
-theorem eitc_within_bounds (i : Eitc.EitcIn) :
-    EitcWithinBounds (Eitc.caseOf i) (Eitc.eitc i) := by
-  sorry
-```
-
-To check: all child counts (0, 1, 2, 3 or more) and both phase-out columns
-(joint, other), as #67 asks; `EitcWithinBounds` covers both by its
-parameters. -/
-
-#check @EitcWithinBounds
 
 /-! ## (3c) Credit wiring, issue #66 (needs CTC/ODC #27 and Schedule 3 in Lean)
 

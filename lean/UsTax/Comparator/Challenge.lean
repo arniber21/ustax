@@ -3,6 +3,8 @@ import UsTax.Spec.RefundBalance
 import UsTax.Spec.Credits
 import UsTax.Spec.TaxTable
 import UsTax.Spec.TaxWorksheet
+import UsTax.Spec.Eitc
+import UsTax.Eitc.Case
 import UsTax.TaxRates
 import UsTax.Form1040
 
@@ -25,7 +27,7 @@ the calculator) and the calculator's definitions (`tentativeTaxFor`,
 that runs. What each mentions, transitively, is listed and reviewed in
 `docs/spec-surface.md`.
 
-Main theorems not proved yet (EITC, credit wiring) are in
+Main theorems not proved yet (credit wiring) are in
 `UsTax/Comparator/Pending.lean`, not here: comparator requires every listed
 theorem to be proved.
 -/
@@ -88,6 +90,15 @@ theorem line16_matches_worksheet (i : Form1040In)
     (h2 : (form1040 i).taxableIncome ≤ 1_000_000_000_000_00) :
     (form1040 i).tentativeTaxFromTaxableIncome =
       worksheetTax i.filingStatus (form1040 i).taxableIncome := by
+  sorry
+
+/-- (4) On every input of the earned income credit scope `EitcTable`, the credit is
+between `$0` and the maximum credit for the number of children (3 meaning 3 or more), and is
+`$0` once the larger of AGI and earned income reaches the completed phase-out amount of the
+column (joint or other filing status). `caseOf` reads the four facts off the input and `eitc`
+is the credit (`UsTax/Eitc/Case.lean`). -/
+theorem eitc_within_bounds (i : Eitc.EitcTableIn) :
+    EitcWithinBounds (Eitc.caseOf i) (Eitc.eitc i) := by
   sorry
 
 end UsTax.Main

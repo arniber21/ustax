@@ -9,7 +9,8 @@
     "UsTax.Main.tentativeTax_matches_tax_table",
     "UsTax.Main.line16_matches_tax_table",
     "UsTax.Main.tentativeTax_matches_worksheet",
-    "UsTax.Main.line16_matches_worksheet"
+    "UsTax.Main.line16_matches_worksheet",
+    "UsTax.Main.eitc_within_bounds"
   ],
   "definition_names": [],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
