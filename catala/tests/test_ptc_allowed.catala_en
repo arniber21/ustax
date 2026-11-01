@@ -309,7 +309,7 @@ scope TestAnnualAptcRounded:
   assertion c.aptc = $2,401
 ```
 
-## DF-BUG(33-a): a policy starting on December 1
+## DF-BUG(31): a policy starting on December 1
 
 Covered on December 1, so December is a coverage month (IRC 36B(c)(2)(A)(i)):
 lesser of $500 and $600 - $100 = $500. Direct File gives $0.
@@ -381,7 +381,7 @@ scope TestMidMonthStartWithoutException:
   assertion c.allowed != $1,000
 ```
 
-## DF-BUG(33-b): full-year policy with 11 coverage months
+## DF-BUG(32): full-year policy with 11 coverage months
 
 A policy from January 20 to December 31 with no exception and no change: DF
 asks the annual amounts and uses line 11, allowing $6,000. January is not a

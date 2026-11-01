@@ -144,7 +144,7 @@ export default {
     ...scalarOutputs.map(([oracle, catala, type]) => ({ oracle, catala, type })),
     ...MONTHS.flatMap((m) => monthColumns.map(([o, c, type]) => ({ oracle: o + Mon(m), catala: `${m}_${c}`, type }))),
   ],
-  // DF-BUG(33-a) (December 1 start), DF-BUG(33-b) (line 11 with fewer than 12 coverage months) and DF-BUG(33-c)
+  // DF-BUG(31) (December 1 start), DF-BUG(32) (line 11 with fewer than 12 coverage months) and DF-BUG(33)
   // (line 10 "any" instead of "each" Form 1095-A) change no oracle value: no scenario starts a policy on
   // December 1, every annual-path scenario has 12 coverage months or none, and none has two Forms 1095-A.
   knownDivergence: [],

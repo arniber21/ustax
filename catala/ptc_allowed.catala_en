@@ -540,7 +540,7 @@ applicable taxpayer no month is active or a coverage month. The policy dates
 are 2024 dates and the end is not before the start (DF
 `/1095As/*/hasPolicyDateError`).
 
-DF-BUG(33-a): DF's December option (`ptc.xml` lines 3549 to 3574) is "the
+DF-BUG(31): DF's December option (`ptc.xml` lines 3549 to 3574) is "the
 policy does not start in December and ends in December, or starts in
 December with the policy-date exception". It omits "starts on December 1",
 which every other month has, so a policy starting on December 1 never has
@@ -555,7 +555,7 @@ with no change), the month is one twelfth of it. The enrollment premium
 (column A) and the APTC (column C) count in every month the policy is active;
 the SLCSP premium (column B) only in coverage months.
 
-DF-BUG(33-b), first part: DF uses the annual SLCSP divided by 12 in every
+DF-BUG(32), first part: DF uses the annual SLCSP divided by 12 in every
 month, coverage month or not (`/1095As/*/ptcMonthlySlcspPremiumJan`, line
 5006). Only coverage months have a premium assistance amount
 (IRC 36B(b)(1)), so a non-coverage month has an SLCSP of $0 here. In DF this
@@ -590,7 +590,7 @@ scope Form1095ACalculation:
   # IRC 36B(c)(2)(A)(i): covered as of the first day of the month
   # (DF: /1095As/*/monthOptions), chosen by the taxpayer and eligible
   # (DF: /1095As/*/has<Month>CoverageMonth).
-  # DF-BUG(33-a): the "starts on the 1st" case applies to December too.
+  # DF-BUG(31): the "starts on the 1st" case applies to December too.
   definition coverage_month_numbers equals
     list of m among (List.sequence of 1, 13) such that
       ((start_month = m
@@ -615,7 +615,7 @@ scope Form1095ACalculation:
               else if ptc_annual_premium_is_known
               then form.writable_ptc_annual_premium * (1.0 / 12.0)
               else month_amount of form.writable_ptc_monthly_premium, m
-         # DF-BUG(33-b): $0 outside coverage months
+         # DF-BUG(32): $0 outside coverage months
          -- slcsp_premium:
               if not is_coverage_month then $0
               else if no_changes_and12_month_policy
@@ -678,7 +678,7 @@ scope Form1095ACalculation:
     has_at_least_one_coverage_month or has_advanced_ptc
   consequence fulfilled
 
-  # DF-BUG(33-b): second part. Form 8962 line 10 (i8962 p 12): annual totals
+  # DF-BUG(32): second part. Form 8962 line 10 (i8962 p 12): annual totals
   # only if "You were enrolled in the qualified health plan for all 12 months
   # during 2024", with the same premium and SLCSP every month. DF's filter is
   # /noChangesAnd12MonthPolicy, which tests only that the policy starts in
@@ -767,7 +767,7 @@ Enter the lesser of the amount in column (a) or the amount in column (d).
 [...] Column (f). Enter the APTC amount from Form 1095-A, line 33, column C.
 If you have more than one Form 1095-A, add the amounts together".
 
-DF-BUG(33-c): DF's `/ptcCanReportAnnualTotals` (line 6456) is true if *any*
+DF-BUG(33): DF's `/ptcCanReportAnnualTotals` (line 6456) is true if *any*
 Form 1095-A allows annual totals; the instruction says "for each qualified
 health plan". DF's own comment marks it as a TODO. Every form is required
 here. It matters only with two or more forms, which DF blocks
@@ -778,7 +778,7 @@ DF rounds each column total to whole dollars (`Round` of the
 
 ```catala
 scope PtcAllowed:
-  # DF-BUG(33-c): every form, not any form.
+  # DF-BUG(33): every form, not any form.
   rule ptc_can_report_annual_totals under condition
     number of forms > 0
     and (for all c among forms we have c.can_report_annual_totals)
