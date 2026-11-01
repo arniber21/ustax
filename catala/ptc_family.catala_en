@@ -1,0 +1,294 @@
+> Module Ptc_family
+
+> Using Types
+> Using Params_2024 as P
+> Using Rounding as R
+
+# Premium tax credit, part 1: tax family size, poverty line, household income, applicable figure (Form 8962 lines 1 to 8)
+
+Direct File ("DF" below) module `ptc.xml`
+(`../direct-file/direct-file/backend/src/main/resources/tax/ptc.xml`, 9,760
+lines), facts `/taxFamilySize` (line 1), `/ptcMagi` (line 2a),
+`/householdIncome` (line 3), `/federalPovertyLevelThreshold` (line 4),
+`/householdIncomeAsPercent` (line 5), `/applicableFigure` (line 7),
+`/ptcAnnualContributionAmount` (line 8a) and `/ptcMontlyContributionAmount`
+(line 8b). Issue #32, scope.md section 6.6. Law: 26 U.S.C. § 36B
+(`sources/statute/irc-36B.html`), 26 CFR 1.36B-1 (`sources/regs/cfr-1.36B-1.xml`),
+Form 8962 (2024) (`sources/forms-instructions/f8962--2024.pdf` p 1) and its
+instructions (`sources/forms-instructions/i8962--2024.pdf`: Worksheet 1-1 and
+Tables 1-1 to 1-3 p 8, Worksheet 2 p 9, Table 2 p 10, lines 8a and 8b p 11).
+Tests are in `catala/tests/test_ptc_family.catala_en` (Table 2 in full in
+`catala/tests/test_ptc_table2.catala_en`); the oracle comparison is
+`difftest/mappings/ptc_family.mjs`.
+
+## What this module computes, and how parts 2 and 3 plug in
+
+- Output `ptc_annual_contribution_amount` (line 8a) and
+  `ptc_monthly_contribution_amount` (line 8b, DF's `ptcMontlyContributionAmount`
+  with its typo corrected) are the "contribution amount" that part 2 (#33)
+  subtracts from the second lowest cost silver plan premium in Form 8962 line
+  11(a) to (b) (annual path) or in each month of Part II line 24 (monthly path).
+- Output `household_income_as_percent` (line 5) is what part 3 (#34) needs for
+  the repayment limitation table (Form 8962 line 28 / Table 5) and for the
+  "household income below 100 percent" tests. `household_income`, `tax_family_size`
+  and `federal_poverty_level_threshold` are outputs too.
+- All of it takes explicit scope inputs; the orchestrator wires them. The inputs
+  and the module that supplies each (listed in the PR body) are: filing status
+  (`Filers`), claimed dependents count (`Dependents.claimed_dependents_count`),
+  the two "someone can claim" answers (`Filers`), the state (`Filers`), AGI
+  (`Form1040.agi`), tax-exempt interest (`Interest`), nontaxable Social
+  Security benefits (`SocialSecurity`).
+- OUT OF SCOPE: Form 8962 line 2b (a dependent's modified AGI added to the
+  household income when the dependent must file a return,
+  IRC 36B(d)(2)(A)(ii)) and Form 2555 amounts (Worksheet 1-1 line 3). DF
+  does not add them either and instead knocks the return out
+  (`ptc.xml` `/dependentsRequiredToFile`, `flow.xml` line 100; foreign
+  income is not supported). Part 3 or the return scope lists those knockouts.
+- The inputs are complete (CONVENTIONS section 3).
+
+## 26 U.S.C. § 36B(d) Terms relating to income and families
+
+"(1) Family size. The family size involved with respect to any taxpayer shall
+be equal to the number of individuals for whom the taxpayer is allowed a
+deduction under section 151 (relating to allowance of deduction for personal
+exemptions) for the taxable year."
+
+"(2) Household income. (A) The term "household income" means, with respect to
+any taxpayer, an amount equal to the sum of (i) the modified adjusted gross
+income of the taxpayer, plus (ii) the aggregate modified adjusted gross
+incomes of all other individuals who (I) were taken into account in
+determining the taxpayer's family size under paragraph (1), and (II) were
+required to file a return of tax imposed by section 1 for the taxable year.
+(B) The term "modified adjusted gross income" means adjusted gross income
+increased by (i) any amount excluded from gross income under section 911,
+(ii) any amount of interest received or accrued by the taxpayer during the
+taxable year which is exempt from tax, and (iii) an amount equal to the
+portion of the taxpayer's social security benefits (as defined in section
+86(d)) which is not included in gross income under section 86 for the taxable
+year."
+
+## Declarations
+
+```catala-metadata
+## Which poverty line table applies (Form 8962 line 4 check boxes).
+## DF: ptc.xml /federalPovertyLocationOptions.
+declaration enumeration FederalPovertyLocation:
+  -- Alaska
+  -- Hawaii
+  -- Other
+
+declaration scope PtcFamily:
+  # DF: filingStatus.xml /filingStatus
+  input filing_status content Types.FilingStatus
+  # DF: familyAndHousehold.xml /claimedDependentsCount
+  input claimed_dependents_count content integer
+  # DF: filers.xml /primarySomeoneCanClaimForTaxBenefits ("someone can claim
+  # you as a dependent"). Filers output primary_some_one_can_claim_for_tax_benefits.
+  input primary_someone_can_claim_for_tax_benefits condition
+  # DF: filers.xml /secondarySomeoneCanClaimForTaxBenefits
+  input secondary_someone_can_claim_for_tax_benefits condition
+  # DF: filers.xml /livedInAk (state of residence is Alaska)
+  input lived_in_ak condition
+  # DF: filers.xml /livedInHi (Direct File does not offer Hawaii, so the
+  # caller derives false from Types.ScopedState; the table is kept for the law)
+  input lived_in_hi condition
+  # Form 1040 line 11. DF: taxCalculations.xml /agi
+  input agi content money
+  # Form 1040 line 2a. DF: interest.xml /taxExemptInterest
+  input tax_exempt_interest content money
+  # Form 1040 line 6a minus 6b. DF: socialSecurity.xml /nonTaxableSocialSecurityBenefits
+  input non_taxable_social_security_benefits content money
+
+  # DF: ptc.xml /taxFamilySizeNegationBasedOnWhetherSomeoneCouldBeClaimed
+  internal tax_family_size_negation content integer
+  # Form 8962 line 1. DF: ptc.xml /taxFamilySize
+  output tax_family_size content integer
+  # DF: ptc.xml /taxFamilySizeIsZero
+  output tax_family_size_is_zero condition
+  # DF: ptc.xml /federalPovertyLocation
+  output federal_poverty_location content FederalPovertyLocation
+  # DF: ptc.xml /federalPovertyLineMagicNumberStartingNumber
+  internal poverty_line_family_of_one content money
+  # DF: ptc.xml /federalPovertyLineMagicNumberIncrement
+  internal poverty_line_increment content money
+  # Form 8962 line 4. DF: ptc.xml /federalPovertyLevelThreshold
+  output federal_poverty_level_threshold content money
+  # Form 8962 line 2a (Worksheet 1-1 line 5). DF: ptc.xml /ptcMagi
+  output ptc_magi content money
+  # Form 8962 line 3. DF: ptc.xml /householdIncome
+  output household_income content money
+  # Form 8962 line 5. DF: ptc.xml /householdIncomeAsPercent
+  # (a decimal with a whole value: Catala 1.3 has no decimal to integer cast)
+  output household_income_as_percent content decimal
+  # Form 8962 line 7. DF: ptc.xml /applicableFigure
+  output applicable_figure content decimal
+  # Form 8962 line 8a. DF: ptc.xml /ptcAnnualContributionAmount
+  output ptc_annual_contribution_amount content money
+  # Form 8962 line 8b. DF: ptc.xml /ptcMontlyContributionAmount (sic)
+  output ptc_monthly_contribution_amount content money
+```
+
+## Line 1: tax family size
+
+Instructions for line 1 (`i8962--2024.pdf` p 7): the tax family is "you, your
+spouse if you are filing a joint return, and your dependents. If you checked
+the "Someone can claim you as a dependent" box, or if you are filing jointly
+and you checked the "Someone can claim your spouse as a dependent" box on your
+tax return, you or your spouse is not included in the tax family size
+calculation for purposes of Form 8962, line 1." DF: 2 for a joint return, else
+1, plus the claimed dependents, minus one for each filer someone can claim.
+
+```catala
+scope PtcFamily:
+  definition tax_family_size_negation equals
+    (if primary_someone_can_claim_for_tax_benefits then 1 else 0)
+    + (if secondary_someone_can_claim_for_tax_benefits then 1 else 0)
+
+  definition tax_family_size equals
+    (match filing_status with pattern
+       -- MarriedFilingJointly: 2
+       -- Single: 1
+       -- MarriedFilingSeparately: 1
+       -- HeadOfHousehold: 1
+       -- QualifyingSurvivingSpouse: 1)
+    + claimed_dependents_count - tax_family_size_negation
+
+  definition tax_family_size_is_zero equals tax_family_size = 0
+```
+
+## Line 4: federal poverty line
+
+Instructions for line 4 (`i8962--2024.pdf` p 8): "Enter on line 4 the amount
+from Table 1-1, 1-2, or 1-3 that represents the federal poverty line for your
+state of residence for the family size you entered on line 1 of Form 8962.
+(For 2024, the 2023 federal poverty lines are used for this purpose and are
+shown below.)" The tables give $14,580 for one person in the 48 contiguous
+states and DC, "$5,140 for each additional person" (family size 2 is $19,720,
+8 is $50,560); Alaska $18,210 and $6,430; Hawaii $16,770 and $5,910. The
+amounts of the tables equal the linear formula for every family size, which
+`catala/tests/test_ptc_family.catala_en` checks against the printed rows.
+
+```catala
+scope PtcFamily:
+  # DF checks Alaska first, then Hawaii, then the rest.
+  definition federal_poverty_location equals
+    if lived_in_ak then Alaska
+    else (if lived_in_hi then Hawaii else Other)
+
+  definition poverty_line_family_of_one equals
+    match federal_poverty_location with pattern
+    -- Alaska: P.ptc_poverty_line_family_of_one_alaska
+    -- Hawaii: P.ptc_poverty_line_family_of_one_hawaii
+    -- Other: P.ptc_poverty_line_family_of_one_other
+
+  definition poverty_line_increment equals
+    match federal_poverty_location with pattern
+    -- Alaska: P.ptc_poverty_line_increment_alaska
+    -- Hawaii: P.ptc_poverty_line_increment_hawaii
+    -- Other: P.ptc_poverty_line_increment_other
+
+  # A tax family of 0 (the filer is claimed as a dependent) has no line 4 in DF.
+  definition federal_poverty_level_threshold equals
+    if tax_family_size_is_zero then $0
+    else poverty_line_family_of_one
+         + poverty_line_increment * (decimal of (tax_family_size - 1))
+```
+
+## Lines 2a and 3: modified AGI and household income
+
+Worksheet 1-1 (`i8962--2024.pdf` p 8): line 1 AGI (Form 1040 line 11), line 2
+tax-exempt interest (line 2a), line 3 Form 2555 lines 45 and 50, line 4 "If
+line 6a is more than line 6b, subtract line 6b from line 6a", line 5 the sum.
+Line 3 of the form: "Add the amounts on lines 2a and 2b. Combine them even
+if one or both of them are negative. If the total is less than zero, enter -0-
+on line 3." Line 2b and Form 2555 are out of scope (see the top of the file).
+
+```catala
+scope PtcFamily:
+  # DF returns $0 when the tax family size is 0.
+  definition ptc_magi equals
+    if tax_family_size_is_zero then $0
+    else agi + tax_exempt_interest + non_taxable_social_security_benefits
+
+  definition household_income equals Money.positive of ptc_magi
+```
+
+## Line 5: household income as a percentage of the poverty line
+
+Worksheet 2 (`i8962--2024.pdf` p 9): "3. Multiply the amount on line 2 by 4.0. 4.
+Is the amount on line 1 more than the amount on line 3? Yes. The amount on
+line 1 above is more than 400% of the federal poverty line. Enter 401 here and
+on line 5 of Form 8962. No. Divide the amount on line 1 above by the amount on
+line 2 above. Do not round; instead, multiply this number by 100 (to express
+it as a percentage) and then drop any numbers after the decimal point. For
+example, for 0.9984, enter the result as 99; for 1.8565, enter the result as
+185; and for 3.997, enter the result as 399."
+
+DF rounds the household income and the poverty line to whole dollars before
+dividing (both already are), truncates, and gives 0 for a tax family of 0.
+
+```catala
+scope PtcFamily:
+  definition household_income_as_percent equals
+    if tax_family_size_is_zero then 0.0
+    else if household_income
+            > federal_poverty_level_threshold
+              * (decimal of P.ptc_poverty_percent_cap_multiple)
+    then P.ptc_poverty_percent_over_cap
+    else Decimal.truncate of
+           ((R.round_dollar of household_income)
+            / (R.round_dollar of federal_poverty_level_threshold) * 100.0)
+```
+
+## Line 7: applicable figure (Table 2)
+
+"If the amount on line 5 is 150 or less, your applicable figure is 0.0000. If
+the amount on line 5 is 400 or more, your applicable figure is 0.0850"
+(`i8962--2024.pdf` p 10). From 151 to 300 the figure rises by 0.0004 per point
+(151 is 0.0004, 200 is 0.0200, 300 is 0.0600). From 301 to 399 it rises by
+0.00025 per point from 0.0600, rounded half up to four decimals (301 is
+0.0603, 302 is 0.0605, 399 is 0.0848). DF reaches the half-up rounding by
+adding 0.00005 when the unrounded value ends in 5 at the fifth decimal (an odd
+number of points over 300). The full printed table is checked row by row in
+`catala/tests/test_ptc_table2.catala_en`.
+
+```catala
+scope PtcFamily:
+  definition applicable_figure equals
+    if household_income_as_percent <= decimal of P.ptc_applicable_figure_zero_through
+    then 0.0
+    else if household_income_as_percent
+            <= decimal of P.ptc_applicable_figure_linear_through
+    then (household_income_as_percent
+          - decimal of P.ptc_applicable_figure_zero_through)
+         * P.ptc_applicable_figure_per_point_low
+    else if household_income_as_percent <= decimal of P.ptc_applicable_figure_last_row
+    then (round of
+            ((P.ptc_applicable_figure_at_300
+              + P.ptc_applicable_figure_per_point_high
+                * (household_income_as_percent
+                   - decimal of P.ptc_applicable_figure_linear_through))
+             * 10000.0))
+         / 10000.0
+    else P.ptc_applicable_figure_max
+```
+
+## Lines 8a and 8b: contribution amount
+
+"Line 8a. Multiply line 3 by line 7 and enter the result on line 8a, rounded
+to the nearest whole dollar amount. Line 8b. Divide line 8a by 12.0 and enter
+the result on line 8b, rounded to the nearest whole dollar amount."
+(`i8962--2024.pdf` p 11.) DF truncates the product to cents before rounding
+so that a product like $1,115.4958 is not rounded twice to $1,116; the
+exact once-rounded product is the same value for a four-decimal figure
+(`R.round_dollar_exact`). The line 3 amount is rounded to whole dollars first,
+as DF does.
+
+```catala
+scope PtcFamily:
+  definition ptc_annual_contribution_amount equals
+    R.round_dollar_exact of (R.round_dollar of household_income), applicable_figure
+
+  definition ptc_monthly_contribution_amount equals
+    R.round_dollar_exact of ptc_annual_contribution_amount, (1.0 / 12.0)
+```

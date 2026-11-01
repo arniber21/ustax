@@ -1,0 +1,321 @@
+# Tests for Ptc_family: Table 2 in full (issue #32)
+
+Every row of Table 2, "Applicable Figure", of the Instructions for Form 8962
+(2024) (`sources/forms-instructions/i8962--2024.pdf` p 10), plus the rows "less
+than 150" and "400 or more". The 250 printed rows (150 to 399) were extracted
+from the PDF text (generated, not derived from the rule in
+`catala/ptc_family.catala_en`). For each row the test takes a single filer in
+the 48 states (poverty line $14,580), picks the smallest whole-dollar
+household income whose Worksheet 2 percentage is the row
+(`ceiling(row * 145.80)`; 400 is exactly $58,320, 401 is one dollar above 4
+times the line) and asserts both the percentage and the figure.
+
+> Using Types
+> Using Ptc_family as F
+
+```catala
+declaration structure Row:
+  data income content money
+  data percent content decimal
+  data figure content decimal
+
+declaration structure Result:
+  data row content Row
+  data percent content decimal
+  data figure content decimal
+
+declaration scope Data:
+  output rows content list of Row
+
+scope Data:
+  definition rows equals [
+    Row { -- income: $0 -- percent: 0.0 -- figure: 0.0 };
+    Row { -- income: $14580 -- percent: 100.0 -- figure: 0.0 };
+    Row { -- income: $21725 -- percent: 149.0 -- figure: 0.0 };
+    Row { -- income: $21870 -- percent: 150.0 -- figure: 0.0 };
+    Row { -- income: $22016 -- percent: 151.0 -- figure: 0.0004 };
+    Row { -- income: $22162 -- percent: 152.0 -- figure: 0.0008 };
+    Row { -- income: $22308 -- percent: 153.0 -- figure: 0.0012 };
+    Row { -- income: $22454 -- percent: 154.0 -- figure: 0.0016 };
+    Row { -- income: $22599 -- percent: 155.0 -- figure: 0.002 };
+    Row { -- income: $22745 -- percent: 156.0 -- figure: 0.0024 };
+    Row { -- income: $22891 -- percent: 157.0 -- figure: 0.0028 };
+    Row { -- income: $23037 -- percent: 158.0 -- figure: 0.0032 };
+    Row { -- income: $23183 -- percent: 159.0 -- figure: 0.0036 };
+    Row { -- income: $23328 -- percent: 160.0 -- figure: 0.004 };
+    Row { -- income: $23474 -- percent: 161.0 -- figure: 0.0044 };
+    Row { -- income: $23620 -- percent: 162.0 -- figure: 0.0048 };
+    Row { -- income: $23766 -- percent: 163.0 -- figure: 0.0052 };
+    Row { -- income: $23912 -- percent: 164.0 -- figure: 0.0056 };
+    Row { -- income: $24057 -- percent: 165.0 -- figure: 0.006 };
+    Row { -- income: $24203 -- percent: 166.0 -- figure: 0.0064 };
+    Row { -- income: $24349 -- percent: 167.0 -- figure: 0.0068 };
+    Row { -- income: $24495 -- percent: 168.0 -- figure: 0.0072 };
+    Row { -- income: $24641 -- percent: 169.0 -- figure: 0.0076 };
+    Row { -- income: $24786 -- percent: 170.0 -- figure: 0.008 };
+    Row { -- income: $24932 -- percent: 171.0 -- figure: 0.0084 };
+    Row { -- income: $25078 -- percent: 172.0 -- figure: 0.0088 };
+    Row { -- income: $25224 -- percent: 173.0 -- figure: 0.0092 };
+    Row { -- income: $25370 -- percent: 174.0 -- figure: 0.0096 };
+    Row { -- income: $25515 -- percent: 175.0 -- figure: 0.01 };
+    Row { -- income: $25661 -- percent: 176.0 -- figure: 0.0104 };
+    Row { -- income: $25807 -- percent: 177.0 -- figure: 0.0108 };
+    Row { -- income: $25953 -- percent: 178.0 -- figure: 0.0112 };
+    Row { -- income: $26099 -- percent: 179.0 -- figure: 0.0116 };
+    Row { -- income: $26244 -- percent: 180.0 -- figure: 0.012 };
+    Row { -- income: $26390 -- percent: 181.0 -- figure: 0.0124 };
+    Row { -- income: $26536 -- percent: 182.0 -- figure: 0.0128 };
+    Row { -- income: $26682 -- percent: 183.0 -- figure: 0.0132 };
+    Row { -- income: $26828 -- percent: 184.0 -- figure: 0.0136 };
+    Row { -- income: $26973 -- percent: 185.0 -- figure: 0.014 };
+    Row { -- income: $27119 -- percent: 186.0 -- figure: 0.0144 };
+    Row { -- income: $27265 -- percent: 187.0 -- figure: 0.0148 };
+    Row { -- income: $27411 -- percent: 188.0 -- figure: 0.0152 };
+    Row { -- income: $27557 -- percent: 189.0 -- figure: 0.0156 };
+    Row { -- income: $27702 -- percent: 190.0 -- figure: 0.016 };
+    Row { -- income: $27848 -- percent: 191.0 -- figure: 0.0164 };
+    Row { -- income: $27994 -- percent: 192.0 -- figure: 0.0168 };
+    Row { -- income: $28140 -- percent: 193.0 -- figure: 0.0172 };
+    Row { -- income: $28286 -- percent: 194.0 -- figure: 0.0176 };
+    Row { -- income: $28431 -- percent: 195.0 -- figure: 0.018 };
+    Row { -- income: $28577 -- percent: 196.0 -- figure: 0.0184 };
+    Row { -- income: $28723 -- percent: 197.0 -- figure: 0.0188 };
+    Row { -- income: $28869 -- percent: 198.0 -- figure: 0.0192 };
+    Row { -- income: $29015 -- percent: 199.0 -- figure: 0.0196 };
+    Row { -- income: $29160 -- percent: 200.0 -- figure: 0.02 };
+    Row { -- income: $29306 -- percent: 201.0 -- figure: 0.0204 };
+    Row { -- income: $29452 -- percent: 202.0 -- figure: 0.0208 };
+    Row { -- income: $29598 -- percent: 203.0 -- figure: 0.0212 };
+    Row { -- income: $29744 -- percent: 204.0 -- figure: 0.0216 };
+    Row { -- income: $29889 -- percent: 205.0 -- figure: 0.022 };
+    Row { -- income: $30035 -- percent: 206.0 -- figure: 0.0224 };
+    Row { -- income: $30181 -- percent: 207.0 -- figure: 0.0228 };
+    Row { -- income: $30327 -- percent: 208.0 -- figure: 0.0232 };
+    Row { -- income: $30473 -- percent: 209.0 -- figure: 0.0236 };
+    Row { -- income: $30618 -- percent: 210.0 -- figure: 0.024 };
+    Row { -- income: $30764 -- percent: 211.0 -- figure: 0.0244 };
+    Row { -- income: $30910 -- percent: 212.0 -- figure: 0.0248 };
+    Row { -- income: $31056 -- percent: 213.0 -- figure: 0.0252 };
+    Row { -- income: $31202 -- percent: 214.0 -- figure: 0.0256 };
+    Row { -- income: $31347 -- percent: 215.0 -- figure: 0.026 };
+    Row { -- income: $31493 -- percent: 216.0 -- figure: 0.0264 };
+    Row { -- income: $31639 -- percent: 217.0 -- figure: 0.0268 };
+    Row { -- income: $31785 -- percent: 218.0 -- figure: 0.0272 };
+    Row { -- income: $31931 -- percent: 219.0 -- figure: 0.0276 };
+    Row { -- income: $32076 -- percent: 220.0 -- figure: 0.028 };
+    Row { -- income: $32222 -- percent: 221.0 -- figure: 0.0284 };
+    Row { -- income: $32368 -- percent: 222.0 -- figure: 0.0288 };
+    Row { -- income: $32514 -- percent: 223.0 -- figure: 0.0292 };
+    Row { -- income: $32660 -- percent: 224.0 -- figure: 0.0296 };
+    Row { -- income: $32805 -- percent: 225.0 -- figure: 0.03 };
+    Row { -- income: $32951 -- percent: 226.0 -- figure: 0.0304 };
+    Row { -- income: $33097 -- percent: 227.0 -- figure: 0.0308 };
+    Row { -- income: $33243 -- percent: 228.0 -- figure: 0.0312 };
+    Row { -- income: $33389 -- percent: 229.0 -- figure: 0.0316 };
+    Row { -- income: $33534 -- percent: 230.0 -- figure: 0.032 };
+    Row { -- income: $33680 -- percent: 231.0 -- figure: 0.0324 };
+    Row { -- income: $33826 -- percent: 232.0 -- figure: 0.0328 };
+    Row { -- income: $33972 -- percent: 233.0 -- figure: 0.0332 };
+    Row { -- income: $34118 -- percent: 234.0 -- figure: 0.0336 };
+    Row { -- income: $34263 -- percent: 235.0 -- figure: 0.034 };
+    Row { -- income: $34409 -- percent: 236.0 -- figure: 0.0344 };
+    Row { -- income: $34555 -- percent: 237.0 -- figure: 0.0348 };
+    Row { -- income: $34701 -- percent: 238.0 -- figure: 0.0352 };
+    Row { -- income: $34847 -- percent: 239.0 -- figure: 0.0356 };
+    Row { -- income: $34992 -- percent: 240.0 -- figure: 0.036 };
+    Row { -- income: $35138 -- percent: 241.0 -- figure: 0.0364 };
+    Row { -- income: $35284 -- percent: 242.0 -- figure: 0.0368 };
+    Row { -- income: $35430 -- percent: 243.0 -- figure: 0.0372 };
+    Row { -- income: $35576 -- percent: 244.0 -- figure: 0.0376 };
+    Row { -- income: $35721 -- percent: 245.0 -- figure: 0.038 };
+    Row { -- income: $35867 -- percent: 246.0 -- figure: 0.0384 };
+    Row { -- income: $36013 -- percent: 247.0 -- figure: 0.0388 };
+    Row { -- income: $36159 -- percent: 248.0 -- figure: 0.0392 };
+    Row { -- income: $36305 -- percent: 249.0 -- figure: 0.0396 };
+    Row { -- income: $36450 -- percent: 250.0 -- figure: 0.04 };
+    Row { -- income: $36596 -- percent: 251.0 -- figure: 0.0404 };
+    Row { -- income: $36742 -- percent: 252.0 -- figure: 0.0408 };
+    Row { -- income: $36888 -- percent: 253.0 -- figure: 0.0412 };
+    Row { -- income: $37034 -- percent: 254.0 -- figure: 0.0416 };
+    Row { -- income: $37179 -- percent: 255.0 -- figure: 0.042 };
+    Row { -- income: $37325 -- percent: 256.0 -- figure: 0.0424 };
+    Row { -- income: $37471 -- percent: 257.0 -- figure: 0.0428 };
+    Row { -- income: $37617 -- percent: 258.0 -- figure: 0.0432 };
+    Row { -- income: $37763 -- percent: 259.0 -- figure: 0.0436 };
+    Row { -- income: $37908 -- percent: 260.0 -- figure: 0.044 };
+    Row { -- income: $38054 -- percent: 261.0 -- figure: 0.0444 };
+    Row { -- income: $38200 -- percent: 262.0 -- figure: 0.0448 };
+    Row { -- income: $38346 -- percent: 263.0 -- figure: 0.0452 };
+    Row { -- income: $38492 -- percent: 264.0 -- figure: 0.0456 };
+    Row { -- income: $38637 -- percent: 265.0 -- figure: 0.046 };
+    Row { -- income: $38783 -- percent: 266.0 -- figure: 0.0464 };
+    Row { -- income: $38929 -- percent: 267.0 -- figure: 0.0468 };
+    Row { -- income: $39075 -- percent: 268.0 -- figure: 0.0472 };
+    Row { -- income: $39221 -- percent: 269.0 -- figure: 0.0476 };
+    Row { -- income: $39366 -- percent: 270.0 -- figure: 0.048 };
+    Row { -- income: $39512 -- percent: 271.0 -- figure: 0.0484 };
+    Row { -- income: $39658 -- percent: 272.0 -- figure: 0.0488 };
+    Row { -- income: $39804 -- percent: 273.0 -- figure: 0.0492 };
+    Row { -- income: $39950 -- percent: 274.0 -- figure: 0.0496 };
+    Row { -- income: $40095 -- percent: 275.0 -- figure: 0.05 };
+    Row { -- income: $40241 -- percent: 276.0 -- figure: 0.0504 };
+    Row { -- income: $40387 -- percent: 277.0 -- figure: 0.0508 };
+    Row { -- income: $40533 -- percent: 278.0 -- figure: 0.0512 };
+    Row { -- income: $40679 -- percent: 279.0 -- figure: 0.0516 };
+    Row { -- income: $40824 -- percent: 280.0 -- figure: 0.052 };
+    Row { -- income: $40970 -- percent: 281.0 -- figure: 0.0524 };
+    Row { -- income: $41116 -- percent: 282.0 -- figure: 0.0528 };
+    Row { -- income: $41262 -- percent: 283.0 -- figure: 0.0532 };
+    Row { -- income: $41408 -- percent: 284.0 -- figure: 0.0536 };
+    Row { -- income: $41553 -- percent: 285.0 -- figure: 0.054 };
+    Row { -- income: $41699 -- percent: 286.0 -- figure: 0.0544 };
+    Row { -- income: $41845 -- percent: 287.0 -- figure: 0.0548 };
+    Row { -- income: $41991 -- percent: 288.0 -- figure: 0.0552 };
+    Row { -- income: $42137 -- percent: 289.0 -- figure: 0.0556 };
+    Row { -- income: $42282 -- percent: 290.0 -- figure: 0.056 };
+    Row { -- income: $42428 -- percent: 291.0 -- figure: 0.0564 };
+    Row { -- income: $42574 -- percent: 292.0 -- figure: 0.0568 };
+    Row { -- income: $42720 -- percent: 293.0 -- figure: 0.0572 };
+    Row { -- income: $42866 -- percent: 294.0 -- figure: 0.0576 };
+    Row { -- income: $43011 -- percent: 295.0 -- figure: 0.058 };
+    Row { -- income: $43157 -- percent: 296.0 -- figure: 0.0584 };
+    Row { -- income: $43303 -- percent: 297.0 -- figure: 0.0588 };
+    Row { -- income: $43449 -- percent: 298.0 -- figure: 0.0592 };
+    Row { -- income: $43595 -- percent: 299.0 -- figure: 0.0596 };
+    Row { -- income: $43740 -- percent: 300.0 -- figure: 0.06 };
+    Row { -- income: $43886 -- percent: 301.0 -- figure: 0.0603 };
+    Row { -- income: $44032 -- percent: 302.0 -- figure: 0.0605 };
+    Row { -- income: $44178 -- percent: 303.0 -- figure: 0.0608 };
+    Row { -- income: $44324 -- percent: 304.0 -- figure: 0.061 };
+    Row { -- income: $44469 -- percent: 305.0 -- figure: 0.0613 };
+    Row { -- income: $44615 -- percent: 306.0 -- figure: 0.0615 };
+    Row { -- income: $44761 -- percent: 307.0 -- figure: 0.0618 };
+    Row { -- income: $44907 -- percent: 308.0 -- figure: 0.062 };
+    Row { -- income: $45053 -- percent: 309.0 -- figure: 0.0623 };
+    Row { -- income: $45198 -- percent: 310.0 -- figure: 0.0625 };
+    Row { -- income: $45344 -- percent: 311.0 -- figure: 0.0628 };
+    Row { -- income: $45490 -- percent: 312.0 -- figure: 0.063 };
+    Row { -- income: $45636 -- percent: 313.0 -- figure: 0.0633 };
+    Row { -- income: $45782 -- percent: 314.0 -- figure: 0.0635 };
+    Row { -- income: $45927 -- percent: 315.0 -- figure: 0.0638 };
+    Row { -- income: $46073 -- percent: 316.0 -- figure: 0.064 };
+    Row { -- income: $46219 -- percent: 317.0 -- figure: 0.0643 };
+    Row { -- income: $46365 -- percent: 318.0 -- figure: 0.0645 };
+    Row { -- income: $46511 -- percent: 319.0 -- figure: 0.0648 };
+    Row { -- income: $46656 -- percent: 320.0 -- figure: 0.065 };
+    Row { -- income: $46802 -- percent: 321.0 -- figure: 0.0653 };
+    Row { -- income: $46948 -- percent: 322.0 -- figure: 0.0655 };
+    Row { -- income: $47094 -- percent: 323.0 -- figure: 0.0658 };
+    Row { -- income: $47240 -- percent: 324.0 -- figure: 0.066 };
+    Row { -- income: $47385 -- percent: 325.0 -- figure: 0.0663 };
+    Row { -- income: $47531 -- percent: 326.0 -- figure: 0.0665 };
+    Row { -- income: $47677 -- percent: 327.0 -- figure: 0.0668 };
+    Row { -- income: $47823 -- percent: 328.0 -- figure: 0.067 };
+    Row { -- income: $47969 -- percent: 329.0 -- figure: 0.0673 };
+    Row { -- income: $48114 -- percent: 330.0 -- figure: 0.0675 };
+    Row { -- income: $48260 -- percent: 331.0 -- figure: 0.0678 };
+    Row { -- income: $48406 -- percent: 332.0 -- figure: 0.068 };
+    Row { -- income: $48552 -- percent: 333.0 -- figure: 0.0683 };
+    Row { -- income: $48698 -- percent: 334.0 -- figure: 0.0685 };
+    Row { -- income: $48843 -- percent: 335.0 -- figure: 0.0688 };
+    Row { -- income: $48989 -- percent: 336.0 -- figure: 0.069 };
+    Row { -- income: $49135 -- percent: 337.0 -- figure: 0.0693 };
+    Row { -- income: $49281 -- percent: 338.0 -- figure: 0.0695 };
+    Row { -- income: $49427 -- percent: 339.0 -- figure: 0.0698 };
+    Row { -- income: $49572 -- percent: 340.0 -- figure: 0.07 };
+    Row { -- income: $49718 -- percent: 341.0 -- figure: 0.0703 };
+    Row { -- income: $49864 -- percent: 342.0 -- figure: 0.0705 };
+    Row { -- income: $50010 -- percent: 343.0 -- figure: 0.0708 };
+    Row { -- income: $50156 -- percent: 344.0 -- figure: 0.071 };
+    Row { -- income: $50301 -- percent: 345.0 -- figure: 0.0713 };
+    Row { -- income: $50447 -- percent: 346.0 -- figure: 0.0715 };
+    Row { -- income: $50593 -- percent: 347.0 -- figure: 0.0718 };
+    Row { -- income: $50739 -- percent: 348.0 -- figure: 0.072 };
+    Row { -- income: $50885 -- percent: 349.0 -- figure: 0.0723 };
+    Row { -- income: $51030 -- percent: 350.0 -- figure: 0.0725 };
+    Row { -- income: $51176 -- percent: 351.0 -- figure: 0.0728 };
+    Row { -- income: $51322 -- percent: 352.0 -- figure: 0.073 };
+    Row { -- income: $51468 -- percent: 353.0 -- figure: 0.0733 };
+    Row { -- income: $51614 -- percent: 354.0 -- figure: 0.0735 };
+    Row { -- income: $51759 -- percent: 355.0 -- figure: 0.0738 };
+    Row { -- income: $51905 -- percent: 356.0 -- figure: 0.074 };
+    Row { -- income: $52051 -- percent: 357.0 -- figure: 0.0743 };
+    Row { -- income: $52197 -- percent: 358.0 -- figure: 0.0745 };
+    Row { -- income: $52343 -- percent: 359.0 -- figure: 0.0748 };
+    Row { -- income: $52488 -- percent: 360.0 -- figure: 0.075 };
+    Row { -- income: $52634 -- percent: 361.0 -- figure: 0.0753 };
+    Row { -- income: $52780 -- percent: 362.0 -- figure: 0.0755 };
+    Row { -- income: $52926 -- percent: 363.0 -- figure: 0.0758 };
+    Row { -- income: $53072 -- percent: 364.0 -- figure: 0.076 };
+    Row { -- income: $53217 -- percent: 365.0 -- figure: 0.0763 };
+    Row { -- income: $53363 -- percent: 366.0 -- figure: 0.0765 };
+    Row { -- income: $53509 -- percent: 367.0 -- figure: 0.0768 };
+    Row { -- income: $53655 -- percent: 368.0 -- figure: 0.077 };
+    Row { -- income: $53801 -- percent: 369.0 -- figure: 0.0773 };
+    Row { -- income: $53946 -- percent: 370.0 -- figure: 0.0775 };
+    Row { -- income: $54092 -- percent: 371.0 -- figure: 0.0778 };
+    Row { -- income: $54238 -- percent: 372.0 -- figure: 0.078 };
+    Row { -- income: $54384 -- percent: 373.0 -- figure: 0.0783 };
+    Row { -- income: $54530 -- percent: 374.0 -- figure: 0.0785 };
+    Row { -- income: $54675 -- percent: 375.0 -- figure: 0.0788 };
+    Row { -- income: $54821 -- percent: 376.0 -- figure: 0.079 };
+    Row { -- income: $54967 -- percent: 377.0 -- figure: 0.0793 };
+    Row { -- income: $55113 -- percent: 378.0 -- figure: 0.0795 };
+    Row { -- income: $55259 -- percent: 379.0 -- figure: 0.0798 };
+    Row { -- income: $55404 -- percent: 380.0 -- figure: 0.08 };
+    Row { -- income: $55550 -- percent: 381.0 -- figure: 0.0803 };
+    Row { -- income: $55696 -- percent: 382.0 -- figure: 0.0805 };
+    Row { -- income: $55842 -- percent: 383.0 -- figure: 0.0808 };
+    Row { -- income: $55988 -- percent: 384.0 -- figure: 0.081 };
+    Row { -- income: $56133 -- percent: 385.0 -- figure: 0.0813 };
+    Row { -- income: $56279 -- percent: 386.0 -- figure: 0.0815 };
+    Row { -- income: $56425 -- percent: 387.0 -- figure: 0.0818 };
+    Row { -- income: $56571 -- percent: 388.0 -- figure: 0.082 };
+    Row { -- income: $56717 -- percent: 389.0 -- figure: 0.0823 };
+    Row { -- income: $56862 -- percent: 390.0 -- figure: 0.0825 };
+    Row { -- income: $57008 -- percent: 391.0 -- figure: 0.0828 };
+    Row { -- income: $57154 -- percent: 392.0 -- figure: 0.083 };
+    Row { -- income: $57300 -- percent: 393.0 -- figure: 0.0833 };
+    Row { -- income: $57446 -- percent: 394.0 -- figure: 0.0835 };
+    Row { -- income: $57591 -- percent: 395.0 -- figure: 0.0838 };
+    Row { -- income: $57737 -- percent: 396.0 -- figure: 0.084 };
+    Row { -- income: $57883 -- percent: 397.0 -- figure: 0.0843 };
+    Row { -- income: $58029 -- percent: 398.0 -- figure: 0.0845 };
+    Row { -- income: $58175 -- percent: 399.0 -- figure: 0.0848 };
+    Row { -- income: $58320 -- percent: 400.0 -- figure: 0.085 };
+    Row { -- income: $58321 -- percent: 401.0 -- figure: 0.085 } ]
+
+declaration scope Compute:
+  d scope Data
+  output results content list of Result
+
+scope Compute:
+  definition results equals
+    map each r among d.rows to
+      (let o equals
+         output of F.PtcFamily with {
+           -- filing_status: Types.FilingStatus.Single
+           -- claimed_dependents_count: 0
+           -- primary_someone_can_claim_for_tax_benefits: false
+           -- secondary_someone_can_claim_for_tax_benefits: false
+           -- lived_in_ak: false
+           -- lived_in_hi: false
+           -- agi: r.income
+           -- tax_exempt_interest: $0
+           -- non_taxable_social_security_benefits: $0
+         } in
+       Result { -- row: r
+                -- percent: o.household_income_as_percent
+                -- figure: o.applicable_figure })
+
+#[test]
+declaration scope TestTable2:
+  c scope Compute
+
+scope TestTable2:
+  assertion number of (list of x among c.results such that
+    x.percent != x.row.percent) = 0
+  assertion number of (list of x among c.results such that
+    x.figure != x.row.figure) = 0
+  assertion number of c.results = 255
+```

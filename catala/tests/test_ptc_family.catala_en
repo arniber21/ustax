@@ -1,0 +1,423 @@
+# Tests for the Ptc_family module (Form 8962 lines 1 to 8)
+
+Run with `clerk test`. Named scopes with the concrete cases of issue #32,
+worked out by hand from the Instructions for Form 8962 (2024)
+(`sources/forms-instructions/i8962--2024.pdf`: Tables 1-1 to 1-3 p 8,
+Worksheet 2 p 9, Table 2 p 10, lines 8a and 8b p 11). Table 2 in full is in
+`catala/tests/test_ptc_table2.catala_en`. Oracle comparison:
+`make difftest SCOPE=ptc_family`.
+
+> Using Types
+> Using Ptc_family as F
+
+## Helper: a return with defaults
+
+By default: a single filer in the 48 states, no dependents, nobody can claim
+the filer, AGI $0, no tax-exempt interest, no nontaxable Social Security.
+A test overrides only what it tests.
+
+```catala
+declaration scope Case:
+  context filing_status content Types.FilingStatus
+  context dependents content integer
+  context primary_claimable condition
+  context secondary_claimable condition
+  context alaska condition
+  context hawaii condition
+  context agi content money
+  context exempt_interest content money
+  context nontaxable_ss content money
+  f scope F.PtcFamily
+  output family_size content integer
+  output poverty_line content money
+  output magi content money
+  output income content money
+  output percent content decimal
+  output figure content decimal
+  output annual content money
+  output monthly content money
+
+scope Case:
+  definition filing_status equals Types.FilingStatus.Single
+  definition dependents equals 0
+  definition primary_claimable equals false
+  definition secondary_claimable equals false
+  definition alaska equals false
+  definition hawaii equals false
+  definition agi equals $0
+  definition exempt_interest equals $0
+  definition nontaxable_ss equals $0
+
+  definition f.filing_status equals filing_status
+  definition f.claimed_dependents_count equals dependents
+  definition f.primary_someone_can_claim_for_tax_benefits equals primary_claimable
+  definition f.secondary_someone_can_claim_for_tax_benefits equals secondary_claimable
+  definition f.lived_in_ak equals alaska
+  definition f.lived_in_hi equals hawaii
+  definition f.agi equals agi
+  definition f.tax_exempt_interest equals exempt_interest
+  definition f.non_taxable_social_security_benefits equals nontaxable_ss
+
+  definition family_size equals f.tax_family_size
+  definition poverty_line equals f.federal_poverty_level_threshold
+  definition magi equals f.ptc_magi
+  definition income equals f.household_income
+  definition percent equals f.household_income_as_percent
+  definition figure equals f.applicable_figure
+  definition annual equals f.ptc_annual_contribution_amount
+  definition monthly equals f.ptc_monthly_contribution_amount
+```
+
+## Tax family size (line 1)
+
+```catala
+#[test]
+declaration scope TestSingleFamilySizeOne:
+  c scope Case
+
+scope TestSingleFamilySizeOne:
+  assertion c.family_size = 1
+  assertion c.family_size != 2
+  assertion c.poverty_line = $14,580
+```
+
+```catala
+#[test]
+declaration scope TestMfjWithOneChildFamilySizeThree:
+  c scope Case
+
+scope TestMfjWithOneChildFamilySizeThree:
+  definition c.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.dependents equals 1
+  assertion c.family_size = 3
+  assertion c.poverty_line = $24,860
+  assertion c.poverty_line != $19,720
+```
+
+```catala
+#[test]
+declaration scope TestHohWithTwoChildrenFamilySizeThree:
+  c scope Case
+
+scope TestHohWithTwoChildrenFamilySizeThree:
+  definition c.filing_status equals Types.FilingStatus.HeadOfHousehold
+  definition c.dependents equals 2
+  assertion c.family_size = 3
+  assertion c.poverty_line = $24,860
+```
+
+A filer who can be claimed as a dependent is not in their own tax family
+(instructions for line 1, p 7).
+
+```catala
+#[test]
+declaration scope TestClaimableFilerIsNotCounted:
+  c scope Case
+
+scope TestClaimableFilerIsNotCounted:
+  definition c.primary_claimable equals true
+  assertion c.family_size = 0
+  assertion c.poverty_line = $0
+  assertion c.percent = 0.0
+  assertion c.annual = $0
+```
+
+```catala
+#[test]
+declaration scope TestMfjOneSpouseClaimable:
+  c scope Case
+
+scope TestMfjOneSpouseClaimable:
+  definition c.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.secondary_claimable equals true
+  assertion c.family_size = 1
+```
+
+## Federal poverty line (line 4), Tables 1-1 to 1-3
+
+```catala
+#[test]
+declaration scope TestPovertyLineTable11:
+  c1 scope Case
+  c2 scope Case
+  c4 scope Case
+  c5 scope Case
+  c8 scope Case
+  c11 scope Case
+
+scope TestPovertyLineTable11:
+  definition c2.dependents equals 1
+  definition c4.dependents equals 3
+  definition c5.dependents equals 4
+  definition c8.dependents equals 7
+  definition c11.dependents equals 10
+  assertion c1.poverty_line = $14,580
+  assertion c2.poverty_line = $19,720
+  assertion c4.poverty_line = $30,000
+  assertion c5.poverty_line = $35,140
+  assertion c8.poverty_line = $50,560
+  assertion c11.family_size = 11
+  # "Multiply $5,140 by 3 and add the result of $15,420 to $50,560. Enter the
+  # result of $65,980" (i8962 p 8)
+  assertion c11.poverty_line = $65,980
+```
+
+```catala
+#[test]
+declaration scope TestPovertyLineAlaska:
+  c1 scope Case
+  c3 scope Case
+  c11 scope Case
+
+scope TestPovertyLineAlaska:
+  definition c1.alaska equals true
+  definition c3.alaska equals true
+  definition c3.dependents equals 2
+  definition c11.alaska equals true
+  definition c11.dependents equals 10
+  assertion c1.poverty_line = $18,210
+  assertion c3.poverty_line = $31,070
+  # Table 1-2 note: $82,510 for 11 people
+  assertion c11.poverty_line = $82,510
+```
+
+```catala
+#[test]
+declaration scope TestPovertyLineHawaii:
+  c1 scope Case
+  c3 scope Case
+  c11 scope Case
+
+scope TestPovertyLineHawaii:
+  definition c1.hawaii equals true
+  definition c3.hawaii equals true
+  definition c3.dependents equals 2
+  definition c11.hawaii equals true
+  definition c11.dependents equals 10
+  assertion c1.poverty_line = $16,770
+  assertion c3.poverty_line = $28,590
+  # Table 1-3 note: $75,870 for 11 people
+  assertion c11.poverty_line = $75,870
+```
+
+## Household income (lines 2a and 3)
+
+```catala
+#[test]
+declaration scope TestModifiedAgiAddsInterestAndSocialSecurity:
+  c scope Case
+
+scope TestModifiedAgiAddsInterestAndSocialSecurity:
+  definition c.agi equals $40,000
+  definition c.exempt_interest equals $1,200
+  definition c.nontaxable_ss equals $3,000
+  assertion c.magi = $44,200
+  assertion c.income = $44,200
+  assertion c.income != $40,000
+```
+
+```catala
+#[test]
+declaration scope TestNegativeMagiGivesZeroHouseholdIncome:
+  c scope Case
+
+scope TestNegativeMagiGivesZeroHouseholdIncome:
+  definition c.agi equals -$300
+  assertion c.magi = -$300
+  assertion c.income = $0
+  assertion c.percent = 0.0
+  assertion c.annual = $0
+```
+
+## Household income as a percent of the line (line 5)
+
+Single, 48 states, line $14,580 (so 1% is $145.80 and 4 times is $58,320).
+
+```catala
+#[test]
+declaration scope TestExactlyFourTimesIsFourHundred:
+  c scope Case
+
+scope TestExactlyFourTimesIsFourHundred:
+  definition c.agi equals $58,320
+  assertion c.percent = 400.0
+  assertion c.percent != 401.0
+  assertion c.figure = 0.085
+```
+
+```catala
+#[test]
+declaration scope TestJustAboveFourTimesIsFourHundredOne:
+  c scope Case
+
+scope TestJustAboveFourTimesIsFourHundredOne:
+  definition c.agi equals $58,321
+  assertion c.percent = 401.0
+  assertion c.percent != 400.0
+  assertion c.figure = 0.085
+  assertion c.annual = $4,957
+```
+
+A percentage is truncated, never rounded: $14,579 over $14,580 is 99.99
+percent, so 99, not 100 (Worksheet 2's examples: 0.9984 gives 99, 1.8565
+gives 185, 3.997 gives 399).
+
+```catala
+#[test]
+declaration scope TestPercentIsTruncatedNotRounded:
+  just_below scope Case
+  below_two scope Case
+  below_four scope Case
+
+scope TestPercentIsTruncatedNotRounded:
+  definition just_below.agi equals $14,579
+  definition below_two.agi equals $27,000
+  definition below_four.agi equals $58,300
+  assertion just_below.percent = 99.0
+  assertion just_below.percent != 100.0
+  assertion below_two.percent = 185.0
+  assertion below_four.percent = 399.0
+  assertion below_four.percent != 400.0
+```
+
+## Applicable figure (line 7) and contribution amount (lines 8a, 8b)
+
+```catala
+#[test]
+declaration scope TestFigureAt150PercentIsZero:
+  c scope Case
+
+scope TestFigureAt150PercentIsZero:
+  # 150 percent of $14,580 is exactly $21,870
+  definition c.agi equals $21,870
+  assertion c.percent = 150.0
+  assertion c.figure = 0.0
+  assertion c.annual = $0
+  assertion c.monthly = $0
+```
+
+```catala
+#[test]
+declaration scope TestFigureAt300PercentIsSixPercent:
+  c scope Case
+
+scope TestFigureAt300PercentIsSixPercent:
+  # 300 percent of $14,580 is exactly $43,740
+  definition c.agi equals $43,740
+  assertion c.percent = 300.0
+  assertion c.figure = 0.06
+  assertion c.figure != 0.0603
+  # 43,740 * 0.06 = 2,624.40; 2,624 / 12 = 218.67
+  assertion c.annual = $2,624
+  assertion c.monthly = $219
+```
+
+```catala
+#[test]
+declaration scope TestFigureAtFourHundredPercentIsEightAndAHalf:
+  c scope Case
+
+scope TestFigureAtFourHundredPercentIsEightAndAHalf:
+  definition c.agi equals $58,320
+  assertion c.figure = 0.085
+  # 58,320 * 0.085 = 4,957.20
+  assertion c.annual = $4,957
+  assertion c.monthly = $413
+```
+
+Table 2 rows 301 and 399 (the half-up rounding of the 0.00025 steps).
+
+```catala
+#[test]
+declaration scope TestFigureHalfUpRows:
+  r301 scope Case
+  r302 scope Case
+  r399 scope Case
+
+scope TestFigureHalfUpRows:
+  # 301% of 14,580 = 43,885.80, so $43,886 gives 301.01...: 301
+  definition r301.agi equals $43,886
+  definition r302.agi equals $44,032
+  definition r399.agi equals $58,175
+  assertion r301.percent = 301.0
+  assertion r301.figure = 0.0603
+  assertion r302.percent = 302.0
+  assertion r302.figure = 0.0605
+  assertion r399.percent = 399.0
+  assertion r399.figure = 0.0848
+  assertion r301.figure != 0.0602
+```
+
+A product that is not a whole dollar is rounded once: 45,100 * 0.0623 =
+2,809.73, so 2,810 (oracle scenario `ptc-annual-amounts-rounding`: 309
+percent, 2,810, monthly 234). The $1,115.4958 case of the DF comment rounds to
+$1,115, not $1,116.
+
+```catala
+#[test]
+declaration scope TestAnnualContributionRoundsOnce:
+  c scope Case
+
+scope TestAnnualContributionRoundsOnce:
+  definition c.agi equals $45,100
+  assertion c.percent = 309.0
+  assertion c.figure = 0.0623
+  assertion c.annual = $2,810
+  assertion c.monthly = $234
+```
+
+```catala
+#[test]
+declaration scope TestFigureMiddleRows:
+  r151 scope Case
+  r200 scope Case
+  r250 scope Case
+
+scope TestFigureMiddleRows:
+  # 151 percent: ceiling(151 * 145.80) = 22,016
+  definition r151.agi equals $22,016
+  # 200 percent: 29,160; 250 percent: 36,450
+  definition r200.agi equals $29,160
+  definition r250.agi equals $36,450
+  assertion r151.percent = 151.0
+  assertion r151.figure = 0.0004
+  assertion r200.figure = 0.02
+  assertion r250.figure = 0.04
+  assertion r200.annual = $583
+```
+
+A two-person joint return uses $19,720 (150 percent is $29,580).
+
+```catala
+#[test]
+declaration scope TestMfjUsesFamilyOfTwoLine:
+  c scope Case
+
+scope TestMfjUsesFamilyOfTwoLine:
+  definition c.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.agi equals $50,000
+  assertion c.poverty_line = $19,720
+  assertion c.percent = 253.0
+  assertion c.figure = 0.0412
+  assertion c.annual = $2,060
+  assertion c.monthly = $172
+```
+
+## Bad outputs are rejected
+
+The percentage 99.99 is never entered as 100, and a household income of
+exactly 4 times the line is never entered as 401.
+
+```catala
+#[test]
+declaration scope TestBadOutputsRejected:
+  c scope Case
+  d scope Case
+
+scope TestBadOutputsRejected:
+  definition c.agi equals $14,579
+  definition d.agi equals $58,320
+  assertion not (c.percent = 100.0)
+  assertion not (d.percent = 401.0)
+  assertion not (d.figure = 0.0)
+```
