@@ -1,0 +1,35 @@
+difftest/mappings/calculator.mjs
+  s_3031b504518be3::t_4a37b947a95322 106,108
+  s_3031b504518be3::t_b88225202c33cc 18
+  s_3031b504518be3::t_6054e954b1dd13 1-17,19-79,81-105,107,109-139,144-228
+  s_3031b504518be3::t_d752af5fd323eb 80
+  s_3031b504518be3::t_16fc476c10cb94 140-143
+catala/DIFFTEST.md
+  s_3031b504518be3::t_d2c26f87c6b6e9 110-120
+catala/calculator.catala_en
+  s_3031b504518be3::t_4d96f649b18d93 286-302
+  s_3031b504518be3::t_44b4c182fc824d 730-772,774
+  s_3031b504518be3::t_e25367cc2967a6 854-860,879-936,943-948,951-1382
+  s_3031b504518be3::t_c3ce76aefa5acb 465-469
+  s_3031b504518be3::t_61fce3a22ed6ae 1-285,303-464,470-476,479-492,495-729,773,775-794,796-834,836-853
+  s_3031b504518be3::t_ede67a27f38c5c 477-478,795,835,861-878
+  s_3031b504518be3::t_978a1f2985e81d 493-494,937-942,949-950
+catala/tests/test_calculator.catala_en
+  s_3031b504518be3::t_3f7aa3130eb7a8 1-530
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce7ea6158259bfd1aa3d791070a6369736c65b58",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
