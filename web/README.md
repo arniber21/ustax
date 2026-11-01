@@ -15,7 +15,7 @@ Without `VITE_API_MOCK=1` the client calls `VITE_API_URL` (default `http://local
 | Path | What | Filled in by |
 | --- | --- | --- |
 | `/` | Welcome | shell |
-| `/start/:step` | Wizard: `about`, `household`, `income`, `adjustments`, `review` | #76 to #78 replace `pages/StepPage.tsx` per step |
+| `/start/:step` | Wizard: `about`, `household`, `income`, `adjustments`, `review` | `src/wizard/*Step.tsx` (#76 to #78), chosen by `pages/StepPage.tsx` |
 | `/results` | Hero with count-up, line-by-line 1040 walk, what-if slider, error/offline states (`src/results/`). Request comes from `useCurrentRequest` (the $50,000 example until the wizard lands) | #79 |
 | `/cant-do-yet` | Friendly knockout page (`src/knockout/`: per-code copy in `reasonCopy.ts`, a test fails if a code in `api/knockout-reasons.json` has none). Also shown inline on `/results` | #80 |
 | `/trust` | "Why you can trust this" stub | #82 |
@@ -57,3 +57,15 @@ Other pieces: `useCalculation(request)` (hook around `calculate`, keeps the prev
 ## Tests
 
 `vitest` with jsdom and testing-library (`src/test/setup.ts`). Component tests live in `src/components/components.test.tsx`; route-level tests in `src/App.test.tsx` run against the fixture mock.
+
+## Wizard draft (`src/draft`, import from `'../draft'`)
+
+```tsx
+const { draft, update, reset, request } = useDraft();   // React context + reducer, persisted to localStorage (`ustax.draft.v1`)
+buildRequest(draft)      // pure Draft -> CalculateRequest (throws DraftIncompleteError without a filing status)
+tryBuildRequest(draft)   // same, or null; `request` from useDraft() is this
+validateStep(draft, 'income') / validateDraft(draft)   // plain-language errors keyed by field path
+draftFromRequest(req)    // inverse, used for api/examples round-trip tests
+```
+
+The wizard only collects what `api/schema.json` accepts. Dependents, HSA, EITC, CDCC and the Saver's credit are not in the contract yet, so there are no questions for them (the household step just warns that child-related credits are not in the math).

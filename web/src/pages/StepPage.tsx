@@ -1,30 +1,25 @@
 import { useParams } from 'react-router';
-import { Badge, Card } from '../components';
-import { WIZARD_STEPS, stepIndex } from '../layout/steps';
+import { AboutStep } from '../wizard/AboutStep';
+import { AdjustmentsStep } from '../wizard/AdjustmentsStep';
+import { HouseholdStep } from '../wizard/HouseholdStep';
+import { IncomeStep } from '../wizard/IncomeStep';
+import { ReviewStep } from '../wizard/ReviewStep';
 
-/** Which issue builds each step. Placeholder until those land. */
-const BUILT_BY: Record<string, string> = {
-  about: '#76',
-  household: '#76',
-  income: '#77',
-  adjustments: '#78',
-  review: '#78',
-};
-
-/** Placeholder step route. The next agents replace the body per step id. */
+/** Chooses the body for `/start/:step`. Progress and Back/Next live in `WizardLayout`. */
 export function StepPage() {
   const { step } = useParams();
-  const s = WIZARD_STEPS[stepIndex(step)];
-  if (!s) return null;
-  return (
-    <Card>
-      <Badge tone="sun">Coming soon</Badge>
-      <h1>{s.label}</h1>
-      <p>{s.blurb}</p>
-      <p className="muted">
-        This step is a placeholder. The questions land with {BUILT_BY[s.id] ?? 'a later issue'}; the layout, progress
-        and navigation around it already work.
-      </p>
-    </Card>
-  );
+  switch (step) {
+    case 'about':
+      return <AboutStep />;
+    case 'household':
+      return <HouseholdStep />;
+    case 'income':
+      return <IncomeStep />;
+    case 'adjustments':
+      return <AdjustmentsStep />;
+    case 'review':
+      return <ReviewStep />;
+    default:
+      return null;
+  }
 }

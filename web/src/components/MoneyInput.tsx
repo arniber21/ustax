@@ -10,6 +10,8 @@ export interface MoneyInputProps {
   onChange: (cents: Cents | null) => void;
   /** Disallow negatives (default true: most tax inputs are never negative). */
   nonNegative?: boolean;
+  /** Problem found by step validation (shown when the typed text itself parses fine). */
+  error?: string;
 }
 
 const show = (c: Cents | null) => (c === null ? '' : centsToDollarString(c));
@@ -18,7 +20,7 @@ const show = (c: Cents | null) => (c === null ? '' : centsToDollarString(c));
  * Dollar input that speaks integer cents. The user types "$1,234.5"; the parent only ever sees
  * 123450 or null. Invalid text is never silently rounded: it shows a message and reports null.
  */
-export function MoneyInput({ label, hint, value, onChange, nonNegative = true }: MoneyInputProps) {
+export function MoneyInput({ label, hint, value, onChange, nonNegative = true, error: outerError }: MoneyInputProps) {
   const [text, setText] = useState(show(value));
   const [error, setError] = useState<string | undefined>();
 
@@ -45,7 +47,7 @@ export function MoneyInput({ label, hint, value, onChange, nonNegative = true }:
   };
 
   return (
-    <Field label={label} hint={hint} error={error}>
+    <Field label={label} hint={hint} error={error ?? outerError}>
       {(control) => (
         <div className="money">
           <span className="money__sign" aria-hidden="true">

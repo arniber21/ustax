@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router';
+import { DraftProvider } from './draft';
 import { AppShell } from './layout/AppShell';
 import { WizardLayout } from './layout/WizardLayout';
 import { HomePage } from './pages/HomePage';
@@ -23,6 +24,7 @@ function NotFound() {
 /** Route table. Router itself is provided by main.tsx (or MemoryRouter in tests). */
 export function App() {
   return (
+    <DraftProvider>
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<HomePage />} />
@@ -35,5 +37,6 @@ export function App() {
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
+    </DraftProvider>
   );
 }
