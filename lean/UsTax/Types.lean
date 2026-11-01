@@ -81,4 +81,31 @@ def ofString? (s : String) : Option FilingStatus :=
 #guard ofString? "MFJ" == none
 
 end FilingStatus
+/-- Catala `Types.ScopedState`: where the filer lived in the tax year, as Direct
+File asks it (`catala/types.catala_en`). Constructors are the Catala cases
+(`MoreThanOne`, `AK`, ... `NoneOfThese`) in lower camel case. -/
+inductive ScopedState where
+  | moreThanOne | ak | az | ca | ct | fl | id | il | ks | me | md | ma | nv | nh | nj | nm
+  | ny | nc | or | pa | sd | tn | tx | wa | wi | wy | noneOfThese
+  deriving DecidableEq, Repr, Inhabited
+
+namespace ScopedState
+
+/-- The Catala case names, in declaration order. -/
+def all : List (String × ScopedState) :=
+  [("MoreThanOne", moreThanOne), ("AK", ak), ("AZ", az), ("CA", ca), ("CT", ct), ("FL", fl),
+   ("ID", ScopedState.id), ("IL", il), ("KS", ks), ("ME", me), ("MD", md), ("MA", ma), ("NV", nv),
+   ("NH", nh), ("NJ", nj), ("NM", nm), ("NY", ny), ("NC", nc), ("OR", ScopedState.or), ("PA", pa),
+   ("SD", sd), ("TN", tn), ("TX", tx), ("WA", wa), ("WI", wi), ("WY", wy),
+   ("NoneOfThese", noneOfThese)]
+
+/-- Parse a Catala case name. -/
+def ofString? (s : String) : Option ScopedState := all.lookup s
+
+#guard all.all fun (n, st) => ofString? n == some st
+#guard ofString? "TX" == some tx
+#guard ofString? "tx" == none
+
+end ScopedState
+
 end UsTax

@@ -235,6 +235,31 @@ name table, and every assertion of the matching `catala/tests/test_*.catala_en` 
   due exclusive for `form1040Full`. Axioms: `propext`, `Classical.choice`, `Quot.sound`. The Rat
   facts use `decide +kernel` (kernel evaluation, no extra axiom).
 
+## Household and filing status (issue #44)
+
+Hand-translations (strategy (c)) of six Catala modules, each file with a Catala <-> Lean name
+table and every assertion of the matching `catala/tests/test_*.catala_en` as a `#guard`:
+
+- `UsTax/Filers.lean`: `FilerFacts`, `Filers`, `FilersStandardDeduction` (feeds `StandardDeduction`).
+- `UsTax/QualifyingChild.lean`, `UsTax/DependentsBenefitSplit.lean`, `UsTax/QualifyingRelative.lean`,
+  `UsTax/HohQssPersons.lean`: the per-person scopes (`QualifyingChildTest`, `BenefitSplitTest`,
+  `DependentTest`, `HohQssPersonTest`) and their household scopes (`List.map` over members, counts
+  by `Money.countBy` from `UsTax/Lists.lean`).
+- `UsTax/FilingStatus.lean`: `FilingStatusEligibility` and `FilingStatusReturn` (stage 1 `Filers`,
+  stage 2 household, stage 3 eligibility), plus the cheap lemmas QSS preempts HoH and valid
+  implies not knocked out.
+- `UsTax/Household/Props.lean` (plausible, run first) and `UsTax/Household/Lemmas.lean`. Plausible
+  caught that the recommendation is eligible only if MFJ eligibility implies the marital status
+  allows marriage; the lemma carries that hypothesis and `filers_mfj_implies_mfs` discharges it.
+- `UsTax/Date.lean`: `Date.lt`, `Date.toIso`; `UsTax/Types.lean`: `ScopedState`;
+  `UsTax/Params2024.lean`: `qualifyingRelativeGrossIncomeLimit`.
+- `UsTax/Cli.lean` registers `FilersStandardDeduction`, `QualifyingChildTest`, `BenefitSplitTest`,
+  `DependentTest`, `HohQssPersonTest`, `FilingStatusReturn`.
+- `make lean-difftest SCOPE=<filers|filing_status>`; per household member (one pseudo-scenario per
+  person in `oracle/persons.csv`): `make lean-difftest-persons`; the filing-status fact graphs:
+  `make lean-difftest-filing-status-graphs`. `difftest/lean.mjs` needed no change (it already takes
+  `--oracle`); knownDivergence lists are those of the Catala mappings (DF-BUG(15), (19)).
+
 ## Pattern for Lean modules (follow this for every later scope)
 
 1. **One Lean file per Catala module**, `UsTax/<Module>.lean`, written by hand

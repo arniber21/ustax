@@ -12,6 +12,12 @@ import UsTax.SocialSecurity
 import UsTax.EducatorAdjustment
 import UsTax.StudentLoanAdjustment
 import UsTax.EstimatedPayments
+import UsTax.Filers
+import UsTax.QualifyingChild
+import UsTax.DependentsBenefitSplit
+import UsTax.QualifyingRelative
+import UsTax.HohQssPersons
+import UsTax.FilingStatus
 
 /-!
 # Command-line and JSON boundary of the Lean calculator
@@ -644,6 +650,311 @@ def runEstimatedPayments (j : Json) : Except String Json := do
       Json.bool o.koKnockoutPaidEstimatedTaxesUnderDifferentLastName),
     ("unsupported", Json.bool o.unsupported)]
 
+/-! ### Household and filing status scopes (issue #44)
+
+Decoders for the Catala JSON of the structs `FilerAnswers`, `Person`, `BenefitSplitAnswers`,
+`DependentAnswers`, `Member` (three variants) and the six scopes the differential test runs.
+Enumerations are Catala case names; dates are `"YYYY-MM-DD"`. -/
+
+section Household
+
+open Filers QualifyingChild DependentsBenefitSplit QualifyingRelative
+
+/-- An enumeration field `k` decoded by `parse`. -/
+def enumReq {α} (j : Json) (k : String) (what : String) (parse : String → Option α) :
+    Except String α := do
+  let s ← (← field j k).getStr?
+  match parse s with
+  | some v => .ok v
+  | none => .error s!"bad {what} {s.quote}"
+
+/-- Required date field `k`. -/
+def dateReq (j : Json) (k : String) : Except String UsTax.Date := do dateOfJson (← field j k)
+
+/-- Catala `Filers.FilerAnswers`. -/
+def filerAnswersOfJson (j : Json) : Except String FilerAnswers :=
+  return {
+    dateOfBirth := ← dateReq j "date_of_birth", isBlind := ← boolReq j "is_blind"
+    canBeClaimed := ← boolReq j "can_be_claimed", willBeClaimed := ← boolReq j "will_be_claimed"
+    potentialClaimerMustFile := ← boolReq j "potential_claimer_must_file"
+    potentialClaimerDidFile := ← boolReq j "potential_claimer_did_file"
+    isUsCitizenFullYear := ← boolReq j "is_us_citizen_full_year"
+    writableCitizenAtEndOfTaxYear := ← boolReq j "writable_citizen_at_end_of_tax_year"
+    writableIsNoncitizenResidentFullYear := ← boolReq j "writable_is_noncitizen_resident_full_year"
+    writableIsNational := ← boolReq j "writable_is_national" }
+
+/-- The inputs of `Filers` (shared by `FilersStandardDeduction` and `FilingStatusReturn`);
+`eligible_for_hoh` is `eh`. -/
+def filersInOfJson (j : Json) (eh : Bool) : Except String FilersIn :=
+  return {
+    filingStatus := ← filingStatusOfJson (← field j "filing_status")
+    maritalStatus := ← enumReq j "marital_status" "marital status" MaritalStatus.ofString?
+    yearOfSpouseDeath := ← enumReq j "year_of_spouse_death" "year of spouse death"
+      YearOfSpouseDeath.ofString?
+    primaryFiler := ← filerAnswersOfJson (← field j "primary_filer")
+    secondaryFiler := ← filerAnswersOfJson (← field j "secondary_filer")
+    secondaryFilerDateOfDeath := ← dateReq j "secondary_filer_date_of_death"
+    primaryFilerPotentialClaimerFiledOnlyForRefund :=
+      ← boolReq j "primary_filer_potential_claimer_filed_only_for_refund"
+    mfjRequiredToFile := ← boolReq j "mfj_required_to_file"
+    mfjDependentsFilingForCredits := ← boolReq j "mfj_dependents_filing_for_credits"
+    livedTogetherAllYearWithSpouse := ← boolReq j "lived_together_all_year_with_spouse"
+    spouseLivedTogetherMonths := ← enumReq j "spouse_lived_together_months" "lived-together months"
+      SpouseLivedTogetherMonths.ofString?
+    writableLivedApartLastSixMonths := ← boolReq j "writable_lived_apart_last_six_months"
+    writableSeparationAgreement := ← boolReq j "writable_separation_agreement"
+    canFileJointlyYearOfSpouseDeath := ← boolReq j "can_file_jointly_year_of_spouse_death"
+    inRegisteredDomesticPartnership := ← boolReq j "in_registered_domestic_partnership"
+    filerResidenceAndIncomeState := ← enumReq j "filer_residence_and_income_state" "state"
+      ScopedState.ofString?
+    spouseItemizes := ← boolReq j "spouse_itemizes"
+    mfsLivingSpouseFilingReturn := ← boolReq j "mfs_living_spouse_filing_return"
+    mfsDeceasedSpouseFilingReturn := ← boolReq j "mfs_deceased_spouse_filing_return"
+    mfsSpouseHasGrossIncome := ← boolReq j "mfs_spouse_has_gross_income"
+    eligibleForHoh := eh }
+
+/-- Catala `Qualifying_child.Person`. -/
+def personOfJson (j : Json) : Except String Person :=
+  return {
+    relationship := ← enumReq j "relationship" "relationship" Relationship.ofString?
+    dateOfBirth := ← dateReq j "date_of_birth"
+    fullTimeStudent := ← boolReq j "full_time_student"
+    permanentTotalDisability := ← boolReq j "permanent_total_disability"
+    residencyDuration := ← enumReq j "residency_duration" "residency duration"
+      ResidencyDuration.ofString?
+    ownSupport := ← boolReq j "own_support", married := ← boolReq j "married"
+    writableJointReturn := ← boolReq j "writable_joint_return"
+    writableRequiredToFile := ← boolReq j "writable_required_to_file"
+    writableFilingOnlyForRefund := ← boolReq j "writable_filing_only_for_refund"
+    writableCouldBeQualifyingChildOfAnother :=
+      ← boolReq j "writable_could_be_qualifying_child_of_another"
+    writablePotentialClaimerMustFile := ← boolReq j "writable_potential_claimer_must_file"
+    writablePotentialClaimerDidFile := ← boolReq j "writable_potential_claimer_did_file"
+    writablePotentialClaimerFiledOnlyForRefund :=
+      ← boolReq j "writable_potential_claimer_filed_only_for_refund" }
+
+/-- Catala `Dependents_benefit_split.BenefitSplitAnswers`. -/
+def benefitSplitAnswersOfJson (j : Json) : Except String BenefitSplitAnswers :=
+  return {
+    hasOtherBiologicalOrAdoptiveParent := ← boolReq j "has_other_biological_or_adoptive_parent"
+    nonParentalSomeParentNotClaiming := ← boolReq j "non_parental_some_parent_not_claiming"
+    whichParentNotClaiming := ← enumReq j "which_parent_not_claiming" "written declaration"
+      WrittenDeclaration.ofString?
+    inParentsCustody := ← boolReq j "in_parents_custody"
+    livedWithTpOrOtherBiologicalOrAdoptiveParentMoreThanSixMonths :=
+      ← boolReq j "lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months"
+    biologicalOrAdoptiveParentsLiving := ← boolReq j "biological_or_adoptive_parents_living"
+    nightsWithTpVsOtherParent := ← enumReq j "nights_with_tp_vs_other_parent" "nights comparison"
+      NightsComparison.ofString?
+    tpAgiHigherThanOtherParent := ← boolReq j "tp_agi_higher_than_other_parent"
+    parentsMeetReqsRuleForChildrenOfDivorcedParents :=
+      ← boolReq j "parents_meet_reqs_rule_for_children_of_divorced_parents"
+    specialRuleChildUsedByCustodialParentAsQp :=
+      ← boolReq j "special_rule_child_used_by_custodial_parent_as_qp"
+    specialRuleAgiTest := ← boolReq j "special_rule_agi_test"
+    parentalSituation := ← enumReq j "parental_situation" "parental situation"
+      ParentalSituation.ofString?
+    parentalSupport := ← boolReq j "parental_support"
+    multipleSupportAgreement := ← boolReq j "multiple_support_agreement" }
+
+/-- Catala `Qualifying_relative.DependentAnswers`. -/
+def dependentAnswersOfJson (j : Json) : Except String DependentAnswers :=
+  return {
+    grossIncome := ← moneyReq j "gross_income"
+    writableQrSupportTest := ← boolReq j "writable_qr_support_test"
+    tinType := ← enumReq j "tin_type" "TIN type" TinType.ofString?
+    isUsCitizenFullYear := ← boolReq j "is_us_citizen_full_year"
+    writableUsResident := ← boolReq j "writable_us_resident"
+    writableUsNational := ← boolReq j "writable_us_national"
+    writableCanadaMexicoResident := ← boolReq j "writable_canada_mexico_resident"
+    tpClaims := ← boolReq j "tp_claims" }
+
+/-- `Dependents_benefit_split.Member`. -/
+def splitMemberOfJson (j : Json) : Except String DependentsBenefitSplit.Member :=
+  return { person := ← personOfJson (← field j "person")
+           answers := ← benefitSplitAnswersOfJson (← field j "answers") }
+
+/-- `Qualifying_relative.Member`. -/
+def depMemberOfJson (j : Json) : Except String QualifyingRelative.Member :=
+  return { person := ← personOfJson (← field j "person")
+           answers := ← dependentAnswersOfJson (← field j "answers")
+           split := ← benefitSplitAnswersOfJson (← field j "split") }
+
+/-- `Hoh_qss_persons.Member`. -/
+def hohMemberOfJson (j : Json) : Except String HohQssPersons.Member := do
+  let u ← field j "upkeep"
+  return { dependent := ← depMemberOfJson (← field j "dependent")
+           upkeep := { tpPaidMostOfHomeUpkeep := ← boolReq u "tp_paid_most_of_home_upkeep"
+                       tpPaidMostOfParentHomeUpkeep :=
+                         ← boolReq u "tp_paid_most_of_parent_home_upkeep" } }
+
+private def bj (b : Bool) : Json := Json.bool b
+
+/-- Catala scope `Filers.FilersStandardDeduction`. -/
+def runFilersStandardDeduction (j : Json) : Except String Json := do
+  let o := filersStandardDeduction
+    { toFilersIn := ← filersInOfJson j (← boolReq j "eligible_for_hoh")
+      mfsSpouse65OrOlder := ← boolReq j "mfs_spouse_65_or_older"
+      employerIncomeSubtotal := ← moneyReq j "employer_income_subtotal" }
+  return Json.mkObj [
+    ("standard_deduction", mj o.standardDeduction),
+    ("additional_standard_deduction_items", toJson o.additionalStandardDeductionItems),
+    ("is_spouse_65_or_older", bj o.isSpouse65OrOlder),
+    ("secondary_filer_is_blind_indicator_xml", bj o.secondaryFilerIsBlindIndicatorXml),
+    ("xml_over65_sr_indicator", bj o.xmlOver65SrIndicator),
+    ("primary_some_one_can_claim_for_tax_benefits", bj o.primarySomeOneCanClaimForTaxBenefits),
+    ("secondary_some_one_can_claim_for_tax_benefits", bj o.secondarySomeOneCanClaimForTaxBenefits),
+    ("unsupported", bj o.unsupported)]
+
+/-- Catala scope `Qualifying_child.QualifyingChildTest`. -/
+def runQualifyingChildTest (j : Json) : Except String Json := do
+  let o := qualifyingChildTest
+    { person := ← personOfJson (← field j "person")
+      minimumFilerDateOfBirth := ← dateReq j "minimum_filer_date_of_birth" }
+  return Json.mkObj
+    [("age", toJson o.age), ("age_at_first_half_of_year", toJson o.ageAtFirstHalfOfYear),
+     ("younger_than_oldest_filer", bj o.youngerThanOldestFiler),
+     ("qc_relationship_test", bj o.qcRelationshipTest),
+     ("student_status_may_affect_benefits", bj o.studentStatusMayAffectBenefits),
+     ("is_a_student_under24", bj o.isAStudentUnder24),
+     ("disability_status_may_affect_benefits", bj o.disabilityStatusMayAffectBenefits),
+     ("age_test", bj o.ageTest), ("residency_test", bj o.residencyTest),
+     ("qc_support_test", bj o.qcSupportTest), ("joint_return", bj o.jointReturn),
+     ("required_to_file", bj o.requiredToFile),
+     ("filing_only_for_refund", bj o.filingOnlyForRefund),
+     ("joint_return_test", bj o.jointReturnTest), ("qualifying_child", bj o.qualifyingChild),
+     ("qc_of_another_but_not", bj o.qcOfAnotherButNot),
+     ("other_taxpayer_can_claim_as_qualifying_child", bj o.otherTaxpayerCanClaimAsQualifyingChild),
+     ("ko_qualifying_child_tie_breaker", bj o.koQualifyingChildTieBreaker)]
+
+/-- Catala scope `Dependents_benefit_split.BenefitSplitTest`. -/
+def runBenefitSplitTest (j : Json) : Except String Json := do
+  let o := benefitSplitTest
+    { member := ← splitMemberOfJson (← field j "member")
+      minimumFilerDateOfBirth := ← dateReq j "minimum_filer_date_of_birth"
+      treatAsMfj := ← boolReq j "treat_as_mfj" }
+  return Json.mkObj
+    [("child_may_qualify_for_benefit_split", bj o.childMayQualifyForBenefitSplit),
+     ("tp_is_parent", bj o.tpIsParent), ("tp_is_not_parent", bj o.tpIsNotParent),
+     ("parental_some_parent_not_claiming", bj o.parentalSomeParentNotClaiming),
+     ("primary_filer_not_claiming", bj o.primaryFilerNotClaiming),
+     ("both_filers_not_claiming", bj o.bothFilersNotClaiming),
+     ("other_parent_not_claiming", bj o.otherParentNotClaiming),
+     ("had_equal_number_of_nights_with_parents", bj o.hadEqualNumberOfNightsWithParents),
+     ("parents_are_divorced_separated_or_living_apart",
+       bj o.parentsAreDivorcedSeparatedOrLivingApart),
+     ("tp_is_custodial_parent", bj o.tpIsCustodialParent),
+     ("section_152e_applies_despite_support_agreements",
+       bj o.section152eAppliesDespiteSupportAgreements),
+     ("eligible_for_benefit_split", bj o.eligibleForBenefitSplit),
+     ("reached_non_parental_benefit_split", bj o.reachedNonParentalBenefitSplit),
+     ("tp_can_claim_split_benefits_hoh_eitc_cdcc", bj o.tpCanClaimSplitBenefitsHohEitcCdcc),
+     ("disqualified_due_to_parental_custody", bj o.disqualifiedDueToParentalCustody),
+     ("contradictory8832_tp_is_custodial_parent", bj o.contradictory8832TpIsCustodialParent),
+     ("contradictory8832_tp_not_custodial_parent", bj o.contradictory8832TpNotCustodialParent),
+     ("contradictory8832_knockout", bj o.contradictory8832Knockout),
+     ("causes_noncustodial_parent_benefit_split_knockout",
+       bj o.causesNoncustodialParentBenefitSplitKnockout),
+     ("unsupported", bj o.unsupported)]
+
+/-- Catala scope `Qualifying_relative.DependentTest`. -/
+def runDependentTest (j : Json) : Except String Json := do
+  let o := dependentTest
+    { member := ← depMemberOfJson (← field j "member")
+      minimumFilerDateOfBirth := ← dateReq j "minimum_filer_date_of_birth"
+      treatFilersAsDependents := ← boolReq j "treat_filers_as_dependents"
+      eitherFilerUsCitizenOrNational := ← boolReq j "either_filer_us_citizen_or_national"
+      treatAsMfj := ← boolReq j "treat_as_mfj" }
+  return Json.mkObj
+    [("qualifying_child", bj o.qualifyingChild),
+     ("ask_about_qc_of_another", bj o.askAboutQcOfAnother),
+     ("is_qualifying_child_of_another", bj o.isQualifyingChildOfAnother),
+     ("could_be_qualifying_child_of_some_taxpayer", bj o.couldBeQualifyingChildOfSomeTaxpayer),
+     ("not_qualifying_child_test", bj o.notQualifyingChildTest),
+     ("qr_relationship_test", bj o.qrRelationshipTest),
+     ("member_of_household_test", bj o.memberOfHouseholdTest),
+     ("relationship_member_of_household_test", bj o.relationshipMemberOfHouseholdTest),
+     ("gross_income_test", bj o.grossIncomeTest), ("qr_support_test", bj o.qrSupportTest),
+     ("qualifying_relative_minus_not_qc_test", bj o.qualifyingRelativeMinusNotQcTest),
+     ("qualifying_relative", bj o.qualifyingRelative), ("us_resident", bj o.usResident),
+     ("us_national", bj o.usNational), ("canada_mexico_resident", bj o.canadaMexicoResident),
+     ("child_is_adopted", bj o.childIsAdopted),
+     ("adopted_child_exception", bj o.adoptedChildException),
+     ("citizen_or_us_resident_test", bj o.citizenOrUsResidentTest),
+     ("citizen_or_resident_test", bj o.citizenOrResidentTest), ("qc_or_qr", bj o.qcOrQr),
+     ("eligible_dependent_minus_filer_information", bj o.eligibleDependentMinusFilerInformation),
+     ("eligible_dependent", bj o.eligibleDependent),
+     ("is_claimed_dependent", bj o.isClaimedDependent),
+     ("is_claimed_if_claimable", bj o.isClaimedIfClaimable)]
+
+/-- Catala scope `Hoh_qss_persons.HohQssPersonTest`. -/
+def runHohQssPersonTest (j : Json) : Except String Json := do
+  let o := HohQssPersons.hohQssPersonTest
+    { member := ← hohMemberOfJson (← field j "member")
+      minimumFilerDateOfBirth := ← dateReq j "minimum_filer_date_of_birth"
+      treatFilersAsDependents := ← boolReq j "treat_filers_as_dependents"
+      eitherFilerUsCitizenOrNational := ← boolReq j "either_filer_us_citizen_or_national"
+      treatAsMfj := ← boolReq j "treat_as_mfj", eligibleForMfj := ← boolReq j "eligible_for_mfj"
+      filerCouldQualifyForHoh := ← boolReq j "filer_could_qualify_for_hoh"
+      filerCouldQualifyForQss := ← boolReq j "filer_could_qualify_for_qss" }
+  return Json.mkObj
+    [("married_hoh_relationship_test", bj o.marriedHohRelationshipTest),
+     ("is_biological_adopted_foster_or_stepchild", bj o.isBiologicalAdoptedFosterOrStepchild),
+     ("is_parent", bj o.isParent), ("qss_person_residency_test", bj o.qssPersonResidencyTest),
+     ("flow_add_person_keeping_up_home", bj o.flowAddPersonKeepingUpHome),
+     ("flow_add_person_keeping_up_parents_home", bj o.flowAddPersonKeepingUpParentsHome),
+     ("considered_unmarried_child", bj o.consideredUnmarriedChild),
+     ("married_child_not_excluded", bj o.marriedChildNotExcluded),
+     ("hoh_qualifying_child_path", bj o.hohQualifyingChildPath),
+     ("hoh_parent_path", bj o.hohParentPath),
+     ("hoh_other_relative_path", bj o.hohOtherRelativePath),
+     ("hoh_qualifying_person", bj o.hohQualifyingPerson),
+     ("person_qualifies_tp_for_hoh", bj o.personQualifiesTpForHoh),
+     ("hoh_qp_has_tin", bj o.hohQpHasTin), ("qss_qualifying_person", bj o.qssQualifyingPerson),
+     ("person_qualifies_tp_for_qss", bj o.personQualifiesTpForQss)]
+
+/-- Catala scope `Filing_status.FilingStatusReturn`. -/
+def runFilingStatusReturn (j : Json) : Except String Json := do
+  let b ← filersInOfJson j false
+  let ms ← listReq j "members" hohMemberOfJson
+  let o := FilingStatusMod.filingStatusReturn
+    { filingStatus := b.filingStatus, maritalStatus := b.maritalStatus
+      yearOfSpouseDeath := b.yearOfSpouseDeath, primaryFiler := b.primaryFiler
+      secondaryFiler := b.secondaryFiler, secondaryFilerDateOfDeath := b.secondaryFilerDateOfDeath
+      primaryFilerPotentialClaimerFiledOnlyForRefund := b.primaryFilerPotentialClaimerFiledOnlyForRefund
+      mfjRequiredToFile := b.mfjRequiredToFile
+      mfjDependentsFilingForCredits := b.mfjDependentsFilingForCredits
+      livedTogetherAllYearWithSpouse := b.livedTogetherAllYearWithSpouse
+      spouseLivedTogetherMonths := b.spouseLivedTogetherMonths
+      writableLivedApartLastSixMonths := b.writableLivedApartLastSixMonths
+      writableSeparationAgreement := b.writableSeparationAgreement
+      canFileJointlyYearOfSpouseDeath := b.canFileJointlyYearOfSpouseDeath
+      inRegisteredDomesticPartnership := b.inRegisteredDomesticPartnership
+      filerResidenceAndIncomeState := b.filerResidenceAndIncomeState
+      spouseItemizes := b.spouseItemizes, mfsLivingSpouseFilingReturn := b.mfsLivingSpouseFilingReturn
+      mfsDeceasedSpouseFilingReturn := b.mfsDeceasedSpouseFilingReturn
+      mfsSpouseHasGrossIncome := b.mfsSpouseHasGrossIncome, members := ms }
+  return Json.mkObj
+    [("marital_status_allows_filing_married", bj o.maritalStatusAllowsFilingMarried),
+     ("eligible_for_mfj", bj o.eligibleForMfj), ("eligible_for_mfs", bj o.eligibleForMfs),
+     ("eligible_for_single", bj o.eligibleForSingle), ("eligible_for_hoh", bj o.eligibleForHoh),
+     ("eligible_for_qss", bj o.eligibleForQss),
+     ("filer_could_qualify_for_hoh", bj o.filerCouldQualifyForHoh),
+     ("filer_could_qualify_for_qss", bj o.filerCouldQualifyForQss),
+     ("hoh_qualifying_people_count", toJson o.hohQualifyingPeopleCount),
+     ("qss_qualifying_people_count", toJson o.qssQualifyingPeopleCount),
+     ("is_filing_status_valid", bj o.isFilingStatusValid),
+     ("has_multiple_eligible_filing_statuses", bj o.hasMultipleEligibleFilingStatuses),
+     ("recommended_is_single", bj o.recommendedIsSingle),
+     ("recommended_is_mfj", bj o.recommendedIsMfj), ("recommended_is_mfs", bj o.recommendedIsMfs),
+     ("recommended_is_hoh", bj o.recommendedIsHoh), ("recommended_is_qss", bj o.recommendedIsQss),
+     ("treat_as_mfj", bj o.treatAsMfj), ("treat_as_mfs", bj o.treatAsMfs),
+     ("treat_as_hoh", bj o.treatAsHoh),
+     ("ko_filing_status_not_eligible", bj o.koFilingStatusNotEligible),
+     ("unsupported", bj o.unsupported)]
+
+end Household
+
 /-- The scopes implemented in Lean, by Catala scope name. Add one line per
 new module. -/
 def scopes : List (String × (Json → Except String Json)) :=
@@ -659,7 +970,13 @@ def scopes : List (String × (Json → Except String Json)) :=
    ("SocialSecurity", runSocialSecurity),
    ("EducatorAdjustment", runEducatorAdjustment),
    ("StudentLoanAdjustment", runStudentLoanAdjustment),
-   ("EstimatedPayments", runEstimatedPayments)]
+   ("EstimatedPayments", runEstimatedPayments),
+   ("FilersStandardDeduction", runFilersStandardDeduction),
+   ("QualifyingChildTest", runQualifyingChildTest),
+   ("BenefitSplitTest", runBenefitSplitTest),
+   ("DependentTest", runDependentTest),
+   ("HohQssPersonTest", runHohQssPersonTest),
+   ("FilingStatusReturn", runFilingStatusReturn)]
 
 /-- Run scope `name` on one JSON input. -/
 def runScope (name : String) (input : Json) : Except String Json :=
