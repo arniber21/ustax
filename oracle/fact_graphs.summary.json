@@ -1,0 +1,12 @@
+{
+ "total": 27,
+ "knockedOut": 0,
+ "notKnockedOut": 0,
+ "notKnockedOutPlaceholder": 27,
+ "coreComplete": 0,
+ "coreCompleteAndNotKnockedOut": 0,
+ "knockedOutScenarios": [],
+ "errors": [],
+ "sha256": "63c368c81da2ccdeed8fb1b11dd675ce8cc24c92512fe37dd3501aa3de4522bd",
+ "mefExtraPaths": 313
+}

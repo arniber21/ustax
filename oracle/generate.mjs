@@ -1,6 +1,6 @@
 // Dump Direct File reference-engine values for every backend scenario.
 //
-// Usage: node generate.mjs [--direct-file DIR] [--out FILE]
+// Usage: node generate.mjs [--direct-file DIR] [--out FILE] [--scenario-dir SCENARIOS]
 //   DIR defaults to $DIRECT_FILE, else ../../direct-file/direct-file relative to the repo root
 //   (the directory that contains backend/ and df-client/).
 //
@@ -30,7 +30,10 @@ const TAX_YEAR = '2024';
 
 const bundle = path.join(DF, 'df-client/js-factgraph-scala/src/main.js');
 const taxDir = path.join(DF, 'backend/src/main/resources/tax');
-const scenDir = path.join(DF, 'backend/src/test/resources/scenarios');
+// --scenario-dir: another directory of scenario JSON files (issue #20: the 28 filing-status fact graphs of
+// direct-file/docs/testing/fact-graphs, written to oracle/fact_graphs.csv). A file is either a backend scenario
+// ({ "facts": {...} }) or a bare fact graph ({ "/path": {...} }).
+const scenDir = path.resolve(arg('--scenario-dir', path.join(DF, 'backend/src/test/resources/scenarios')));
 for (const p of [bundle, taxDir, scenDir]) {
   if (!fs.existsSync(p)) {
     console.error(`missing ${p}; set DIRECT_FILE or --direct-file to the direct-file/direct-file checkout`);
@@ -144,7 +147,16 @@ const mefPaths = rawFacts
   .map((r) => r['@path'])
   .filter((p) => !REQUIRED.includes(p))
   .sort();
-const OUTPUTS = [...REQUIRED, ...mefPaths];
+// Further non-MeF derived facts read by later modules, appended after the MeF ones (so the rows above keep their
+// order). Append only. Issue #20: filing-status eligibility and recommendation (filingStatus.xml, filers.xml).
+const EXTRA = [
+  '/maritalStatusAllowsFilingMarried', '/eligibleForMFJ', '/eligibleForMFS', '/eligibleForSingle', '/eligibleForHoh',
+  '/eligibleForQss', '/filerCouldQualifyForHoh', '/filerCouldQualifyForQss', '/isFilingStatusValid',
+  '/hasMultipleEligibleFilingStatuses', '/recommendedFilingStatus', '/treatAsMFJ', '/treatAsMFS', '/treatAsHoh',
+].filter((p) => !REQUIRED.includes(p) && !mefPaths.includes(p));
+const missingExtra = EXTRA.filter((p) => !derivedPaths.has(p));
+if (missingExtra.length) throw new Error(`extra paths not derived facts in dictionary: ${missingExtra}`);
+const OUTPUTS = [...REQUIRED, ...mefPaths, ...EXTRA];
 
 // ---------- helpers ----------
 const csv = (s) => (/[",\n\r]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s);
@@ -184,7 +196,8 @@ const summary = {
 };
 for (const file of files) {
   const name = file.replace(/\.json$/, '');
-  const facts = JSON.parse(fs.readFileSync(path.join(scenDir, file), 'utf-8')).facts;
+  const json = JSON.parse(fs.readFileSync(path.join(scenDir, file), 'utf-8'));
+  const facts = json.facts ?? json;
   summary.total++;
   for (const [p, w] of Object.entries(facts)) rows.push([name, p, flattenItem(w), 'Complete'].map(csv).join(','));
   let graph;

@@ -53,8 +53,14 @@ Rows per scenario: every writable fact in the scenario (inputs), the 16 required
 (`/agi /totalIncome /taxableIncome /totalTax /totalPayments /overpayment /balanceDue /standardDeduction
 /earnedIncomeCredit /totalCtcAndOdc /additionalCtc /cdccTotalCredit /qualifiedSaverCreditAmount /totalEdc
 /netPtcAmount /flowIsKnockedOut`), plus 313 further derived facts marked `Export mef="true"` that have no `*` in
-their path (excluding the 16 above). Total 77,209 rows, 5.6 MB, so
-the CSV is committed directly.
+their path (excluding the 16 above), plus the non-MeF derived facts of the `EXTRA` list in `generate.mjs`
+(append only; issue #20 added 14 filing-status facts such as `/eligibleForHoh` and `/recommendedFilingStatus`).
+Total 79,463 rows, 5.7 MB, so the CSV is committed directly.
+
+`oracle/fact_graphs.csv` (`make oracle-fact-graphs`, issue #20) is the same dump for the 27 filing-status fact
+graphs of `direct-file/docs/testing/fact-graphs/` (bare fact graphs, not `{ "facts": ... }` scenarios), produced by
+`generate.mjs --scenario-dir <that directory> --out fact_graphs.csv`. 10,720 rows; SHA-256
+`63c368c81da2ccdeed8fb1b11dd675ce8cc24c92512fe37dd3501aa3de4522bd`.
 
 Sample:
 
@@ -67,7 +73,8 @@ ats-1,/netPtcAmount,,Incomplete
 ats-1,/flowIsKnockedOut,false,Placeholder
 ```
 
-SHA-256 of `facts.csv`: `a238501f6b8efcb25012e7a423e4dfa46a4ce748a93759459e182e47e7ef8a00`
+SHA-256 of `facts.csv`: `812bf3bd52d15f96c14141c550bbb7c25b9f0a7177271159e6a3bd103071d44c` (before the issue #20
+EXTRA rows: `a238501f6b8efcb25012e7a423e4dfa46a4ce748a93759459e182e47e7ef8a00`; those 77,209 rows are unchanged)
 
 ## Counts
 
