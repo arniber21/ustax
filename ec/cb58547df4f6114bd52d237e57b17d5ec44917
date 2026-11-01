@@ -1,0 +1,25 @@
+difftest/lean.mjs
+  s_3031b504518be3::t_14a817e70581c3 33,64,76-77
+difftest/lib.mjs
+  s_3031b504518be3::t_b36ad280c89dee 45-65
+difftest/run.mjs
+  s_3031b504518be3::t_2151818a9a433e 11,33,44-45
+difftest/selftest.mjs
+  s_3031b504518be3::t_f87bca1c5714ad 4,48-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eccb58547df4f6114bd52d237e57b17d5ec44917",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
