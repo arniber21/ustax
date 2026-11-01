@@ -25,7 +25,7 @@ describe('routing', () => {
     at('/');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('A formally verified income tax calculator');
     expect(screen.getByRole('link', { name: /Start your return/ })).toHaveAttribute('href', '/start/about');
-    for (const a of screen.getAllByRole('link', { name: 'What is verified' })) expect(a).toHaveAttribute('href', '/trust');
+    for (const a of screen.getAllByRole('link', { name: 'What is verified' })) expect(a).toHaveAttribute('href', '/docs/verification');
   });
 
   it('wizard walks through all seven steps', async () => {

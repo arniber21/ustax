@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { formatCents } from '../api';
-import { CircleAlert, CircleCheck, Pencil, RotateCcw } from 'lucide-react';
-import { toast } from 'sonner';
-import { Button, Callout } from '../components';
+import { CircleAlert, CircleCheck, Pencil } from 'lucide-react';
+import { Callout } from '../components';
+import { ClearReturnButton } from '../components/ClearReturn';
 import { Badge } from '../components/ui/badge';
 import { RELATIONSHIPS, isJoint, useDraft, validateDraft, type Cents, type Draft } from '../draft';
 import { WIZARD_STEPS, stepPath, type WizardStepId } from '../layout/steps';
@@ -79,7 +79,7 @@ function Empty() {
 
 /** Step 5: everything we heard, in plain words, with a way back to fix any of it. */
 export function ReviewStep() {
-  const { draft: d, reset } = useDraft();
+  const { draft: d } = useDraft();
   const problems = validateDraft(d);
   const bad = (Object.keys(problems) as WizardStepId[]).filter((k) => Object.keys(problems[k]).length > 0);
   const status = FILING_STATUS_OPTIONS.find((o) => o.value === d.filingStatus);
@@ -163,17 +163,7 @@ export function ReviewStep() {
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground">
         <span>Your answers are saved in this browser until you clear them.</span>
-        <Button
-          variant="ghost"
-          onClick={() => {
-            reset();
-            toast('Answers cleared', { description: 'You are starting a new return.' });
-          }}
-          className="h-8 px-3"
-        >
-          <RotateCcw aria-hidden="true" />
-          Start over
-        </Button>
+        <ClearReturnButton />
       </div>
     </>
   );

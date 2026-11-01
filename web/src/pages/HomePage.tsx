@@ -1,12 +1,11 @@
 import { ArrowRight, Check, ClipboardList, Cpu, Minus, Scale } from 'lucide-react';
 import { Link } from 'react-router';
 import { ButtonLink } from '../components/Button';
-import { DotGlobe } from '../components/brand/DotGlobe';
 import { useDraft } from '../draft';
 import { TAGLINE } from '../layout/AppShell';
 import { WIZARD_STEPS } from '../layout/steps';
-import { TierBadge, TierLegend } from '../trust/TierBadge';
-import { AS_OF, CATALA, EXTRA, MAIN, SCOPE_INCLUDED, SCOPE_NOT_INCLUDED, STATUS_CLAIMS, TESTED, type ClaimStatus } from '../trust/facts';
+import { TierBadge } from '../trust/TierBadge';
+import { AS_OF, CATALA, EXTRA, MAIN, SCOPE_INCLUDED, SCOPE_NOT_INCLUDED, TESTED, type ClaimStatus } from '../trust/facts';
 
 /** Kept for callers that show one claim's status. */
 export function StatusBadge({ status }: { status: ClaimStatus }) {
@@ -33,59 +32,48 @@ const HOW = [
 
 /** Welcome: what this is, what is verified, one way in. */
 export function HomePage() {
-  const { request } = useDraft();
+  const { draft } = useDraft();
+  const hasReturn = draft.filingStatus !== null;
   const proved = MAIN.theorems.length + EXTRA.theorems.length;
+  const assurances: { title: string; status: ClaimStatus; detail: string }[] = [
+    { title: `${proved} properties proved in Lean`, status: 'proven', detail: 'Tax tables, refund consistency, credit bounds and more. Every theorem has an explicit scope.' },
+    { title: `${TESTED.calculator.scenarios} IRS returns compared`, status: 'tested', detail: `${TESTED.calculator.factChecks.toLocaleString('en-US')} output checks against IRS Direct File. Testing is evidence, not a proof.` },
+  ];
   return (
     <div className="relative overflow-x-clip">
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
-        {/* Decorative background: a dot-matrix globe wearing the US flag, behind the headline. The header has its own
-            stacking level above it, and the globe fades out toward the right so the verification card stays clean. */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute top-0 -left-40 z-0 w-[560px] opacity-50 sm:-left-48 sm:w-[720px] sm:opacity-60 lg:-left-56 lg:w-[800px] lg:opacity-70"
-          style={{
-            maskImage: 'linear-gradient(to right, black 55%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to right, black 55%, transparent 100%)',
-          }}
-        >
-          <DotGlobe />
-        </div>
-        <section className="relative z-10 grid items-start gap-10 py-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:gap-16 lg:py-20">
-          <div className="max-w-[40rem] [text-shadow:0_0_5px_var(--background),0_0_12px_var(--background),0_0_22px_var(--background)] [&_a]:[text-shadow:none]">
-            <p className="m-0 inline-flex items-center gap-2 rounded-full border bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground shadow-xs backdrop-blur [text-shadow:none]">
+        <section className="relative z-10 grid items-start gap-10 py-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,25rem)] lg:gap-20 lg:py-24">
+          <div className="max-w-[38rem]">
+            <p className="m-0 inline-flex items-center gap-2 text-xs font-medium tracking-wide text-muted-foreground">
               <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
               Tax year 2024 · Federal income tax
             </p>
             <h1 className="mt-5 mb-0 text-4xl leading-[1.08] font-semibold tracking-tight sm:text-[3.25rem]">{TAGLINE}</h1>
-            {/* Translucent card: keeps the body text and buttons readable over the globe while it still shows through. */}
-            <div className="mt-6 rounded-xl border border-white/60 bg-white/20 p-5 shadow-lg ring-1 ring-black/5 backdrop-blur-[3px] [text-shadow:none] sm:p-6 dark:border-white/10 dark:bg-slate-900/40 dark:ring-white/5">
-              <p className="m-0 text-lg leading-relaxed font-medium text-foreground/85">
-                Calculates your 2024 federal income tax. The arithmetic is checked by a machine-verified proof; here is exactly
-                what is and is not covered.
+            <div className="mt-6">
+              <p className="m-0 max-w-lg text-lg leading-relaxed text-muted-foreground">
+                Work through your 2024 federal return, then follow every line back to the law,
+                the calculation, and the properties proved in Lean.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <ButtonLink size="lg" to={request ? '/start/review' : '/start/about'} className="shadow-sm">
-                  {request ? 'Continue your return' : 'Start your return'}
+                <ButtonLink size="lg" to="/start/about">
+                  {hasReturn ? 'Continue your return' : 'Start your return'}
                   <ArrowRight aria-hidden="true" />
                 </ButtonLink>
-                <ButtonLink size="lg" variant="secondary" to="/trust">
-                  What is verified
-                </ButtonLink>
-                <ButtonLink size="lg" variant="secondary" to="/docs">
-                  Go to docs
+                <ButtonLink size="lg" variant="ghost" to="/docs/verification">
+                  What is verified <ArrowRight aria-hidden="true" className="size-4" />
                 </ButtonLink>
               </div>
-              <p className="mt-4 mb-0 text-sm font-medium text-foreground/75">
-                {request ? 'Your answers are saved in this browser. ' : `${WIZARD_STEPS.length} short steps. Answers are saved in this browser only. `}
+              <p className="mt-4 mb-0 text-xs text-muted-foreground">
+                {hasReturn ? 'Your answers are saved in this browser. ' : `${WIZARD_STEPS.length} short steps. Answers are saved in this browser only. `}
                 Nothing is filed.
               </p>
-              <dl className="mt-6 grid grid-cols-3 gap-px overflow-hidden rounded-lg border bg-border text-center">
+              <dl className="mt-9 grid max-w-md grid-cols-3 gap-4 border-t pt-5">
                 {[
                   { v: String(proved), l: 'theorems proved' },
                   { v: TESTED.calculator.scenarios.toString(), l: 'IRS scenarios agree' },
                   { v: TESTED.calculator.factChecks.toLocaleString('en-US'), l: 'fact checks' },
                 ].map((s) => (
-                  <div key={s.l} className="grid content-start gap-0.5 bg-background/80 px-3 py-2.5">
+                  <div key={s.l} className="grid content-start gap-1">
                     <dt className="order-2 text-xs text-muted-foreground">{s.l}</dt>
                     <dd className="order-1 m-0 text-lg font-semibold tracking-tight tabular-nums">{s.v}</dd>
                   </div>
@@ -94,15 +82,15 @@ export function HomePage() {
             </div>
           </div>
 
-          <section aria-labelledby="status-h" className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-            <div className="flex items-baseline justify-between gap-4 border-b bg-muted/60 px-5 py-4">
+          <section aria-labelledby="status-h" className="overflow-hidden rounded-xl border bg-card">
+            <div className="flex items-baseline justify-between gap-4 border-b px-5 py-4">
               <h2 id="status-h" className="m-0 text-base font-semibold">
                 Verification status
               </h2>
               <span className="text-xs text-muted-foreground">As of {AS_OF}</span>
             </div>
             <ul className="m-0 list-none divide-y p-0">
-              {STATUS_CLAIMS.map((c) => (
+              {assurances.map((c) => (
                 <li key={c.title} className="grid gap-1.5 px-5 py-4">
                   <div className="flex items-start justify-between gap-3">
                     <span className="text-sm leading-snug font-semibold">{c.title}</span>
@@ -112,10 +100,10 @@ export function HomePage() {
                 </li>
               ))}
             </ul>
-            <div className="grid gap-3 border-t bg-muted/40 px-5 py-4">
-              <TierLegend />
-              <Link to="/trust" className="text-sm font-medium">
-                Theorems, Catala rules, tests, trusted base and bugs found
+            <div className="grid gap-3 border-t px-5 py-4">
+              <p className="m-0 text-xs leading-relaxed text-muted-foreground">Proofs have limits. We document what is proved, tested and still trusted.</p>
+              <Link to="/docs/verification" className="inline-flex items-center gap-2 text-sm font-medium no-underline">
+                Explore verification <ArrowRight aria-hidden="true" className="size-3.5" />
               </Link>
             </div>
           </section>
@@ -127,9 +115,9 @@ export function HomePage() {
           </h2>
           <ol className="mt-6 grid list-none gap-4 p-0 md:grid-cols-3">
             {HOW.map((h, i) => (
-              <li key={h.title} className="grid content-start gap-3 rounded-xl border bg-card p-5 shadow-xs">
+              <li key={h.title} className="grid content-start gap-3 border-t pt-5">
                 <div className="flex items-center gap-3">
-                  <span aria-hidden="true" className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <span aria-hidden="true" className="grid size-8 place-items-center text-muted-foreground">
                     <h.icon className="size-4.5" />
                   </span>
                   <span className="text-xs font-semibold text-muted-foreground tabular-nums">Step {i + 1}</span>
@@ -146,7 +134,7 @@ export function HomePage() {
             What it calculates today
           </h2>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="rounded-xl border bg-card p-5 shadow-xs">
+            <div className="border-t pt-5">
               <h3 className="m-0 text-sm font-semibold">Included in the result</h3>
               <ul className="mt-3 mb-0 grid list-none gap-2.5 p-0 text-sm">
                 {SCOPE_INCLUDED.map((s) => (
@@ -157,7 +145,7 @@ export function HomePage() {
                 ))}
               </ul>
             </div>
-            <div className="rounded-xl border bg-muted/40 p-5">
+            <div className="border-t pt-5">
               <h3 className="m-0 text-sm font-semibold">Not included</h3>
               <ul className="mt-3 mb-0 grid list-none gap-2.5 p-0 text-sm text-muted-foreground">
                 {SCOPE_NOT_INCLUDED.map((s) => (

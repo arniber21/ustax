@@ -21,13 +21,13 @@ Without `VITE_API_MOCK=1` the client calls `VITE_API_URL` (default `http://local
 | `/start/:step` | Wizard: `about`, `household`, `dependents`, `income`, `adjustments`, `credits`, `review` | `src/wizard/*Step.tsx` (#76 to #78), chosen by `pages/StepPage.tsx` |
 | `/results` | Result summary (refund or amount owed), Form 1040 line table, "How this was calculated" accordion, `warnings` alert, what-if slider, error/offline states (`src/results/`). Request comes from `useCurrentRequest` (the wizard draft) | #79 |
 | `/cant-do-yet` | Knockout page: alert plus a table of reasons by category (`src/knockout/`: per-code copy in `reasonCopy.ts`, a test fails if a code in `api/knockout-reasons.json` has none). Also shown inline on `/results` | #80 |
-| `/trust` | Two tiers, styled apart: "Proved" (40 Comparator-checked Lean theorems) and "Verified (tested)" (the Catala rules agree with IRS Direct File; not a proof), then tested, trusted, not covered, bugs found in Direct File. All data lives in `src/trust/facts.ts`; `facts.test.ts` fails if it drifts from `lean/comparator*.json`, `docs/direct-file-bugs.md`, `STATUS.md` or the `catala/` and `difftest/mappings/` file counts | #82 |
+| `/docs/verification` (`/trust` redirects) | Two tiers, styled apart: "Proved" (40 Comparator-checked Lean theorems) and "Verified (tested)" (the Catala rules agree with IRS Direct File; not a proof), then tested, trusted, not covered, bugs found in Direct File. All data lives in `src/trust/facts.ts`; `facts.test.ts` fails if it drifts from `lean/comparator*.json`, `docs/direct-file-bugs.md`, `STATUS.md` or the `catala/` and `difftest/mappings/` file counts | #82 |
 
 Add a step body by routing `start/:step` children (see `src/App.tsx`); `WizardLayout` supplies progress and Back/Next from `src/layout/steps.ts`.
 
 ## Design system
 
-- [shadcn/ui](https://ui.shadcn.com) (Radix primitives + Tailwind CSS v4), configured in `components.json`. Primitives are copied into `src/components/ui/` (added with the shadcn CLI, versions pinned, no CDN); edit them there. Long lists stay native selects (styled like shadcn's NativeSelect) for phones; short explained choices use shadcn Select (`ChoiceSelect`), coded lists a Combobox (W-2 box 12), yes/no and "whose form" a segmented RadioGroup.
+- [Base UI](https://base-ui.com) powers shared buttons, checkboxes, radio groups, dialogs, sheets and the clear-return confirmation. Existing shadcn-style wrappers retain their public interfaces. Other primitives still use [shadcn/ui](https://ui.shadcn.com) (Radix + Tailwind CSS v4), configured in `components.json`. Primitives are copied into `src/components/ui/` (added with the shadcn CLI, versions pinned, no CDN); edit them there. Long lists stay native selects (styled like shadcn's NativeSelect) for phones; short explained choices use shadcn Select (`ChoiceSelect`), coded lists a Combobox (W-2 box 12), yes/no and "whose form" a segmented RadioGroup.
 - Forms: react-hook-form + zod (shadcn Form/Field). `forms/DraftForm.tsx` wraps each step; its values follow the draft store (still the single source of truth, `buildRequest` and `validateStep` unchanged). A field is bound by its draft `path` (`forms/formName.ts` maps it to the form name); once left, the zod schema (`forms/draftSchema.ts`: contract caps, enums and list sizes, checked against `api/schema.json` in `polish.test.tsx`) reports inline. Step errors after Next, and the error summary, work as before.
 - Money inputs: shadcn InputGroup with `$` and `USD`, right-aligned tabular figures, thousands separators while typing (`lib/moneyText.ts`, caret kept in place), integer cents underneath.
 - Feedback: Sonner toasts (saved progress, copied summary or path, calculator unreachable), Skeletons while loading, designed empty states, a ⌘K / Ctrl+K / `/` command palette (`src/command/`, lazy chunk).
@@ -99,3 +99,10 @@ Playwright drives the browser against the real Lean server (`lean/.lake/build/bi
 - Browser: `make e2e` runs `npx playwright install chromium` (about 150 MB, cached in `~/Library/Caches/ms-playwright`). To use the installed Google Chrome instead: `E2E_CHANNEL=chrome make e2e`.
 - `SKIP_LEAN_BUILD=1` skips `lake build ustax-server`; `USTAX_SERVER_BIN=<path>` uses another binary; `E2E_API_PORT` / `E2E_WEB_PORT` change the ports; `ARGS="-g keyboard"` filters tests.
 - Works with `USTAX_NO_DEVBOX=1`. The demo script is `scripts/demo.md`.
+
+## Navigation and clearing a return
+
+The header has one Docs entry, with Verification in its sidebar. The footer links to Docs,
+Verification, the API and source code. Clear return is available in the header, review page and
+command palette; all use the same Base UI alert dialog. The safe option receives initial focus,
+Escape cancels, and confirmation resets the draft and starts an empty return.

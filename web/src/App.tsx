@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Route, Routes } from 'react-router';
+import { Navigate, Route, Routes, useLocation } from 'react-router';
 import { Compass } from 'lucide-react';
 import { DraftProvider } from './draft';
 import { AppShell } from './layout/AppShell';
@@ -13,13 +13,12 @@ import { lazyRoute } from '@/lib/lazyRoute';
 const WizardLayout = lazyRoute(() => import('./layout/WizardLayout').then((m) => m.WizardLayout));
 const StepPage = lazyRoute(() => import('./pages/StepPage').then((m) => m.StepPage));
 const ResultsPage = lazyRoute(() => import('./pages/ResultsPage').then((m) => m.ResultsPage));
-const TrustPage = lazyRoute(() => import('./pages/TrustPage').then((m) => m.TrustPage));
 const UnsupportedPage = lazyRoute(() => import('./pages/UnsupportedPage').then((m) => m.UnsupportedPage));
 const DocsRoutes = lazyRoute(() => import('./docs/DocsRoutes').then((m) => m.default));
 
 /** Load every lazy page now (tests call this in beforeAll so routes render synchronously). */
 export const preloadRoutes = () =>
-  Promise.all([WizardLayout, StepPage, ResultsPage, TrustPage, UnsupportedPage, DocsRoutes].map((r) => r.preload())).then(() => undefined);
+  Promise.all([WizardLayout, StepPage, ResultsPage, UnsupportedPage, DocsRoutes].map((r) => r.preload())).then(() => undefined);
 
 export function NotFound() {
   return (
@@ -40,6 +39,11 @@ export function NotFound() {
       </div>
     </Page>
   );
+}
+
+function VerificationRedirect() {
+  const { hash } = useLocation();
+  return <Navigate to={`/docs/verification${hash}`} replace />;
 }
 
 /** Route table. Router itself is provided by main.tsx (or MemoryRouter in tests). */
@@ -63,7 +67,7 @@ export function App() {
           </Route>
           <Route path="results" element={<ResultsPage />} />
           <Route path="cant-do-yet" element={<UnsupportedPage />} />
-          <Route path="trust" element={<TrustPage />} />
+          <Route path="trust" element={<VerificationRedirect />} />
           <Route path="docs/*" element={<DocsRoutes />} />
           <Route path="*" element={<NotFound />} />
         </Route>

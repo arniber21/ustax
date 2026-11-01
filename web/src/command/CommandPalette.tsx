@@ -6,6 +6,7 @@ import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, C
 import { Kbd } from '@/components/ui/kbd';
 import { resolvedTheme, setTheme } from '@/lib/theme';
 import { useDraft } from '../draft';
+import { useClearReturn } from '../components/ClearReturn';
 import { buildCommands, type CommandGroupId, type PaletteCommand } from './commands';
 
 const ICON: Record<CommandGroupId, LucideIcon> = { Return: ListChecks, Pages: FileText, Documentation: BookOpen, Actions: Moon };
@@ -15,7 +16,8 @@ const GROUPS: CommandGroupId[] = ['Return', 'Pages', 'Documentation', 'Actions']
 /** The ⌘K palette (shadcn/ui Command in a Dialog, cmdk). Lazy-loaded on first open. */
 export default function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const navigate = useNavigate();
-  const { request, reset } = useDraft();
+  const { request } = useDraft();
+  const clearReturn = useClearReturn();
   const commands = useMemo(() => buildCommands({ hasReturn: request !== null }), [request]);
 
   const run = (c: PaletteCommand) => {
@@ -29,9 +31,7 @@ export default function CommandPalette({ open, onOpenChange }: { open: boolean; 
       );
     }
     if (c.action === 'start-over') {
-      reset();
-      toast('Answers cleared', { description: 'You are starting a new return.' });
-      navigate('/start/about');
+      requestAnimationFrame(clearReturn);
     }
   };
 

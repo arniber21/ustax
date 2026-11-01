@@ -245,14 +245,12 @@ export function ProvenanceDrawer({ lineKey, onOpenChange, amount }: ProvenanceDr
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         aria-describedby="prov-desc"
-        // The drawer is opened by plain buttons, not a Radix trigger: remember the opener and give focus back on close.
-        onOpenAutoFocus={() => {
+        // Plain buttons open the drawer; preserve their focus across the modal.
+        initialFocus={() => {
           opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          return true;
         }}
-        onCloseAutoFocus={(e) => {
-          e.preventDefault();
-          opener.current?.focus();
-        }}
+        finalFocus={() => opener.current ?? true}
       >
         <div className="grid gap-1 border-b px-5 py-4 pr-12">
           <p className="m-0 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-primary uppercase">

@@ -8,6 +8,12 @@
       "summary": "What these pages are and how to edit them."
     },
     {
+      "title": "Verification",
+      "slug": "verification",
+      "source": "docs/site/verification.md",
+      "summary": "The live list of proved properties, tested behavior and trusted components."
+    },
+    {
       "title": "What \"verified\" means here",
       "slug": "what-verified-means",
       "source": "docs/site/what-verified-means.md",

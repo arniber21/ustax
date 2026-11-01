@@ -17,6 +17,7 @@ import { stepState } from './components/Stepper';
 import { groupDollarString, regroupTyping } from './lib/moneyText';
 import { DraftProvider, emptyDraft, newW2, useDraft, type Cents, type Draft } from './draft';
 import { headline, toEstimate, LiveSummaryCard, useEstimate } from './wizard/LiveSummary';
+import { ClearReturnProvider } from './components/ClearReturn';
 import { buildCommands } from './command/commands';
 import CommandPalette from './command/CommandPalette';
 import { lineStatus, statusIndex } from './provenance/status';
@@ -196,7 +197,7 @@ describe('command palette', () => {
     ]);
     expect(cmds.some((c) => c.to === '/results')).toBe(false);
     expect(buildCommands({ hasReturn: true }).some((c) => c.to === '/results')).toBe(true);
-    expect(cmds.some((c) => c.to === '/trust')).toBe(true);
+    expect(cmds.some((c) => c.to === '/docs/verification')).toBe(true);
     expect(cmds.some((c) => c.to === '/docs')).toBe(true);
     expect(cmds.filter((c) => c.group === 'Actions').map((c) => c.action)).toEqual(['toggle-theme', 'copy-link', 'start-over']);
     expect(new Set(cmds.map((c) => c.id)).size).toBe(cmds.length);
@@ -207,7 +208,7 @@ describe('command palette', () => {
       const [open, setOpen] = useState(true);
       return (
         <DraftProvider initial={emptyDraft()}>
-          <CommandPalette open={open} onOpenChange={setOpen} />
+          <ClearReturnProvider><CommandPalette open={open} onOpenChange={setOpen} /></ClearReturnProvider>
         </DraftProvider>
       );
     }

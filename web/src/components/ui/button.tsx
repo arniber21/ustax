@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Slot } from 'radix-ui';
+import { Button as BaseButton } from '@base-ui/react/button';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
@@ -9,7 +9,7 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground hover:bg-primary-hover',
-        destructive: 'bg-destructive text-white hover:bg-destructive/90',
+        destructive: 'bg-destructive text-white hover:bg-destructive/90 dark:bg-red-700 dark:hover:bg-red-800',
         outline: 'border border-input/60 bg-background text-foreground hover:bg-accent hover:border-input',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/70',
         ghost: 'text-foreground hover:bg-accent',
@@ -26,9 +26,18 @@ export const buttonVariants = cva(
   },
 );
 
-export type ButtonProps = React.ComponentProps<'button'> & VariantProps<typeof buttonVariants> & { asChild?: boolean };
+export type ButtonProps = Omit<BaseButton.Props, 'className'> & VariantProps<typeof buttonVariants> & { className?: string; asChild?: boolean };
 
-export function Button({ className, variant, size, asChild = false, ...props }: ButtonProps) {
-  const Comp = asChild ? Slot.Root : 'button';
-  return <Comp data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props} />;
+export function Button({ className, variant, size, asChild = false, children, ...props }: ButtonProps) {
+  return (
+    <BaseButton
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      nativeButton={!asChild}
+      render={asChild ? React.Children.only(children) as React.ReactElement : undefined}
+      {...props}
+    >
+      {asChild ? undefined : children}
+    </BaseButton>
+  );
 }

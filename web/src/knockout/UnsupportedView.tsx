@@ -164,7 +164,7 @@ export function UnsupportedView({ reasons }: { reasons: readonly UnsupportedReas
           <Copy aria-hidden="true" />
           Copy this list for a preparer
         </Button>
-        <ButtonLink variant="ghost" to="/trust">
+        <ButtonLink variant="ghost" to="/docs/verification">
           What is verified
         </ButtonLink>
         <ButtonLink variant="ghost" to="/">

@@ -9,6 +9,7 @@ import { findPage, PAGES, searchPages, type DocPage } from './content';
 import { githubBlobUrl } from './config';
 import { docRoute } from './links';
 import { Markdown } from './Markdown';
+import { TrustPage } from '../pages/TrustPage';
 import { activeHeading, tocFromElement, type TocItem } from './toc';
 
 interface Ctx {
@@ -162,11 +163,11 @@ function PrevNext({ page }: { page: DocPage }) {
 
 function PageList({ pages }: { pages: DocPage[] }) {
   return (
-    <ul className="m-0 mt-4 list-none space-y-3 p-0">
+    <ul className="m-0 mt-4 list-none space-y-0 p-0">
       {pages
         .filter((p) => p.slug !== 'index')
         .map((p) => (
-          <li key={p.slug} className="rounded-xl border bg-card p-4 shadow-xs transition-colors hover:border-primary/40">
+          <li key={p.slug} className="border-b py-4 transition-colors">
             <Link to={docRoute(p.slug)} className="font-medium">
               {p.title}
             </Link>
@@ -260,6 +261,15 @@ function DocNotFound({ slug }: { slug: string }) {
   );
 }
 
+function VerificationPage() {
+  const { hash } = useLocation();
+  useDocumentTitle('Verification');
+  useEffect(() => {
+    if (hash) document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView();
+  }, [hash]);
+  return <TrustPage embedded />;
+}
+
 /** `/docs` and `/docs/:slug`. Loaded lazily from App so the markdown, react-markdown and Shiki stay out of the main bundle. */
 export default function DocsRoutes() {
   return (
@@ -274,6 +284,7 @@ export default function DocsRoutes() {
       />
       <Route element={<DocsLayout />}>
         <Route index element={<DocsLanding />} />
+        <Route path="verification" element={<VerificationPage />} />
         <Route path=":slug" element={<DocRoute />} />
       </Route>
     </Routes>

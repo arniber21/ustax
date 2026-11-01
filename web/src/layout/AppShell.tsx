@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useCallback, useEffect, useState, type ErrorInfo, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
-import { FlaskConical, Menu, Search, ShieldCheck, TriangleAlert } from 'lucide-react';
+import { Menu, Search, TriangleAlert } from 'lucide-react';
 import { GithubMark } from '../components/GithubMark';
 import { ButtonLink } from '../components/Button';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -11,7 +11,7 @@ import { Skeleton } from '../components/ui/skeleton';
 import { Toaster } from '../components/ui/sonner';
 import { REPO_URL } from '../docs/config';
 import { useDraft } from '../draft';
-import { AS_OF, CATALA, EXTRA, MAIN, TESTED } from '../trust/facts';
+import { ClearReturnButton, ClearReturnProvider } from '../components/ClearReturn';
 import { cn } from '@/lib/utils';
 
 /** Product name, used in the header, title and copy. */
@@ -37,7 +37,7 @@ export function Logo() {
 const navClass = ({ isActive }: { isActive: boolean }) =>
   cn(
     'relative rounded-md px-3 py-2 text-sm font-medium no-underline transition-colors hover:bg-accent',
-    isActive ? 'text-foreground after:absolute after:inset-x-3 after:-bottom-[13px] after:h-0.5 after:rounded-full after:bg-primary' : 'text-muted-foreground hover:text-foreground',
+    isActive ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
   );
 
 const isMac = () => typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
@@ -74,11 +74,11 @@ function SearchButton({ onClick }: { onClick: () => void }) {
       <Button
         variant="outline"
         onClick={onClick}
-        className="hidden h-9 w-56 justify-start gap-2 border-border bg-muted/50 px-3 font-normal text-muted-foreground shadow-none hover:bg-accent md:inline-flex lg:w-64"
+        className="hidden h-9 justify-start gap-2 border-transparent px-3 font-normal text-muted-foreground shadow-none hover:bg-accent md:inline-flex"
         aria-label="Search and jump to (Command K)"
       >
         <Search aria-hidden="true" />
-        <span className="flex-1 text-left">Jump to…</span>
+        <span className="text-left">Search</span>
         <Kbd className="bg-background shadow-xs" aria-hidden="true">
           {isMac() ? '⌘' : 'Ctrl'} K
         </Kbd>
@@ -111,12 +111,10 @@ function MobileMenu({ startLabel }: { startLabel: string }) {
           <Link className={link} to="/start/about">
             {startLabel}
           </Link>
-          <Link className={link} to="/trust">
-            Verification
-          </Link>
           <Link className={link} to="/docs">
             Docs
           </Link>
+          <div className="mt-2 border-t pt-2"><ClearReturnButton /></div>
           <a className={link} href={REPO_URL} target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
@@ -173,45 +171,27 @@ export function RouteFallback() {
 }
 
 function Footer() {
-  const proved = MAIN.theorems.length + EXTRA.theorems.length;
   return (
-    <footer className="prov-noprint mt-20 border-t bg-muted/60">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 text-sm text-muted-foreground sm:px-6 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <div className="grid content-start gap-3">
-          <Logo />
-          <p className="m-0 max-w-md">
-            {TAGLINE}. Tax year 2024, federal income tax only. A student research project, not tax advice. It does not file
-            anything, and your answers stay in this browser except when sent to the calculator.
-          </p>
-        </div>
-        <div className="grid content-start gap-3">
-          <p className="m-0 text-xs font-semibold tracking-wide text-foreground uppercase">Verification status</p>
-          <ul className="m-0 grid list-none gap-2 p-0">
-            <li className="flex items-start gap-2">
-              <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />
-              <span>
-                <span className="font-medium text-foreground">{proved} theorems proved in Lean</span>, checked by Comparator
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <FlaskConical aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
-              <span>
-                <span className="font-medium text-foreground">{CATALA.moduleFiles} Catala rule files</span> agree with IRS Direct File on{' '}
-                {TESTED.calculator.scenarios} scenarios (verified by testing, not a proof)
-              </span>
-            </li>
-          </ul>
-          <p className="m-0 text-xs">As of {AS_OF}.</p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            <Link to="/trust">What is verified</Link>
-            <Link to="/docs">Docs</Link>
-            <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1">
-              <GithubMark className="size-3.5" />
-              GitHub
-              <span className="sr-only">(opens in a new tab)</span>
-            </a>
+    <footer className="prov-noprint mt-16 border-t">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-5">
+          <div className="flex items-center gap-4">
+            <Logo />
+            <span className="border-l pl-4 text-xs text-muted-foreground">2024 federal returns</span>
           </div>
+          <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+            <Link to="/docs" className="text-muted-foreground no-underline hover:text-foreground">Docs</Link>
+            <Link to="/docs/verification" className="text-muted-foreground no-underline hover:text-foreground">Verification</Link>
+            <Link to="/docs/api" className="text-muted-foreground no-underline hover:text-foreground">API</Link>
+            <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-muted-foreground no-underline hover:text-foreground">
+              <GithubMark className="size-3.5" /> Source code<span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          </nav>
         </div>
+        <p className="m-0 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+          Independent research. Not affiliated with the IRS. Nothing is filed. Your answers are saved in this browser
+          and sent to the calculator only to compute a result. Not tax advice.
+        </p>
       </div>
     </footer>
   );
@@ -219,6 +199,10 @@ function Footer() {
 
 /** Page chrome: skip link, notice banner, sticky header, main landmark, footer, toasts and the ⌘K palette. */
 export function AppShell() {
+  return <ClearReturnProvider><AppShellContent /></ClearReturnProvider>;
+}
+
+function AppShellContent() {
   const { pathname } = useLocation();
   const { draft } = useDraft();
   const palette = useCommandShortcut();
@@ -236,18 +220,12 @@ export function AppShell() {
       >
         Skip to content
       </a>
-      <div className="prov-noprint border-b bg-muted text-xs text-muted-foreground">
-        <div className="mx-auto max-w-6xl px-4 py-1.5 sm:px-6">An independent research project. Not affiliated with the IRS. Nothing is filed.</div>
-      </div>
       <header className="prov-noprint sticky top-0 z-40 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
           <Logo />
           <nav aria-label="Main" className="ml-4 hidden items-center gap-1 sm:flex">
             <NavLink to="/start/about" className={({ isActive }) => navClass({ isActive: isActive || section === 'start' })}>
-              {startLabel}
-            </NavLink>
-            <NavLink to="/trust" className={navClass}>
-              Verification
+              {draft.filingStatus ? 'Your return' : 'Calculate'}
             </NavLink>
             <NavLink to="/docs" className={navClass}>
               Docs
@@ -255,11 +233,7 @@ export function AppShell() {
           </nav>
           <div className="ml-auto flex items-center gap-1.5">
             <SearchButton onClick={palette.show} />
-            <Button variant="ghost" size="icon" asChild className="hidden sm:inline-flex">
-              <a href={REPO_URL} target="_blank" rel="noopener noreferrer" aria-label="GitHub repository (opens in a new tab)" className="text-foreground">
-                <GithubMark />
-              </a>
-            </Button>
+            <ClearReturnButton compact />
             <ThemeToggle />
             <MobileMenu startLabel={startLabel} />
           </div>
@@ -268,7 +242,7 @@ export function AppShell() {
       <main id="main" tabIndex={-1} className="flex-1 outline-none">
         <ErrorBoundary resetKey={pathname}>
           <Suspense fallback={<RouteFallback />}>
-            <div key={section} className="animate-in fade-in-0 duration-300">
+            <div key={section}>
               <Outlet />
             </div>
           </Suspense>

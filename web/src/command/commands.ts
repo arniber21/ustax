@@ -29,7 +29,6 @@ export function buildCommands({ hasReturn }: { hasReturn: boolean }): PaletteCom
   const pages: PaletteCommand[] = [
     { id: 'home', group: 'Pages', label: 'Home', to: '/', keywords: ['start', 'welcome'] },
     ...(hasReturn ? [{ id: 'results', group: 'Pages' as const, label: 'Your result', to: '/results', keywords: ['refund', 'owe', 'form 1040', 'lines'] }] : []),
-    { id: 'trust', group: 'Pages', label: 'What is verified', to: '/trust', keywords: ['proof', 'lean', 'theorems', 'catala', 'trust', 'verification'] },
     { id: 'cant', group: 'Pages', label: 'What we can’t calculate yet', to: '/cant-do-yet', keywords: ['knockout', 'unsupported'] },
   ];
   const docs: PaletteCommand[] = (nav as { pages: { title: string; slug: string; summary?: string }[] }).pages.map((p) => ({

@@ -105,12 +105,12 @@ function Files({ set }: { set: ProofSet }) {
 }
 
 /** Route /trust: what is proved, what is tested, what you still have to trust. Data: src/trust/facts.ts. */
-export function TrustPage() {
+export function TrustPage({ embedded = false }: { embedded?: boolean }) {
   return (
     <ProvenanceProvider>
-    <Page narrow>
+    <Page narrow className={embedded ? "mx-0 max-w-none p-0 sm:p-0" : undefined}>
       <PageHeader
-        crumbs={[{ label: 'Home', to: '/' }, { label: 'Verification' }]}
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Docs', to: '/docs' }, { label: 'Verification' }]}
         eyebrow="Verification"
         title="What is verified, and what is not"
         lead="The calculator is written in Lean 4, a language with a proof checker. Some properties are proved for every possible return; the rest is checked by testing. This page lists both, and what you have to take on trust."

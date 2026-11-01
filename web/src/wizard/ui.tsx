@@ -104,15 +104,16 @@ export function YesNo({ legend, hint, value, errorPath, onChange }: YesNoProps) 
         onValueChange={(v) => onChange(v === 'yes')}
       >
         {(['yes', 'no'] as const).map((v) => (
-          <div
+          <label
+            htmlFor={`${id}-${v}`}
             key={v}
-            className="relative flex min-w-24 items-center gap-2.5 rounded-md px-4 py-2 transition-colors hover:bg-background/60 has-[[data-state=checked]]:bg-background has-[[data-state=checked]]:shadow-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring"
+            className="flex min-w-24 cursor-pointer items-center gap-2.5 rounded-md px-4 py-2 transition-colors hover:bg-background/60 has-[[data-checked]]:bg-background has-[[data-checked]]:shadow-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring"
           >
             <RadioGroupItem value={v} id={`${id}-${v}`} className="focus-visible:outline-none" />
-            <label htmlFor={`${id}-${v}`} className="cursor-pointer text-sm font-medium after:absolute after:inset-0">
+            <span className="text-sm font-medium">
               {v === 'yes' ? 'Yes' : 'No'}
-            </label>
-          </div>
+            </span>
+          </label>
         ))}
       </RadioGroup>
       {error && <ErrorText>{error}</ErrorText>}
@@ -127,29 +128,24 @@ interface CheckProps {
   onChange: (v: boolean) => void;
 }
 
-/** A checkbox with its label and optional muted help (shadcn/ui Checkbox). The whole row is the hit area. */
+/** Base UI checkbox with a wrapping label and an explicitly associated description. */
 export function Check({ label, hint, checked, onChange }: CheckProps) {
   const id = useId();
   return (
-    <div className="group/check relative -mx-2 flex items-start gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent/60">
+    <label htmlFor={id} className="group/check -mx-2 flex cursor-pointer items-start gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent/60">
       <Checkbox
         id={id}
         className="mt-0.5"
         checked={checked}
-        onCheckedChange={(c) => onChange(c === true)}
+        onCheckedChange={onChange}
+        aria-labelledby={`${id}-label`}
         aria-describedby={hint ? `${id}-hint` : undefined}
       />
-      <div className="grid gap-0.5">
-        <label htmlFor={id} className="cursor-pointer text-[0.9375rem] leading-snug font-medium after:absolute after:inset-0">
-          {label}
-        </label>
-        {hint && (
-          <span id={`${id}-hint`} className="text-sm text-muted-foreground">
-            {hint}
-          </span>
-        )}
-      </div>
-    </div>
+      <span className="grid gap-0.5">
+        <span id={`${id}-label`} className="text-[0.9375rem] leading-snug font-medium">{label}</span>
+        {hint && <span id={`${id}-hint`} className="text-sm text-muted-foreground">{hint}</span>}
+      </span>
+    </label>
   );
 }
 
@@ -202,20 +198,21 @@ export function ChoiceCards<V extends string>({
       {error && <ErrorText>{error}</ErrorText>}
       <RadioGroup value={value ?? ''} onValueChange={(v) => onChange(v as V)} className="gap-2.5">
         {options.map((o) => (
-          <div
+          <label
+            htmlFor={`${id}-${o.value}`}
             key={o.value}
             className={cn(
-              'relative flex items-start gap-3 rounded-lg border bg-background px-4 py-3.5 transition-[border-color,background-color,box-shadow] hover:border-foreground/30',
-              'has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/[0.04] has-[[data-state=checked]]:shadow-[0_0_0_1px_var(--primary)]',
+              'flex cursor-pointer items-start gap-3 rounded-lg border bg-background px-4 py-3.5 transition-[border-color,background-color,box-shadow] hover:border-foreground/30',
+              'has-[[data-checked]]:border-primary has-[[data-checked]]:bg-primary/[0.04] has-[[data-checked]]:shadow-[0_0_0_1px_var(--primary)]',
               error && 'border-destructive/60',
             )}
           >
-            <RadioGroupItem value={o.value} id={`${id}-${o.value}`} className="mt-0.5" aria-invalid={error ? true : undefined} />
-            <label htmlFor={`${id}-${o.value}`} className="grid cursor-pointer gap-0.5 after:absolute after:inset-0">
-              <span className="text-[0.9375rem] font-semibold">{o.label}</span>
-              <span className="text-sm leading-relaxed text-muted-foreground">{o.desc}</span>
-            </label>
-          </div>
+            <RadioGroupItem value={o.value} id={`${id}-${o.value}`} className="mt-0.5" aria-labelledby={`${id}-${o.value}-label`} aria-describedby={`${id}-${o.value}-hint`} aria-invalid={error ? true : undefined} />
+            <span className="grid gap-0.5">
+              <span id={`${id}-${o.value}-label`} className="text-[0.9375rem] font-semibold">{o.label}</span>
+              <span id={`${id}-${o.value}-hint`} className="text-sm leading-relaxed text-muted-foreground">{o.desc}</span>
+            </span>
+          </label>
         ))}
       </RadioGroup>
     </fieldset>
@@ -239,15 +236,16 @@ export function WhoSelect({ value, onChange }: { value: Role; onChange: (r: Role
         onValueChange={(v) => onChange(v as Role)}
       >
         {options.map((o) => (
-          <div
+          <label
+            htmlFor={`${id}-${o.value}`}
             key={o.value}
-            className="relative flex items-center gap-2.5 rounded-md px-4 py-2 transition-colors hover:bg-background/60 has-[[data-state=checked]]:bg-background has-[[data-state=checked]]:shadow-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring"
+            className="flex cursor-pointer items-center gap-2.5 rounded-md px-4 py-2 transition-colors hover:bg-background/60 has-[[data-checked]]:bg-background has-[[data-checked]]:shadow-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring"
           >
             <RadioGroupItem value={o.value} id={`${id}-${o.value}`} className="focus-visible:outline-none" />
-            <label htmlFor={`${id}-${o.value}`} className="cursor-pointer text-sm font-medium whitespace-nowrap after:absolute after:inset-0">
+            <span className="text-sm font-medium whitespace-nowrap">
               {o.label}
-            </label>
-          </div>
+            </span>
+          </label>
         ))}
       </RadioGroup>
     </fieldset>

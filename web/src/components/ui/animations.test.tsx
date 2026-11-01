@@ -40,10 +40,10 @@ describe('shadcn default animations', () => {
     render(<TestSheet />);
     await userEvent.click(screen.getByText('open'));
     const dialog = screen.getByRole('dialog');
-    expect(dialog.className).toContain('data-[state=open]:animate-in');
-    expect(dialog.className).toContain('data-[state=closed]:animate-out');
+    expect(dialog.className).toContain('data-open:animate-in');
+    expect(dialog.className).toContain('data-closed:animate-out');
     expect(dialog.className).toContain('slide-in-from-right');
-    expect(document.querySelector('[data-slot=sheet-overlay]')?.className).toContain('data-[state=open]:fade-in-0');
+    expect(document.querySelector('[data-slot=sheet-overlay]')?.className).toContain('data-open:fade-in-0');
   });
 
   it('sheet closes with Escape', async () => {

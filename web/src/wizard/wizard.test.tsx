@@ -493,10 +493,12 @@ describe('Review step', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Income');
   });
 
-  it('start over clears the draft', async () => {
+  it('clear return asks before removing the draft', async () => {
     seed({ filingStatus: 'Single' });
     at('/start/review');
-    await userEvent.click(screen.getByRole('button', { name: 'Start over' }));
+    await userEvent.click(within(screen.getByRole('main')).getByRole('button', { name: 'Clear return' }));
+    expect(saved().filingStatus).toBe('Single');
+    await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Clear return' }));
     expect(saved().filingStatus).toBeNull();
   });
 });
