@@ -71,5 +71,8 @@ def ssBaseAmountJoint : Int := usd 32_000
 def ssAdjustedBaseGapOther : Int := usd 9_000
 /-- IRC 86(c)(2) less (c)(1): gap to the adjusted base amount, joint, $12,000. -/
 def ssAdjustedBaseGapJoint : Int := usd 12_000
+/-- IRC 152(d)(1)(B), 151(d)(5)(B); Rev. Proc. 2023-34 § 3.24: qualifying relative gross
+income limit (the exemption amount), $5,050. -/
+def qualifyingRelativeGrossIncomeLimit : Int := usd 5_050
 
 end UsTax.Params

@@ -103,6 +103,16 @@ def completedYears (start finish : Date) : Int :=
     (if finish.month < start.month || (finish.month == start.month && finish.day < start.day)
      then 1 else 0)
 
+/-- Catala `d₁ < d₂` on dates: lexicographic on (year, month, day). -/
+def lt (a b : Date) : Bool :=
+  decide (a.year < b.year) ||
+    (a.year == b.year && (decide (a.month < b.month) || (a.month == b.month && decide (a.day < b.day))))
+
+/-- The date as Catala JSON spells it, `YYYY-MM-DD`. -/
+def toIso (d : Date) : String :=
+  let pad (n : Nat) : String := if n < 10 then "0" ++ toString n else toString n
+  toString d.year ++ "-" ++ pad d.month ++ "-" ++ pad d.day
+
 /-- The day-before age exceeds the plain age only for January 1 births. -/
 theorem ageDayBefore_eq {dob : Date} (h : dob.Valid) (t : Int) :
     ageDayBefore t dob = age t dob + (if dob.month = 1 ∧ dob.day = 1 then 1 else 0) := by
@@ -159,6 +169,8 @@ theorem age65_jan1 (t : Int) : age65OrOlder t ⟨t - 64, 1, 1⟩ = true := by
 #guard dayBefore ⟨2024, 1, 1⟩ == ⟨2023, 12, 31⟩
 #guard dayBefore ⟨2024, 5, 1⟩ == ⟨2024, 4, 30⟩
 #guard ageDayBefore 2024 ⟨1960, 2, 29⟩ == 64
+#guard lt ⟨1980, 3, 1⟩ ⟨1985, 6, 15⟩ && !lt ⟨1985, 6, 15⟩ ⟨1985, 6, 15⟩ && lt ⟨1985, 6, 14⟩ ⟨1985, 6, 15⟩
+#guard toIso ⟨2024, 7, 4⟩ == "2024-07-04"
 -- completed years of a spouse who died during the year
 #guard completedYears ⟨2000, 2, 29⟩ ⟨2001, 2, 28⟩ == 0
 #guard completedYears ⟨2000, 2, 29⟩ ⟨2001, 3, 1⟩ == 1

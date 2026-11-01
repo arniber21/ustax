@@ -97,9 +97,13 @@ oracle-fact-graphs:  ## regenerate oracle/fact_graphs.csv (needs DIRECT_FILE; gr
 	cd oracle && npm ci --ignore-scripts --no-audit --no-fund && node generate.mjs --out fact_graphs.csv \
 	  --scenario-dir "$${DF_DOCS:-$${DIRECT_FILE:-../../direct-file/direct-file}/../docs}/testing/fact-graphs"
 # Lean rate schedule vs Catala (clerk run) and vs the oracle (see lean/README.md).
-.PHONY: lean-difftest lean-difftest-rates
+.PHONY: lean-difftest lean-difftest-rates lean-difftest-persons lean-difftest-filing-status-graphs
 lean-difftest:  ## Direct File / Catala / Lean three-way, per scenario/fact (SCOPE=<difftest/mappings name>)
 	node difftest/lean.mjs --scope $(SCOPE) $(ARGS)
+lean-difftest-persons:  ## Direct File / Catala / Lean three-way, per household member (oracle/persons.csv)
+	node difftest/lean.mjs --scope qualifying_child,qualifying_relative,dependents_benefit_split,hoh_qss_persons --oracle oracle/persons.csv $(ARGS)
+lean-difftest-filing-status-graphs:  ## Direct File / Catala / Lean three-way on the filing-status fact graphs
+	node difftest/lean.mjs --scope filing_status --oracle oracle/fact_graphs.csv $(ARGS)
 lean-difftest-rates:  ## Lean TentativeTax vs Catala and vs oracle/facts.csv
 	node difftest/lean_rates.mjs $(ARGS)
 

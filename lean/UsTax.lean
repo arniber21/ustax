@@ -28,6 +28,14 @@ import UsTax.SocialSecurity
 import UsTax.EducatorAdjustment
 import UsTax.StudentLoanAdjustment
 import UsTax.EstimatedPayments
+import UsTax.Filers
+import UsTax.QualifyingChild
+import UsTax.DependentsBenefitSplit
+import UsTax.QualifyingRelative
+import UsTax.HohQssPersons
+import UsTax.FilingStatus
+import UsTax.Household.Props
+import UsTax.Household.Lemmas
 import UsTax.Form1040Full
 import UsTax.Income.Props
 import UsTax.Income.Lemmas
