@@ -1,0 +1,30 @@
+difftest/mappings/cdcc.mjs
+  s_3031b504518be3::t_c35cd58ca97329 188-193
+  s_3031b504518be3::t_51ce8184928d82 1-187,194-195
+catala/params_2024.catala_en
+  s_3031b504518be3::t_51c6607101acfe 361-395
+catala/cdcc.catala_en
+  s_3031b504518be3::t_6d03dbd226cc06 1-821,842-917,943-1132
+  s_3031b504518be3::t_1ba17bf7e433f6 918-942
+  s_3031b504518be3::t_33d0be32172a15 822-841
+catala/tests/test_cdcc.catala_en
+  s_3031b504518be3::t_bd444661e94391 1-47,49-498,501-560
+  s_3031b504518be3::t_68695939cf52df 48
+  s_3031b504518be3::t_3635607f2e6a43 499-500
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d483ba89f71e3dafc17028b7ecb1feb1bd42ad1",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
