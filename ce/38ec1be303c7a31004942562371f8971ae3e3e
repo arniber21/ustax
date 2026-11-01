@@ -1,0 +1,29 @@
+web/src/components/Stepper.tsx
+  s_3031b504518be3::t_bdbdddaa525d8b 9-10,13-17,27-29,32,35-44,46-50,52-55,58-64,66-83,87-90
+web/src/wizard/LiveSummary.tsx
+  s_3031b504518be3::t_474b6b0a793164 1-191
+web/src/layout/WizardLayout.tsx
+  s_3031b504518be3::t_d174a041e2eea3 4,7,9,12-13,16-20,23-29,46,72-90,96-97,113,122,130-131,134,136-143,168-171
+web/src/components/ui/sheet.tsx
+  s_3031b504518be3::t_807f1ae2cf9724 11-16,19,22,24-28
+web/src/wizard/ui.tsx
+  s_3031b504518be3::t_441ce3f48f85f5 1-4,6-7,9,18-19,25-39,41-59,79-81,92,100,107,109,127,131,139-157,168,179,196,200,204-208,213,222,224-228,230-250,262,264-265,270-271,274-288,290-295,298-311,313-321,323-328,333,337,342,344,346-359
+web/src/wizard/ReviewStep.tsx
+  s_3031b504518be3::t_71bce3f246abfc 4-5,7,25,27-47,108,116,127,143,147,155,163,165-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce38ec1be303c7a31004942562371f8971ae3e3e",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
