@@ -215,3 +215,13 @@ already exist. The Containerfile creates it.
 ## CI
 
 All tools come from devbox (`docs/devbox.md`); on Linux, bubblewrap is a devbox package and `make lean-check` / `make lean-comparator` run the two commands natively. `.github/workflows/ci.yml` runs `lake build`, `lake check` and `lake comparator` natively on Ubuntu (they need Linux and bwrap), followed by `make audit`. bwrap setup on the runners: `docs/audit.md`.
+
+## Second challenge: module specs (`make comparator-extra`)
+
+`lean/comparator.extra.json` judges `UsTax.Comparator.Extra` (23 statements:
+each merged module equals its statute-style spec in `lean/UsTax/Spec/`, plus
+bounds and monotonicity) against the solution `UsTax.Proofs.Extra`. It is
+kept apart from `comparator.json` so that the human-chosen main theorems stay
+a short list. `make comparator-extra` runs `scripts/comparator.sh extra`
+(same container, `lake comparator --config comparator.extra.json`). The
+statements are reviewed in `docs/spec-surface.md`, section "Module specs".

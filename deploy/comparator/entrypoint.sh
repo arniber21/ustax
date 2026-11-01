@@ -6,7 +6,8 @@
 #         dependency clones and builds between runs. It is never the host's
 #         lean/.lake, so Linux build output does not mix with macOS output.
 #
-# Usage: comparator-entrypoint [all|check|comparator]   (default: all)
+# Usage: comparator-entrypoint [all|check|comparator|extra]   (default: all)
+#   extra: lake comparator against comparator.extra.json (second challenge)
 set -u
 MODE="${1:-all}"
 
@@ -54,6 +55,10 @@ if [ "$MODE" = all ] || [ "$MODE" = comparator ]; then
   else
     echo "== no comparator.json; skipping lake comparator"
   fi
+fi
+
+if [ "$MODE" = extra ]; then
+  run lake comparator --config comparator.extra.json
 fi
 
 echo "== overall: $([ $status -eq 0 ] && echo PASS || echo FAIL)"

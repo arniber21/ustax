@@ -276,3 +276,125 @@ Each moves into `Challenge.lean` and `comparator.json` when proved.
 6. **EITC "zero at the completed phase-out" uses `max earned agi`** (IRC
    32(a)(2)(B)) and `≤` (zero at exactly the completed amount). MFS uses the
    "other" column, as in Direct File.
+
+## Module specs (second challenge, `comparator.extra.json`)
+
+Not main theorems: these say that each merged module of the calculator equals
+a short statute-style spec, for **every** input, plus bounds and
+monotonicity. The specs import nothing from the calculator except
+`FilingStatus` (and `Spec/Inputs.lean`, which reads plain amounts off the
+input records). Rounding is restated from scratch (`Spec/Rounding.lean`:
+`roundHalfAway`, `roundToDollar`, `percentOf`) and proved equal to the
+calculator's `Money` functions (`Proofs/Rounding.lean`).
+
+| where | what |
+|---|---|
+| `lean/UsTax/Spec/{Rounding,StandardDeduction,Interest,FormW2,SocialSecurity,Adjustments,Form1040Lines,Inputs}.lean` | the specs, each with examples and rejected bad outputs |
+| `lean/UsTax/Proofs/{StandardDeduction,Interest,FormW2,SocialSecurity,Adjustments,Form1040Lines}.lean` | the proofs; each theorem on a concrete input (hypotheses discharged) and a rejected bad output |
+| `lean/UsTax/Proofs/SpecProps.lean` | plausible tests of every statement (run before proving; run on every build), plus a negative control |
+| `lean/UsTax/Comparator/Extra.lean` | the 23 statements with `sorry` (challenge) |
+| `lean/UsTax/Proofs/Extra.lean` | the same, proved (solution) |
+| `lean/comparator.extra.json` | `make comparator-extra` |
+
+### The statements (namespace `UsTax.Extra`)
+
+| theorem | says |
+|---|---|
+| `standardDeduction_eq_spec` | line 12 = `standardDeductionSpec fs items canBeClaimed earned` (IRC 63(c): basic + items × additional; dependent: `min(basic, max($1,300, earned + $450)) + additional`) |
+| `additionalItems_range` | `0 ≤ items ≤ 4`, and `≤ 2` unless joint or treated as MFS |
+| `requiresScheduleB_eq_spec` | Schedule B iff taxable interest > $1,500 or a foreign account/trust |
+| `interestIncome_eq_spec` | line 2b = Σ per-payer rounded amounts with Schedule B, else the total rounded once |
+| `wages_eq_spec`, `formW2Withholding_eq_spec` | lines 1a, 25a = Σ of box 1 / box 2, each W-2 rounded to the dollar |
+| `medicareKnockout_eq_spec` | knockout iff Medicare wages > $250k MFJ / $125k MFS / $200k other, or a joint spouse > $200k (IRC 3101(b)(2), 3102(f)) |
+| `oasdiKnockout_eq_spec` | per filer: knockout iff more than one W-2 and Σ min(box 3, $168,600) > $168,600 |
+| `line6b_eq_spec` | line 6b = `taxableSocialSecurity` (IRC 86(a)(1)/(a)(2) tiers on provisional income, base/adjusted base $25k/$34k, $32k/$44k joint, $0/$0 MFS together) |
+| `line6b_bounds` | `0 ≤ line 6b ≤ roundToDollar(85% × max 0 line 6a)` |
+| `line6b_mono_otherIncome` | more other income never lowers line 6b |
+| `educatorAdjustment_eq_spec` | line 11 = Σ min($300, expenses) of each educator, rounded; `$0` for MFJ dependents |
+| `educatorAdjustment_bounds` | `0 ≤ line 11 ≤ $300 × number of educators` (nonnegative expenses) |
+| `studentLoanAdjustment_eq_spec` | line 21 = `round(min(interest, $2,500) × (1 − min(1, (MAGI − start)⁺ / range)))`, `$0` if MFS or not eligible |
+| `studentLoanAdjustment_bounds` | `0 ≤ line 21 ≤ min(round(interest), $2,500)` (nonnegative interest) |
+| `studentLoanAdjustment_zero_of_magi_ge_end` | `$0` from MAGI $95,000 ($195,000 joint) |
+| `studentLoanAdjustment_antitone` | more total income never raises line 21 (nonnegative interest) |
+| `estimatedPayments_eq_spec` | line 26 = payment rounded to the dollar, or `$0` |
+| `agi_eq` | line 11 = line 9 − line 10 |
+| `taxableIncome_eq` | line 15 = `max 0 (line 11 − line 14)` |
+| `totalPayments_eq` | line 33 = 25d + 26 + 32 when line 26 is whole dollars |
+| `totalPayments_eq_full` | the same on `Form1040Full`, unconditionally |
+| `totalTax_mono_addW2` | adding a W-2 with box 1 ≥ 0 never lowers line 24 (everything else fixed) |
+
+Every theorem is instantiated on a concrete input with each hypothesis
+discharged, and a known-bad output is rejected, next to the proof. Axioms of
+all 23: `propext`, `Classical.choice`, `Quot.sound`.
+
+### `#spec_surface` output, reviewed
+
+Counts are of the raw `#spec_surface` output (constants), then of the
+definitions and types after dropping projections, constructors, recursors and
+instances. "Spec" lists the spec-side definitions (review these); the rest is
+the module under test, on the surface because the statement is about it.
+
+| theorem | constants | defs | spec definitions |
+|---|---|---|---|
+| `standardDeduction_eq_spec` | 57 | 33 | `standardDeductionSpec`, `basicStandardDeduction`, `additionalAmountPerItem` |
+| `additionalItems_range` | 53 | 30 | none |
+| `requiresScheduleB_eq_spec` | 63 | 20 | `scheduleBRequired`, `reportTaxableInterest` |
+| `interestIncome_eq_spec` | 66 | 23 | `interestLine2b`, `scheduleBRequired`, `reportTaxableInterest`, `roundToDollar`, `roundHalfAway` |
+| `wages_eq_spec`, `formW2Withholding_eq_spec` | 107 | 24 | `totalOfBox`, `roundToDollar`, `roundHalfAway` |
+| `medicareKnockout_eq_spec` | 109 | 26 | `needsForm8959`, `additionalMedicareThreshold`, `filerBox`, `roundToDollar`, `roundHalfAway` |
+| `oasdiKnockout_eq_spec` | 110 | 25 | `excessSocialSecurityPossible`, `filerBox`, `roundToDollar`, `roundHalfAway` |
+| `line6b_eq_spec` | 54 | 31 | `taxableSocialSecurity`, `ssTaxableTiers`, `ssBaseAmount`, `ssAdjustedBaseAmount`, `ssModifiedAgi`, `percentOf`, `roundToDollar`, `roundHalfAway` |
+| `line6b_bounds` | 50 | 26 | `percentOf`, `roundToDollar`, `roundHalfAway` |
+| `line6b_mono_otherIncome` | 47 | 23 | none |
+| `educatorAdjustment_eq_spec` | 29 | 15 | `educatorDeduction`, `educatorShare`, `tpIsEducator`, `spouseIsEducator`, `roundToDollar`, `roundHalfAway` |
+| `educatorAdjustment_bounds` | 25 | 11 | `tpIsEducator`, `spouseIsEducator` |
+| `studentLoanAdjustment_eq_spec` | 41 | 22 | `studentLoanDeduction`, `studentLoanEligible`, `studentLoanPhaseoutStart`, `studentLoanPhaseoutRange`, `roundHalfAway` |
+| `studentLoanAdjustment_bounds` | 38 | 19 | `roundToDollar`, `roundHalfAway` |
+| `studentLoanAdjustment_zero_of_magi_ge_end` | 38 | 19 | `studentLoanPhaseoutStart`, `studentLoanPhaseoutRange` |
+| `studentLoanAdjustment_antitone` | 37 | 17 | none |
+| `estimatedPayments_eq_spec` | 23 | 9 | `estimatedPaymentsLine26`, `roundToDollar`, `roundHalfAway` |
+| `agi_eq`, `taxableIncome_eq`, `totalPayments_eq` | 271 | 83 | none (the calculator surface above) |
+| `totalPayments_eq_full` | 506 | 138 | none (calculator + every `Form1040Full` module) |
+| `totalTax_mono_addW2` | 270 | 83 | none |
+
+Review. Each spec definition is a few lines with its IRC / instruction
+citation in the docstring (`lean/UsTax/Spec/*.lean`). The module-side names
+(`StandardDeduction.*`, `Params.*`, `Money.*`, `SocialSecurity.*`, ...) are the
+object of the theorem, not assumptions: a wrong parameter in `Params2024`
+makes the `_eq_spec` theorem fail to prove, because the spec types the 2024
+amounts itself.
+
+### Choices to confirm (human)
+
+1. **Rounding is part of the spec.** Line 6b's bound is `≤ roundToDollar(85%
+   × line 6a)`, not `≤ 0.85 × line 6a`: $1 of benefits gives 85 cents, line
+   6b $1 (the worksheet rounds to the dollar). Likewise line 21 `≤
+   min(round(interest), $2,500)`: $10.60 of interest deducts $11. Stated
+   honestly rather than with whole-dollar hypotheses.
+2. **Line 6b's bound uses `max 0 line6a`**: net benefits can be negative
+   (repayments); then line 6b is `$0` and 85% of a negative amount would be
+   below it.
+3. **Who counts as a standard-deduction item** (the spouse rules) is taken
+   from the calculator's own count, with only its range proved. The spouse
+   rules themselves are not restated.
+4. **Dependent's earned income** is line 1z (wages), as in Direct File; IRC
+   63(c)(5) also counts self-employment income, which is out of scope.
+5. **Educator cap per educator, not per filing status**: the module never
+   looks at the filing status; "spouse is an educator" on a non-joint return
+   is the interview's job. The bound is `$300 × number of educators`.
+6. **Student loan uses the exact fraction**, rounded once (DF-BUG(7));
+   Direct File's three-decimal ratio differs by up to a few dollars (the spec
+   rejects DF's $1,668 at $85,000 MAGI).
+7. **Line 33 needs line 26 in whole dollars** on the strict `form1040` (a
+   plug-in slot that callers may set to cents); on `Form1040Full` the
+   estimated-payments module guarantees it, so `totalPayments_eq_full` has no
+   hypothesis.
+8. **Line 24 is monotone in wages only with credits held fixed.** On
+   `form1040` every credit is an input slot, so adding a W-2 changes no
+   credit. Not claimed: refund (line 34) monotone, or anything with EITC or
+   CTC computed from wages (false: more wages can lower EITC). The theorem
+   holds for dependents too (their standard deduction grows by at most the
+   added wages).
+9. **Monotone in "other income"** for line 6b is stated by changing line 8 of
+   the worksheet input; the proof covers any change of modified AGI
+   (`Proofs.tiers_mono`).
