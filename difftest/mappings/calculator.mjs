@@ -5,9 +5,8 @@
 // /familyAndHousehold/#<uuid>/<fact>), mapped with the same helpers as the module mappings. No derived oracle
 // fact (/agi, /numEitcQualifyingChildren, /minimumFilerDateOfBirth, ...) is read as an input.
 //
-// Scenarios that need a module that is not merged are skipped with the reason "blocked by #n" (listed by the
-// runner, never counted as pass): PTC #32-#34 (/totalAdditionalTaxesOwed or /otherPaymentsAndRefundableCreditsTotal
-// non-zero). CDCC answers follow difftest/mappings/cdcc.mjs: the per-person and per-filer expense answers count
+// Every merged module is wired in, PTC (#32 to #34) included: the ptc.xml writables and the /1095As collection
+// are mapped as in ptc_allowed.mjs. CDCC answers follow difftest/mappings/cdcc.mjs: the per-person and per-filer expense answers count
 // only when /writableCdccHasQualifyingExpenses is true (DF does not ask them otherwise).
 //
 // Defaults for questions DF did not ask are the module mappings' defaults (each read only behind a gate that is
@@ -32,6 +31,7 @@ import { scheduleInputs } from './ctc_odc.mjs';
 import saversMap from './savers_credit.mjs';
 import edcMap, { knownDivergence as edcDivergence } from './elderly_and_disabled.mjs';
 import koMap from './knockouts_income.mjs';
+import ptcMap from './ptc_allowed.mjs';
 import { person } from './qualifying_child.mjs';
 import { answers } from './qualifying_relative.mjs';
 import { splitAnswers } from './dependents_benefit_split.mjs';
@@ -147,14 +147,19 @@ function household(f) {
 }
 
 // ---- blocked scenarios ----------------------------------------------------------------------
-// CALC_INCLUDE_BLOCKED=1 runs the blocked scenarios too (to see which facts the missing modules change).
-function blocked(f) {
-  if (process.env.CALC_INCLUDE_BLOCKED === '1') return true;
-  const r = [];
-  if (cents(f, '/totalAdditionalTaxesOwed') !== 0n || cents(f, '/otherPaymentsAndRefundableCreditsTotal') !== 0n)
-    r.push('blocked by #32-#34 (PTC)');
-  return r.length ? r.join(', ') : true;
-}
+// None: every module is merged. (CALC_INCLUDE_BLOCKED is kept as a no-op for old command lines.)
+const blocked = () => true;
+
+const PTC_ANSWERS = [
+  'form1095_as', 'writable_has_ptc_qualifying_plan', 'writable_has_advanced_ptc', 'dependent_tp_self_enrolled',
+  'dependent_tp_enrolled_someone_else', 'writable_dependent_tp_other_members_are_part_of_different_tax_family',
+  'writable_has_mfs_exception', 'writable_claiming_mfs_exception_for_fourth_straight_year',
+  'writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status',
+  'writable_has_employer_sponsored_plan', 'writable_dependents_required_to_file',
+  'writable_self_reported_has_multiple1095_as', 'writable_is_additional_person_in_enrollment_family',
+  'writable_is_additional_person_partof_different_tax_family', 'writable_is_enrolled_with_other_family',
+  'writable_has_immigration_status_not_eligible_for_marketplace', 'writable_wants_to_use_alt_calculations',
+];
 
 const HSA_TOP = [
   'some_filer_had_non_w2_hsa_activity', 'writable_primary_filer_had_non_w2_hsa_activity',
@@ -244,6 +249,7 @@ export default {
       self_reported_non_taxable_payment_amount: Number(cents(f, '/writableEdcSelfReportedNonTaxablePaymentAmount')) / 100,
     }),
     cdcc_answers: cdccAnswers,
+    ptc_answers: (f) => pick(ptcMap.inputs, PTC_ANSWERS, f),
     screening: (f) => pick(koMap.inputs, SCREENING, f),
   },
   outputs: [
@@ -275,6 +281,13 @@ export default {
     m('/earnedIncomeCredit', 'earned_income_credit'),
     m('/additionalCtc', 'additional_ctc'),
     m('/totalOtherPaymentsRefundableCredits', 'total_other_payments_refundable_credits'),
+    m('/netPtcAmount', 'net_ptc_amount'),
+    m('/netPtcAmountWhenZeroOrPositive', 'net_ptc_amount_when_zero_or_positive'),
+    m('/netPtcAmountWhenNegative', 'net_ptc_amount_when_negative'),
+    m('/ptcRepaymentLimitation', 'ptc_repayment_limitation'),
+    m('/lesserOfNetPtcAmountAndRepaymentLimitation', 'lesser_of_net_ptc_amount_and_repayment_limitation'),
+    m('/totalAdditionalTaxesOwed', 'total_additional_taxes_owed'),
+    m('/otherPaymentsAndRefundableCreditsTotal', 'other_payments_and_refundable_credits_total'),
     m('/totalPayments', 'total_payments'),
     m('/overpayment', 'overpayment'),
     m('/balanceDue', 'balance_due'),
