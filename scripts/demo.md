@@ -42,7 +42,7 @@ Press Escape.
 ## 30-second technical add-on for judges
 
 - **Comparator**: 9 main theorems (`lean/comparator.json`) are compared against a trusted statement file with `lake comparator`, replayed through the Lean kernel, axioms limited to `propext`, `Classical.choice`, `Quot.sound`. 31 more (`lean/comparator.extra.json`, `make comparator-extra`) cover each module versus the statute and the whole-return properties. The Tax Table result covers all 2,062 rows; at or above $100,000 it equals the Tax Computation Worksheet.
-- **Forensics audit**: `make audit` scans for `sorry`, `native_decide`, extra axioms and vacuous theorems; 7,790 declarations, no high-severity finding (as of 2026-11-01).
+- **Forensics audit**: `make audit` scans for `sorry`, `native_decide`, extra axioms and vacuous theorems; 7,981 declarations, no high-severity finding (as of 2026-11-01).
 - **Tested, not proved**: Catala rules versus the IRS Direct File engine on 157 scenarios, 5,360 fact checks agree. The link from Catala to Lean is tested, not proved, and the page says so.
 - **Bugs found in the IRS reference implementation**: 33 logged in `docs/direct-file-bugs.md`. DF-BUG-8 is confirmed by running its engine: the 1099-R "percentage is zero" check strips the "0." characters, so `0.00` looks nonzero and a valid return is knocked out (4 of its own test returns). The rest are candidates, not yet confirmed. Found by Arnab Ghosh.
 - **Real-stack end-to-end tests**: `make e2e`, Playwright against the Lean server, no mocks.

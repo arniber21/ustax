@@ -6,8 +6,7 @@ issues #59, #71).
 ## Done (merged, each re-verified by the orchestrator)
 
 - **Catala, whole 1040** (37 modules, 20,802 lines, every module incl. PTC): `make check` 602/602 tests;
-  `make difftest SCOPE=calculator` 157/157 non-knocked-out Direct File scenarios, 5,360/5,360 fact
-  checks, 9 known divergences (re-run 2026-11-01); `ApiCalculator` (#38) 157/157, 3,105/3,105 through
+  `make difftest SCOPE=calculator` 157/157 non-knocked-out Direct File scenarios, 5,360/5,360 fact checks, 9 known divergences (re-run 2026-11-01); `ApiCalculator` (#38) 157/157, 3,105/3,105 through
   the API request shape.
 - **Lean, whole return** (#48, PR #151): every module ported (money, rates, spine, income, adjustments,
   household and filing status, HSA, PTC, CDCC, Saver's, Schedule R, EITC, CTC/ODC/ACTC, knockouts),
@@ -48,10 +47,7 @@ issues #59, #71).
 - JSON reader, response serialisation, `ServerMain.lean` and `Std.Http`: tested, not proved.
 - Web UI not verified. Tax year 2024, federal, standard deduction only.
 - AOC (education credit) is `$0` as in Direct File (DF-BUG-2).
-- The audit count shown in the web app (`web/src/trust/facts.ts`), `scripts/demo.md` and
-  `docs/site/how-we-built-this.md` is 7,790 declarations, from an earlier run; the latest full
-  `make audit` run counted 7,981 (both 0 high-severity). Update `facts.ts` (with its test) in a web
-  change; `how-we-built-this.md` is the owner's.
+- `docs/site/how-we-built-this.md` (the owner's page) still says 7,790 declarations; the measured count on this commit is 7,981 (`make audit`, 0 high-severity).
 
 ## DECISIONS NEEDING THE HUMAN
 

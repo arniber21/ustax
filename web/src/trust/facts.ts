@@ -171,13 +171,13 @@ export const TESTED = {
   apiCalculator: { scenarios: 157, factChecks: 3105 },
   taxTable: { rows: 2062, checks: 16496 },
   rates: { incomesPerStatus: 2402, checks: 36030 },
-  audit: { declarations: 7790, highSeverity: 0 },
+  audit: { declarations: 7981, highSeverity: 0 },
   items: [
     'The Catala encoding of the law is compared with the IRS Direct File engine (its own compiled rules, run as an oracle). Direct File ships 161 test returns; its engine wrongly rejects 4 of them (DF-BUG-8), which leaves 157.',
     'On those 157 scenarios the calculator’s 5,360 fact checks agree between Catala and Direct File, and the API shape (3,105 checks) agrees too (STATUS.md, 2026-11-01).',
     'The Lean calculator is compared with Catala and Direct File the same way (make lean-difftest). This is how the Lean code is tied to the Catala rules: by testing, not by proof.',
     'Line 16 is compared with the Catala rate schedules on 2,402 incomes for each filing status (36,030 checks), and each of the 2,062 Tax Table rows is checked at its lowest dollar and highest cent in all four columns (16,496 checks).',
-    'The proof audit (make audit, 2026-11-01) passed over 7,790 declarations with no sorry, no native_decide, no extra axiom and 0 high-severity findings.',
+    'The proof audit (make audit, 2026-11-01) passed over 7,981 declarations with no sorry, no native_decide, no extra axiom and 0 high-severity findings.',
   ],
   caveat: 'Testing finds disagreements; it cannot rule them out. A scenario that Direct File does not contain is not tested.',
 } as const;
