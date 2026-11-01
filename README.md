@@ -1,16 +1,24 @@
 # US Tax
 
-**A US federal income tax calculator for tax year 2024, with the math checked by a computer proof.**
+**A US federal income tax calculator for tax year 2024. The tax law is written as readable code,
+checked against the IRS's own engine, and the arithmetic is proved in Lean.**
 
-You answer a few questions about your 2024 return: your filing status, your W-2s, your interest income.
+You answer questions about your 2024 return: filing status, household and dependents, W-2s, interest,
+unemployment, Social Security, retirement income, adjustments, child care and health insurance.
 US Tax works out your Form 1040, line by line, and tells you whether you get a refund or owe money.
+Click any line to see the law it comes from, the rule that computes it and the theorems about it.
 If your situation is outside what it can handle, it says so plainly instead of guessing.
 
-What makes it different: the calculator is written in [Lean](https://lean-lang.org), a programming
-language that is also a proof checker. Some of the important promises the calculator makes
-(for example, "you never get both a refund and a bill") are proved for every possible input,
-not just tested on a few. The rest is tested against the IRS's own reference engine.
-The sections below say exactly which is which.
+What makes it different:
+
+- **The law is the code.** The 2024 federal rules are written in [Catala](https://catala-lang.org),
+  a language for laws, with the statute and the IRS instructions quoted next to each rule.
+  Checking those rules against IRS Direct File, the IRS's own open-source tax engine, turned up
+  **33 places where Direct File does not follow the law** (one confirmed by running it).
+- **The calculator is written in [Lean](https://lean-lang.org)**, a programming language that is also
+  a proof checker. Some promises it makes (for example, "you never get both a refund and a bill") are
+  proved for every possible input, not tested on a few. 9 main theorems and 31 more pass Comparator.
+- **We say exactly which is which.** See [What is proved, verified, tested and trusted](#what-is-proved-verified-tested-and-trusted).
 
 > US Tax is a research and hackathon project. It does not file anything, and it is not tax advice.
 
@@ -19,8 +27,11 @@ The sections below say exactly which is which.
 | ![US Tax home page: tagline, start button and verification status panel](docs/screenshots/home.png) | ![US Tax results: refund of $981.00, key figures and the Form 1040 line table](docs/screenshots/results-refund.png) |
 | **Wizard with the running estimate** | **Law & proof for line 15: the statute, the Catala rule, the Lean theorems** |
 | ![Income step: W-2 form, the W-2 box diagram, and the running estimate of a $981 refund](docs/screenshots/step-4-income.png) | ![Provenance drawer for line 15: law citations and the highlighted Catala rule](docs/screenshots/provenance-drawer.png) |
+| **Docs inside the app (`/docs`)** | **⌘K command palette** |
+| ![The docs landing page of the web app](docs/screenshots/docs-landing.png) | ![The command palette open over the app](docs/screenshots/command-palette.png) |
 
-More screenshots (every wizard step, amount owed, unsupported return, verification page, phone width, dark mode) are in [`docs/screenshots/`](docs/screenshots/).
+More screenshots (every wizard step, dependents, amount owed, an unsupported return, the API
+reference, phone width, dark mode) are in [`docs/screenshots/`](docs/screenshots/).
 
 ## Try it
 
@@ -39,15 +50,20 @@ make install && make run
   - The calculator API at <http://localhost:8080> (`POST /calculate`, `GET /health`, `GET /version`).
   - The web app at <http://localhost:5173>. Open this one.
 
-In the web app, click through the steps: about you, household, income, adjustments, review.
-Then you see your results. To try something quick, use one wage earner with $50,000 on a W-2.
-The app also has a "trust" page that explains what was checked.
+To try something quick: one wage earner with $50,000 on a W-2 gives a $981 refund. For a fuller
+example: married filing jointly, two children, $80,000 wages and $3,000 withheld gives a $1,365 refund
+(the child tax credit at work). On every result line, **Law & proof** opens the statute, the Catala
+rule and the Lean theorems behind it. Press **⌘K** (Ctrl-K) to jump anywhere. The web app also has a
+Verification page, a docs section at `/docs` (the markdown files in [`docs/site/`](docs/site/) and a
+few others) and an interactive API reference at `/docs/api`.
 
 Other ways to run it:
 
 - `make server`: only the API, on port 8080.
 - `make docker-run`: API on 127.0.0.1:8080 and web app on <http://localhost:8081>, with Docker Compose.
-- `make tls`: an HTTPS front on <https://localhost:8443> through Caddy (optional; see `docs/tls.md`).
+- `make tls`: an HTTPS front on <https://localhost:8443> through Caddy (optional; see [`docs/tls.md`](docs/tls.md)).
+
+A three-minute demo script is in [`scripts/demo.md`](scripts/demo.md).
 
 ## How it works
 
@@ -57,9 +73,9 @@ There are three layers. Each one is checked against the one before it.
   The law                IRS forms, instructions, the Internal Revenue Code, Rev. Proc. 2023-34
      |                   (copies in sources/)
      v
-  Catala rules           catala/*.catala_en: the rules written next to the legal text they come from.
-     |                   Readable by a tax expert. Used as the reference and as a test oracle.
-     |   checked by differential testing (not a proof)
+  Catala rules           catala/*.catala_en: 37 modules, the rules written next to the legal text.
+     |                   Readable by a tax expert. Checked against IRS Direct File. The test oracle.
+     |   linked by differential testing (not a proof)
      v
   Lean code + proofs     lean/UsTax: the calculator that actually runs, and the theorems about it.
      |
@@ -70,6 +86,13 @@ There are three layers. Each one is checked against the one before it.
   Web app                web/: React. Asks the questions, shows the result. Holds no tax logic.
 ```
 
+`POST /calculate` runs the Lean `ApiCalculator` on the whole return: wages, interest, 1099-G,
+1099-MISC, 1099-R, Social Security, adjustments, estimated payments, HSA, dependents, the child tax
+credit and credit for other dependents (with the additional child tax credit), the earned income
+credit, the child and dependent care credit, the saver's credit, the credit for the elderly or
+disabled (Schedule R), the premium tax credit, and every knockout. The API contract is
+[`docs/api.md`](docs/api.md) (schema 1.2.0, OpenAPI in `api/openapi.json`).
+
 A few words on the tools:
 
 - **[Catala](https://catala-lang.org)** is a language designed for writing laws as code. Its programs
@@ -78,115 +101,183 @@ A few words on the tools:
   accepts a theorem, a small, well-studied core (the "kernel") has checked every step.
 - **Differential testing** means running two programs on the same inputs and comparing every output.
 - **IRS Direct File** was the IRS's free filing tool. Its source code is public. We run its tax engine
-  on its own test returns and use the results as a third opinion.
+  on its own 161 test returns and use the results as a third opinion.
 
-Why both Catala and Lean? We first looked at translating Catala into Lean automatically. No such
-translator exists, and writing one would have been a big job with its own bugs. So we write the
-calculator directly in Lean and keep Catala as the readable spec. The reasoning, with measurements,
-is in [`docs/catala-to-lean.md`](docs/catala-to-lean.md).
+Why both Catala and Lean? No Catala-to-Lean translator exists, and writing one would have been a big
+job with its own bugs. So the calculator is written directly in Lean, and Catala stays the readable
+spec and the test oracle. The reasoning, with measurements, is in
+[`docs/catala-to-lean.md`](docs/catala-to-lean.md).
 
-## What is proved, and what is only tested
+## What is proved, verified, tested and trusted
 
-We try hard to be precise here.
+The full explanation, for non-specialists, is
+[What "verified" means here](docs/site/what-verified-means.md) (also on the website at
+`/docs/what-verified-means`). In short:
 
-**Proved in Lean, about the Lean code that runs.** The six main theorems are listed and explained in
-[`docs/spec-surface.md`](docs/spec-surface.md). In plain words:
+| | What it means | What it covers here | Checked by |
+|---|---|---|---|
+| **Proved** | A Lean theorem: holds for **every** input | The arithmetic of the Lean calculator that runs: 9 main theorems and 31 more (below), plus request validation | The Lean kernel, `make audit`, `make comparator` |
+| **Verified** (evidence, not proof) | The Catala rules agree with IRS Direct File on every test return we have, except where we follow the law on purpose (each case logged) | The tax rules, line by line | `make check` (602 Catala tests), `make difftest` |
+| **Tested** | Run on many inputs and compared, not proved | That the Lean code computes what the Catala rules compute; the JSON reader; the HTTP server; the web app | `make lean-difftest`, `make test-server`, `make api-conformance`, `make web-test`, `make e2e` |
+| **Trusted** | Assumed correct; nothing here checks it | The Lean kernel, compiler and `Std.Http`; the spec files; the Tax Table data; that the Catala rules mean what the statute means | Human review ([`docs/trusted-base.md`](docs/trusted-base.md)) |
 
-- Tax on Form 1040 line 16 is never negative, and never goes down when taxable income goes up.
-- Line 16 matches the printed 2024 Tax Table for every taxable income below $100,000, for every
-  filing status.
-- You get a refund or you owe money, never both, and the amount is exactly the difference between
-  what you paid and your tax.
-- Nonrefundable credits can bring your tax down to zero but not below.
-- Total tax is never negative.
+### Proved in Lean
 
-The theorems are also checked by Comparator (see below). Separately, there are proofs that the request
-parser only accepts valid requests, and many smaller lemmas.
+About the Lean code that runs, with no hypotheses beyond the arguments. The statements are in
+`lean/UsTax/Comparator/Challenge.lean` (the 9 in [`lean/comparator.json`](lean/comparator.json)), the
+properties in `lean/UsTax/Spec/`, and every definition each statement depends on is listed and reviewed
+in [`docs/spec-surface.md`](docs/spec-surface.md). In plain words:
 
-**Tested, not proved.** That the Lean code does what the Catala rules say, and that both agree with
-Direct File, is established by differential testing. Direct File ships 161 test returns; its engine
-rejects 4 of them (because of a bug, see below), which leaves 157. On those, as of 2026-11-01:
+- **Tax never goes down as income goes up**, and is never negative, for every filing status
+  (`tentativeTax_nonneg_monotone`).
+- **Line 16 matches the printed 2024 Tax Table** for every taxable income below $100,000, and the Tax
+  Computation Worksheet from $100,000 up (four theorems: `tentativeTax_matches_tax_table`,
+  `line16_matches_tax_table`, `tentativeTax_matches_worksheet`, `line16_matches_worksheet`).
+- **A refund or a bill, never both**, and refund minus amount owed is exactly payments minus tax
+  (`refund_balanceDue_consistent`).
+- **Credits can bring your tax down to zero, not below** (`credits_within_liability`), and **total tax
+  is never negative** (`totalTax_nonneg`).
+- **The earned income credit stays between zero and its legal maximum** (`eitc_within_bounds`).
 
-- The whole-return Catala calculator agrees with Direct File on all 4,677 checked values in the 151
-  returns it can run (the other 6 need the premium tax credit, which was not wired in yet), apart from
-  9 known differences where we follow the law instead (source: PR #133).
-- Each Lean module agrees with Catala and Direct File on every value it computes, with no failures.
-  For example, the Lean Form 1040 with its income modules plugged in agrees on 3,297 values across
-  157 returns (sources: PRs #117, #125, #134).
+31 more theorems ([`lean/comparator.extra.json`](lean/comparator.extra.json)) tie the pieces to a plain
+reading of the statute (standard deduction, interest, W-2 totals, Social Security, the adjustments) and
+cover the whole return the server runs: refund or bill and credits within the tax on the whole return,
+`supported = false` exactly when a knockout reason is listed, and **no HTTP 500 on any valid request**.
+Separately, `Api.parseRequest_sound` proves the server only computes on requests that satisfy the
+validity spec. Each of the 40 judged statements has a satisfiable instance and at least two bad outputs
+it rejects ([`docs/spec-checks.md`](docs/spec-checks.md)).
 
-This is strong evidence. It is not a proof. <!-- TODO(final): update numbers -->
+`make comparator` and `make comparator-extra` passed on 2026-11-01 (issues #65, #66): Lean's
+`lake check` replays the build through the kernel and `lake comparator` checks the proved statements
+are exactly the trusted ones, using only `propext`, `Classical.choice` and `Quot.sound`. `make audit`
+passed on the last recorded run (PR #156: 2,212 theorems and 6,681 definitions, with only those three
+axioms; no `sorry`, no `native_decide`).
 
-**Not yet in the running server.** The Catala rules cover much more of the return than the Lean
-server uses today. The server computes W-2 wages, interest, the standard deduction, the tax, withholding,
-and the refund or balance due. It does not compute credits yet. It accepts 1099-G, 1099-MISC, 1099-R,
-Social Security, adjustments and estimated payments, but says in a `warnings` list that it did not use them.
-<!-- TODO(final): update which modules the server runs -->
+### Verified against IRS Direct File
 
-### What you have to trust
+Direct File ships 161 test returns; its engine wrongly knocks out 4 of them (DF-BUG-8, below), which
+leaves 157. On 2026-11-01:
 
-Everything a proof cannot cover. If one of these is wrong, a result can be wrong even though the proofs pass.
+- **Catala, whole return** (`make difftest SCOPE=calculator`): 157 of 157 returns, **5,360 of 5,360
+  values** agree. 9 values are reported apart as known divergences where we follow the law
+  (DF-BUG-3, DF-BUG-23, and one return whose filing status Direct File's own check rejects).
+- **Lean, three-way** (Direct File, Catala, Lean; `make lean-difftest SCOPE=calculator`): the same
+  5,360 values agree, 0 failures. Through the API request shape (`SCOPE=api_calculator`): **3,105**
+  values agree, 0 failures (PR #151).
+- **Catala tests**: 602 of 602 pass (`make check`).
+- **Server**: `make test-server` 46 passed, 0 failed, 1 skipped (a 500 cannot be provoked, which is
+  also proved); the server equals the command-line calculator on 315 requests (PR #151).
 
-- **The Lean kernel** and the Lean compiler and runtime (v4.35.0), which turn the checked code into a program.
-- **The web server layer**: `Std.Http` from Lean core, and our socket glue in `lean/ServerMain.lean`.
-- **Our JSON reader** (`lean/UsTax/Api/Json.lean`). It is tested, not proved.
-- **The spec files a human reviews**: the properties in `lean/UsTax/Spec/`, the theorem statements in
-  `lean/UsTax/Comparator/Challenge.lean`, and the Tax Table data generated from
-  `sources/forms-instructions/derived-tax-table-2024.csv`. A theorem only means what its statement says.
-- **Caddy**, if you use the optional HTTPS front.
-- **For the tests only**: the Catala toolchain (1.3.0) and the Direct File engine bundle we run as the
-  oracle (the prebuilt Scala.js bundle from the Direct File repository; see `oracle/README.md`).
-- **The web app** shows what the server returns. It is not verified.
+Every harness has a **negative control**: with `DIFFTEST_PERTURB=1` or `LEAN_DIFFTEST_PERTURB=1` the
+outputs are changed on purpose and the run must fail. It does.
 
-Accepted axioms: `propext`, `Classical.choice`, `Quot.sound` (Lean's standard ones). Nothing else, and no
-`native_decide`. `make audit` enforces this.
+This is strong evidence that the Lean code computes what the Catala rules say. It is not a proof.
+
+## Trusted base
+
+Everything a proof cannot cover. If one of these is wrong, a result can be wrong even though the
+proofs pass. The full list, with the reason for each, is [`docs/trusted-base.md`](docs/trusted-base.md).
+
+- **The Lean kernel, compiler and runtime** (v4.35.0).
+- **The spec files a human must review**: `lean/UsTax/Spec/`, the statements in
+  `lean/UsTax/Comparator/Challenge.lean` and `Extra.lean`, and `Request.Valid` in
+  `lean/UsTax/Api/Spec.lean`, with [`docs/spec-surface.md`](docs/spec-surface.md) as the guide.
+  A theorem only means what its statement says. (The human review is not done yet.)
+- **The Tax Table data**, `sources/forms-instructions/derived-tax-table-2024.csv`: derived by us from
+  the IRS PDF, not an IRS file. The EIC Table likewise.
+- **The Catala rules as a reading of the law.** They quote the statute so a person can check them,
+  but no tool checks the meaning.
+- **For tests only**: the Direct File engine bundle we run as the oracle (`oracle/README.md`), the
+  Catala toolchain 1.3.0, Comparator and its bubblewrap sandbox, devbox/Nix for builds.
+- **Caddy**, only if you use the optional HTTPS front.
+
+Accepted axioms: `propext`, `Classical.choice`, `Quot.sound`. No `opaque` contracts, no `axiom`
+declarations, no `native_decide`.
+
+### The server's trusted surface (#59)
+
+| Step | Code | Status |
+|---|---|---|
+| HTTP parsing, sockets | `Std.Http`, `Std.Async` (Lean core) | Trusted; tested by `make test-server` |
+| Routing, CORS, body cap, logging | `lean/ServerMain.lean` | Trusted (IO only, no theorem); tested |
+| JSON reader | `lean/UsTax/Api/Json.lean` | Tested, not proved (`make api-conformance`) |
+| Decode and validate | `lean/UsTax/Api/Parse.lean`, `Validate.lean` | **Proved sound**: every accepted request satisfies `Request.Valid`; every rejection is a 400 |
+| Calculate | `lean/UsTax/ApiCalculator.lean` | Lean, with the theorems above; no 500 on a valid request (proved) |
+| Serialise | `lean/UsTax/Api/Response.lean` | Tested byte for byte against `api/fixtures` |
+
+- Binds `127.0.0.1:8080` by default (`HOST`, `PORT`). CORS allows `http://localhost:5173` by default
+  (`ALLOW_ORIGIN`). Bodies over 256 KiB get 413; a non-JSON content type gets 415.
+- **No data is stored.** The server logs method, path and status only, never a request body. The web
+  app keeps your answers in your own browser's local storage.
+- No TLS in the Lean process; see [`docs/tls.md`](docs/tls.md).
+
+### What we did NOT verify
+
+- HTTP framing beyond what `Std.Http` does, and the browser UI.
+- The link from the Catala rules to the Lean code: tested on 157 returns, **not proved**.
+- That the Catala rules mean what the law means: human reading.
+- Tax year 2025 or later, itemized deductions, state taxes.
+- Any situation that knocks out: the calculator refuses it and claims nothing about it.
 
 ## Bugs we found in the IRS reference implementation
 
-Writing the rules carefully, next to the statute, turned up places where Direct File seems to disagree
-with the law. When that happens we follow the law and record the difference.
+Writing each rule in Catala next to the statute, with Direct File's configuration open beside it,
+turned up places where Direct File disagrees with the law. When that happens we follow the law and
+log the difference. **The Catala type checker found none of them**; what it did was make the rules
+precise enough to compare line by line (see [What "verified" means here](docs/site/what-verified-means.md)).
 
-The full log is [`docs/direct-file-bugs.md`](docs/direct-file-bugs.md). As of 2026-11-01 it has 33 entries.
-Most are **candidates**: we read the Direct File code and the law and think they differ, but have not
-proved it by running Direct File. Two are marked fixed (our code follows the law), and two are
-confirmed by running the Direct File engine:
+The log is [`docs/direct-file-bugs.md`](docs/direct-file-bugs.md): **33 entries**. 25 were found while
+encoding the rules, 7 in an earlier survey of the Direct File code, 1 by running its test returns.
+The calculator follows the law in 30 of them; for 3 (DF-BUG-2, 4 and 10) it keeps Direct File's
+behaviour until the project owner decides ([`docs/quirk-decisions.md`](docs/quirk-decisions.md)).
+Every entry is pinned by a test.
 
-- **DF-BUG-8, Form 1099-R box 8.** Direct File checks "is the box 8 percentage zero?" by deleting the
-  characters `0` and `.` from the text and checking whether anything is left. Because of how the
-  configuration file is read, the `.` is lost, so `0.00` does not look like zero. Direct File then
-  wrongly refuses four of its own test returns. Discovered by Arnab Ghosh.
-- **DF-BUG-5, rounding.** Direct File converts exact fractions to dollars through 32-bit floating point.
-
-<!-- TODO(final): update numbers -->
+- **DF-BUG-8, confirmed by running the Direct File engine.** Direct File checks "is the Form 1099-R
+  box 8 percentage zero?" by deleting the characters `0` and `.` from the text and checking whether
+  anything is left. Because of how the configuration file is read, the `.` is lost, so `0.00` does not
+  look like zero. Direct File then wrongly refuses four of its own test returns. **Discovered by
+  Arnab Ghosh.**
+- **DF-BUG-5** is read in the engine's source: exact fractions are converted to dollars through 32-bit
+  floating point.
+- The other 31 are **candidates**: each has a citation and a test, but no one outside the project has
+  confirmed them. Examples: every Form 1099-MISC treated as Alaska Permanent Fund income (DF-BUG-9);
+  a health insurance policy that starts December 1 never counting December (DF-BUG-31).
 
 ## Project layout
 
 | Folder | What is in it |
 |---|---|
 | `catala/` | The rules in Catala, one module per form or topic, with tests in `catala/tests/` |
-| `lean/` | The Lean calculator (`UsTax/`), specs (`UsTax/Spec/`), proofs (`UsTax/Proofs/`), web server (`ServerMain.lean`) |
+| `lean/` | The Lean calculator (`UsTax/`), specs (`UsTax/Spec/`), proofs (`UsTax/Proofs/`), web server (`ServerMain.lean`); see [`lean/README.md`](lean/README.md) |
 | `web/` | The React web app |
-| `api/` | The JSON contract between web app and server: schema, examples, fixtures |
+| `api/` | The JSON contract between web app and server: schema, OpenAPI, examples, fixtures, provenance index |
 | `oracle/` | Values from the Direct File engine on its test returns (`facts.csv`) |
 | `difftest/` | The differential-testing harness (Catala vs Direct File, and Direct File vs Catala vs Lean) |
 | `sources/` | The law: forms, instructions, statute, revenue procedures |
 | `scripts/`, `deploy/` | Install, run, audit, Docker, Caddy, and the Comparator container |
 | `docs/` | Design notes; start with [`docs/writeup.md`](docs/writeup.md) |
-| `docs/site/` | Docs: markdown pages shown on the website at `/docs` (see [`docs/site/index.md`](docs/site/index.md)) |
+| `docs/site/` | Pages shown on the website at `/docs` (see [`docs/site/index.md`](docs/site/index.md)) |
+| `docs/screenshots/` | Screenshots of the app |
 
 ## Running the checks
 
-Every command runs inside devbox automatically.
+Every command runs inside devbox automatically. Commands marked (Catala) need `make install-all`.
 
 | Command | What it does |
 |---|---|
-| `make check` | Type-check all Catala rules and run their tests |
-| `make difftest SCOPE=all` | Compare each Catala module with Direct File, scenario by scenario |
-| `make lean-difftest SCOPE=<name>` | Three-way comparison: Direct File, Catala, Lean. `<name>` is a file in `difftest/mappings/`, for example `form_1040_plugged` |
+| `make check` | (Catala) Type-check all Catala rules and run their tests |
+| `make difftest SCOPE=calculator` | (Catala) Compare the whole-return Catala rules with Direct File, scenario by scenario (`SCOPE=all` for every module) |
+| `make lean-difftest SCOPE=<name>` | (Catala) Three-way comparison: Direct File, Catala, Lean. `<name>` is a file in `difftest/mappings/`, for example `calculator` or `api_calculator` |
 | `make lean-build` | Build the Lean library, including all proofs |
 | `make audit` | Fail on `sorry`, `admit`, `native_decide`, new axioms, or theorems that are vacuous |
-| `make comparator` | Replay the proofs through the kernel and check them against the trusted statements, in a Linux container |
+| `make comparator` | Replay the proofs through the kernel and check them against the trusted statements (9 theorems), in a Linux container |
+| `make comparator-extra` | The same for the 31 statements in `lean/comparator.extra.json` |
+| `make spec-checks` | Check every judged statement has a satisfiable instance and two or more rejected bad outputs |
 | `make test-server` | Start the server and run the HTTP integration tests |
+| `make api-conformance` | The Lean request validator against `api/schema.json` on about 2,100 generated requests |
+| `make provenance-check` | Check the per-line "Law & proof" index (`api/provenance.json`) is current |
 | `make web-test` | Web app unit tests |
+| `make e2e` | End-to-end test of the web app against the live server |
 
 `make comparator` runs Lean's `lake check` and `lake comparator`, which only work on Linux. On a Mac
 it uses Apple's `container` tool (`container system start` once first). See
@@ -196,30 +287,34 @@ it uses Apple's `container` tool (`container system start` once first). See
 
 - Read [`catala/CONVENTIONS.md`](catala/CONVENTIONS.md) for naming, money and rounding rules, and
   [`CLAUDE.md`](CLAUDE.md) for how we verify Lean code.
-- Humans own the specs: `lean/UsTax/Spec/`, `lean/UsTax/Comparator/Challenge.lean`, `lean/comparator.json`.
+- Humans own the specs: `lean/UsTax/Spec/`, `lean/UsTax/Comparator/Challenge.lean`,
+  `lean/UsTax/Comparator/Extra.lean`, `lean/comparator.json`, `lean/comparator.extra.json`.
   Changes there need a careful human review, because they change what the proofs mean.
 - A change is done when `make check`, the relevant `make difftest` / `make lean-difftest`, `make audit`
   and `make comparator` all pass.
 - If you find a place where Direct File disagrees with the law, add a row to `docs/direct-file-bugs.md`.
 
-The roadmap is [issue #1](https://github.com/arniber21/ustax/issues/1).
+The roadmap is [issue #1](https://github.com/arniber21/ustax/issues/1); the current state is
+[`STATUS.md`](STATUS.md).
 
 ## Limitations
 
 - **Tax year 2024 only**, and **federal only** (no state returns).
 - **Standard deduction only.** No itemized deductions.
-- **Only what Direct File covered**: mostly W-2 wages, interest, unemployment, Social Security,
-  some retirement income, and the common credits. See [`scope.md`](scope.md).
+- **Only what Direct File covered**: wages, interest, unemployment, Social Security, some retirement
+  income, the common adjustments and credits, and the premium tax credit. See [`scope.md`](scope.md).
 - **Some situations are "knocked out"**: the calculator stops and tells you it cannot handle them,
   as Direct File did. The list is in [`docs/knockout-inventory.md`](docs/knockout-inventory.md).
-- **The running server covers less than the Catala rules** (see "Not yet wired" above).
+- The American opportunity (education) credit is `$0`, as in Direct File, until the owner decides
+  (DF-BUG-2).
 - **Not tax advice.** Check your real return with the IRS or a professional.
 
 ## License and credits
 
-- This repository does not have a license file yet. <!-- TODO(final): add a LICENSE -->
+- This repository does not have a license file yet; the owner has to choose one.
 - IRS Direct File is US-government work in the public domain, with a CC0 1.0 waiver. We use its rules,
   test returns and engine as a reference.
 - [Catala](https://github.com/CatalaLang/catala) is Apache-2.0.
 - Lean and its standard library are Apache-2.0. We also use Batteries and plausible.
-- Built by Arnab Ghosh with a team of AI agents; see [`docs/writeup.md`](docs/writeup.md) for how.
+- Built by Arnab Ghosh with an orchestrated team of AI agents; see [`docs/writeup.md`](docs/writeup.md)
+  for how.
