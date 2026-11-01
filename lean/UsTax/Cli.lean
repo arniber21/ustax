@@ -12,6 +12,9 @@ import UsTax.SocialSecurity
 import UsTax.EducatorAdjustment
 import UsTax.StudentLoanAdjustment
 import UsTax.EstimatedPayments
+import UsTax.Cdcc
+import UsTax.SaversCredit
+import UsTax.ElderlyAndDisabled
 import UsTax.Filers
 import UsTax.QualifyingChild
 import UsTax.DependentsBenefitSplit
@@ -955,6 +958,222 @@ def runFilingStatusReturn (j : Json) : Except String Json := do
 
 end Household
 
+/-! ### CDCC, Saver's credit and Schedule R scopes (issue #46)
+
+Decoders and drivers for `Form2441`, `SaversCredit` and `ScheduleR`. Same conventions as above:
+money as a decimal string or number of dollars, enumerations by Catala case name, dates
+`"YYYY-MM-DD"`, every input required. -/
+
+section Credits
+
+/-- Catala `Cdcc.CdccAnswers`. -/
+def cdccAnswersOfJson (j : Json) : Except String Cdcc.CdccAnswers :=
+  return {
+    unableToCareForSelf := ← boolReq j "unable_to_care_for_self"
+    hasDependentCareExpenses := ← boolReq j "has_dependent_care_expenses"
+    expensesPaidToQualifyingProvider := ← boolReq j "expenses_paid_to_qualifying_provider"
+    writableQualifyingExpenseAmount := ← moneyReq j "writable_qualifying_expense_amount"
+    tpPaidMostOfHomeUpkeep := ← boolReq j "tp_paid_most_of_home_upkeep" }
+
+/-- Catala `Cdcc.CdccMember`. -/
+def cdccMemberOfJson (j : Json) : Except String Cdcc.CdccMember :=
+  return { member := ← depMemberOfJson (← field j "member")
+           cdcc := ← cdccAnswersOfJson (← field j "cdcc") }
+
+/-- Catala `Cdcc.CdccFiler`. -/
+def cdccFilerOfJson (j : Json) : Except String Cdcc.CdccFiler :=
+  return {
+    employerIncomeSubtotalBase := ← moneyReq j "employer_income_subtotal_base"
+    nontaxableCombatPay := ← moneyReq j "nontaxable_combat_pay"
+    electCombatPayForCredit := ← boolReq j "elect_combat_pay_for_credit"
+    electCombatPayForBenefits := ← boolReq j "elect_combat_pay_for_benefits"
+    dependentCareBenefits := ← moneyReq j "dependent_care_benefits"
+    dependentCarePlanMaximum := ← moneyReq j "dependent_care_plan_maximum"
+    isDisabled := ← boolReq j "is_disabled"
+    deemedIncomeMonthEarnings := ← listReq j "deemed_income_month_earnings" moneyOfJson
+    hasDependentCareExpenses := ← boolReq j "has_dependent_care_expenses"
+    expensesPaidToQualifyingProvider := ← boolReq j "expenses_paid_to_qualifying_provider"
+    writableQualifyingExpenseAmount := ← moneyReq j "writable_qualifying_expense_amount" }
+
+/-- The inputs `Form2441PartIII` and `Form2441` share. -/
+def form2441PartIIIInOfJson (j : Json) : Except String Cdcc.Form2441PartIIIIn :=
+  return {
+    filingStatus := ← filingStatusOfJson (← field j "filing_status")
+    household := ← listReq j "household" cdccMemberOfJson
+    minimumFilerDateOfBirth := ← dateReq j "minimum_filer_date_of_birth"
+    treatFilersAsDependents := ← boolReq j "treat_filers_as_dependents"
+    eitherFilerUsCitizenOrNational := ← boolReq j "either_filer_us_citizen_or_national"
+    treatAsMfj := ← boolReq j "treat_as_mfj"
+    livedApartLastSixMonths := ← boolReq j "lived_apart_last_six_months"
+    spouseSameAbodeMoreThanHalfYear := ← boolReq j "spouse_same_abode_more_than_half_year"
+    primaryFiler := ← cdccFilerOfJson (← field j "primary_filer")
+    secondaryFiler := ← cdccFilerOfJson (← field j "secondary_filer")
+    hasMfsSpouseEarnedIncome := ← boolReq j "has_mfs_spouse_earned_income"
+    writableMfsSpouseEarnedIncome := ← moneyReq j "writable_mfs_spouse_earned_income"
+    writableTotalQualifiedDependentCareExpenses :=
+      ← moneyReq j "writable_total_qualified_dependent_care_expenses"
+    writableCarryoverAmount := ← moneyReq j "writable_carryover_amount"
+    writableForfeitedAmount := ← moneyReq j "writable_forfeited_amount"
+    hasCreditForPriorYearExpenses := ← boolReq j "has_credit_for_prior_year_expenses"
+    claimedCreditForPriorYearExpenses := ← boolReq j "claimed_credit_for_prior_year_expenses"
+    claimedMaxCreditForPriorTaxYear := ← boolReq j "claimed_max_credit_for_prior_tax_year"
+    hasHouseholdEmployee := ← boolReq j "has_household_employee"
+    benefitsFromSoleProprietorshipOrPartnership :=
+      ← boolReq j "benefits_from_sole_proprietorship_or_partnership" }
+
+/-- Catala scope `Cdcc.Form2441` (the flat outputs; `benefits` is the sub-scope result). -/
+def runForm2441 (j : Json) : Except String Json := do
+  let o := Cdcc.form2441
+    { toForm2441PartIIIIn := ← form2441PartIIIInOfJson j
+      agi := ← moneyReq j "agi", totalTentativeTax := ← moneyReq j "total_tentative_tax" }
+  let b := o.benefits
+  return Json.mkObj
+    [("taxable_benefits", mj b.taxableBenefits),
+     ("count_of_qualifying_persons", toJson b.countOfQualifyingPersons),
+     ("has_qualifying_persons", bj b.hasQualifyingPersons),
+     ("has_more_than_three_qualifying_persons", bj o.hasMoreThanThreeQualifyingPersons),
+     ("mfs_but_eligible_for_cdcc", bj b.mfsButEligibleForCdcc),
+     ("line12_dependent_care_benefits", mj b.line12DependentCareBenefits),
+     ("line13_carryover", mj b.line13Carryover), ("line14_forfeited", mj b.line14Forfeited),
+     ("line15_adjusted_benefits", mj b.line15AdjustedBenefits),
+     ("line17_lesser", mj b.line17Lesser),
+     ("line20_tentative_exclusion", mj b.line20TentativeExclusion),
+     ("line21_specified_exclusion", mj b.line21SpecifiedExclusion),
+     ("line24_deductible_benefits", mj b.line24DeductibleBenefits),
+     ("line25_excluded_benefits", mj b.line25ExcludedBenefits),
+     ("line28", mj b.line28), ("line29_net_allowable", mj b.line29NetAllowable),
+     ("line31", mj b.line31), ("line3", mj o.line3),
+     ("primary_earned_income_before_benefits", mj o.primaryEarnedIncomeBeforeBenefits),
+     ("secondary_earned_income_before_benefits", mj o.secondaryEarnedIncomeBeforeBenefits),
+     ("primary_adjustment", mj o.primaryAdjustment),
+     ("secondary_adjustment", mj o.secondaryAdjustment),
+     ("allocate_all_to_primary", bj o.allocateAllToPrimary),
+     ("allocate_all_to_secondary", bj o.allocateAllToSecondary),
+     ("primary_taxable_benefits", mj o.primaryTaxableBenefits),
+     ("secondary_taxable_benefits", mj o.secondaryTaxableBenefits),
+     ("line4_earned_income", mj o.line4EarnedIncome), ("line5_earned_income", mj o.line5EarnedIncome),
+     ("lower_of_earned_income", mj o.lowerOfEarnedIncome), ("line6", mj o.line6),
+     ("line8_decimal_amount", mj o.line8DecimalAmount), ("line9a", mj o.line9a),
+     ("line9b", mj o.line9b), ("line9c", mj o.line9c),
+     ("line10_tax_liability_limit", mj o.line10TaxLiabilityLimit),
+     ("has_qualifying_expenses", bj o.hasQualifyingExpenses),
+     ("cdcc_total_credit", mj o.cdccTotalCredit),
+     ("is_receiving_cdcc_credit", bj o.isReceivingCdccCredit),
+     ("should_submit_form_2441", bj o.shouldSubmitForm2441),
+     ("ko_flow_knockout_benefits_distribution", bj o.koFlowKnockoutBenefitsDistribution),
+     ("unsupported", bj o.unsupported)]
+
+/-- Catala scope `Savers_credit.SaversCredit`. -/
+def runSaversCredit (j : Json) : Except String Json := do
+  let o := SaversCredit.saversCredit
+    { filingStatus := ← filingStatusOfJson (← field j "filing_status")
+      agi := ← moneyReq j "agi", isMfjDependent := ← boolReq j "is_mfj_dependent"
+      primaryFilerIsUnder18 := ← boolReq j "primary_filer_is_under18"
+      primaryFilerIsStudent := ← boolReq j "primary_filer_is_student"
+      primaryFilerIsClaimedAsDependent := ← boolReq j "primary_filer_is_claimed_as_dependent"
+      secondaryFilerIsUnder18 := ← boolReq j "secondary_filer_is_under18"
+      secondaryFilerIsStudent := ← boolReq j "secondary_filer_is_student"
+      secondaryFilerIsClaimedAsDependent := ← boolReq j "secondary_filer_is_claimed_as_dependent"
+      primaryFilerTotalDeferralsAndContributions :=
+        ← moneyReq j "primary_filer_total_deferrals_and_contributions"
+      secondaryFilerTotalDeferralsAndContributions :=
+        ← moneyReq j "secondary_filer_total_deferrals_and_contributions"
+      primaryFilerSaversGrossDistributions := ← moneyReq j "primary_filer_savers_gross_distributions"
+      secondaryFilerSaversGrossDistributions :=
+        ← moneyReq j "secondary_filer_savers_gross_distributions"
+      totalTentativeTax := ← moneyReq j "total_tentative_tax"
+      cdccTotalCredit := ← moneyReq j "cdcc_total_credit", totalEdc := ← moneyReq j "total_edc"
+      hasDistributionsInLastThreeYears := ← boolReq j "has_distributions_in_last_three_years"
+      hasCurrentYearDistributions := ← boolReq j "has_current_year_distributions"
+      hasSelfReportedContributions := ← boolReq j "has_self_reported_contributions" }
+  return Json.mkObj
+    [("primary_filer_is_eligible", bj o.primaryFilerIsEligible),
+     ("secondary_filer_is_eligible", bj o.secondaryFilerIsEligible),
+     ("secondary_filer_is_applicable_and_eligible", bj o.secondaryFilerIsApplicableAndEligible),
+     ("is_agi_eligible_for_savers_credit", bj o.isAgiEligibleForSaversCredit),
+     ("eligible_for_savers_credit", bj o.eligibleForSaversCredit),
+     ("primary_filer_ira_and_able_contributions", mj o.primaryFilerIraAndAbleContributions),
+     ("secondary_filer_ira_and_able_contributions", mj o.secondaryFilerIraAndAbleContributions),
+     ("primary_filers_deferrals_and_contributions", mj o.primaryFilersDeferralsAndContributions),
+     ("secondary_filers_deferrals_and_contributions", mj o.secondaryFilersDeferralsAndContributions),
+     ("primary_filer_gross_distributions", mj o.primaryFilerGrossDistributions),
+     ("secondary_filer_gross_distributions", mj o.secondaryFilerGrossDistributions),
+     ("primary_filer_total_contributions", mj o.primaryFilerTotalContributions),
+     ("secondary_filer_total_contributions", mj o.secondaryFilerTotalContributions),
+     ("primary_filer_total_contributions_less_distributions",
+       mj o.primaryFilerTotalContributionsLessDistributions),
+     ("secondary_filer_total_contributions_less_distributions",
+       mj o.secondaryFilerTotalContributionsLessDistributions),
+     ("primary_filer_max_credit_calc", mj o.primaryFilerMaxCreditCalc),
+     ("secondary_filer_max_credit_calc", mj o.secondaryFilerMaxCreditCalc),
+     ("combined_credit_limit", mj o.combinedCreditLimit),
+     ("savers_credit_multiplier", Json.str o.saversCreditMultiplier.catalaName),
+     ("ratioed_combined_credit_limit", mj o.ratioedCombinedCreditLimit),
+     ("limitation_based_on_tax_liability", mj o.limitationBasedOnTaxLiability),
+     ("qualified_for_saver_credit_wo_tax_liability", bj o.qualifiedForSaverCreditWoTaxLiability),
+     ("qualified_for_saver_credit", bj o.qualifiedForSaverCredit),
+     ("qualified_saver_credit_amount", mj o.qualifiedSaverCreditAmount),
+     ("is_receiving_savers_credit", bj o.isReceivingSaversCredit),
+     ("ko_savers_credit_knockouts", bj o.koSaversCreditKnockouts),
+     ("unsupported", bj o.unsupported)]
+
+/-- Catala `Elderly_and_disabled.DisabilityAnswers`. -/
+def disabilityAnswersOfJson (j : Json) : Except String ElderlyAndDisabled.DisabilityAnswers :=
+  return {
+    isRetiredOnPermOrTotalDisability := ← boolReq j "is_retired_on_perm_or_total_disability"
+    employerHasMandatoryRetirementAge := ← boolReq j "employer_has_mandatory_retirement_age"
+    hasMetEmployerMandatoryRetirementAge := ← boolReq j "has_met_employer_mandatory_retirement_age"
+    arePaymentsTaxableDisabilityIncome := ← boolReq j "are_payments_taxable_disability_income"
+    writableTotalTaxableDisabilityAmount := ← moneyReq j "writable_total_taxable_disability_amount"
+    hasW2Wages := ← boolReq j "has_w2_wages" }
+
+/-- Catala scope `Elderly_and_disabled.ScheduleR`. -/
+def runScheduleR (j : Json) : Except String Json := do
+  let o := ElderlyAndDisabled.scheduleR
+    { filingStatus := ← filingStatusOfJson (← field j "filing_status")
+      livedApartAllYear := ← boolReq j "lived_apart_all_year"
+      primaryAge65OrOlder := ← boolReq j "primary_age65_or_older"
+      secondaryAge65OrOlder := ← boolReq j "secondary_age65_or_older"
+      primaryAnswers := ← disabilityAnswersOfJson (← field j "primary_answers")
+      secondaryAnswers := ← disabilityAnswersOfJson (← field j "secondary_answers")
+      agi := ← moneyReq j "agi"
+      nonTaxableSocialSecurityBenefits := ← moneyReq j "non_taxable_social_security_benefits"
+      selfReportedNonTaxablePayments := ← moneyReq j "self_reported_non_taxable_payments"
+      creditLimitWorksheetLine3 := ← moneyReq j "credit_limit_worksheet_line_3" }
+  return Json.mkObj
+    [("is_mfj", bj o.isMfj), ("is_mfs", bj o.isMfs), ("is_single_hoh_qss", bj o.isSingleHohQss),
+     ("primary_is_65", bj o.primaryIs65), ("secondary_is_65", bj o.secondaryIs65),
+     ("number_qualified_through_disability", toJson o.numberQualifiedThroughDisability),
+     ("mfj_and_only_one_qualified", bj o.mfjAndOnlyOneQualified),
+     ("relaxed_agi_limit", mj o.relaxedAgiLimit),
+     ("relaxed_non_taxable_limit", mj o.relaxedNonTaxableLimit),
+     ("at_least_one_tp_is_under_65", bj o.atLeastOneTpIsUnder65),
+     ("maybe_eligible_for_credit", bj o.maybeEligibleForCredit),
+     ("edc_line1", bj o.edcLine1), ("edc_line2", bj o.edcLine2), ("edc_line3", bj o.edcLine3),
+     ("edc_line4", bj o.edcLine4), ("edc_line5", bj o.edcLine5), ("edc_line6", bj o.edcLine6),
+     ("edc_line7", bj o.edcLine7), ("edc_line8", bj o.edcLine8), ("edc_line9", bj o.edcLine9),
+     ("edc_filing_status_amt", mj o.edcFilingStatusAmt),
+     ("status_based_disability_income", mj o.statusBasedDisabilityIncome),
+     ("lesser_of_filing_status_amount_and_taxable_disability_income",
+       mj o.lesserOfFilingStatusAmountAndTaxableDisabilityIncome),
+     ("edc_non_taxable_social_security_and_railroad_benefits",
+       mj o.edcNonTaxableSocialSecurityAndRailroadBenefits),
+     ("edc_non_taxable_income_not_including_social_security_and_rrb",
+       mj o.edcNonTaxableIncomeNotIncludingSocialSecurityAndRrb),
+     ("edc_total_non_taxable_amount", mj o.edcTotalNonTaxableAmount),
+     ("edc_exemption_amount", mj o.edcExemptionAmount), ("edc_magi", mj o.edcMagi),
+     ("edc_half_magi", mj o.edcHalfMagi),
+     ("edc_adjusted_credit_amount", mj o.edcAdjustedCreditAmount),
+     ("edc_net_credit_amount", mj o.edcNetCreditAmount), ("net_edc_amount", mj o.netEdcAmount),
+     ("edc_tax_liability_limit", mj o.edcTaxLiabilityLimit),
+     ("total_edc", mj o.totalEdc), ("edc_agi_limit", mj o.edcAgiLimit),
+     ("edc_non_taxable_limit", mj o.edcNonTaxableLimit),
+     ("is_qualified_based_on_age_or_disability", bj o.isQualifiedBasedOnAgeOrDisability),
+     ("qualified_for_credit_for_elderly_and_disabled", bj o.qualifiedForCreditForElderlyAndDisabled),
+     ("is_receiving_edc", bj o.isReceivingEdc)]
+
+end Credits
+
 /-- The scopes implemented in Lean, by Catala scope name. Add one line per
 new module. -/
 def scopes : List (String × (Json → Except String Json)) :=
@@ -976,7 +1195,10 @@ def scopes : List (String × (Json → Except String Json)) :=
    ("BenefitSplitTest", runBenefitSplitTest),
    ("DependentTest", runDependentTest),
    ("HohQssPersonTest", runHohQssPersonTest),
-   ("FilingStatusReturn", runFilingStatusReturn)]
+   ("FilingStatusReturn", runFilingStatusReturn),
+   ("Form2441", runForm2441),
+   ("SaversCredit", runSaversCredit),
+   ("ScheduleR", runScheduleR)]
 
 /-- Run scope `name` on one JSON input. -/
 def runScope (name : String) (input : Json) : Except String Json :=
