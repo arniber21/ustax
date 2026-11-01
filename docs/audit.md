@@ -80,17 +80,19 @@ Last run: 6 of 6 injections failed the audit and the unmodified copy passed.
 
 `.github/workflows/ci.yml` has two jobs on `ubuntu-latest` (Ubuntu 24.04).
 
-- **catala**: `ocaml/setup-ocaml` (OCaml 5.4.1, the opam switch is cached),
-  `make install` (`opam install -y catala.1.3.0`; the Makefile now pins the
-  version), `make check`, then `make difftest SCOPE=all`. The difftest summary
+- **catala**: `jetify-com/devbox-install-action` (packages from `devbox.lock`,
+  nix store cached), `devbox run catala-setup` (OCaml 5.4.1 and
+  `catala.1.3.0` into the project-local opam root `.opam`, cached),
+  `devbox run check`, then `make difftest SCOPE=all`. The difftest summary
   is written to the job summary and does not gate the job (known Direct File
   differences are listed in STATUS.md).
-- **lean**: installs bubblewrap, elan (to `/opt/elan`, cached) and the pinned
-  toolchain from `lean/lean-toolchain`; copies `lean/` to `/opt/ustax-lean`
+- **lean**: devbox provides bubblewrap and elan; the pinned toolchain from
+  `lean/lean-toolchain` goes to `/opt/elan` (cached); copies `lean/` to `/opt/ustax-lean`
   (outside `/home` and `/root`, which the sandbox covers with a tmpfs, as in the
   container setup of `docs/comparator.md`; `.lake` is cached there); runs
-  `lake build`, `lake check`, `lake comparator --config comparator.json`,
-  then `scripts/audit.sh` on that copy.
+  `make lean-build`, `make lean-check`, `make lean-comparator`
+  (`lake build`, `lake check`, `lake comparator --config comparator.json`; `LEAN_DIR` points
+  at the copy), then `devbox run audit` on that copy.
 
 `lake check` and `lake comparator` refuse to run outside Linux. This is why CI
 runs them natively and a Mac runs them in a container (`make comparator`).
@@ -101,7 +103,7 @@ Ubuntu 23.10 and later set `kernel.apparmor_restrict_unprivileged_userns=1`,
 which stops an unprivileged `bwrap` from creating a user namespace
 (`bwrap: setting up uid map: Permission denied`). The usual fix is
 `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`. The workflow
-probes `bwrap` first and applies the sysctl only when the probe fails, so it
+probes the devbox `bwrap` first and applies the sysctl only when the probe fails, so it
 works whether or not the runner image already allows it. **Not verified here**:
 this repository's owner cannot run GitHub Actions from the development
 machine, so the first CI run is the test. If it still fails, look at the

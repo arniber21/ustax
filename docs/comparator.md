@@ -214,4 +214,4 @@ already exist. The Containerfile creates it.
 
 ## CI
 
-`.github/workflows/ci.yml` runs `lake build`, `lake check` and `lake comparator` natively on Ubuntu (they need Linux and bwrap), followed by `make audit`. bwrap setup on the runners: `docs/audit.md`.
+All tools come from devbox (`docs/devbox.md`); on Linux, bubblewrap is a devbox package and `make lean-check` / `make lean-comparator` run the two commands natively. `.github/workflows/ci.yml` runs `lake build`, `lake check` and `lake comparator` natively on Ubuntu (they need Linux and bwrap), followed by `make audit`. bwrap setup on the runners: `docs/audit.md`.

@@ -29,6 +29,8 @@ the proofs in `UsTax/Proofs/Main.lean` (the comparator solution module), and
 statements still to be proved in `UsTax/Comparator/Pending.lean`. The spec
 surface of each, reviewed, is `docs/spec-surface.md`.
 
+Tools (elan, bun, ninja, ...) come from devbox: see `docs/devbox.md`.
+
 `make forensics` clones for-all-dev/forensics into `.forensics-tool/` (gitignored)
 and runs, from `.forensics-tool/app`, `bun server.ts <abs path to lean/> --dump forensics-out.json`.
 The project root is `lakefile.toml`, so module roots are inferred (else `--roots UsTax`).
