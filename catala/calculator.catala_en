@@ -1,0 +1,1585 @@
+> Module Calculator
+
+> Using Types
+> Using Rounding as R
+> Using Filers as F
+> Using Form_w2s as W
+> Using Interest as I
+> Using Unemployment as U
+> Using Form1099_misc as M
+> Using Form1099_rs as RS
+> Using Social_security as SS
+> Using Educator_adjustment as EA
+> Using Student_loan_adjustment as SL
+> Using Estimated_payments as EP
+> Using Hsa as H
+> Using Qualifying_child as Q
+> Using Qualifying_relative as QR
+> Using Dependents_benefit_split as B
+> Using Hoh_qss_persons as HQ
+> Using Eitc as E
+> Using Ctc_odc as C
+> Using Savers_credit as SC
+> Using Elderly_and_disabled as ED
+> Using Knockouts_income as KI
+> Using Cdcc as CD
+> Using Filing_status as FS
+> Using Form_1040 as F1040
+
+# The calculator: one return, from the answers to the refund (issues #38, #48)
+
+`Calculator` is the top-level scope of the formalization. It takes the
+answers to Direct File's writable questions (filers, household, income forms,
+adjustments, payments, credit questions and the screening questions) and
+computes the whole Form 1040, with every merged module plugged into the
+plug-in slots of `Form_1040.Form1040`. No value is taken from the oracle: every
+slot is computed here.
+
+Direct File (DF) sources are under
+`../direct-file/direct-file/backend/src/main/resources/tax/`. The design
+follows `catala/CONVENTIONS.md` section 7: a staged single pass with the
+filing status as an input. Each stage reads only earlier stages. Every module
+is called with `output of ... with { ... }`, so each call is its own node of
+the dependency graph and a module can be called twice (once early for amounts,
+once late for knockouts) without a cycle.
+
+## Stages
+
+1. **Filers** (`Filers.Filers`, issue #15): marital status, ages, dependency
+   of the filers, `treat_as_mfj`. `eligible_for_hoh` is an input of `Filers`
+   that only its community-property knockout reads; the first call passes
+   `false`, the knockout call (`filers_ko`, stage 9) passes the value computed
+   in stage 3.
+2. **Household** (#16 to #19, #27): one scope call per member for the
+   qualifying child, dependent, benefit split, HoH/QSS and CTC/ODC tests, plus
+   the EITC qualifying child test of this file (section "EITC qualifying
+   children").
+3. **Filing status eligibility** (`Filing_status.FilingStatusEligibility`,
+   issue #20): `/eligibleForHoh`, `/eligibleForQss`, the check that the
+   chosen status is eligible and its knockout `ko_filing_status_not_eligible`.
+4. **Income** (#12, #13, #21 to #23): W-2s, 1099-INT, 1099-G, 1099-MISC,
+   1099-R, SSA-1099.
+5. **Adjustments** (#24, #35): educator expenses, HSA, then (after total
+   income) student loan interest.
+6. **Form 1040, AGI pass**: lines 1 to 18 with the income and adjustment
+   slots filled and every credit slot at `$0`.
+7. **Credits** in DF's order (scope.md section 6.7): CDCC (`Cdcc.Form2441`,
+   issue #28), Schedule R, Saver's, CTC/ODC; EITC; ACTC (reads EITC and line 18).
+8. **Form 1040, final pass**: every slot filled.
+9. **Knockouts**: `unsupported` is the disjunction of the knockouts of every
+   module; `fired_knockouts` lists them.
+
+The four Form 1040 calls compute the same lines 1 to 18 wherever both define
+them, because a later call only adds slots that feed later lines:
+
+| Call | Slots filled | Read by |
+|---|---|---|
+| `f_income` | 1z (with 1e), 2b, 5b, 8 (no 6b, no adjustments) | Social Security worksheet lines 1 to 8 |
+| `f_total_income` | + 6b, educator, HSA | student loan MAGI (line 9) |
+| `f_agi` | + student loan interest | credits (AGI, line 1z, line 18) |
+| `f_final` | + credits, withholding, estimated payments | the outputs |
+
+## Slots not computed yet
+
+| Slot | Value | Owner |
+|---|---|---|
+| `total_additional_taxes_owed` (line 17, excess APTC) | `$0` | TODO(#32 to #34) PTC |
+| `other_payments_and_refundable_credits_total` (line 31, net PTC) | `$0` | TODO(#32 to #34) PTC |
+
+## Declarations
+
+```catala-metadata
+## DF /ssnEmploymentValidityOptions and /primaryFilerSsnEmploymentValidityOptions
+## (filers.xml): what the filer's Social Security card says about work.
+declaration enumeration FilerSsnEmploymentValidity:
+  -- Neither
+  -- NotValid
+  -- ValidOnlyWithDhsAuthorization
+
+## A filer's TIN facts that the earned income credit reads (IRC 32(m)).
+declaration structure FilerTin:
+  # DF: /filers/*/tin/isSSN (a TIN that is an SSN, not an ITIN or ATIN)
+  data tin_is_ssn content boolean
+  # DF: /primaryFilerSsnEmploymentValidity, /secondaryFilerSsnEmploymentValidity
+  # (asked only of a filer who is not a citizen all year)
+  data ssn_employment_validity content FilerSsnEmploymentValidity
+  # DF: /filers/*/writableHasSSNOnlyForBenefits
+  data has_ssn_only_for_benefits content boolean
+
+## The per-filer answers that `Filers.FilerAnswers` does not carry.
+declaration structure FilerExtra:
+  data tin content FilerTin
+  # DF: /filers/*/isStudent (Saver's credit, IRC 25B(c)(2)(B))
+  data is_student content boolean
+  # DF: the Schedule R answers of /filers/*. `has_w2_wages` is recomputed
+  # from the W-2s by the calculator; the value given here is ignored.
+  data disability content ED.DisabilityAnswers
+  # DF: the HSA answers of /filers/* (hsa.xml)
+  data hsa content H.HsaFilerAnswers
+  # DF: the CDCC answers of /filers/* and of the filer (cdcc.xml)
+  data cdcc content CdccFilerAnswers
+
+## A filer's CDCC answers (`Cdcc.CdccFiler` without the W-2 amounts, which the
+## calculator takes from the W-2s).
+declaration structure CdccFilerAnswers:
+  # Form 2441 lines 4, 5 and 18: the elections to include nontaxable combat
+  # pay in earned income (DF /cdccCombatPayElection,
+  # /cdccCombatPayElectionForBenefits, read per filer)
+  data elect_combat_pay_for_credit content boolean
+  data elect_combat_pay_for_benefits content boolean
+  # DF: /writablePrimaryFilerDependentCarePlanMaximum (or Secondary)
+  data dependent_care_plan_maximum content money
+  # DF: /filers/*/isDisabled
+  data is_disabled content boolean
+  # IRC 21(d)(2) deemed income months (see Cdcc.CdccFiler)
+  data deemed_income_month_earnings content list of money
+  # DF: /filers/*/cdccHasDependentCareExpenses
+  data has_dependent_care_expenses content boolean
+  # DF: /filers/*/cdccHadExpensesPaidToQualifyingProvider
+  data expenses_paid_to_qualifying_provider content boolean
+  # DF: /filers/*/writableCdccQualifyingExpenseAmount
+  data writable_qualifying_expense_amount content money
+
+## A household member's CDCC answers (`Cdcc.CdccAnswers` without the upkeep
+## answer, which is `HouseholdMember.upkeep`).
+declaration structure CdccMemberAnswers:
+  # DF: /familyAndHousehold/*/unableToCareForSelf
+  data unable_to_care_for_self content boolean
+  # DF: /familyAndHousehold/*/cdccHasDependentCareExpenses
+  data has_dependent_care_expenses content boolean
+  # DF: /familyAndHousehold/*/cdccHadExpensesPaidToQualifyingProvider
+  data expenses_paid_to_qualifying_provider content boolean
+  # DF: /familyAndHousehold/*/writableCdccQualifyingExpenseAmount
+  data writable_qualifying_expense_amount content money
+
+## The return-level CDCC answers (cdcc.xml), Form 2441 inputs.
+declaration structure CdccInput:
+  data has_mfs_spouse_earned_income content boolean
+  data writable_mfs_spouse_earned_income content money
+  data writable_total_qualified_dependent_care_expenses content money
+  data writable_carryover_amount content money
+  data writable_forfeited_amount content money
+  data has_credit_for_prior_year_expenses content boolean
+  data claimed_credit_for_prior_year_expenses content boolean
+  data claimed_max_credit_for_prior_tax_year content boolean
+  data has_household_employee content boolean
+  data benefits_from_sole_proprietorship_or_partnership content boolean
+
+## The answers `Filers.Filers` takes, except the filing status (a separate
+## input) and `eligible_for_hoh` (computed, stage 3).
+declaration structure FilersInput:
+  data marital_status content F.MaritalStatus
+  data year_of_spouse_death content F.YearOfSpouseDeath
+  data primary_filer content F.FilerAnswers
+  data secondary_filer content F.FilerAnswers
+  data secondary_filer_date_of_death content date
+  data primary_filer_potential_claimer_filed_only_for_refund content boolean
+  data mfj_required_to_file content boolean
+  data mfj_dependents_filing_for_credits content boolean
+  data lived_together_all_year_with_spouse content boolean
+  data spouse_lived_together_months content F.SpouseLivedTogetherMonths
+  data writable_lived_apart_last_six_months content boolean
+  data writable_separation_agreement content boolean
+  data can_file_jointly_year_of_spouse_death content boolean
+  data in_registered_domestic_partnership content boolean
+  data filer_residence_and_income_state content Types.ScopedState
+  data spouse_itemizes content boolean
+  data mfs_living_spouse_filing_return content boolean
+  data mfs_deceased_spouse_filing_return content boolean
+  data mfs_spouse_has_gross_income content boolean
+  # DF: /MFSSpouse65OrOlder (standard deduction)
+  data mfs_spouse_65_or_older content boolean
+
+## One member of DF /familyAndHousehold, with every answer the household and
+## credit modules read.
+declaration structure HouseholdMember:
+  # qualifying child, dependent and benefit-split answers (#16 to #18)
+  data dependent content QR.Member
+  # HoH and QSS upkeep answers (#19)
+  data upkeep content HQ.UpkeepAnswers
+  # DF: /familyAndHousehold/*/ssnEmploymentValidity (CTC #27, EITC)
+  data ssn_employment_validity content C.SsnEmploymentValidity
+  # DF: /familyAndHousehold/*/ssnOnlyForFederallyFundedBenefit (EITC)
+  data ssn_only_for_federally_funded_benefit content boolean
+  # DF: /familyAndHousehold/*/monthsLivedWithTPInUS as a number of months
+  # (`six` = more than 6 but less than 7 months is 6, ..., `twelve` is 12);
+  # 0 when the question was not asked.
+  data months_lived_with_tp_in_us content integer
+  # CDCC answers (#28)
+  data cdcc content CdccMemberAnswers
+
+## Income forms.
+declaration structure IncomeInput:
+  data w2s content list of W.FormW2
+  # DF: /combatPayElection and IsComplete(/combatPayElection)
+  data combat_pay_election content W.CombatPayElection
+  data combat_pay_election_made content boolean
+  data interest_reports content list of I.InterestReport
+  data form_1099gs content list of U.Form1099G
+  data form_1099miscs content list of M.Form1099Misc
+  data form_1099rs content list of RS.Form1099R
+  # DF: /socialSecurityReports/*/ssaNetBenefits (SSA-1099 box 5)
+  data ssa_net_benefits content list of money
+  # DF: /socialSecurityReports/*/writableSsaFederalTaxWithheld (box 6)
+  data ssa_federal_tax_withheld content list of money
+
+## The return-level HSA answers (hsa.xml); per-filer ones are in FilerExtra.
+declaration structure HsaInput:
+  data some_filer_had_non_w2_hsa_activity content boolean
+  data writable_primary_filer_had_non_w2_hsa_activity content boolean
+  data writable_secondary_filer_had_non_w2_hsa_activity content boolean
+  data has_hsa_medical_savings_account_type content boolean
+  data writable_has_hsa_excess_contributions_previous_year content boolean
+  data writable_has_hsa_withdrawn_excess_contributions_yes_no content boolean
+  data some_filers_made_testing_period_contribution content boolean
+  data some_filers_have_testing_period_additional_income content boolean
+  data hsa_distributions content list of H.HsaDistribution
+
+## Schedule 1 adjustments.
+declaration structure AdjustmentsInput:
+  data was_k12_educators content EA.K12EducatorOptions
+  data primary_educator_expenses_writable content money
+  data secondary_educator_expenses_writable content money
+  data had_student_loan_interest_payments content boolean
+  data student_loans_qualify content boolean
+  data student_loan_interest_amount content money
+  data hsa content HsaInput
+
+## Estimated tax payments (estimatedPayments.xml).
+declaration structure PaymentsInput:
+  data paid_estimated_taxes_or_from_last_year content boolean
+  data estimated_tax_payment_writable content money
+  data paid_estimated_taxes_or_from_last_year_under_different_name content boolean
+  data paid_estimated_taxes_with_former_spouse content EP.PaidWithFormerSpouse
+
+## The credit questions (eitc.xml, ctcOdc.xml, saversCredits.xml,
+## elderlyAndDisabled.xml).
+declaration structure CreditAnswers:
+  data eitc_qc_of_another content boolean
+  data eitc_qc_of_another_required_to_file content boolean
+  data eitc_qc_of_another_is_filing content boolean
+  data eitc_qc_of_another_is_filing_refund_only content boolean
+  data eitc_had_improper_claims content boolean
+  data eitc_improper_claims_due_to_qc content boolean
+  data eitc_improper_claim_taken_since_disallowal content boolean
+  data eitc_received_improper_claims_notice content E.ImproperClaimsNotice
+  data eitc_improper_claims_notice_expired content boolean
+  data received_improper_claims content boolean
+  data received_improper_claims_notice content E.ImproperClaimsNotice
+  data improper_claims_notice_expired content boolean
+  data has_filed_ctc_odc_since_notice_expired content boolean
+  data has_distributions_in_last_three_years content boolean
+  data has_current_year_distributions content boolean
+  data has_self_reported_contributions content boolean
+  # DF: /writableHasSelfReportedNonTaxablePayments,
+  # /writableEdcSelfReportedNonTaxablePaymentAmount (Schedule R line 13b)
+  data has_self_reported_non_taxable_payments content boolean
+  data self_reported_non_taxable_payment_amount content money
+
+## The screening questions that only feed knockouts (KnockoutsIncome inputs).
+declaration structure ScreeningAnswers:
+  data income_sources_supported content boolean
+  data received_digital_assets content boolean
+  data disposed_digital_assets content boolean
+  data has_foreign_accounts content boolean
+  data is_foreign_trusts_grantor content boolean
+  data has_foreign_trusts_transactions content boolean
+  data made_ira_contributions content boolean
+  data w2_box15_income_from_different_state content boolean
+  data w2_has_box14_nyrrta_knockout_code content boolean
+  data w2_has_rrta_codes_in_box14 content boolean
+  data lived_in_ny content boolean
+  data w2_paid_yonkers_taxes content boolean
+  data part_year_yonkers_resident content boolean
+  data primary_filer_forms_another_state content boolean
+  data received_alaska_pfd content boolean
+  data spouse_received_alaska_pfd content boolean
+  data spouse_lives_in_other_or_multiple_states content boolean
+  data spouse_forms_another_state content boolean
+  data is_after_tax_day_and_not_resubmitting content boolean
+  data is_after_resubmission_deadline content boolean
+
+## Every knockout the calculator can report. Income, HSA and process
+## knockouts keep the reason of `Knockouts_income`; the others are one
+## constructor per DF fact (or per module knockout without a DF fact).
+declaration enumeration CalculatorKnockout:
+  -- IncomeOrHsa content KI.KnockoutReason
+  -- FlowKnockoutFilerAgeYoungerThan16
+  -- SpouseItemizesKnockout
+  -- PrimaryFilerResidencyKnockout
+  -- FlowKnockoutHasApplicableRegisteredDomesticPartnership
+  -- KnockoutSubjectToCommunityPropertyLaws
+  -- QualifyingChildTieBreaker
+  -- KnockedOutByContradictory8832
+  -- KnockedOutByNonCustodialParentBenefitSplit
+  -- KnockoutHohQpHasNoTin
+  -- ClaimedSpouseCombatPayWithoutMfj
+  -- SaversCreditKnockouts
+  -- FilingStatusNotEligible
+  -- FlowKnockoutBenefitsDistribution
+
+declaration structure CalculatorKnockoutEntry:
+  data reason content CalculatorKnockout
+  data fired content boolean
+```
+
+## EITC qualifying children
+
+No merged module computes DF `/familyAndHousehold/*/eitcQualifyingChild`
+(`familyAndHousehold.xml` line 2254) and `/numEitcQualifyingChildren`
+(line 4708), which `Eitc.EarnedIncomeCredit` takes as inputs, so the person
+test is written here, on top of `Qualifying_relative.DependentTest` (which
+carries the qualifying child and benefit-split tests of the same person).
+
+IRC 32(c)(3) (`sources/statute/irc-32.html`):
+
+    (A) In general. The term "qualifying child" means a qualifying child of the
+    taxpayer (as defined in section 152(c), determined without regard to
+    paragraph (1)(D) thereof and section 152(e)).
+
+    (B) Married individual. The term "qualifying child" shall not include an
+    individual who is married as of the close of the taxpayer's taxable year
+    unless the taxpayer is entitled to a deduction under section 151 for such
+    taxable year with respect to such individual (or would be so entitled but
+    for section 152(e)).
+
+    (C) Place of abode. For purposes of subparagraph (A), the requirements of
+    section 152(c)(1)(B) shall be met only if the principal place of abode is in
+    the United States.
+
+    (D) Identification requirements. (i) In general. A qualifying child shall
+    not be taken into account under subsection (b) unless the taxpayer includes
+    the name, age, and TIN of the qualifying child on the return.
+
+IRC 32(m): "a taxpayer identification number means a social security number
+issued to an individual by the Social Security Administration (other than a
+social security number issued pursuant to clause (II) ... of section
+205(c)(2)(B)(i) of the Social Security Act)", the number issued only for a
+federally funded benefit.
+
+DF `/familyAndHousehold/*/eitcQualifyingChild` is the conjunction of:
+`eitcRelAgeResJointTest` (relationship, age, `livedWithTpInUsMostOfYear`,
+joint return; the support test is left out, as (A) says); `isClaimedIfClaimable`;
+not `disqualifiedDueToParentalCustody`; not `isQualifyingChildOfAnother` or
+`isClaimedDependent`; not `married` or `isClaimedDependent`; not
+`eligibleForBenefitSplit` or `tpCanClaimSplitBenefitsHohEitcCdcc`.
+
+Two of these read "claimed" where the statute reads "entitled":
+
+- DF-BUG(29) (candidate): `isClaimedIfClaimable` makes a child who is an
+  eligible dependent the filer chose not to claim (`tpClaims` false) fail the
+  EITC test. IRC 32(c)(3) does not require the child to be claimed (the same
+  reading as DF-BUG(20) for HoH). Implemented per the statute: not required.
+- DF-BUG(30) (candidate): a married child must be a *claimed* dependent in
+  DF; 32(c)(3)(B) needs only that the filer be *entitled* to the deduction.
+  Implemented per the statute: `eligible_dependent`.
+
+The qualifying-child-of-another clause is kept as DF has it (QUIRK(Q6): the
+152(c)(4) tie-breaker is not computed; `Qualifying_child` knocks out the
+cases where it matters).
+
+```catala-metadata
+declaration scope EitcQualifyingChildTest:
+  input member content HouseholdMember
+  input minimum_filer_date_of_birth content date
+  input treat_filers_as_dependents content boolean
+  input either_filer_us_citizen_or_national content boolean
+  input treat_as_mfj content boolean
+
+  internal dep content QR.DependentTest
+  # DF: /familyAndHousehold/*/livedWithTpInUsMostOfYear
+  output lived_with_tp_in_us_most_of_year condition
+  # DF: /familyAndHousehold/*/eitcRelAgeResJointTest
+  output eitc_rel_age_res_joint_test condition
+  # DF: /familyAndHousehold/*/eitcQualifyingChild
+  output eitc_qualifying_child condition
+  # DF: /familyAndHousehold/*/ssnValidForEITCCalculation
+  output ssn_valid_for_eitc_calculation condition
+  # DF: /familyAndHousehold/*/eitcQualifyingChildForCalculation
+  output eitc_qualifying_child_for_calculation condition
+```
+
+```catala
+scope EitcQualifyingChildTest:
+  definition dep equals
+    output of QR.DependentTest with {
+      -- member: member.dependent
+      -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
+      -- treat_filers_as_dependents: treat_filers_as_dependents
+      -- either_filer_us_citizen_or_national: either_filer_us_citizen_or_national
+      -- treat_as_mfj: treat_as_mfj }
+
+  # 32(c)(3)(C): principal place of abode in the United States for more than
+  # half of the year. DF: residencyTest and monthsLivedWithTPInUS in six
+  # ("more than 6 months") to twelve.
+  rule lived_with_tp_in_us_most_of_year under condition
+    dep.qc.residency_test and member.months_lived_with_tp_in_us >= 6
+  consequence fulfilled
+
+  rule eitc_rel_age_res_joint_test under condition
+    dep.qc.qc_relationship_test
+    and dep.qc.age_test
+    and lived_with_tp_in_us_most_of_year
+    and dep.qc.joint_return_test
+  consequence fulfilled
+
+  # DF-BUG(29), DF-BUG(30): see the text above.
+  rule eitc_qualifying_child under condition
+    eitc_rel_age_res_joint_test
+    and not dep.split.disqualified_due_to_parental_custody
+    and (not dep.is_qualifying_child_of_another or dep.is_claimed_dependent)
+    and (not member.dependent.person.married or dep.eligible_dependent)
+    and (not dep.split.eligible_for_benefit_split
+         or dep.split.tp_can_claim_split_benefits_hoh_eitc_cdcc)
+  consequence fulfilled
+
+  # IRC 32(m). DF: tinType = ssn and (validity neither, or valid with DHS
+  # authorization in effect, or not valid for work but not issued only for a
+  # federally funded benefit).
+  rule ssn_valid_for_eitc_calculation under condition
+    member.dependent.answers.tin_type = QR.TinType.Ssn
+    and (member.ssn_employment_validity = C.SsnEmploymentValidity.Neither
+         or member.ssn_employment_validity
+            = C.SsnEmploymentValidity.ValidOnlyWithDhsAuthorizationInEffect
+         or (member.ssn_employment_validity = C.SsnEmploymentValidity.NotValid
+             and not member.ssn_only_for_federally_funded_benefit))
+  consequence fulfilled
+
+  rule eitc_qualifying_child_for_calculation under condition
+    eitc_qualifying_child and ssn_valid_for_eitc_calculation
+  consequence fulfilled
+```
+
+## The filers' SSNs for the EITC
+
+IRC 32(c)(1)(E): "No credit shall be allowed ... to an eligible individual
+who does not include on the return of tax for the taxable year (i) such
+individual's taxpayer identification number, and (ii) if the individual is
+married (within the meaning of section 7703), the taxpayer identification
+number of such individual's spouse", with the TIN of 32(m) above. DF
+`/filers/*/ssnValidForEitc` (`filers.xml` line 1613): the TIN is an SSN and,
+when the work status was asked (`needsSSNWorkStatus`: not a citizen all year),
+the card is unrestricted, valid with DHS authorization, or not valid for work
+but not issued only for benefits. `/filersHaveValidSSNsForEitc` requires both
+filers on a joint return.
+
+```catala-metadata
+declaration ssn_valid_for_eitc content boolean
+  depends on tin content FilerTin, is_us_citizen_full_year content boolean
+  equals
+  tin.tin_is_ssn
+  and (is_us_citizen_full_year
+       or tin.ssn_employment_validity = Neither
+       or tin.ssn_employment_validity = ValidOnlyWithDhsAuthorization
+       or (tin.ssn_employment_validity = NotValid
+           and not tin.has_ssn_only_for_benefits))
+```
+
+## The calculator scope
+
+```catala-metadata
+declaration scope Calculator:
+  # ---- Inputs
+  # DF: /filingStatus (CONVENTIONS section 7: an input)
+  input filing_status content Types.FilingStatus
+  input filers content FilersInput
+  input primary_extra content FilerExtra
+  input secondary_extra content FilerExtra
+  # DF: /familyAndHousehold
+  input household content list of HouseholdMember
+  input income content IncomeInput
+  input adjustments content AdjustmentsInput
+  input payments content PaymentsInput
+  input credits content CreditAnswers
+  input cdcc_answers content CdccInput
+  input screening content ScreeningAnswers
+
+  # ---- Stage 1: filers
+  internal f content F.Filers
+  internal primary_facts content F.FilerFacts
+  internal secondary_facts content F.FilerFacts
+
+  # ---- Stage 2: household
+  internal qualifying_children content Q.QualifyingChildren
+  internal benefit_split content B.BenefitSplit
+  internal hoh_qss content HQ.HohQssPersons
+  internal ctc_dependents content C.CtcOdcDependents
+  internal eitc_children content list of EitcQualifyingChildTest
+
+  # ---- Stage 3: filing status eligibility (#20)
+  internal filing_status_check content FS.FilingStatusEligibility
+  # DF: filingStatus.xml /eligibleForQss
+  output eligible_for_qss condition
+  # DF: filingStatus.xml /eligibleForHoh
+  output eligible_for_hoh condition
+
+  # ---- Stage 4: income
+  # Form 2441 called for Part III only (line 1e); see stage 4
+  internal cdcc_benefits content CD.Form2441
+  internal base_1040 content Form1040Base
+  internal slots_income content Form1040Slots
+  internal slots_total_income content Form1040Slots
+  internal slots_agi content Form1040Slots
+  internal slots_final content Form1040Slots
+  internal w2 content W.FormW2s
+  internal interest content I.Interest
+  internal unemployment content U.Unemployment
+  internal misc content M.Form1099Miscs
+  internal rs content RS.Form1099Rs
+  internal f_income content F1040.Form1040
+  internal ss content SS.SocialSecurity
+  # Line 6a only (read by the HSA module); see stage 5
+  internal ss_gross content SS.SocialSecurity
+  # DF: /socialSecurityReports/*/federalTaxWithheld, summed
+  internal ssa_withholding content money
+
+  # ---- Stage 5: adjustments
+  internal educator content EA.EducatorAdjustment
+  internal hsa content H.Hsa
+  internal f_total_income content F1040.Form1040
+  internal student_loan content SL.StudentLoanAdjustment
+
+  # ---- Stage 6: AGI
+  internal f_agi content F1040.Form1040
+
+  # ---- Stage 7: credits
+  internal estimated content EP.EstimatedPayments
+  internal cdcc_members content list of CD.CdccMember
+  internal cdcc_primary content CD.CdccFiler
+  internal cdcc_secondary content CD.CdccFiler
+  internal cdcc content CD.Form2441
+  internal primary_disability content ED.DisabilityAnswers
+  internal secondary_disability content ED.DisabilityAnswers
+  internal schedule_r content ED.ScheduleR
+  internal savers content SC.SaversCredit
+  internal eitc content E.EarnedIncomeCredit
+  internal schedule_8812 content C.Schedule8812
+
+  # ---- Stage 8: the return
+  internal f_final content F1040.Form1040
+
+  # ---- Stage 9: knockouts
+  internal filers_ko content F.Filers
+  internal income_ko content KI.KnockoutsIncome
+  internal knockout_table content list of CalculatorKnockoutEntry
+
+  # ---- Outputs: Form 1040 (final pass)
+  output wages content money
+  output employer_income_subtotal content money
+  output interest_income content money
+  output taxable_pensions_and_annuities content money
+  output social_security_benefits content money
+  output taxable_social_security_benefits content money
+  output other_income content money
+  output total_income content money
+  output adjustments_to_income content money
+  output agi content money
+  output standard_or_itemized_deductions content money
+  output total_deductions content money
+  output taxable_income content money
+  output tentative_tax_from_taxable_income content money
+  output total_tentative_tax content money
+  output total_ctc_and_odc content money
+  output line8_of_schedule3 content money
+  output non_refundable_credits content money
+  output tax_less_non_refundable_credits content money
+  output total_tax content money
+  output form_w2_withholding content money
+  output form_1099_withholding content money
+  output total_withholding content money
+  output estimated_and_from_last_year content money
+  output earned_income_credit content money
+  output additional_ctc content money
+  output total_other_payments_refundable_credits content money
+  output total_payments content money
+  output overpayment content money
+  output balance_due content money
+  # ---- Outputs: module figures
+  output educator_expenses_adjustment content money
+  output student_loan_interest_adjustment_amount content money
+  output hsa_total_deductible_amount content money
+  output num_eitc_qualifying_children content integer
+  output ctc_eligible_dependents content integer
+  output odc_eligible_dependents content integer
+  output cdcc_total_credit content money
+  # Form 1040 line 1e. DF: /taxableDependentCare
+  output taxable_dependent_care content money
+  output qualified_saver_credit_amount content money
+  output total_edc content money
+  # ---- Outputs: knockouts
+  output unsupported condition
+  output fired_knockouts content list of CalculatorKnockout
+```
+
+### Stage 1: filers
+
+```catala
+scope Calculator:
+  definition f equals
+    output of F.Filers with {
+      -- filing_status: filing_status
+      -- marital_status: filers.marital_status
+      -- year_of_spouse_death: filers.year_of_spouse_death
+      -- primary_filer: filers.primary_filer
+      -- secondary_filer: filers.secondary_filer
+      -- secondary_filer_date_of_death: filers.secondary_filer_date_of_death
+      -- primary_filer_potential_claimer_filed_only_for_refund:
+           filers.primary_filer_potential_claimer_filed_only_for_refund
+      -- mfj_required_to_file: filers.mfj_required_to_file
+      -- mfj_dependents_filing_for_credits: filers.mfj_dependents_filing_for_credits
+      -- lived_together_all_year_with_spouse: filers.lived_together_all_year_with_spouse
+      -- spouse_lived_together_months: filers.spouse_lived_together_months
+      -- writable_lived_apart_last_six_months: filers.writable_lived_apart_last_six_months
+      -- writable_separation_agreement: filers.writable_separation_agreement
+      -- can_file_jointly_year_of_spouse_death: filers.can_file_jointly_year_of_spouse_death
+      -- in_registered_domestic_partnership: filers.in_registered_domestic_partnership
+      -- filer_residence_and_income_state: filers.filer_residence_and_income_state
+      -- spouse_itemizes: filers.spouse_itemizes
+      -- mfs_living_spouse_filing_return: filers.mfs_living_spouse_filing_return
+      -- mfs_deceased_spouse_filing_return: filers.mfs_deceased_spouse_filing_return
+      -- mfs_spouse_has_gross_income: filers.mfs_spouse_has_gross_income
+      # Read only by the community-property knockout; see filers_ko.
+      -- eligible_for_hoh: false }
+
+  # The per-filer age facts Filers does not export (age 55 for the HSA,
+  # under 18 for the Saver's credit), wired as Filers wires them.
+  definition primary_facts equals
+    output of F.FilerFacts with {
+      -- date_of_birth: filers.primary_filer.date_of_birth
+      -- is_deceased_in_tax_year: false
+      -- date_of_death: filers.secondary_filer_date_of_death
+      -- is_us_citizen_full_year: filers.primary_filer.is_us_citizen_full_year
+      -- writable_citizen_at_end_of_tax_year:
+           filers.primary_filer.writable_citizen_at_end_of_tax_year
+      -- writable_is_noncitizen_resident_full_year:
+           filers.primary_filer.writable_is_noncitizen_resident_full_year
+      -- writable_is_national: filers.primary_filer.writable_is_national }
+  definition secondary_facts equals
+    output of F.FilerFacts with {
+      -- date_of_birth: filers.secondary_filer.date_of_birth
+      -- is_deceased_in_tax_year: f.is_widowed_in_tax_year
+      -- date_of_death: filers.secondary_filer_date_of_death
+      -- is_us_citizen_full_year: filers.secondary_filer.is_us_citizen_full_year
+      -- writable_citizen_at_end_of_tax_year:
+           filers.secondary_filer.writable_citizen_at_end_of_tax_year
+      -- writable_is_noncitizen_resident_full_year:
+           filers.secondary_filer.writable_is_noncitizen_resident_full_year
+      -- writable_is_national: filers.secondary_filer.writable_is_national }
+```
+
+### Stage 2: household
+
+```catala
+scope Calculator:
+  definition qualifying_children equals
+    output of Q.QualifyingChildren with {
+      -- persons: map each m among household to m.dependent.person
+      -- minimum_filer_date_of_birth: f.minimum_filer_date_of_birth }
+
+  definition benefit_split equals
+    output of B.BenefitSplit with {
+      -- members: map each m among household to
+           B.Member { -- person: m.dependent.person -- answers: m.dependent.split }
+      -- minimum_filer_date_of_birth: f.minimum_filer_date_of_birth
+      -- treat_as_mfj: f.treat_as_mfj }
+
+  definition hoh_qss equals
+    output of HQ.HohQssPersons with {
+      -- members: map each m among household to
+           HQ.Member { -- dependent: m.dependent -- upkeep: m.upkeep }
+      -- minimum_filer_date_of_birth: f.minimum_filer_date_of_birth
+      -- treat_filers_as_dependents: f.treat_filers_as_dependents
+      -- either_filer_us_citizen_or_national: f.either_filer_us_citizen_or_national
+      -- treat_as_mfj: f.treat_as_mfj
+      -- eligible_for_mfj: f.eligible_for_mfj
+      -- filer_could_qualify_for_hoh: f.filer_could_qualify_for_hoh
+      -- filer_could_qualify_for_qss: f.filer_could_qualify_for_qss
+      -- filing_status: filing_status }
+
+  definition ctc_dependents equals
+    output of C.CtcOdcDependents with {
+      -- household_members: map each m among household to
+           C.HouseholdMember {
+             -- member: m.dependent
+             -- ssn_employment_validity: m.ssn_employment_validity }
+      -- minimum_filer_date_of_birth: f.minimum_filer_date_of_birth
+      -- treat_filers_as_dependents: f.treat_filers_as_dependents
+      -- either_filer_us_citizen_or_national: f.either_filer_us_citizen_or_national
+      -- treat_as_mfj: f.treat_as_mfj }
+
+  definition eitc_children equals
+    map each m among household to
+      (output of EitcQualifyingChildTest with {
+         -- member: m
+         -- minimum_filer_date_of_birth: f.minimum_filer_date_of_birth
+         -- treat_filers_as_dependents: f.treat_filers_as_dependents
+         -- either_filer_us_citizen_or_national: f.either_filer_us_citizen_or_national
+         -- treat_as_mfj: f.treat_as_mfj })
+```
+
+### Stage 3: filing status eligibility
+
+`Filing_status.FilingStatusEligibility` (issue #20, `filingStatus.xml`):
+`/eligibleForQss` (line 576), `/eligibleForHoh` (line 549; not if eligible
+for QSS, IRC 2(b)(1)), and the check that the chosen status is eligible
+(`ko_filing_status_not_eligible`, CONVENTIONS section 7 stage 3). The inputs
+are wired as `Filing_status.FilingStatusReturn` wires them. `eligible_for_hoh`
+also feeds the community-property knockout of `Filers` (stage 9).
+
+```catala
+scope Calculator:
+  definition filing_status_check equals
+    output of FS.FilingStatusEligibility with {
+      -- filing_status: filing_status
+      -- marital_status_allows_filing_married: f.eligible_for_mfs
+      -- eligible_for_mfj: f.eligible_for_mfj
+      -- filer_could_qualify_for_hoh: f.filer_could_qualify_for_hoh
+      -- filer_could_qualify_for_qss: f.filer_could_qualify_for_qss
+      -- hoh_qualifying_people_count: hoh_qss.hoh_qualifying_people_count
+      -- qss_qualifying_people_count: hoh_qss.qss_qualifying_people_count }
+
+  rule eligible_for_qss under condition filing_status_check.eligible_for_qss
+  consequence fulfilled
+
+  rule eligible_for_hoh under condition filing_status_check.eligible_for_hoh
+  consequence fulfilled
+```
+
+### Stage 4: income
+
+`Interest` takes `agi` only for its AGI-based knockouts (see
+`catala/form_1040.catala_en`); the amount instance here gets `$0`, the
+knockouts come from `income_ko`.
+
+```catala
+scope Calculator:
+  definition w2 equals
+    output of W.FormW2s with {
+      -- w2s: income.w2s
+      -- filing_status: filing_status
+      -- primary_filer_can_be_claimed: filers.primary_filer.can_be_claimed
+      -- secondary_filer_can_be_claimed: filers.secondary_filer.can_be_claimed
+      -- combat_pay_election: income.combat_pay_election }
+
+  definition interest equals
+    output of I.Interest with {
+      -- interest_reports: income.interest_reports
+      -- has_foreign_accounts_or_trusts:
+           screening.has_foreign_accounts or screening.is_foreign_trusts_grantor
+           or screening.has_foreign_trusts_transactions
+      -- filing_status: filing_status
+      -- agi: $0
+      -- flow_has_seen_deductions: true }
+
+  definition unemployment equals
+    output of U.Unemployment with { -- form_1099gs: income.form_1099gs }
+
+  definition misc equals
+    output of M.Form1099Miscs with { -- form_1099miscs: income.form_1099miscs }
+
+  definition rs equals
+    output of RS.Form1099Rs with { -- forms: income.form_1099rs }
+```
+
+Form 1040 line 1e (taxable dependent care benefits) is Form 2441 Part III
+(line 26), which reads the W-2 box 10 benefits, the expenses and the earned
+income, but not the AGI or the tax (those feed only Part II, the credit). The
+first `Form2441` call (`cdcc_benefits`) gets `$0` for both and supplies only
+line 1e; the second (`cdcc`, stage 7) gets the real ones and supplies the
+credit. An assertion in stage 7 checks that both give the same line 1e.
+
+The per-filer W-2 amounts come from `Form_w2s.FormW2s`: line 1a wages of the
+filer (DF `/primaryFilerEmployerIncomeSubtotalBase`, lines 1b to 1d and 1f to
+1h being `$0`), box 12 code Q, box 10. The secondary filer counts only on a
+joint return (as in `difftest/mappings/cdcc.mjs`). The spouses shared an abode
+for more than half the year when they lived together all year or more than
+six months (`/spouseLivedTogetherMonths`).
+
+```catala
+scope Calculator:
+  definition cdcc_members equals
+    map each m among household to
+      CD.CdccMember {
+        -- member: m.dependent
+        -- cdcc: CD.CdccAnswers {
+             -- unable_to_care_for_self: m.cdcc.unable_to_care_for_self
+             -- has_dependent_care_expenses: m.cdcc.has_dependent_care_expenses
+             -- expenses_paid_to_qualifying_provider: m.cdcc.expenses_paid_to_qualifying_provider
+             -- writable_qualifying_expense_amount: m.cdcc.writable_qualifying_expense_amount
+             -- tp_paid_most_of_home_upkeep: m.upkeep.tp_paid_most_of_home_upkeep } }
+
+  definition cdcc_primary equals CD.CdccFiler {
+    -- employer_income_subtotal_base: w2.primary_filer_wages
+    -- nontaxable_combat_pay: w2.primary_filer_combat_pay
+    -- elect_combat_pay_for_credit: primary_extra.cdcc.elect_combat_pay_for_credit
+    -- elect_combat_pay_for_benefits: primary_extra.cdcc.elect_combat_pay_for_benefits
+    -- dependent_care_benefits: w2.primary_filer_dependent_care_benefits
+    -- dependent_care_plan_maximum: primary_extra.cdcc.dependent_care_plan_maximum
+    -- is_disabled: primary_extra.cdcc.is_disabled
+    -- deemed_income_month_earnings: primary_extra.cdcc.deemed_income_month_earnings
+    -- has_dependent_care_expenses: primary_extra.cdcc.has_dependent_care_expenses
+    -- expenses_paid_to_qualifying_provider: primary_extra.cdcc.expenses_paid_to_qualifying_provider
+    -- writable_qualifying_expense_amount: primary_extra.cdcc.writable_qualifying_expense_amount }
+
+  definition cdcc_secondary equals
+    if f.treat_as_mfj then CD.CdccFiler {
+      -- employer_income_subtotal_base: w2.secondary_filer_wages
+      -- nontaxable_combat_pay: w2.mfj_spouse_combat_pay
+      -- elect_combat_pay_for_credit: secondary_extra.cdcc.elect_combat_pay_for_credit
+      -- elect_combat_pay_for_benefits: secondary_extra.cdcc.elect_combat_pay_for_benefits
+      -- dependent_care_benefits: w2.secondary_filer_dependent_care_benefits
+      -- dependent_care_plan_maximum: secondary_extra.cdcc.dependent_care_plan_maximum
+      -- is_disabled: secondary_extra.cdcc.is_disabled
+      -- deemed_income_month_earnings: secondary_extra.cdcc.deemed_income_month_earnings
+      -- has_dependent_care_expenses: secondary_extra.cdcc.has_dependent_care_expenses
+      -- expenses_paid_to_qualifying_provider: secondary_extra.cdcc.expenses_paid_to_qualifying_provider
+      -- writable_qualifying_expense_amount: secondary_extra.cdcc.writable_qualifying_expense_amount }
+    else CD.CdccFiler {
+      -- employer_income_subtotal_base: $0
+      -- nontaxable_combat_pay: $0
+      -- elect_combat_pay_for_credit: false
+      -- elect_combat_pay_for_benefits: false
+      -- dependent_care_benefits: $0
+      -- dependent_care_plan_maximum: $0
+      -- is_disabled: false
+      -- deemed_income_month_earnings: []
+      -- has_dependent_care_expenses: false
+      -- expenses_paid_to_qualifying_provider: false
+      -- writable_qualifying_expense_amount: $0 }
+
+  definition cdcc_benefits equals
+    output of CD.Form2441 with {
+      -- filing_status: filing_status
+      -- household: cdcc_members
+      -- minimum_filer_date_of_birth: f.minimum_filer_date_of_birth
+      -- treat_filers_as_dependents: f.treat_filers_as_dependents
+      -- either_filer_us_citizen_or_national: f.either_filer_us_citizen_or_national
+      -- treat_as_mfj: f.treat_as_mfj
+      -- lived_apart_last_six_months: f.mfs_filer_could_be_considered_unmarried_for_cdcc
+      -- spouse_same_abode_more_than_half_year:
+           filers.lived_together_all_year_with_spouse
+           or filers.spouse_lived_together_months
+              = F.SpouseLivedTogetherMonths.LivedTogetherMoreThanSixMonths
+      -- primary_filer: cdcc_primary
+      -- secondary_filer: cdcc_secondary
+      -- has_mfs_spouse_earned_income: cdcc_answers.has_mfs_spouse_earned_income
+      -- writable_mfs_spouse_earned_income: cdcc_answers.writable_mfs_spouse_earned_income
+      -- writable_total_qualified_dependent_care_expenses:
+           cdcc_answers.writable_total_qualified_dependent_care_expenses
+      -- writable_carryover_amount: cdcc_answers.writable_carryover_amount
+      -- writable_forfeited_amount: cdcc_answers.writable_forfeited_amount
+      -- has_credit_for_prior_year_expenses: cdcc_answers.has_credit_for_prior_year_expenses
+      -- claimed_credit_for_prior_year_expenses: cdcc_answers.claimed_credit_for_prior_year_expenses
+      -- claimed_max_credit_for_prior_tax_year: cdcc_answers.claimed_max_credit_for_prior_tax_year
+      -- has_household_employee: cdcc_answers.has_household_employee
+      -- benefits_from_sole_proprietorship_or_partnership:
+           cdcc_answers.benefits_from_sole_proprietorship_or_partnership
+      -- agi: $0
+      -- total_tentative_tax: $0 }
+
+  definition taxable_dependent_care equals cdcc_benefits.taxable_benefits
+```
+
+The first Form 1040 call has the income lines that do not depend on Social
+Security benefits: 1z, 2b, 5b, 8 (unemployment compensation and the Alaska
+PFD). The Social Security Benefits Worksheet (`i1040gi--2024.pdf` p 32) reads
+them on its line 3; its line 6 is Schedule 1 lines 11 to 20 and 23 to 25,
+which in DF is educator expenses plus the HSA deduction
+(`/adjustmentsToIncomeExcludingStudentLoanInterest`). Lines 3b, 4b and 7 are
+`$0` (out of scope in DF, `income.xml`).
+
+```catala
+scope Calculator:
+  definition base_1040 equals Form1040Base {
+    -- filing_status: filing_status
+    -- w2s: income.w2s
+    -- interest_reports: income.interest_reports
+    -- has_foreign_accounts_or_trusts:
+         screening.has_foreign_accounts or screening.is_foreign_trusts_grantor
+         or screening.has_foreign_trusts_transactions
+    -- combat_pay_election: income.combat_pay_election
+    -- primary_filer_can_be_claimed: filers.primary_filer.can_be_claimed
+    -- secondary_filer_can_be_claimed: filers.secondary_filer.can_be_claimed
+    -- treat_as_mfs: f.treat_as_mfs
+    -- primary_filer_is_blind: filers.primary_filer.is_blind
+    -- primary_filer_age65_or_older: f.primary_filer_age65_or_older
+    -- secondary_filer_is_blind: filers.secondary_filer.is_blind
+    -- secondary_filer_age65_or_older: f.secondary_filer_age65_or_older
+    -- is_widowed_in_tax_year: f.is_widowed_in_tax_year
+    -- mfj_deceased_spouse_reached_age65: f.mfj_deceased_spouse_reached_age65_for_standard_d
+    -- mfs_spouse_65_or_older: filers.mfs_spouse_65_or_older
+    -- mfs_spouse_provides_no_benefits: f.mfs_spouse_provides_no_benefits
+    -- treat_filers_as_dependents: f.treat_filers_as_dependents }
+
+  definition slots_income equals Form1040Slots {
+    # Line 1e, Form 2441 line 26
+    -- taxable_dependent_care: taxable_dependent_care
+    -- taxable_pensions_and_annuities: rs.line_5b
+    -- taxable_social_security_benefits: $0
+    -- unemployment_compensation: unemployment.unemployment_compensation
+    -- alaska_pfd_income: misc.alaska_pfd_income
+    -- student_loan_interest_adjustment_amount: $0
+    -- educator_expenses_adjustment: $0
+    -- hsa_total_deductible_amount: $0
+    # TODO(#32 to #34): excess advance PTC repayment (line 17)
+    -- total_additional_taxes_owed: $0
+    -- total_ctc_and_odc: $0
+    -- line8_of_schedule3: $0
+    -- other_1099_withholding: $0
+    -- paid_estimated_taxes_or_from_last_year: false
+    -- estimated_and_from_last_year: $0
+    -- earned_income_credit: $0
+    -- additional_ctc: $0
+    # TODO(#32 to #34): net PTC (line 31)
+    -- other_payments_and_refundable_credits_total: $0 }
+
+  definition f_income equals
+    (output of Form1040Pass with { -- base: base_1040 -- slots: slots_income }).r
+
+  definition ss equals
+    output of SS.SocialSecurity with {
+      -- report_net_benefits: income.ssa_net_benefits
+      -- filing_status: filing_status
+      -- lived_apart_all_year: f.lived_apart_all_year
+      -- line_1z: f_income.employer_income_subtotal
+      -- line_2b: f_income.interest_income
+      -- line_2a: interest.tax_exempt_interest
+      -- line_3b: $0
+      -- line_4b: $0
+      -- line_5b: rs.line_5b
+      -- line_7_capital_gains: $0
+      -- line_8_other_income: f_income.other_income
+      -- adjustments_excluding_student_loan_interest:
+           educator.educator_expenses_adjustment + hsa.hsa_total_deductible_amount }
+
+  # DF taxCalculations.xml /form1099Withholding: the SSA-1099 box 6 term,
+  # each report's amount unrounded (socialSecurity.xml federalTaxWithheld).
+  definition ssa_withholding equals
+    Money.sum of income.ssa_federal_tax_withheld
+```
+
+### Stage 5: adjustments
+
+The HSA deduction (Form 8889 line 13) reads lines 5a, 6a and 2a, all
+available before AGI. Its `knockout_has_no_payments_or_credits` input feeds
+only a knockout; this amount instance gets `false`, and `income_ko` gets the
+real value.
+
+```catala
+scope Calculator:
+  definition educator equals
+    output of EA.EducatorAdjustment with {
+      -- was_k12_educators: adjustments.was_k12_educators
+      -- primary_educator_expenses_writable: adjustments.primary_educator_expenses_writable
+      -- secondary_educator_expenses_writable: adjustments.secondary_educator_expenses_writable
+      -- is_mfj_dependent: f.is_mfj_dependent }
+
+  definition hsa equals
+    output of H.Hsa with {
+      -- is_filing_status_mfj: f.is_filing_status_mfj
+      -- is_married: f.is_married
+      -- is_single: f.is_single
+      -- primary_filer_age55_or_older: primary_facts.age55_or_older
+      -- secondary_filer_age55_or_older: secondary_facts.age55_or_older
+      -- primary_filer_can_be_claimed: filers.primary_filer.can_be_claimed
+      -- secondary_filer_can_be_claimed: filers.secondary_filer.can_be_claimed
+      -- primary_filer_total_hsa_contributions_from_w2s:
+           w2.primary_filer_total_hsa_contributions_from_w2s
+      -- secondary_filer_total_hsa_contributions_from_w2s:
+           w2.secondary_filer_total_hsa_contributions_from_w2s
+      -- has_primary_filer_hsa_contributions_from_w2s:
+           w2.has_primary_filer_hsa_contributions_from_w2s
+      -- has_secondary_filer_hsa_contributions_from_w2s:
+           w2.has_secondary_filer_hsa_contributions_from_w2s
+      -- knockout_has_no_payments_or_credits: false
+      -- paid_estimated_taxes_or_from_last_year: payments.paid_estimated_taxes_or_from_last_year
+      -- tax_exempt_interest: interest.tax_exempt_interest
+      -- pensions_and_annuities: rs.line_5a
+      -- social_security_benefits: ss_gross.line_6a
+      -- primary_filer: primary_extra.hsa
+      -- secondary_filer: secondary_extra.hsa
+      -- some_filer_had_non_w2_hsa_activity: adjustments.hsa.some_filer_had_non_w2_hsa_activity
+      -- writable_primary_filer_had_non_w2_hsa_activity:
+           adjustments.hsa.writable_primary_filer_had_non_w2_hsa_activity
+      -- writable_secondary_filer_had_non_w2_hsa_activity:
+           adjustments.hsa.writable_secondary_filer_had_non_w2_hsa_activity
+      -- has_hsa_medical_savings_account_type: adjustments.hsa.has_hsa_medical_savings_account_type
+      -- writable_has_hsa_excess_contributions_previous_year:
+           adjustments.hsa.writable_has_hsa_excess_contributions_previous_year
+      -- writable_has_hsa_withdrawn_excess_contributions_yes_no:
+           adjustments.hsa.writable_has_hsa_withdrawn_excess_contributions_yes_no
+      -- some_filers_made_testing_period_contribution:
+           adjustments.hsa.some_filers_made_testing_period_contribution
+      -- some_filers_have_testing_period_additional_income:
+           adjustments.hsa.some_filers_have_testing_period_additional_income
+      -- hsa_distributions: adjustments.hsa.hsa_distributions }
+
+
+  # The second call adds line 6b and the two adjustments that do not depend
+  # on total income; its line 9 is the student loan worksheet's line 1.
+  definition slots_total_income equals slots_income but replace {
+    -- taxable_social_security_benefits: ss.line_6b
+    -- educator_expenses_adjustment: educator.educator_expenses_adjustment
+    -- hsa_total_deductible_amount: hsa.hsa_total_deductible_amount }
+
+  # Line 6a does not depend on the adjustments; this instance gets $0 for
+  # worksheet line 6 so that the HSA module (which reads 6a only for its
+  # knockout ko_no_payments_hsa_distribution) does not depend on itself.
+  definition ss_gross equals
+    output of SS.SocialSecurity with {
+      -- report_net_benefits: income.ssa_net_benefits
+      -- filing_status: filing_status
+      -- lived_apart_all_year: f.lived_apart_all_year
+      -- line_1z: f_income.employer_income_subtotal
+      -- line_2b: f_income.interest_income
+      -- line_2a: interest.tax_exempt_interest
+      -- line_3b: $0
+      -- line_4b: $0
+      -- line_5b: rs.line_5b
+      -- line_7_capital_gains: $0
+      -- line_8_other_income: f_income.other_income
+      -- adjustments_excluding_student_loan_interest: $0 }
+
+  definition f_total_income equals
+    (output of Form1040Pass with { -- base: base_1040 -- slots: slots_total_income }).r
+
+  # Schedule 1 line 21. MAGI = line 9 less the other adjustments (IRC 221(b)(2)(C)).
+  definition student_loan equals
+    output of SL.StudentLoanAdjustment with {
+      -- filing_status: filing_status
+      -- had_student_loan_interest_payments: adjustments.had_student_loan_interest_payments
+      -- student_loans_qualify: adjustments.student_loans_qualify
+      -- student_loan_interest_amount: adjustments.student_loan_interest_amount
+      -- is_mfj_dependent: f.is_mfj_dependent
+      -- either_filer_is_claimed_as_dependent: f.either_filer_is_claimed_as_dependent
+      -- total_income: f_total_income.total_income
+      -- adjustments_to_income_excluding_student_loan_interest:
+           educator.educator_expenses_adjustment + hsa.hsa_total_deductible_amount }
+```
+
+### Stage 6: adjusted gross income
+
+```catala
+scope Calculator:
+  definition slots_agi equals slots_total_income but replace {
+    -- student_loan_interest_adjustment_amount:
+         student_loan.student_loan_interest_adjustment_amount }
+
+  definition f_agi equals
+    (output of Form1040Pass with { -- base: base_1040 -- slots: slots_agi }).r
+```
+
+### Stage 7: credits
+
+Credit order (scope.md section 6.7, DF `schedule3.xml` and the credit limit
+worksheets): CDCC first (Form 2441, `cdcc`), then Schedule R, whose Credit Limit
+Worksheet line 3 is line 18 less the CDCC (`elderlyAndDisabled.xml`
+`/edcTaxLiabilityLimitCalc`), then the Saver's credit (Form 8880 line 11:
+line 18 less CDCC and Schedule R), then the CTC/ODC (Credit Limit Worksheet A:
+line 18 less CDCC, Saver's and Schedule R). The EITC reads AGI and line 1z;
+the ACTC (Schedule 8812 Part II-A) reads the EITC. Nothing reads its own
+output, so the order is acyclic (scope.md section 6.1).
+
+Schedule R line 13b is the self-reported nontaxable payments, rounded as DF
+`/edcSelfReportedNonTaxablePaymentAmount` does; line 13a is the nontaxable
+part of the Social Security benefits (1040 line 6a less 6b).
+
+```catala
+scope Calculator:
+  definition estimated equals
+    output of EP.EstimatedPayments with {
+      -- paid_estimated_taxes_or_from_last_year: payments.paid_estimated_taxes_or_from_last_year
+      -- estimated_tax_payment_writable: payments.estimated_tax_payment_writable
+      -- paid_estimated_taxes_or_from_last_year_under_different_name:
+           payments.paid_estimated_taxes_or_from_last_year_under_different_name
+      -- paid_estimated_taxes_with_former_spouse: payments.paid_estimated_taxes_with_former_spouse }
+
+  # Form 2441 line 11, Schedule 3 line 2 (issue #28)
+  definition cdcc equals
+    output of CD.Form2441 with {
+      -- filing_status: filing_status
+      -- household: cdcc_members
+      -- minimum_filer_date_of_birth: f.minimum_filer_date_of_birth
+      -- treat_filers_as_dependents: f.treat_filers_as_dependents
+      -- either_filer_us_citizen_or_national: f.either_filer_us_citizen_or_national
+      -- treat_as_mfj: f.treat_as_mfj
+      -- lived_apart_last_six_months: f.mfs_filer_could_be_considered_unmarried_for_cdcc
+      -- spouse_same_abode_more_than_half_year:
+           filers.lived_together_all_year_with_spouse
+           or filers.spouse_lived_together_months
+              = F.SpouseLivedTogetherMonths.LivedTogetherMoreThanSixMonths
+      -- primary_filer: cdcc_primary
+      -- secondary_filer: cdcc_secondary
+      -- has_mfs_spouse_earned_income: cdcc_answers.has_mfs_spouse_earned_income
+      -- writable_mfs_spouse_earned_income: cdcc_answers.writable_mfs_spouse_earned_income
+      -- writable_total_qualified_dependent_care_expenses:
+           cdcc_answers.writable_total_qualified_dependent_care_expenses
+      -- writable_carryover_amount: cdcc_answers.writable_carryover_amount
+      -- writable_forfeited_amount: cdcc_answers.writable_forfeited_amount
+      -- has_credit_for_prior_year_expenses: cdcc_answers.has_credit_for_prior_year_expenses
+      -- claimed_credit_for_prior_year_expenses: cdcc_answers.claimed_credit_for_prior_year_expenses
+      -- claimed_max_credit_for_prior_tax_year: cdcc_answers.claimed_max_credit_for_prior_tax_year
+      -- has_household_employee: cdcc_answers.has_household_employee
+      -- benefits_from_sole_proprietorship_or_partnership:
+           cdcc_answers.benefits_from_sole_proprietorship_or_partnership
+      -- agi: f_agi.agi
+      -- total_tentative_tax: f_agi.total_tentative_tax }
+
+  # Part III does not read AGI or the tax: both calls give the same line 1e.
+  assertion cdcc.taxable_benefits = cdcc_benefits.taxable_benefits
+
+  definition cdcc_total_credit equals cdcc.cdcc_total_credit
+
+  # DF: /primaryFilerHasW2WagesGreaterThan0, /secondaryFilerHasW2WagesGreaterThan0
+  definition primary_disability equals primary_extra.disability but replace {
+    -- has_w2_wages: w2.primary_filer_has_w2_wages_greater_than_0 }
+  definition secondary_disability equals secondary_extra.disability but replace {
+    -- has_w2_wages: w2.secondary_filer_has_w2_wages_greater_than_0 }
+
+  definition schedule_r equals
+    output of ED.ScheduleR with {
+      -- filing_status: filing_status
+      -- lived_apart_all_year: f.lived_apart_all_year
+      -- primary_age65_or_older: f.primary_filer_age65_or_older
+      -- secondary_age65_or_older: f.secondary_filer_age65_or_older
+      -- primary_answers: primary_disability
+      -- secondary_answers: secondary_disability
+      -- agi: f_agi.agi
+      -- non_taxable_social_security_benefits: ss.non_taxable_benefits
+      -- self_reported_non_taxable_payments:
+           if credits.has_self_reported_non_taxable_payments
+           then R.round_dollar of credits.self_reported_non_taxable_payment_amount
+           else $0
+      -- credit_limit_worksheet_line_3: f_agi.total_tentative_tax - cdcc_total_credit }
+
+  definition savers equals
+    output of SC.SaversCredit with {
+      -- filing_status: filing_status
+      -- agi: f_agi.agi
+      -- is_mfj_dependent: f.is_mfj_dependent
+      -- primary_filer_is_under18: primary_facts.is_under18
+      -- primary_filer_is_student: primary_extra.is_student
+      -- primary_filer_is_claimed_as_dependent: f.primary_filer_is_claimed_as_dependent
+      -- secondary_filer_is_under18: secondary_facts.is_under18
+      -- secondary_filer_is_student: secondary_extra.is_student
+      -- secondary_filer_is_claimed_as_dependent: f.secondary_filer_is_claimed_as_dependent
+      -- primary_filer_total_deferrals_and_contributions:
+           w2.primary_filer_total_deferrals_and_contributions
+      -- secondary_filer_total_deferrals_and_contributions:
+           w2.secondary_filer_total_deferrals_and_contributions
+      -- primary_filer_savers_gross_distributions: rs.primary_filer_savers_gross_distributions
+      -- secondary_filer_savers_gross_distributions: rs.secondary_filer_savers_gross_distributions
+      -- total_tentative_tax: f_agi.total_tentative_tax
+      -- cdcc_total_credit: cdcc_total_credit
+      -- total_edc: schedule_r.total_edc
+      -- has_distributions_in_last_three_years: credits.has_distributions_in_last_three_years
+      -- has_current_year_distributions: credits.has_current_year_distributions
+      -- has_self_reported_contributions: credits.has_self_reported_contributions }
+
+  definition num_eitc_qualifying_children equals
+    number of (list of c among eitc_children such that c.eitc_qualifying_child)
+
+  definition eitc equals
+    output of E.EarnedIncomeCredit with {
+      -- filing_status: filing_status
+      -- employer_income_subtotal: f_agi.employer_income_subtotal
+      -- agi: f_agi.agi
+      -- tax_exempt_interest: interest.tax_exempt_interest
+      -- interest_income: f_agi.interest_income
+      # Lines 3b and 7: OUT OF SCOPE in DF ($0)
+      -- ordinary_dividends: $0
+      -- capital_gains_or_losses: $0
+      -- primary_filer_combat_pay: w2.primary_filer_combat_pay
+      -- mfj_spouse_combat_pay: w2.mfj_spouse_combat_pay
+      -- all_combat_pay: w2.all_combat_pay
+      -- combat_pay_election_made: income.combat_pay_election_made
+      -- combat_pay_election: income.combat_pay_election
+      -- num_eitc_qualifying_children: num_eitc_qualifying_children
+      -- num_eitc_qualifying_children_for_calculation:
+           number of (list of c among eitc_children such that
+                        c.eitc_qualifying_child_for_calculation)
+      -- is_married: f.is_married
+      -- treat_as_mfs: f.treat_as_mfs
+      -- special_rule_for_separated_spouses: f.special_rule_for_separated_spouses
+      -- treat_filers_as_dependents: f.treat_filers_as_dependents
+      -- is_mfj_dependent: f.is_mfj_dependent
+      -- filers_us_citizen_or_ra_all_year: f.filers_us_citizen_or_ra_all_year
+      -- filers_have_valid_ssns_for_eitc:
+           (ssn_valid_for_eitc of primary_extra.tin,
+              filers.primary_filer.is_us_citizen_full_year)
+           and ((not f.treat_as_mfj)
+                or (ssn_valid_for_eitc of secondary_extra.tin,
+                      filers.secondary_filer.is_us_citizen_full_year))
+      -- primary_filer_age25_or_older_for_eitc: f.primary_filer_age25_or_older_for_eitc
+      -- primary_filer_age64_or_younger_for_eitc: f.primary_filer_age64_or_younger_for_eitc
+      -- secondary_filer_age25_or_older_for_eitc: f.secondary_filer_age25_or_older_for_eitc
+      -- secondary_filer_age64_or_younger_for_eitc: f.secondary_filer_age64_or_younger_for_eitc
+      -- eitc_qc_of_another: credits.eitc_qc_of_another
+      -- eitc_qc_of_another_required_to_file: credits.eitc_qc_of_another_required_to_file
+      -- eitc_qc_of_another_is_filing: credits.eitc_qc_of_another_is_filing
+      -- eitc_qc_of_another_is_filing_refund_only: credits.eitc_qc_of_another_is_filing_refund_only
+      -- eitc_had_improper_claims: credits.eitc_had_improper_claims
+      -- eitc_improper_claims_due_to_qc: credits.eitc_improper_claims_due_to_qc
+      -- eitc_improper_claim_taken_since_disallowal: credits.eitc_improper_claim_taken_since_disallowal
+      -- eitc_received_improper_claims_notice: credits.eitc_received_improper_claims_notice
+      -- eitc_improper_claims_notice_expired: credits.eitc_improper_claims_notice_expired }
+
+  definition schedule_8812 equals
+    output of C.Schedule8812 with {
+      -- ctc_eligible_dependents: ctc_dependents.ctc_eligible_dependents
+      -- odc_eligible_dependents: ctc_dependents.odc_eligible_dependents
+      -- filing_status: filing_status
+      -- agi: f_agi.agi
+      -- total_tentative_tax: f_agi.total_tentative_tax
+      -- cdcc_total_credit: cdcc_total_credit
+      -- qualified_saver_credit_amount: savers.qualified_saver_credit_amount
+      -- total_edc: schedule_r.total_edc
+      -- employer_income_subtotal: f_agi.employer_income_subtotal
+      -- all_combat_pay: w2.all_combat_pay
+      -- social_security_taxes_withheld: w2.social_security_taxes_withheld
+      -- earned_income_credit: eitc.earned_income_credit
+      -- received_improper_claims: credits.received_improper_claims
+      -- received_improper_claims_notice: credits.received_improper_claims_notice
+      -- improper_claims_notice_expired: credits.improper_claims_notice_expired
+      -- has_filed_ctc_odc_since_notice_expired: credits.has_filed_ctc_odc_since_notice_expired }
+```
+
+### Stage 8: the return
+
+Schedule 3 line 8 (`schedule3.xml` `/line8OfSchedule3`): line 1 (placeholder,
+`$0`) + CDCC (line 2) + line 3 (`$0`) + Saver's (line 4) + line 5b (`$0`) +
+line 7, where line 7 (`/totalOtherNonrefundableCredits`) is Schedule R
+(line 6d) plus three `$0` placeholders. Line 25b (`/form1099Withholding`) is
+the 1099-INT term (inside `Form1040`) plus SSA-1099, 1099-G, 1099-MISC and
+1099-R (the slot `other_1099_withholding`).
+
+```catala
+scope Calculator:
+  definition slots_final equals slots_agi but replace {
+    -- total_ctc_and_odc: schedule_8812.total_ctc_and_odc
+    -- line8_of_schedule3:
+         $0 + cdcc_total_credit + $0 + savers.qualified_saver_credit_amount + $0
+         + (schedule_r.total_edc + $0 + $0 + $0)
+    -- other_1099_withholding:
+         ssa_withholding
+         + unemployment.form_1099g_federal_tax_withheld
+         + misc.form_1099_misc_federal_income_tax_withheld
+         + rs.form_1099r_federal_income_tax_withheld
+    -- paid_estimated_taxes_or_from_last_year: payments.paid_estimated_taxes_or_from_last_year
+    -- estimated_and_from_last_year: estimated.estimated_and_from_last_year
+    -- earned_income_credit: eitc.earned_income_credit
+    -- additional_ctc: schedule_8812.additional_ctc }
+
+  definition f_final equals
+    (output of Form1040Pass with { -- base: base_1040 -- slots: slots_final }).r
+
+  definition wages equals f_final.wages
+  definition employer_income_subtotal equals f_final.employer_income_subtotal
+  definition interest_income equals f_final.interest_income
+  definition taxable_pensions_and_annuities equals rs.line_5b
+  definition social_security_benefits equals ss.line_6a
+  definition taxable_social_security_benefits equals ss.line_6b
+  definition other_income equals f_final.other_income
+  definition total_income equals f_final.total_income
+  definition adjustments_to_income equals f_final.adjustments_to_income
+  definition agi equals f_final.agi
+  definition standard_or_itemized_deductions equals f_final.standard_or_itemized_deductions
+  definition total_deductions equals f_final.total_deductions
+  definition taxable_income equals f_final.taxable_income
+  definition tentative_tax_from_taxable_income equals f_final.tentative_tax_from_taxable_income
+  definition total_tentative_tax equals f_final.total_tentative_tax
+  definition total_ctc_and_odc equals schedule_8812.total_ctc_and_odc
+  definition line8_of_schedule3 equals slots_final.line8_of_schedule3
+  definition non_refundable_credits equals f_final.non_refundable_credits
+  definition tax_less_non_refundable_credits equals f_final.tax_less_non_refundable_credits
+  definition total_tax equals f_final.total_tax
+  definition form_w2_withholding equals f_final.form_w2_withholding
+  definition form_1099_withholding equals f_final.form_1099_withholding
+  definition total_withholding equals f_final.total_withholding
+  definition estimated_and_from_last_year equals estimated.estimated_and_from_last_year
+  definition earned_income_credit equals eitc.earned_income_credit
+  definition additional_ctc equals schedule_8812.additional_ctc
+  definition total_other_payments_refundable_credits equals
+    f_final.total_other_payments_refundable_credits
+  definition total_payments equals f_final.total_payments
+  definition overpayment equals f_final.overpayment
+  definition balance_due equals f_final.balance_due
+
+  definition educator_expenses_adjustment equals educator.educator_expenses_adjustment
+  definition student_loan_interest_adjustment_amount equals
+    student_loan.student_loan_interest_adjustment_amount
+  definition hsa_total_deductible_amount equals hsa.hsa_total_deductible_amount
+  definition ctc_eligible_dependents equals ctc_dependents.ctc_eligible_dependents
+  definition odc_eligible_dependents equals ctc_dependents.odc_eligible_dependents
+  definition qualified_saver_credit_amount equals savers.qualified_saver_credit_amount
+  definition total_edc equals schedule_r.total_edc
+```
+
+### Stage 9: knockouts
+
+`flow.xml` `/flowIsKnockedOut` is an `Any` over every knockout fact
+(CONVENTIONS section 6). `Knockouts_income` (issue #36) aggregates the
+income, HSA and process members; it re-runs the income modules with the real
+AGI (the interest knockouts read it) and the real
+`/knockoutHasNoPaymentsOrCredits` of the final return (the HSA knockout reads
+it). The household and credit members (issue #37) are the `unsupported` of
+each module: `Filers` (called again with the computed `eligible_for_hoh`),
+`Qualifying_child`, `Dependents_benefit_split`, `Hoh_qss_persons`, `Eitc`,
+`Savers_credit`, `Filing_status` (the chosen status is not eligible) and
+`Cdcc`. `Form1040.unsupported` adds nothing new: its W-2 and interest
+members and its `ko_knockout_has_no_payments_or_credits` are already in
+`income_ko`; it is kept in the disjunction anyway.
+
+```catala
+scope Calculator:
+  definition filers_ko equals
+    output of F.Filers with {
+      -- filing_status: filing_status
+      -- marital_status: filers.marital_status
+      -- year_of_spouse_death: filers.year_of_spouse_death
+      -- primary_filer: filers.primary_filer
+      -- secondary_filer: filers.secondary_filer
+      -- secondary_filer_date_of_death: filers.secondary_filer_date_of_death
+      -- primary_filer_potential_claimer_filed_only_for_refund:
+           filers.primary_filer_potential_claimer_filed_only_for_refund
+      -- mfj_required_to_file: filers.mfj_required_to_file
+      -- mfj_dependents_filing_for_credits: filers.mfj_dependents_filing_for_credits
+      -- lived_together_all_year_with_spouse: filers.lived_together_all_year_with_spouse
+      -- spouse_lived_together_months: filers.spouse_lived_together_months
+      -- writable_lived_apart_last_six_months: filers.writable_lived_apart_last_six_months
+      -- writable_separation_agreement: filers.writable_separation_agreement
+      -- can_file_jointly_year_of_spouse_death: filers.can_file_jointly_year_of_spouse_death
+      -- in_registered_domestic_partnership: filers.in_registered_domestic_partnership
+      -- filer_residence_and_income_state: filers.filer_residence_and_income_state
+      -- spouse_itemizes: filers.spouse_itemizes
+      -- mfs_living_spouse_filing_return: filers.mfs_living_spouse_filing_return
+      -- mfs_deceased_spouse_filing_return: filers.mfs_deceased_spouse_filing_return
+      -- mfs_spouse_has_gross_income: filers.mfs_spouse_has_gross_income
+      -- eligible_for_hoh: eligible_for_hoh }
+
+  definition income_ko equals
+    output of KI.KnockoutsIncome with {
+      -- filing_status: filing_status
+      -- agi: f_final.agi
+      -- primary_filer_can_be_claimed: filers.primary_filer.can_be_claimed
+      -- secondary_filer_can_be_claimed: filers.secondary_filer.can_be_claimed
+      -- paid_estimated_taxes_or_from_last_year: payments.paid_estimated_taxes_or_from_last_year
+      -- knockout_has_no_payments_or_credits: f_final.ko_knockout_has_no_payments_or_credits
+      -- income_sources_supported: screening.income_sources_supported
+      -- received_digital_assets: screening.received_digital_assets
+      -- disposed_digital_assets: screening.disposed_digital_assets
+      -- has_foreign_accounts: screening.has_foreign_accounts
+      -- is_foreign_trusts_grantor: screening.is_foreign_trusts_grantor
+      -- has_foreign_trusts_transactions: screening.has_foreign_trusts_transactions
+      -- made_ira_contributions: screening.made_ira_contributions
+      -- interest_reports: income.interest_reports
+      -- w2s: income.w2s
+      -- combat_pay_election: income.combat_pay_election
+      -- w2_box15_income_from_different_state: screening.w2_box15_income_from_different_state
+      -- w2_has_box14_nyrrta_knockout_code: screening.w2_has_box14_nyrrta_knockout_code
+      -- w2_has_rrta_codes_in_box14: screening.w2_has_rrta_codes_in_box14
+      -- lived_in_ny: screening.lived_in_ny
+      -- w2_paid_yonkers_taxes: screening.w2_paid_yonkers_taxes
+      -- part_year_yonkers_resident: screening.part_year_yonkers_resident
+      -- filer_residence_and_income_state: filers.filer_residence_and_income_state
+      -- primary_filer_forms_another_state: screening.primary_filer_forms_another_state
+      -- received_alaska_pfd: screening.received_alaska_pfd
+      -- spouse_received_alaska_pfd: screening.spouse_received_alaska_pfd
+      -- treat_as_mfj: f.treat_as_mfj
+      -- spouse_lives_in_other_or_multiple_states: screening.spouse_lives_in_other_or_multiple_states
+      -- spouse_forms_another_state: screening.spouse_forms_another_state
+      -- form_1099gs: income.form_1099gs
+      -- form_1099miscs: income.form_1099miscs
+      -- form_1099rs: income.form_1099rs
+      -- report_net_benefits: income.ssa_net_benefits
+      -- lived_apart_all_year: f.lived_apart_all_year
+      -- line_1z: f_income.employer_income_subtotal
+      -- line_2a: interest.tax_exempt_interest
+      -- line_2b: f_income.interest_income
+      -- line_3b: $0
+      -- line_4b: $0
+      -- line_5b: rs.line_5b
+      -- line_7_capital_gains: $0
+      -- line_8_other_income: f_income.other_income
+      -- adjustments_excluding_student_loan_interest:
+           educator.educator_expenses_adjustment + hsa.hsa_total_deductible_amount
+      -- estimated_tax_payment_writable: payments.estimated_tax_payment_writable
+      -- paid_estimated_taxes_or_from_last_year_under_different_name:
+           payments.paid_estimated_taxes_or_from_last_year_under_different_name
+      -- paid_estimated_taxes_with_former_spouse: payments.paid_estimated_taxes_with_former_spouse
+      -- is_filing_status_mfj: f.is_filing_status_mfj
+      -- is_married: f.is_married
+      -- is_single: f.is_single
+      -- primary_filer_age55_or_older: primary_facts.age55_or_older
+      -- secondary_filer_age55_or_older: secondary_facts.age55_or_older
+      -- primary_filer_total_hsa_contributions_from_w2s:
+           w2.primary_filer_total_hsa_contributions_from_w2s
+      -- secondary_filer_total_hsa_contributions_from_w2s:
+           w2.secondary_filer_total_hsa_contributions_from_w2s
+      -- has_primary_filer_hsa_contributions_from_w2s:
+           w2.has_primary_filer_hsa_contributions_from_w2s
+      -- has_secondary_filer_hsa_contributions_from_w2s:
+           w2.has_secondary_filer_hsa_contributions_from_w2s
+      -- tax_exempt_interest: interest.tax_exempt_interest
+      -- pensions_and_annuities: rs.line_5a
+      -- social_security_benefits: ss.line_6a
+      -- hsa_primary_filer: primary_extra.hsa
+      -- hsa_secondary_filer: secondary_extra.hsa
+      -- some_filer_had_non_w2_hsa_activity: adjustments.hsa.some_filer_had_non_w2_hsa_activity
+      -- writable_primary_filer_had_non_w2_hsa_activity:
+           adjustments.hsa.writable_primary_filer_had_non_w2_hsa_activity
+      -- writable_secondary_filer_had_non_w2_hsa_activity:
+           adjustments.hsa.writable_secondary_filer_had_non_w2_hsa_activity
+      -- has_hsa_medical_savings_account_type: adjustments.hsa.has_hsa_medical_savings_account_type
+      -- writable_has_hsa_excess_contributions_previous_year:
+           adjustments.hsa.writable_has_hsa_excess_contributions_previous_year
+      -- writable_has_hsa_withdrawn_excess_contributions_yes_no:
+           adjustments.hsa.writable_has_hsa_withdrawn_excess_contributions_yes_no
+      -- some_filers_made_testing_period_contribution:
+           adjustments.hsa.some_filers_made_testing_period_contribution
+      -- some_filers_have_testing_period_additional_income:
+           adjustments.hsa.some_filers_have_testing_period_additional_income
+      -- hsa_distributions: adjustments.hsa.hsa_distributions
+      -- is_after_tax_day_and_not_resubmitting: screening.is_after_tax_day_and_not_resubmitting
+      -- is_after_resubmission_deadline: screening.is_after_resubmission_deadline }
+
+  definition knockout_table equals
+    (map each r among income_ko.fired_knockouts to
+       CalculatorKnockoutEntry { -- reason: IncomeOrHsa content r -- fired: true })
+    ++ [
+      CalculatorKnockoutEntry { -- reason: FlowKnockoutFilerAgeYoungerThan16
+        -- fired: filers_ko.ko_flow_knockout_filer_age_younger_than16 }
+    ; CalculatorKnockoutEntry { -- reason: SpouseItemizesKnockout
+        -- fired: filers_ko.ko_spouse_itemizes_knockout }
+    ; CalculatorKnockoutEntry { -- reason: PrimaryFilerResidencyKnockout
+        -- fired: filers_ko.ko_primary_filer_residency_knockout }
+    ; CalculatorKnockoutEntry { -- reason: FlowKnockoutHasApplicableRegisteredDomesticPartnership
+        -- fired: filers_ko.ko_flow_knockout_has_applicable_registered_domestic_partnership }
+    ; CalculatorKnockoutEntry { -- reason: KnockoutSubjectToCommunityPropertyLaws
+        -- fired: filers_ko.ko_knockout_subject_to_community_property_laws }
+    ; CalculatorKnockoutEntry { -- reason: QualifyingChildTieBreaker
+        -- fired: qualifying_children.ko_qualifying_child_tie_breaker }
+    ; CalculatorKnockoutEntry { -- reason: KnockedOutByContradictory8832
+        -- fired: benefit_split.ko_knocked_out_by_contradictory8832 }
+    ; CalculatorKnockoutEntry { -- reason: KnockedOutByNonCustodialParentBenefitSplit
+        -- fired: benefit_split.ko_knocked_out_by_non_custodial_parent_benefit_split }
+    ; CalculatorKnockoutEntry { -- reason: KnockoutHohQpHasNoTin
+        -- fired: hoh_qss.ko_knockout_hoh_qp_has_no_tin }
+    ; CalculatorKnockoutEntry { -- reason: ClaimedSpouseCombatPayWithoutMfj
+        -- fired: eitc.ko_claimed_spouse_combat_pay_without_mfj }
+    ; CalculatorKnockoutEntry { -- reason: SaversCreditKnockouts
+        -- fired: savers.ko_savers_credit_knockouts }
+    ; CalculatorKnockoutEntry { -- reason: FilingStatusNotEligible
+        -- fired: filing_status_check.ko_filing_status_not_eligible }
+    ; CalculatorKnockoutEntry { -- reason: FlowKnockoutBenefitsDistribution
+        -- fired: cdcc.ko_flow_knockout_benefits_distribution }
+    ]
+
+  definition fired_knockouts equals
+    map each e among (list of e among knockout_table such that e.fired) to e.reason
+
+  # flow.xml /flowIsKnockedOut, restricted to the merged modules.
+  rule unsupported under condition
+    income_ko.unsupported_income_or_hsa
+    or f_final.unsupported
+    or filers_ko.unsupported
+    or qualifying_children.unsupported
+    or benefit_split.unsupported
+    or hoh_qss.unsupported
+    or eitc.unsupported
+    or savers.unsupported
+    or filing_status_check.unsupported
+    or cdcc.unsupported
+  consequence fulfilled
+```
+
+## Helper: one Form 1040 call
+
+`Form1040Base` is every input of `Form_1040.Form1040` that is the same in the
+four calls; `Form1040Slots` is every plug-in slot. `Form1040Pass` calls
+`Form1040` with both.
+
+```catala-metadata
+declaration structure Form1040Base:
+  data filing_status content Types.FilingStatus
+  data w2s content list of W.FormW2
+  data interest_reports content list of I.InterestReport
+  data has_foreign_accounts_or_trusts content boolean
+  data combat_pay_election content W.CombatPayElection
+  data primary_filer_can_be_claimed content boolean
+  data secondary_filer_can_be_claimed content boolean
+  data treat_as_mfs content boolean
+  data primary_filer_is_blind content boolean
+  data primary_filer_age65_or_older content boolean
+  data secondary_filer_is_blind content boolean
+  data secondary_filer_age65_or_older content boolean
+  data is_widowed_in_tax_year content boolean
+  data mfj_deceased_spouse_reached_age65 content boolean
+  data mfs_spouse_65_or_older content boolean
+  data mfs_spouse_provides_no_benefits content boolean
+  data treat_filers_as_dependents content boolean
+
+declaration structure Form1040Slots:
+  data taxable_dependent_care content money
+  data taxable_pensions_and_annuities content money
+  data taxable_social_security_benefits content money
+  data unemployment_compensation content money
+  data alaska_pfd_income content money
+  data student_loan_interest_adjustment_amount content money
+  data educator_expenses_adjustment content money
+  data hsa_total_deductible_amount content money
+  data total_additional_taxes_owed content money
+  data total_ctc_and_odc content money
+  data line8_of_schedule3 content money
+  data other_1099_withholding content money
+  data paid_estimated_taxes_or_from_last_year content boolean
+  data estimated_and_from_last_year content money
+  data earned_income_credit content money
+  data additional_ctc content money
+  data other_payments_and_refundable_credits_total content money
+
+declaration scope Form1040Pass:
+  input base content Form1040Base
+  input slots content Form1040Slots
+  output r content F1040.Form1040
+```
+
+```catala
+scope Form1040Pass:
+  definition r equals
+    output of F1040.Form1040 with {
+      -- filing_status: base.filing_status
+      -- w2s: base.w2s
+      -- interest_reports: base.interest_reports
+      -- has_foreign_accounts_or_trusts: base.has_foreign_accounts_or_trusts
+      -- combat_pay_election: base.combat_pay_election
+      -- primary_filer_can_be_claimed: base.primary_filer_can_be_claimed
+      -- secondary_filer_can_be_claimed: base.secondary_filer_can_be_claimed
+      -- treat_as_mfs: base.treat_as_mfs
+      -- primary_filer_is_blind: base.primary_filer_is_blind
+      -- primary_filer_age65_or_older: base.primary_filer_age65_or_older
+      -- secondary_filer_is_blind: base.secondary_filer_is_blind
+      -- secondary_filer_age65_or_older: base.secondary_filer_age65_or_older
+      -- is_widowed_in_tax_year: base.is_widowed_in_tax_year
+      -- mfj_deceased_spouse_reached_age65: base.mfj_deceased_spouse_reached_age65
+      -- mfs_spouse_65_or_older: base.mfs_spouse_65_or_older
+      -- mfs_spouse_provides_no_benefits: base.mfs_spouse_provides_no_benefits
+      -- treat_filers_as_dependents: base.treat_filers_as_dependents
+      -- taxable_dependent_care: slots.taxable_dependent_care
+      -- taxable_pensions_and_annuities: slots.taxable_pensions_and_annuities
+      -- taxable_social_security_benefits: slots.taxable_social_security_benefits
+      -- unemployment_compensation: slots.unemployment_compensation
+      -- alaska_pfd_income: slots.alaska_pfd_income
+      -- student_loan_interest_adjustment_amount: slots.student_loan_interest_adjustment_amount
+      -- educator_expenses_adjustment: slots.educator_expenses_adjustment
+      -- hsa_total_deductible_amount: slots.hsa_total_deductible_amount
+      -- total_additional_taxes_owed: slots.total_additional_taxes_owed
+      -- total_ctc_and_odc: slots.total_ctc_and_odc
+      -- line8_of_schedule3: slots.line8_of_schedule3
+      -- other_1099_withholding: slots.other_1099_withholding
+      -- paid_estimated_taxes_or_from_last_year: slots.paid_estimated_taxes_or_from_last_year
+      -- estimated_and_from_last_year: slots.estimated_and_from_last_year
+      -- earned_income_credit: slots.earned_income_credit
+      -- additional_ctc: slots.additional_ctc
+      -- other_payments_and_refundable_credits_total: slots.other_payments_and_refundable_credits_total }
+```
