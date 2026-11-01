@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { App } from './App';
+import { STORAGE_KEY, draftFromRequest } from './draft';
+import { EXAMPLES } from './examples';
 
 // Unit tests run the typed client against the api/fixtures mock, same as VITE_API_MOCK=1.
 beforeAll(() => vi.stubEnv('VITE_API_MOCK', '1'));
@@ -59,11 +61,20 @@ describe('routing', () => {
 
 describe('results (mock mode, $50,000 single)', () => {
   it('shows the refund hero and the line walk from the fixture', async () => {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(draftFromRequest(EXAMPLES.refund)));
     at('/results');
     expect(await screen.findByText(/Your refund is/)).toBeInTheDocument();
     expect(screen.getByRole('img', { name: '$981.00' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Walk me through it' }));
     expect(screen.getByText('$35,400.00')).toBeInTheDocument(); // taxable income
+  });
+});
+
+describe('results without answers', () => {
+  it('sends a first-time visitor back to the start of the wizard', () => {
+    at('/results');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/./);
+    expect(screen.queryByText(/Your refund is/)).not.toBeInTheDocument();
   });
 });
 
