@@ -1,0 +1,560 @@
+# Tests for the Cdcc module (child and dependent care credit, Form 2441)
+
+Run with `clerk test`. Each named scope is one concrete case, worked by hand
+from IRC 21, IRC 129, Form 2441 (`f2441--2024.pdf`) and its instructions as
+quoted in `catala/cdcc.catala_en`. Every scope sets satisfiable inputs and
+asserts the expected result; most also assert that a known-bad output is not
+produced. Oracle comparison: `make difftest SCOPE=cdcc`.
+
+> Using Types
+> Using Qualifying_child as Q
+> Using Qualifying_relative as R
+> Using Dependents_benefit_split as B
+> Using Cdcc as C
+
+## Helper: one return
+
+The default is a head of household (born 1985-06-15) with wages of $45,000, one
+qualifying child, a 4-year-old son (born 2020-03-01, claimed, SSN) with $3,000
+of qualified expenses paid to a qualified provider, AGI $15,000 and a tax
+liability limit of $5,000. A test overrides only what it tests.
+
+```catala
+declaration scope Case:
+  context filing_status content Types.FilingStatus
+  context child_date_of_birth content date
+  context child_expenses content money
+  context child_unable_to_care content boolean
+  context second_child content boolean
+  context second_child_expenses content money
+  context agi content money
+  context tax_limit content money
+  context primary_wages content money
+  context secondary_wages content money
+  context primary_benefits content money
+  context secondary_benefits content money
+  context primary_plan_max content money
+  context secondary_plan_max content money
+  context line16 content money
+  context carryover content money
+  context forfeited content money
+  context secondary_months content list of money
+  context secondary_disabled content boolean
+  context secondary_expenses content money
+  context spouse_same_abode condition
+  context primary_combat_pay content money
+  context primary_elects_combat_for_credit content boolean
+  context household_employee condition
+  output f scope C.Form2441
+
+declaration scope MkChild:
+  context date_of_birth content date
+  context expenses content money
+  context unable content boolean
+  output child content C.CdccMember
+
+scope MkChild:
+  definition child equals C.CdccMember {
+    -- member: R.Member {
+      -- person: Q.Person {
+           -- relationship: Q.Relationship.BiologicalChild
+           -- date_of_birth: date_of_birth
+           -- full_time_student: false
+           -- permanent_total_disability: false
+           -- residency_duration: Q.ResidencyDuration.AllYear
+           -- own_support: false
+           -- married: false
+           -- writable_joint_return: false
+           -- writable_required_to_file: false
+           -- writable_filing_only_for_refund: false
+           -- writable_could_be_qualifying_child_of_another: false
+           -- writable_potential_claimer_must_file: false
+           -- writable_potential_claimer_did_file: false
+           -- writable_potential_claimer_filed_only_for_refund: false }
+      -- answers: R.DependentAnswers {
+           -- gross_income: $0
+           -- writable_qr_support_test: true
+           -- tin_type: R.TinType.Ssn
+           -- is_us_citizen_full_year: true
+           -- writable_us_resident: false
+           -- writable_us_national: false
+           -- writable_canada_mexico_resident: false
+           -- tp_claims: true }
+      -- split: B.BenefitSplitAnswers {
+           -- has_other_biological_or_adoptive_parent: false
+           -- non_parental_some_parent_not_claiming: false
+           -- which_parent_not_claiming: B.WrittenDeclaration.NobodyDid
+           -- in_parents_custody: false
+           -- lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months:
+                false
+           -- biological_or_adoptive_parents_living: false
+           -- nights_with_tp_vs_other_parent: B.NightsComparison.Less
+           -- tp_agi_higher_than_other_parent: false
+           -- parents_meet_reqs_rule_for_children_of_divorced_parents: false
+           -- special_rule_child_used_by_custodial_parent_as_qp: false
+           -- special_rule_agi_test: false
+           -- parental_situation: B.ParentalSituation.Other
+           -- parental_support: false
+           -- multiple_support_agreement: false } }
+    -- cdcc: C.CdccAnswers {
+         -- unable_to_care_for_self: unable
+         -- has_dependent_care_expenses: expenses > $0
+         -- expenses_paid_to_qualifying_provider: true
+         -- writable_qualifying_expense_amount: expenses
+         -- tp_paid_most_of_home_upkeep: true } }
+
+declaration scope MkFiler:
+  context wages content money
+  context benefits content money
+  context plan_max content money
+  context months content list of money
+  context disabled content boolean
+  context expenses content money
+  context combat content money
+  context elect_credit content boolean
+  output filer content C.CdccFiler
+
+scope MkFiler:
+  definition filer equals C.CdccFiler {
+    -- employer_income_subtotal_base: wages
+    -- nontaxable_combat_pay: combat
+    -- elect_combat_pay_for_credit: elect_credit
+    -- elect_combat_pay_for_benefits: false
+    -- dependent_care_benefits: benefits
+    -- dependent_care_plan_maximum: plan_max
+    -- is_disabled: disabled
+    -- deemed_income_month_earnings: months
+    -- has_dependent_care_expenses: expenses > $0
+    -- expenses_paid_to_qualifying_provider: true
+    -- writable_qualifying_expense_amount: expenses }
+
+scope Case:
+  definition filing_status equals Types.FilingStatus.HeadOfHousehold
+  definition child_date_of_birth equals |2020-03-01|
+  definition child_expenses equals $3,000
+  definition child_unable_to_care equals false
+  definition second_child equals false
+  definition second_child_expenses equals $0
+  definition agi equals $15,000
+  definition tax_limit equals $5,000
+  definition primary_wages equals $45,000
+  definition secondary_wages equals $0
+  definition primary_benefits equals $0
+  definition secondary_benefits equals $0
+  definition primary_plan_max equals $0
+  definition secondary_plan_max equals $0
+  definition line16 equals $0
+  definition carryover equals $0
+  definition forfeited equals $0
+  definition secondary_months equals []
+  definition secondary_disabled equals false
+  definition secondary_expenses equals $0
+  definition spouse_same_abode equals false
+  definition primary_combat_pay equals $0
+  definition primary_elects_combat_for_credit equals false
+  definition household_employee equals false
+
+  definition f.filing_status equals filing_status
+  definition f.household equals
+    (if second_child
+     then [ (output of MkChild with { -- date_of_birth: child_date_of_birth
+                                     -- expenses: child_expenses
+                                     -- unable: child_unable_to_care }).child;
+            (output of MkChild with { -- date_of_birth: |2018-05-05|
+                                     -- expenses: second_child_expenses
+                                     -- unable: false }).child ]
+     else [ (output of MkChild with { -- date_of_birth: child_date_of_birth
+                                     -- expenses: child_expenses
+                                     -- unable: child_unable_to_care }).child ])
+  definition f.minimum_filer_date_of_birth equals |1985-06-15|
+  definition f.treat_filers_as_dependents equals false
+  definition f.either_filer_us_citizen_or_national equals true
+  definition f.treat_as_mfj equals
+    filing_status = Types.FilingStatus.MarriedFilingJointly
+  definition f.lived_apart_last_six_months equals false
+  definition f.spouse_same_abode_more_than_half_year equals spouse_same_abode
+  definition f.primary_filer equals
+    (output of MkFiler with { -- wages: primary_wages
+                              -- benefits: primary_benefits
+                              -- plan_max: primary_plan_max
+                              -- months: []
+                              -- disabled: false
+                              -- expenses: $0
+                              -- combat: primary_combat_pay
+                              -- elect_credit: primary_elects_combat_for_credit }).filer
+  definition f.secondary_filer equals
+    (output of MkFiler with { -- wages: secondary_wages
+                              -- benefits: secondary_benefits
+                              -- plan_max: secondary_plan_max
+                              -- months: secondary_months
+                              -- disabled: secondary_disabled
+                              -- expenses: secondary_expenses
+                              -- combat: $0
+                              -- elect_credit: false }).filer
+  definition f.has_mfs_spouse_earned_income equals false
+  definition f.writable_mfs_spouse_earned_income equals $0
+  definition f.writable_total_qualified_dependent_care_expenses equals line16
+  definition f.writable_carryover_amount equals carryover
+  definition f.writable_forfeited_amount equals forfeited
+  definition f.has_credit_for_prior_year_expenses equals false
+  definition f.claimed_credit_for_prior_year_expenses equals false
+  definition f.claimed_max_credit_for_prior_tax_year equals false
+  definition f.has_household_employee equals household_employee
+  definition f.benefits_from_sole_proprietorship_or_partnership equals false
+  definition f.agi equals agi
+  definition f.total_tentative_tax equals tax_limit
+```
+
+## Issue #28 cases
+
+### One qualifying person, $3,000, AGI $15,000: 35 percent, $1,050
+
+```catala
+#[test]
+declaration scope TestOneQpAgi15k:
+  c scope Case
+
+scope TestOneQpAgi15k:
+  assertion c.f.benefits.count_of_qualifying_persons = 1
+  assertion c.f.line3 = $3,000
+  assertion c.f.line8_decimal_amount = $0.35
+  assertion c.f.cdcc_total_credit = $1,050
+  # Known-bad: 34 percent is the next band, over $15,000
+  assertion c.f.cdcc_total_credit != $1,020
+  assertion not c.f.unsupported
+```
+
+### AGI $43,001: 20 percent, $600
+
+```catala
+#[test]
+declaration scope TestAgi43001:
+  c scope Case
+
+scope TestAgi43001:
+  definition c.agi equals $43,001
+  assertion c.f.line8_decimal_amount = $0.20
+  assertion c.f.cdcc_total_credit = $600
+```
+
+### AGI $43,000 is still 21 percent; $15,001 and $17,001 step down
+
+```catala
+#[test]
+declaration scope TestPercentageSteps:
+  a scope Case
+  b scope Case
+  d scope Case
+  e scope Case
+
+scope TestPercentageSteps:
+  definition a.agi equals $43,000
+  definition b.agi equals $15,001
+  definition d.agi equals $17,000
+  definition e.agi equals $17,001
+  assertion a.f.line8_decimal_amount = $0.21
+  assertion b.f.line8_decimal_amount = $0.34
+  assertion d.f.line8_decimal_amount = $0.34
+  assertion e.f.line8_decimal_amount = $0.33
+```
+
+### Negative AGI: 35 percent (IRC 21(a)(2); DF-BUG(24))
+
+```catala
+#[test]
+declaration scope TestNegativeAgi:
+  c scope Case
+
+scope TestNegativeAgi:
+  definition c.agi equals -$500
+  assertion c.f.line8_decimal_amount = $0.35
+  assertion c.f.cdcc_total_credit = $1,050
+```
+
+### Two qualifying persons, $6,000 of expenses, AGI $30,000
+
+AGI $30,000 is over $29,000 and not over $31,000: .27. $6,000 x .27 = $1,620.
+
+```catala
+#[test]
+declaration scope TestTwoQps:
+  c scope Case
+
+scope TestTwoQps:
+  definition c.second_child equals true
+  definition c.child_expenses equals $3,500
+  definition c.second_child_expenses equals $4,000
+  definition c.agi equals $30,000
+  assertion c.f.benefits.count_of_qualifying_persons = 2
+  assertion c.f.benefits.uncapped_qualifying_expenses = $7,500
+  assertion c.f.line3 = $6,000
+  assertion c.f.line8_decimal_amount = $0.27
+  assertion c.f.cdcc_total_credit = $1,620
+  # Known-bad: the one-person cap
+  assertion c.f.cdcc_total_credit != $810
+```
+
+### Earned income below the expenses
+
+The only earner makes $2,000: line 6 is $2,000, credit 20 percent = $400.
+
+```catala
+#[test]
+declaration scope TestEarnedIncomeLimit:
+  c scope Case
+
+scope TestEarnedIncomeLimit:
+  definition c.primary_wages equals $2,000
+  definition c.agi equals $45,000
+  assertion c.f.line6 = $2,000
+  assertion c.f.cdcc_total_credit = $400
+```
+
+### MFJ, spouse a student for 9 months, no earnings: deemed $250 a month
+
+Reg. 1.21-2(c) Example 2 (with 2024 amounts): one qualifying person,
+$250 x 9 = $2,250 of deemed income for the spouse; the primary earns $40,000,
+$5,000 of expenses; line 5 is $2,250, line 6 is $2,250; AGI $45,000 gives 20
+percent, $450.
+
+```catala
+#[test]
+declaration scope TestStudentSpouse:
+  c scope Case
+
+scope TestStudentSpouse:
+  definition c.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.primary_wages equals $40,000
+  definition c.child_expenses equals $5,000
+  definition c.agi equals $45,000
+  definition c.secondary_months equals
+    [$0; $0; $0; $0; $0; $0; $0; $0; $0]
+  assertion c.f.benefits.deemed_monthly_income = $250
+  assertion c.f.line5_earned_income = $2,250
+  assertion c.f.line6 = $2,250
+  assertion c.f.cdcc_total_credit = $450
+  assertion not c.f.unsupported
+```
+
+### The higher of deemed and actual income counts each month
+
+Two months of $100 actual and one of $1,000: 150 + 150 + 1,000 = $1,300.
+
+```catala
+#[test]
+declaration scope TestDeemedHigher:
+  c scope Case
+
+scope TestDeemedHigher:
+  definition c.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.secondary_months equals [$100; $100; $1,000]
+  assertion c.f.benefits.secondary_deemed_uplift = $300
+  assertion c.f.line5_earned_income = $300
+```
+
+### Employer benefits of $5,000 reduce the cap to 0: credit $0
+
+Part III: $5,000 of box 10 benefits, plan maximum $5,000, expenses $5,000.
+Line 20 = $5,000, line 21 = $5,000, line 25 = $5,000, line 27 = $3,000, line 29
+= -$2,000: no credit. Taxable benefits $0.
+
+```catala
+#[test]
+declaration scope TestBenefits5000:
+  c scope Case
+
+scope TestBenefits5000:
+  definition c.primary_benefits equals $5,000
+  definition c.primary_plan_max equals $5,000
+  definition c.line16 equals $5,000
+  definition c.child_expenses equals $5,000
+  assertion c.f.benefits.line25_excluded_benefits = $5,000
+  assertion c.f.benefits.line29_net_allowable = -$2,000
+  assertion c.f.benefits.taxable_benefits = $0
+  assertion c.f.cdcc_total_credit = $0
+  # Known-bad: ignoring the exclusion would give 20 percent of $3,000 (AGI $15,000: $1,050)
+  assertion c.f.cdcc_total_credit != $1,050
+```
+
+### Benefits above the exclusion limit are taxable
+
+$6,000 of box 10 benefits with a plan maximum of $6,000, expenses $6,000: the
+exclusion is capped at $5,000 (IRC 129(a)(2)(A)); line 26 is $1,000.
+
+```catala
+#[test]
+declaration scope TestTaxableBenefits:
+  c scope Case
+
+scope TestTaxableBenefits:
+  definition c.primary_benefits equals $6,000
+  definition c.primary_plan_max equals $6,000
+  definition c.line16 equals $6,000
+  definition c.child_expenses equals $6,000
+  assertion c.f.benefits.line21_specified_exclusion = $5,000
+  assertion c.f.benefits.line25_excluded_benefits = $5,000
+  assertion c.f.benefits.taxable_benefits = $1,000
+```
+
+### Benefits without expenses are all taxable
+
+```catala
+#[test]
+declaration scope TestBenefitsNoExpenses:
+  c scope Case
+
+scope TestBenefitsNoExpenses:
+  definition c.primary_benefits equals $560
+  definition c.primary_plan_max equals $5,000
+  definition c.line16 equals $0
+  definition c.child_expenses equals $0
+  assertion c.f.benefits.taxable_benefits = $560
+  assertion c.f.cdcc_total_credit = $0
+```
+
+### Benefits of $1,300 reduce the cap by $1,300
+
+Qualifying person with $20,000 of expenses (line 16), benefits $1,300: line 25
+= $1,300, line 29 = $1,700, line 31 = $1,700 (one person), credit at 20
+percent = $340.
+
+```catala
+#[test]
+declaration scope TestBenefitsReduceCap:
+  c scope Case
+
+scope TestBenefitsReduceCap:
+  definition c.primary_benefits equals $1,000
+  definition c.carryover equals $300
+  definition c.primary_plan_max equals $2,000
+  definition c.line16 equals $20,000
+  definition c.child_expenses equals $20,000
+  definition c.agi equals $45,000
+  assertion c.f.benefits.line15_adjusted_benefits = $1,300
+  assertion c.f.benefits.line25_excluded_benefits = $1,300
+  assertion c.f.benefits.line31 = $1,700
+  assertion c.f.line3 = $1,700
+  assertion c.f.cdcc_total_credit = $340
+```
+
+### The tax liability limit
+
+```catala
+#[test]
+declaration scope TestTaxLimit:
+  c scope Case
+
+scope TestTaxLimit:
+  definition c.tax_limit equals $300
+  assertion c.f.line9c = $1,050
+  assertion c.f.cdcc_total_credit = $300
+```
+
+### Child turning 13 and over 13
+
+A child born 2011-06-01 turned 13 in 2024 and is a qualifying person for the
+part of the year under 13; one born 2011-01-01 was already 13 on January 1;
+one unable to care for self qualifies at any age.
+
+```catala
+#[test]
+declaration scope TestAge13:
+  turned scope Case
+  already scope Case
+  disabled scope Case
+
+scope TestAge13:
+  definition turned.child_date_of_birth equals |2011-06-01|
+  definition already.child_date_of_birth equals |2011-01-01|
+  definition disabled.child_date_of_birth equals |2011-01-01|
+  definition disabled.child_unable_to_care equals true
+  assertion turned.f.benefits.count_of_qualifying_persons = 1
+  assertion already.f.benefits.count_of_qualifying_persons = 0
+  assertion already.f.cdcc_total_credit = $0
+  assertion disabled.f.benefits.count_of_qualifying_persons = 1
+```
+
+### A disabled spouse is a qualifying person
+
+MFJ, the secondary filer incapable of self care and living with the primary
+all year: the filers are two qualifying persons with the child, the cap is
+$6,000.
+
+```catala
+#[test]
+declaration scope TestDisabledSpouse:
+  c scope Case
+
+scope TestDisabledSpouse:
+  definition c.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.secondary_disabled equals true
+  definition c.spouse_same_abode equals true
+  definition c.secondary_wages equals $3,000
+  definition c.secondary_expenses equals $4,000
+  assertion c.f.benefits.count_of_qualifying_persons = 2
+  assertion c.f.benefits.qualifying_expense_cap = $6,000
+  assertion c.f.benefits.uncapped_qualifying_expenses = $7,000
+  assertion c.f.line3 = $6,000
+  assertion c.f.line6 = $3,000
+  # AGI $15,000: 35 percent of $3,000
+  assertion c.f.cdcc_total_credit = $1,050
+```
+
+### Married filing separately: no credit (IRC 21(e)(2))
+
+```catala
+#[test]
+declaration scope TestMfs:
+  c scope Case
+
+scope TestMfs:
+  definition c.filing_status equals Types.FilingStatus.MarriedFilingSeparately
+  assertion c.f.benefits.married_separate_not_allowed
+  assertion c.f.cdcc_total_credit = $0
+```
+
+### Combat pay election
+
+Wages $1,000, combat pay $2,500 elected: earned income $3,500, line 6 $3,000.
+
+```catala
+#[test]
+declaration scope TestCombatPay:
+  elected scope Case
+  not_elected scope Case
+
+scope TestCombatPay:
+  definition elected.primary_wages equals $1,000
+  definition elected.primary_combat_pay equals $2,500
+  definition elected.primary_elects_combat_for_credit equals true
+  definition not_elected.primary_wages equals $1,000
+  definition not_elected.primary_combat_pay equals $2,500
+  assertion elected.f.line6 = $3,000
+  assertion not_elected.f.line6 = $1,000
+```
+
+### Knockouts
+
+```catala
+#[test]
+declaration scope TestKnockouts:
+  c scope Case
+
+scope TestKnockouts:
+  definition c.household_employee equals true
+  assertion c.f.unsupported
+  assertion c.f.benefits.ko_knockout_household_employee
+```
+
+### Known-bad person: a 13-year-old is not a qualifying person
+
+```catala
+#[test]
+declaration scope TestRejectsOldChild:
+  c scope Case
+
+scope TestRejectsOldChild:
+  definition c.child_date_of_birth equals |2008-01-01|
+  assertion not (c.f.benefits.count_of_qualifying_persons = 1)
+  assertion c.f.cdcc_total_credit = $0
+```
