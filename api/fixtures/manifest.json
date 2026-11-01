@@ -224,6 +224,14 @@
       "path": "/version",
       "status": 200,
       "response": "fixtures/version.response.json"
+    },
+    {
+      "name": "refund-single-w2-50k-with-dob",
+      "method": "POST",
+      "path": "/calculate",
+      "status": 200,
+      "request": "fixtures/refund-single-w2-50k-with-dob.request.json",
+      "response": "examples/refund-single-w2-50k.response.json"
     }
   ]
 }

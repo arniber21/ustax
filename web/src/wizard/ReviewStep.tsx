@@ -156,7 +156,8 @@ export function ReviewStep() {
         <dl className="m-0 divide-y">
           <Row label="Child and dependent care" value={d.cdcc.paid ? money(careTotal(d)) : 'None'} />
           <Row label="Health savings account" value={d.hsa.has ? 'Activity outside your W-2' : 'None'} />
-          <Row label="Health insurance from the Marketplace (1095-A)" value="Not supported yet" />
+          <Row label="Health insurance from the Marketplace (1095-A)" value={d.healthScreening.marketplace === null ? 'Not answered' : d.healthScreening.marketplace ? 'Not supported in this wizard' : 'None'} />
+          <Row label="HSA withdrawals, rollovers or excess contributions" value={d.healthScreening.hsaWithdrawals === null ? 'Not answered' : d.healthScreening.hsaWithdrawals ? 'Not supported in this wizard' : 'None'} />
         </dl>
       </Block>
 
@@ -196,7 +197,7 @@ function IncomeSummary({ d }: { d: Draft }) {
         <Row key={x.id} label={`1099-R #${i + 1}`} value={`${money(x.gross)} taken out, ${x.taxableBlank ? 'taxable part blank' : `${money(x.taxable)} taxable`}`} />
       ))}
       {d.ssa.map((x, i) => (
-        <Row key={x.id} label={`SSA-1099 #${i + 1}`} value={`${money(x.netBenefits)} net benefits`} />
+        <Row key={x.id} label={`SSA-1099 #${i + 1}`} value={`${money(x.netBenefits)} net benefits, ${money(x.withheld)} withheld`} />
       ))}
     </dl>
   );

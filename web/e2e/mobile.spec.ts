@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addW2, answer, calculate, chooseStatus, next } from './helpers';
+import { addW2, answer, calculate, chooseStatus, next, typeDate } from './helpers';
 
 /** Mobile smoke (Pixel 7 viewport): the whole path works and nothing scrolls sideways. */
 test('mobile: single filer, $50,000 wages -> $981 refund, no horizontal overflow', async ({ page }) => {
@@ -7,6 +7,7 @@ test('mobile: single filer, $50,000 wages -> $981 refund, no horizontal overflow
   await page.evaluate(() => window.localStorage.clear());
   await page.goto('/start/about');
   await chooseStatus(page, 'Single');
+  await typeDate(page, 'Your date of birth', '06/15/1985');
   await next(page, 'Your household');
   await next(page, 'Dependents');
   await answer(page, /Do you have children or other people you support/, false);
@@ -14,6 +15,8 @@ test('mobile: single filer, $50,000 wages -> $981 refund, no horizontal overflow
   await addW2(page, '50000', '5000');
   await next(page, 'Adjustments and payments');
   await next(page, 'Credits and care costs');
+  await answer(page, /Marketplace health insurance/, false);
+  await answer(page, /HSA withdrawals, rollovers/, false);
   await next(page, 'Review');
   await calculate(page);
   await expect(page.getByRole('region', { name: 'Your refund' })).toContainText('$981');

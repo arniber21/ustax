@@ -72,7 +72,7 @@ export const MAIN: ProofSet = {
     },
     {
       name: 'UsTax.Main.tentativeTax_nonneg_monotone',
-      says: 'Tax on taxable income is never negative and never decreases when income rises.',
+      says: 'Line 16 is never negative and never decreases as taxable income rises, with filing status fixed.',
       holdsFor: 'Every filing status, every income.',
     },
     {
@@ -136,7 +136,7 @@ export const EXTRA: ProofSet = {
     { name: 'UsTax.Extra.calculator_unsupported_iff', says: 'A return is marked unsupported exactly when at least one knockout reason fired.' },
     { name: 'UsTax.Extra.apiCalculator_supported_iff', says: 'The API answer says “not supported” exactly when its list of reasons is not empty.' },
     { name: 'UsTax.Extra.apiCalculator_outcome_refund_iff', says: 'The API answer’s outcome is “refund” exactly when line 34 is positive.' },
-    { name: 'UsTax.Extra.calculateRequest_ne_fault', says: 'The calculate endpoint never answers with a server fault on a valid request.' },
+    { name: 'UsTax.Extra.calculateRequest_ne_fault', says: 'The pure calculator never returns its internal-inconsistency result on a valid request; HTTP/runtime failures are outside the theorem.' },
   ],
 };
 
@@ -344,7 +344,7 @@ export interface Claim {
 export const STATUS_CLAIMS: readonly Claim[] = [
   {
     title: `${MAIN.theorems.length} main statements proved and checked by Comparator`,
-    detail: 'The tax equals the printed 2024 IRS Tax Table below $100,000 and the Tax Computation Worksheet above; refund and amount owed are consistent; credits never exceed the tax; total tax is never negative; the earned income credit stays within its bounds.',
+    detail: 'The tax equals the printed 2024 IRS Tax Table below $100,000 and the Tax Computation Worksheet from $100,000 through $1 trillion; refund and amount owed are consistent; credits never exceed the tax; total tax is never negative; the earned income credit stays within its bounds.',
     status: 'proven',
   },
   {

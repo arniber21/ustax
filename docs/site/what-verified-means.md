@@ -215,9 +215,9 @@ The calculator that runs behind this site is written directly in Lean. Statement
 by Lean's kernel, with no `sorry` and no extra axioms.
 
 - **Comparator-checked statements** (`lean/comparator.json`, 9 theorems): the tax on taxable income
-  never goes down as income goes up and is never negative; line 16 equals the printed IRS Tax Table
-  for every cent below $100,000 and the Tax Computation Worksheet above it; refund and amount owed are
-  both non-negative, at most one is non-zero, and their difference is payments minus tax; credits never
+  never decreases as taxable income increases with filing status fixed, and is never negative; line 16
+  equals the printed IRS Tax Table for every cent below $100,000 and the Tax Computation Worksheet
+  from $100,000 through $1 trillion; refund and amount owed are both non-negative, at most one is non-zero, and their difference is payments minus tax; credits never
   exceed the tax they offset; the earned income credit stays between zero and its maximum.
 - **Additional statements** (`lean/comparator.extra.json`, 31 theorems): for example, the standard
   deduction, interest, W-2 totals, Social Security and the adjustments equal a plain statement of the

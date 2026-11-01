@@ -94,7 +94,7 @@ function SummaryBody({ e }: { e: Estimate }) {
     return (
       <p className="m-0 flex gap-2 text-sm text-muted-foreground">
         <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-        Choose a filing status and your estimate appears here, updating as you answer.
+        Complete the required answers, including birth dates and the health screening on step 6, to see an estimate.
       </p>
     );
   }

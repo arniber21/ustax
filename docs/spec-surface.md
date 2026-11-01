@@ -439,7 +439,7 @@ human decides which of them become main theorems.
 | `calculator_unsupported_iff` | `unsupported` (every module's own flag, `/flowIsKnockedOut`) holds exactly when the knockout table lists a reason | none |
 | `apiCalculator_supported_iff` | `supported = false` exactly when `reasons ≠ []` | `KnockoutSound` (new) |
 | `apiCalculator_outcome_refund_iff` | `outcome = refund` exactly when `lines.overpayment > 0` (an unsupported return: `even`, lines zero) | `RefundOutcome` (new) |
-| `calculateRequest_ne_fault` | `Api.calculateRequest` never returns `fault` (HTTP 500) on a valid request | none |
+| `calculateRequest_ne_fault` | `Api.calculateRequest` never returns its internal-inconsistency result `fault` on a valid request; HTTP/runtime exceptions are outside this theorem | none |
 
 None has a hypothesis except `calculateRequest_ne_fault` (`r.Valid`, which `Api.parseRequest_sound`
 gives every parsed request); each is instantiated on a return of the Catala tests in

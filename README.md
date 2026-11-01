@@ -129,10 +129,10 @@ About the Lean code that runs, with no hypotheses beyond the arguments. The stat
 properties in `lean/UsTax/Spec/`, and every definition each statement depends on is listed and reviewed
 in [`docs/spec-surface.md`](docs/spec-surface.md). In plain words:
 
-- **Tax never goes down as income goes up**, and is never negative, for every filing status
+- **Line 16 never decreases as taxable income increases**, and is never negative, with filing status fixed
   (`tentativeTax_nonneg_monotone`).
 - **Line 16 matches the printed 2024 Tax Table** for every taxable income below $100,000, and the Tax
-  Computation Worksheet from $100,000 up (four theorems: `tentativeTax_matches_tax_table`,
+  Computation Worksheet from $100,000 through $1 trillion (four theorems: `tentativeTax_matches_tax_table`,
   `line16_matches_tax_table`, `tentativeTax_matches_worksheet`, `line16_matches_worksheet`).
 - **A refund or a bill, never both**, and refund minus amount owed is exactly payments minus tax
   (`refund_balanceDue_consistent`).
@@ -143,7 +143,8 @@ in [`docs/spec-surface.md`](docs/spec-surface.md). In plain words:
 31 more theorems ([`lean/comparator.extra.json`](lean/comparator.extra.json)) tie the pieces to a plain
 reading of the statute (standard deduction, interest, W-2 totals, Social Security, the adjustments) and
 cover the whole return the server runs: refund or bill and credits within the tax on the whole return,
-`supported = false` exactly when a knockout reason is listed, and **no HTTP 500 on any valid request**.
+`supported = false` exactly when a knockout reason is listed, and **the pure calculator never returns
+its internal-inconsistency result**. HTTP and runtime failures remain outside that theorem.
 Separately, `Api.parseRequest_sound` proves the server only computes on requests that satisfy the
 validity spec. Each of the 40 judged statements has a satisfiable instance and at least two bad outputs
 it rejects ([`docs/spec-checks.md`](docs/spec-checks.md)).
@@ -151,9 +152,9 @@ it rejects ([`docs/spec-checks.md`](docs/spec-checks.md)).
 `make comparator` and `make comparator-extra` passed on 2026-11-01 (issues #65, #66): Lean's
 `lake check` replays the build through the kernel and `lake comparator` checks the proved statements
 are exactly the trusted ones, using only `propext`, `Classical.choice` and `Quot.sound`. `make audit`
-passed on the tree merged as PR #156 (`lean/` has not changed since): only those three axioms, no
-`sorry`, no `native_decide`, and the forensics step checked **7,981 declarations with 0
-high-severity findings** (no vacuous theorems).
+passed again after the income-domain guard was added: only those three axioms, no `sorry`, no
+`native_decide`, and the forensics step checked **7,981 declarations with 0 high-severity findings**
+(no vacuous theorems).
 
 ### Verified against IRS Direct File
 
@@ -167,8 +168,9 @@ leaves 157. On 2026-11-01:
   5,360 values agree, 0 failures. Through the API request shape (`SCOPE=api_calculator`): **3,105**
   values agree, 0 failures (PR #151).
 - **Catala tests**: 602 of 602 pass (`make check`).
-- **Server**: `make test-server` 46 passed, 0 failed, 1 skipped (a 500 cannot be provoked, which is
-  also proved); the server equals the command-line calculator on 315 requests (PR #151).
+- **Server**: `make test-server` 52 passed, 0 failed, 1 skipped (the internal-inconsistency fixture
+  cannot be provoked; HTTP/runtime failures are outside the proof); the server equals the command-line
+  calculator on 316 requests, including the explicit-birth-date fixture.
 
 Every harness has a **negative control**: with `DIFFTEST_PERTURB=1` or `LEAN_DIFFTEST_PERTURB=1` the
 outputs are changed on purpose and the run must fail. It does.
@@ -204,11 +206,12 @@ declarations, no `native_decide`.
 | Routing, CORS, body cap, logging | `lean/ServerMain.lean` | Trusted (IO only, no theorem); tested |
 | JSON reader | `lean/UsTax/Api/Json.lean` | Tested, not proved (`make api-conformance`) |
 | Decode and validate | `lean/UsTax/Api/Parse.lean`, `Validate.lean` | **Proved sound**: every accepted request satisfies `Request.Valid`; every rejection is a 400 |
-| Calculate | `lean/UsTax/ApiCalculator.lean` | Lean, with the theorems above; no 500 on a valid request (proved) |
+| Calculate | `lean/UsTax/ApiCalculator.lean` | Lean, with the theorems above; no pure internal-inconsistency result on a valid request (proved); HTTP/runtime failures remain trusted |
 | Serialise | `lean/UsTax/Api/Response.lean` | Tested byte for byte against `api/fixtures` |
 
 - Binds `127.0.0.1:8080` by default (`HOST`, `PORT`). CORS allows `http://localhost:5173` by default
-  (`ALLOW_ORIGIN`). Bodies over 256 KiB get 413; a non-JSON content type gets 415.
+  (`ALLOW_ORIGIN`). Bodies over 256 KiB get 413; a non-JSON content type gets 415. Aggregate taxable
+  income above $1 trillion gets 400 rather than a capped tax result.
 - **No data is stored.** The server logs method, path and status only, never a request body. The web
   app keeps your answers in your own browser's local storage.
 - No TLS in the Lean process; see [`docs/tls.md`](docs/tls.md).

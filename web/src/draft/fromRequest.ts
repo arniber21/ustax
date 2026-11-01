@@ -104,6 +104,10 @@ export function draftFromRequest(req: CalculateRequest): Draft {
     paid: (req.dependents ?? []).some((p) => p.cdcc?.has_dependent_care_expenses || p.cdcc?.unable_to_care_for_self) || req.cdcc !== undefined,
     totalQualified: m(req.cdcc?.writable_total_qualified_dependent_care_expenses),
   };
+  // Presence of data for unsupported wizard sections must never become a complete result
+  // merely because this inverse mapping does not collect those sections.
+  if (req.premium_tax_credit) d.healthScreening.marketplace = true;
+  if (req.adjustments?.hsa?.hsa_distributions?.length) d.healthScreening.hsaWithdrawals = true;
   d.hsa = { has: req.adjustments?.hsa?.some_filer_had_non_w2_hsa_activity ?? false };
 
   d.w2s = (req.w2s ?? []).map((w) => ({
@@ -151,7 +155,9 @@ export function draftFromRequest(req: CalculateRequest): Draft {
     iraSepSimple: r.ira_sep_simple ?? false,
     totalDistribution: r.total_distribution ?? false,
   }));
-  d.ssa = (req.social_security?.net_benefits ?? []).map((n) => ({ id: newId(), netBenefits: n }));
+  d.ssa = (req.social_security?.net_benefits ?? []).map((n, i) => ({
+    id: newId(), netBenefits: n, withheld: req.social_security?.federal_tax_withheld?.[i] ?? null,
+  }));
   d.livedApartAllYear = req.social_security?.lived_apart_all_year ?? false;
 
   const ed = req.adjustments?.educator_expenses;

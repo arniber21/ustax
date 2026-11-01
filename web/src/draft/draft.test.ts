@@ -166,7 +166,7 @@ describe('dependents and credits (contract 1.2.0)', () => {
     expect(d.spouse.dob).toBe('1987-09-30');
     expect(d.maritalStatus).toBe('Married');
     expect(buildRequest(d)).toEqual(req);
-    expect(isDraftValid(d)).toBe(true);
+    expect(isDraftValid({ ...d, healthScreening: { marketplace: false, hsaWithdrawals: false } })).toBe(true);
   });
 
   it('the EITC example keeps the home upkeep answer on the child', () => {
@@ -260,7 +260,7 @@ describe('dependents and credits (contract 1.2.0)', () => {
 
   it('asks who provided the care once there is an amount', () => {
     const p = { ...newDependent(), relationship: 'BiologicalChild' as const, dob: '2018-01-01', careExpenses: 100 };
-    const e = validateStep(single({ hasDependents: true, dependents: [p], cdcc: { paid: true, totalQualified: null } }), 'credits');
+    const e = validateStep(single({ healthScreening: { marketplace: false, hsaWithdrawals: false }, hasDependents: true, dependents: [p], cdcc: { paid: true, totalQualified: null } }), 'credits');
     expect(Object.keys(e)).toEqual([`dep.${p.id}.careProviderQualifies`]);
   });
 
@@ -275,7 +275,7 @@ describe('dependents and credits (contract 1.2.0)', () => {
 describe('validateStep', () => {
   it('needs a filing status on the first step', () => {
     expect(validateStep(emptyDraft(), 'about')).toHaveProperty('filingStatus');
-    expect(validateStep(single(), 'about')).toEqual({});
+    expect(validateStep(single({ primary: { ...emptyFlags(), dob: '1985-06-15' } }), 'about')).toEqual({});
   });
 
   it('asks for the required W-2 box and complete box 12 rows', () => {
@@ -318,8 +318,12 @@ describe('validateStep', () => {
     expect(Object.keys(e).sort()).toEqual(['educator.primaryExpenses', 'estimated.amount', 'studentLoan.interest']);
   });
 
-  it('every valid example draft passes all steps', () => {
-    for (const [, req] of examples) expect(isDraftValid(draftFromRequest(req))).toBe(true);
+  it('API examples still require the wizard health screening and any missing birth dates', () => {
+    for (const [, req] of examples) {
+      const d = draftFromRequest(req);
+      expect(isDraftValid(d)).toBe(false);
+      expect(validateStep(d, 'credits')).toHaveProperty(['healthScreening.marketplace']);
+    }
   });
 });
 

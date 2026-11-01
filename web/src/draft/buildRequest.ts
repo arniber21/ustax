@@ -198,6 +198,7 @@ export function buildRequest(d: Draft): CalculateRequest {
 
   if (d.ssa.length) {
     const ss: Record<string, unknown> = { net_benefits: d.ssa.map((s) => s.netBenefits ?? 0) };
+    if (d.ssa.some((s) => s.withheld !== null)) ss.federal_tax_withheld = d.ssa.map((s) => s.withheld ?? 0);
     if (d.filingStatus === 'MarriedFilingSeparately') putTrue(ss, 'lived_apart_all_year', d.livedApartAllYear);
     req.social_security = ss;
   }

@@ -82,10 +82,17 @@ def Reply.body : Reply → J
   | .rejected e => e.toJ
   | .fault => ApiError.internal.toJ
 
-/-- The calculation on a validated request: the whole return (`ApiCalculator.apiCalculator`). -/
+/-- The calculation on a validated request: the whole return (`ApiCalculator.apiCalculator`).
+Reject supported results beyond the worksheet proof domain instead of returning capped tax. -/
 def calculateRequest (r : Request) (_h : r.Valid) : Reply :=
   let o := ApiCalculator.apiCalculator r
-  if o.supported then .success o.lines (warnings r)
+  if o.supported then
+    if o.lines.taxableIncome > TaxRates.noUpperBound then
+      .rejected {
+        code := .invalidRequest
+        message := "Taxable income exceeds the supported maximum of $1 trillion."
+        details := [⟨"", .range, "Aggregate taxable income must not exceed $1 trillion."⟩] }
+    else .success o.lines (warnings r)
   else match o.unsupportedReasons with
     | [] => .fault
     | rs => .unsupported rs

@@ -220,13 +220,13 @@ function Footer() {
 /** Page chrome: skip link, notice banner, sticky header, main landmark, footer, toasts and the ⌘K palette. */
 export function AppShell() {
   const { pathname } = useLocation();
-  const { request } = useDraft();
+  const { draft } = useDraft();
   const palette = useCommandShortcut();
   // A new page starts at the top, as a full page load would.
   useEffect(() => {
     document.documentElement.scrollTop = 0;
   }, [pathname]);
-  const startLabel = request ? 'Continue your return' : 'Start a return';
+  const startLabel = draft.filingStatus ? 'Continue your return' : 'Start a return';
   const section = pathname.split('/')[1] ?? '';
   return (
     <>

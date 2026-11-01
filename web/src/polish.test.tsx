@@ -152,7 +152,8 @@ describe('running estimate (summary sidebar)', () => {
       const e = useEstimate({ client: { fetch: fetchMock }, debounceMs: 0 });
       return <LiveSummaryCard e={e} />;
     }
-    const draft: Draft = { ...emptyDraft(), filingStatus: 'Single', w2s: [{ ...newW2(), wages: 5000000, withholding: 500000 }] };
+    const base = emptyDraft();
+    const draft: Draft = { ...base, primary: { ...base.primary, dob: '1985-06-15' }, healthScreening: { marketplace: false, hsaWithdrawals: false }, filingStatus: 'Single', w2s: [{ ...newW2(), wages: 5000000, withholding: 500000 }] };
     render(
       <DraftProvider initial={draft}>
         <Host />
@@ -176,7 +177,7 @@ describe('running estimate (summary sidebar)', () => {
         <Host />
       </DraftProvider>,
     );
-    expect(screen.getByText(/Choose a filing status/)).toBeInTheDocument();
+    expect(screen.getByText(/Complete the required answers/)).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

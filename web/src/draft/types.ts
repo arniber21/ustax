@@ -152,6 +152,8 @@ export interface SsaDraft {
   id: string;
   /** Box 5, may be negative. */
   netBenefits: Cents;
+  /** Box 6: federal income tax withheld. */
+  withheld: Cents;
 }
 
 export interface Draft {
@@ -181,6 +183,8 @@ export interface Draft {
   cdcc: { paid: boolean; totalQualified: Cents };
   /** `adjustments.hsa`: per-filer answers live on `primary.hsa` and `spouse.hsa`. */
   hsa: { has: boolean };
+  /** Explicit answers: null until the user confirms these unsupported situations. */
+  healthScreening: { marketplace: boolean | null; hsaWithdrawals: boolean | null };
   w2s: W2Draft[];
   interest: InterestDraft[];
   unemployment: UnemploymentDraft[];
@@ -217,6 +221,7 @@ export const emptyDraft = (): Draft => ({
   credits: { eitcImproperClaims: false, ctcImproperClaims: false, eitcQcOfAnother: false },
   cdcc: { paid: false, totalQualified: null },
   hsa: { has: false },
+  healthScreening: { marketplace: null, hsaWithdrawals: null },
   w2s: [],
   interest: [],
   unemployment: [],
@@ -254,7 +259,7 @@ export const newDependent = (): DependentDraft => ({
   claimableByOther: false, married: false, jointReturn: false, grossIncome: null, claim: true,
   unableToSelfCare: false, careExpenses: null, careProviderQualifies: null,
 });
-export const newSsa = (): SsaDraft => ({ id: newId(), netBenefits: null });
+export const newSsa = (): SsaDraft => ({ id: newId(), netBenefits: null, withheld: null });
 
 export const isJoint = (d: Pick<Draft, 'filingStatus'>): boolean => d.filingStatus === 'MarriedFilingJointly';
 

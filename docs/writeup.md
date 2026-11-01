@@ -165,7 +165,7 @@ Social Security, the educator and student loan adjustments, estimated payments, 
 total payments. 8 are about the whole return the server runs: refund or bill and credits within the
 tax on the whole return, the child care, elderly and saver's credits together within the tax,
 knockout soundness (`supported = false` exactly when a reason is listed), `outcome = refund` exactly when
-line 34 is positive, and **no HTTP 500 on any valid request** (`calculateRequest_ne_fault`).
+line 34 is positive, and **no pure internal-inconsistency result on any valid request** (HTTP/runtime exceptions are outside this theorem) (`calculateRequest_ne_fault`).
 
 Supporting results worth naming:
 

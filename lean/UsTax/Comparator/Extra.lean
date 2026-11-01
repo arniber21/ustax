@@ -257,7 +257,8 @@ theorem apiCalculator_outcome_refund_iff (r : Api.Request) :
       (ApiCalculator.apiCalculator r).lines.overpayment := by
   sorry
 
-/-- The endpoint never answers 500 on a valid request. -/
+/-- The pure calculator never returns its internal-inconsistency result on a valid request.
+HTTP/runtime exceptions are outside this theorem. -/
 theorem calculateRequest_ne_fault (r : Api.Request) (h : r.Valid) :
     Api.calculateRequest r h ≠ .fault := by
   sorry

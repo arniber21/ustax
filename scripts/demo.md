@@ -13,7 +13,7 @@ make run                      # Lean server :8080, web app :5173
 - Zoom the browser to 125 percent. Keep the Verification page in a second tab.
 - Check `curl localhost:8080/health` answers. Run `make e2e` once beforehand if you want to be sure (about 20 seconds after the build).
 
-Fallback if the live server is down: say so, then show the recorded path. `make web-dev` runs the web app on the saved API fixtures (`VITE_API_MOCK=1`, no server): the single filer with $50,000 wages gives a $981 refund there too. Or open `docs/screenshots/` (results, drawer, trust page). Do not pretend the mock is the live calculator.
+Fallback if the live server is down: say so, then show the recorded path. `make web-dev` runs the web app on the saved API fixtures (`VITE_API_MOCK=1`, no server): the single filer born 06/15/1985 with $50,000 wages and $5,000 withheld gives a $981 refund there too (answer No to both health screening questions). Or open `docs/screenshots/` (results, drawer, trust page). Do not pretend the mock is the live calculator.
 
 ## The 3 minutes
 
@@ -21,10 +21,10 @@ Fallback if the live server is down: say so, then show the recorded path. `make 
 
 **0:15 Enter a return (60 s).** Click Start your return.
 1. Filing status: Married, filing together. Date of birth 04/12/1986 (type it, do not click the calendar). Say: "Plain-language questions, no tax jargon."
-2. Your household: marital status Married. Next.
+2. Your household: marital status Married. Spouse date of birth 09/30/1987. Next.
 3. Dependents: Yes, add two children (born 03/01/2016 and 05/01/2019, relationship Son or daughter).
 4. Income: Add a W-2. Wages 80,000, tax withheld 3,000.
-5. Click Next through the remaining steps, then Calculate my return.
+5. Click Next through Adjustments. On Credits, answer No to both health coverage screening questions, then Review and Calculate my return.
 
 **1:15 Wow 1: the refund appears (20 s).** "Your refund: $1,365." Say: "Eighty thousand dollars of wages, three thousand already withheld, two kids. The child tax credit turns what would be an amount owed into a refund." Scroll to the Form 1040 table: line 11 AGI, line 15 taxable income, line 24 total tax, line 34 refund.
 

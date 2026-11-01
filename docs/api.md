@@ -281,3 +281,10 @@ curl -s -X POST http://localhost:8080/calculate -H 'Content-Type: application/js
 | `knocked-out-hoh-no-qualifying-person` | 422, `ExtraFilingStatusNotEligible` (head of household without a qualifying person) |
 | `single-w2-and-interest` | W-2 plus 1099-INT, tax 413900 (oracle scenario `single-50k`) |
 | `knocked-out-bond-interest` | 422, `FlowKnockoutHasBonds` |
+
+### Aggregate income limit
+
+The endpoint rejects a return with taxable income above $1 trillion with HTTP 400
+`invalid_request` and a `range` detail at the document root. Individual field caps do not bound
+the sum of multiple forms. This guard keeps successful responses within the Tax Computation
+Worksheet proof domain; it does not change `Request.Valid` or its validation theorem.

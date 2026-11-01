@@ -85,20 +85,22 @@ function ErrorText({ children }: { children: ReactNode }) {
 interface YesNoProps {
   legend: string;
   hint?: ReactNode;
-  value: boolean;
+  value: boolean | null;
+  errorPath?: string;
   onChange: (v: boolean) => void;
 }
 
 /** A yes/no question: a two-option segmented RadioGroup (arrow keys move between the two). */
-export function YesNo({ legend, hint, value, onChange }: YesNoProps) {
+export function YesNo({ legend, hint, value, errorPath, onChange }: YesNoProps) {
   const id = useId();
+  const error = useStepError(errorPath);
   return (
-    <fieldset className="m-0 min-w-0 border-0 p-0">
+    <fieldset className="m-0 min-w-0 border-0 p-0" data-path={errorPath} data-invalid={error ? true : undefined}>
       <Legend>{legend}</Legend>
       {hint ? <Hint>{hint}</Hint> : <div className="h-2" />}
       <RadioGroup
         className="inline-grid grid-cols-2 gap-1 rounded-lg border bg-muted p-1"
-        value={value ? 'yes' : 'no'}
+        value={value === null ? '' : value ? 'yes' : 'no'}
         onValueChange={(v) => onChange(v === 'yes')}
       >
         {(['yes', 'no'] as const).map((v) => (
@@ -113,6 +115,7 @@ export function YesNo({ legend, hint, value, onChange }: YesNoProps) {
           </div>
         ))}
       </RadioGroup>
+      {error && <ErrorText>{error}</ErrorText>}
     </fieldset>
   );
 }

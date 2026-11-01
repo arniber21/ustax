@@ -15,6 +15,7 @@ test.beforeEach(async ({ page }) => {
 test('1. single filer, one W-2 ($50,000 wages, $5,000 withheld): $981 refund and the line table', async ({ page }) => {
   await page.goto('/start/about');
   await chooseStatus(page, 'Single');
+  await typeDate(page, 'Your date of birth', '06/15/1985');
   await next(page, 'Your household');
   await next(page, 'Dependents');
   await answer(page, /Do you have children or other people you support/, false);
@@ -22,6 +23,8 @@ test('1. single filer, one W-2 ($50,000 wages, $5,000 withheld): $981 refund and
   await addW2(page, '50000', '5000');
   await next(page, 'Adjustments and payments');
   await next(page, 'Credits and care costs');
+  await answer(page, /Marketplace health insurance/, false);
+  await answer(page, /HSA withdrawals, rollovers/, false);
   await next(page, 'Review');
   await calculate(page);
 
@@ -57,6 +60,8 @@ test('2. married filing jointly, two children, via the wizard ($80,000 wages, $3
   await addW2(page, '80000', '3000');
   await next(page, 'Adjustments and payments');
   await next(page, 'Credits and care costs');
+  await answer(page, /Marketplace health insurance/, false);
+  await answer(page, /HSA withdrawals, rollovers/, false);
   await next(page, 'Review');
   await calculate(page);
 
@@ -79,6 +84,8 @@ test('3. head of household, one child, $40,000 wages: earned income credit appli
   await addW2(page, '40000', '2000');
   await next(page, 'Adjustments and payments');
   await next(page, 'Credits and care costs');
+  await answer(page, /Marketplace health insurance/, false);
+  await answer(page, /HSA withdrawals, rollovers/, false);
   await next(page, 'Review');
   await calculate(page);
 
@@ -90,6 +97,7 @@ test('3. head of household, one child, $40,000 wages: earned income credit appli
 test('4. a head of household with no qualifying person gets the "cannot do yet" page with reasons, not a number', async ({ page }) => {
   await page.goto('/start/about');
   await chooseStatus(page, 'Head of household');
+  await typeDate(page, 'Your date of birth', '06/15/1985');
   await next(page, 'Your household');
   await answer(page, /more than half of the cost of keeping up your home/, true);
   await next(page, 'Dependents');
@@ -98,6 +106,8 @@ test('4. a head of household with no qualifying person gets the "cannot do yet" 
   await addW2(page, '60000', '4000');
   await next(page, 'Adjustments and payments');
   await next(page, 'Credits and care costs');
+  await answer(page, /Marketplace health insurance/, false);
+  await answer(page, /HSA withdrawals, rollovers/, false);
   await next(page, 'Review');
   await calculate(page);
 
@@ -111,6 +121,7 @@ test('4. a head of household with no qualifying person gets the "cannot do yet" 
 test('5. the provenance drawer for line 15 shows the Catala source and says it is not a proof', async ({ page }) => {
   await page.goto('/start/about');
   await chooseStatus(page, 'Single');
+  await typeDate(page, 'Your date of birth', '06/15/1985');
   await next(page, 'Your household');
   await next(page, 'Dependents');
   await answer(page, /Do you have children or other people you support/, false);
@@ -118,6 +129,8 @@ test('5. the provenance drawer for line 15 shows the Catala source and says it i
   await addW2(page, '50000', '5000');
   await next(page, 'Adjustments and payments');
   await next(page, 'Credits and care costs');
+  await answer(page, /Marketplace health insurance/, false);
+  await answer(page, /HSA withdrawals, rollovers/, false);
   await next(page, 'Review');
   await calculate(page);
 
@@ -175,3 +188,72 @@ test('7. keyboard only: the first wizard step can be completed without a mouse',
   await expect(page).toHaveURL(/\/start\/household$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Your household' })).toBeVisible();
 });
+
+test('8. a birth date is required before leaving About or opening results directly', async ({ page }) => {
+  await page.goto('/start/about');
+  await chooseStatus(page, 'Single');
+  await next(page, 'Your household');
+  await expect(page).toHaveURL(/\/start\/about$/);
+  await expect(page.getByRole('link', { name: 'Enter your date of birth.' })).toBeVisible();
+  await page.goto('/results');
+  await expect(page).toHaveURL(/\/start\/about$/);
+  await expect(page.getByRole('region', { name: 'Your refund' })).toHaveCount(0);
+});
+
+test('9. a childless 20-year-old with $10,000 wages gets no age-default EITC refund', async ({ page }) => {
+  await page.goto('/start/about');
+  await chooseStatus(page, 'Single');
+  await typeDate(page, 'Your date of birth', '06/15/2004');
+  await next(page, 'Your household');
+  await next(page, 'Dependents');
+  await next(page, 'Income');
+  await addW2(page, '10000', '0');
+  await next(page, 'Adjustments and payments');
+  await next(page, 'Credits and care costs');
+  await answer(page, /Marketplace health insurance/, false);
+  await answer(page, /HSA withdrawals, rollovers/, false);
+  await next(page, 'Review');
+  await calculate(page);
+  await expectLine(page, '32', '$0.00');
+  await expectLine(page, '34', '$0.00');
+});
+
+test('10. SSA-1099 box 6 withholding reaches the result as a $1,000 refund', async ({ page }) => {
+  await page.goto('/start/about');
+  await chooseStatus(page, 'Single');
+  await typeDate(page, 'Your date of birth', '06/15/1950');
+  await next(page, 'Your household');
+  await next(page, 'Dependents');
+  await next(page, 'Income');
+  await page.getByRole('button', { name: 'Add a SSA-1099', exact: true }).click();
+  await page.getByLabel('Box 5: net benefits', { exact: true }).fill('20000');
+  await page.getByLabel('Box 6: federal income tax withheld', { exact: true }).fill('1000');
+  await next(page, 'Adjustments and payments');
+  await next(page, 'Credits and care costs');
+  await answer(page, /Marketplace health insurance/, false);
+  await answer(page, /HSA withdrawals, rollovers/, false);
+  await next(page, 'Review');
+  await expect(page.getByText('$20,000 net benefits, $1,000 withheld')).toBeVisible();
+  await calculate(page);
+  await expect(page.getByRole('region', { name: 'Your refund' })).toContainText('$1,000');
+  await expectLine(page, '25d', '$1,000.00');
+});
+
+for (const situation of [/Marketplace health insurance/, /HSA withdrawals, rollovers/]) {
+  test(`unsupported ${situation.source} cannot bypass the wizard through /results`, async ({ page }) => {
+    await page.goto('/start/about');
+    await chooseStatus(page, 'Single');
+    await typeDate(page, 'Your date of birth', '06/15/1985');
+    await page.goto('/start/credits');
+    await answer(page, /Marketplace health insurance/, false);
+    await answer(page, /HSA withdrawals, rollovers/, false);
+    await answer(page, situation, true);
+    await expect(page.getByText('This return can’t be calculated in this wizard')).toBeVisible();
+    await next(page, 'Review');
+    await expect(page).toHaveURL(/\/start\/credits$/);
+    await page.goto('/results');
+    await expect(page).toHaveURL(/\/start\/credits$/);
+    await expect(page.getByRole('region', { name: 'Your refund' })).toHaveCount(0);
+    await expect(page.getByTestId('live-summary')).not.toContainText('$');
+  });
+}

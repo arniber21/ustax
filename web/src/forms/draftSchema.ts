@@ -105,7 +105,7 @@ export const draftSchema = z.looseObject({
   interest: list(interest, LIMITS.maxItems, '1099-INTs'),
   unemployment: list(z.looseObject({ filer: role, amount: money, withheld: money }), LIMITS.maxItems, '1099-Gs'),
   retirement: list(retirement, LIMITS.maxItems, '1099-Rs'),
-  ssa: list(z.looseObject({ netBenefits: moneySchema(true) }), LIMITS.maxSsaForms, 'Social Security statements'),
+  ssa: list(z.looseObject({ netBenefits: moneySchema(true), withheld: money }), LIMITS.maxSsaForms, 'Social Security statements'),
   educator: z.looseObject({ primaryExpenses: money, spouseExpenses: money }),
   studentLoan: z.looseObject({ interest: money }),
   estimated: z.looseObject({ amount: money }),

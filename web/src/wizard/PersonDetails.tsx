@@ -24,7 +24,7 @@ export function PersonDetails({
     <>
       <DateField
         label={`${you ? 'Your' : 'Your spouse’s'} date of birth`}
-        hint={`Age decides the standard deduction and several credits. If you leave it empty, we assume ${you ? 'you are' : 'your spouse is'} under 65.`}
+        hint="Required. Your actual age decides the standard deduction and eligibility for several credits."
         value={value.dob}
         onChange={(dob) => onChange({ dob })}
         path={`${pathPrefix}.dob`}

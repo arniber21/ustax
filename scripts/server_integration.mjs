@@ -126,6 +126,40 @@ expectBody('GET /calculate/extra is 404', await call('GET', '/calculate/extra'),
   if (clean.json && !('warnings' in clean.json)) ok('no warnings key when nothing is superseded'); else bad('warnings key on a clean request', clean.text.slice(0, 200));
 }
 
+// Regression: per-field caps do not bound the sum of many forms. Reject incomes
+// outside the worksheet theorem's domain, rather than silently capping line 16.
+for (const count of [11, 20]) {
+  const req = { api_version: 1, tax_year: 2024, filing_status: 'Single',
+    w2s: Array.from({ length: count }, () => ({ filer: 'PrimaryFiler', wages: 10000000000000 })) };
+  const r = await call('POST', '/calculate', { body: JSON.stringify(req) });
+  if (r.status === 400 && r.json?.error?.code === 'invalid_request'
+      && r.json.error.details?.some((d) => d.code === 'range') && !r.json.lines)
+    ok(`rejects aggregate taxable income beyond the proof domain (${count} W-2s)`);
+  else bad(`aggregate income cap (${count} W-2s)`, r.text);
+}
+{
+  const req = { api_version: 1, tax_year: 2024, filing_status: 'Single',
+    filers: { primary: { date_of_birth: '1950-06-15' } },
+    social_security: { net_benefits: [2000000], federal_tax_withheld: [100000] } };
+  const r = await call('POST', '/calculate', { body: JSON.stringify(req) });
+  if (r.status === 200 && r.json.lines.total_withholding === 100000 && r.json.lines.overpayment === 100000)
+    ok('SSA box 6 withholding gives the expected $1,000 refund');
+  else bad('SSA box 6 withholding', r.text);
+}
+
+// The upper endpoint is inclusive: exactly $1 trillion remains supported.
+for (const extra of [1460000, 1460100]) {
+  const req = { api_version: 1, tax_year: 2024, filing_status: 'Single',
+    w2s: [...Array.from({ length: 10 }, () => ({ filer: 'PrimaryFiler', wages: 10000000000000 })),
+      { filer: 'PrimaryFiler', wages: extra }] };
+  const r = await call('POST', '/calculate', { body: JSON.stringify(req) });
+  if (extra === 1460000 && r.status === 200 && r.json.lines.taxable_income === 100000000000000)
+    ok('accepts taxable income exactly at the proof domain maximum');
+  else if (extra === 1460100 && r.status === 400 && r.json?.error?.code === 'invalid_request')
+    ok('rejects taxable income one dollar over the proof domain maximum');
+  else bad('proof domain boundary', r.text);
+}
+
 // ---- 4. CORS ----
 {
   const pre = await call('OPTIONS', '/calculate', { headers: { Origin: ORIGIN, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type' } });

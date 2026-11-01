@@ -241,10 +241,14 @@ describe('Dependents step', () => {
 describe('Credits step', () => {
   const kid = { ...newDependent(), name: 'Maya', relationship: 'BiologicalChild' as const, dob: '2019-05-01' };
 
-  it('says what is not supported rather than hiding it', () => {
+  it('refuses unsupported health coverage instead of showing a result', async () => {
     seed({ filingStatus: 'Single' });
     at('/start/credits');
-    expect(screen.getByText(/Form 1095-A\) is not supported yet/)).toBeInTheDocument();
+    await userEvent.click(within(screen.getByRole('group', { name: /Marketplace health insurance/ })).getByRole('radio', { name: 'Yes' }));
+    expect(screen.getByText('This return can’t be calculated in this wizard')).toBeInTheDocument();
+    expect(saved().healthScreening.marketplace).toBe(true);
+    await next('Review');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Credits and care costs');
   });
 
   it('collects care costs per person, then asks who provided the care', async () => {
@@ -371,7 +375,7 @@ describe('Income step', () => {
   });
 
   it('stops Next with plain-language errors, then lets you through', async () => {
-    seed({ filingStatus: 'Single', w2s: [newW2()] });
+    seed({ filingStatus: 'Single', primary: { ...emptyFlags(), dob: '1985-06-15' }, w2s: [newW2()] });
     at('/start/income');
     await next('Adjustments');
     expect(screen.getByRole('alert')).toHaveTextContent(/Box 1 is the heart/);
@@ -381,13 +385,13 @@ describe('Income step', () => {
   });
 
   it('caps each list at the contract limit', () => {
-    seed({ filingStatus: 'Single', ssa: Array.from({ length: 4 }, (_, n) => ({ id: `s${n}`, netBenefits: 1 })) });
+    seed({ filingStatus: 'Single', ssa: Array.from({ length: 4 }, (_, n) => ({ id: `s${n}`, netBenefits: 1, withheld: null })) });
     at('/start/income');
     expect(screen.getByRole('button', { name: 'Add another SSA-1099' })).toBeDisabled();
   });
 
   it('explains where to find a box as visible help text tied to the field', () => {
-    seed({ filingStatus: 'Single', w2s: [newW2()] });
+    seed({ filingStatus: 'Single', primary: { ...emptyFlags(), dob: '1985-06-15' }, w2s: [newW2()] });
     at('/start/income');
     const wages = screen.getByLabelText(/^Box 1:/);
     expect(wages).toHaveAccessibleDescription(/Where to find it: Box 1 is the first dollar box/);
@@ -395,7 +399,7 @@ describe('Income step', () => {
   });
 
   it('error summary links jump to the field', async () => {
-    seed({ filingStatus: 'Single', w2s: [newW2()] });
+    seed({ filingStatus: 'Single', primary: { ...emptyFlags(), dob: '1985-06-15' }, w2s: [newW2()] });
     at('/start/income');
     await next('Adjustments');
     const summary = screen.getByRole('group', { name: 'There is a problem' });
@@ -449,6 +453,8 @@ describe('Review step', () => {
   it('summarises the draft with edit links', () => {
     seed({
       filingStatus: 'Single',
+      primary: { ...emptyFlags(), dob: '1985-06-15' },
+      healthScreening: { marketplace: false, hsaWithdrawals: false },
       w2s: [{ ...newW2(), wages: 5000000, withholding: 500000 }],
       studentLoan: { hadPayments: true, loansQualify: true, interest: 120000 },
     });
@@ -472,7 +478,7 @@ describe('Review step', () => {
     expect(screen.getByRole('region', { name: 'Dependents' })).toHaveTextContent('MayaSon or daughter, born 2019-05-01');
     expect(screen.getByRole('link', { name: 'Edit Dependents' })).toHaveAttribute('href', '/start/dependents');
     expect(screen.getByRole('region', { name: 'Credits and care costs' })).toHaveTextContent('$2,500');
-    expect(screen.getByText('Not supported yet')).toBeInTheDocument();
+    expect(screen.getAllByText('Not answered')).toHaveLength(2);
   });
 
   it('flags missing answers with a link to fix them', () => {
@@ -481,7 +487,7 @@ describe('Review step', () => {
   });
 
   it('sends you to the first problem instead of the results', async () => {
-    seed({ filingStatus: 'Single', w2s: [newW2()] });
+    seed({ filingStatus: 'Single', primary: { ...emptyFlags(), dob: '1985-06-15' }, w2s: [newW2()] });
     at('/start/review');
     await userEvent.click(screen.getByRole('button', { name: /Calculate my return/ }));
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Income');

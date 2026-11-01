@@ -174,10 +174,7 @@ export function CreditsStep() {
           <>
             <HsaPerson who="you" path="primary" value={draft.primary} onChange={setHsa('primary')} />
             {joint && <HsaPerson who="your spouse" path="spouse" value={draft.spouse} onChange={setHsa('spouse')} />}
-            <Callout tone="warn" title="Withdrawals are not collected yet">
-              We do not ask about HSA withdrawals (Form 1099-SA), rollovers or extra deposits. If you had any, this part of
-              your return is incomplete.
-            </Callout>
+
           </>
         )}
       </FormSection>
@@ -206,10 +203,28 @@ export function CreditsStep() {
         />
       </FormSection>
 
-      <Callout tone="warn" title="Marketplace health insurance (Form 1095-A) is not supported yet">
-        If you or your family had a plan from the Health Insurance Marketplace, your premium tax credit is not in this result,
-        and you may owe back some of what was paid for you, or be owed more. Do not rely on this result if you got a Form 1095-A.
-      </Callout>
+      <FormSection icon={HeartPulse} title="Health coverage screening" note="Answer both questions before calculating.">
+        <YesNo
+          legend="Did you or anyone in your tax family have Marketplace health insurance (Form 1095-A) in 2024?"
+          hint="Include coverage even if advance premium tax credits paid some or all of the premium."
+          value={draft.healthScreening.marketplace}
+          errorPath="healthScreening.marketplace"
+          onChange={(marketplace) => update((d) => ({ ...d, healthScreening: { ...d.healthScreening, marketplace } }))}
+        />
+        <YesNo
+          legend="Did you or your spouse have HSA withdrawals, rollovers or excess contributions for 2024?"
+          hint="Include Form 1099-SA distributions and excess contributions from an earlier year."
+          value={draft.healthScreening.hsaWithdrawals}
+          errorPath="healthScreening.hsaWithdrawals"
+          onChange={(hsaWithdrawals) => update((d) => ({ ...d, healthScreening: { ...d.healthScreening, hsaWithdrawals } }))}
+        />
+        {(draft.healthScreening.marketplace || draft.healthScreening.hsaWithdrawals) && (
+          <Callout tone="warn" title="This return can’t be calculated in this wizard">
+            These situations need information this wizard does not collect. No estimate or final result will be shown.
+            Use tax software that supports the relevant forms or ask a tax preparer.
+          </Callout>
+        )}
+      </FormSection>
     </>
   );
 }

@@ -42,11 +42,11 @@ export function validateStep(d: Draft, step: WizardStepId): StepErrors {
 
   if (step === 'about') {
     if (d.filingStatus === null) e.filingStatus = 'Pick the option that fits you best. You can change it later.';
-    dob('primary.dob', d.primary.dob, 'your', false);
+    dob('primary.dob', d.primary.dob, 'your', true);
   }
 
   if (step === 'household') {
-    if (d.filingStatus === 'MarriedFilingJointly') dob('spouse.dob', d.spouse.dob, 'your spouse’s', false);
+    if (d.filingStatus === 'MarriedFilingJointly') dob('spouse.dob', d.spouse.dob, 'your spouse’s', true);
   }
 
   if (step === 'dependents' && d.hasDependents) {
@@ -66,6 +66,14 @@ export function validateStep(d: Draft, step: WizardStepId): StepErrors {
   }
 
   if (step === 'credits') {
+    for (const [field, label] of [
+      ['marketplace', 'Marketplace health insurance (Form 1095-A)'],
+      ['hsaWithdrawals', 'HSA withdrawals, rollovers or excess contributions'],
+    ] as const) {
+      const answer = d.healthScreening[field];
+      if (answer === null) e[`healthScreening.${field}`] = `Tell us whether you had ${label}.`;
+      else if (answer) e[`healthScreening.${field}`] = `We cannot calculate returns with ${label} in this wizard. Use software that supports these forms or ask a tax preparer.`;
+    }
     if (d.cdcc.paid) {
       big('cdcc.totalQualified', d.cdcc.totalQualified);
       if (d.hasDependents) {
@@ -125,7 +133,10 @@ export function validateStep(d: Draft, step: WizardStepId): StepErrors {
       if (!r.taxableBlank) required(`${p}.taxable`, r.taxable, 'Box 2a is the taxable part. Tick the box below if it is blank.');
       big(`${p}.withheld`, r.withheld);
     }
-    for (const s of d.ssa) required(`ssa.${s.id}.netBenefits`, s.netBenefits, 'Box 5 is your net benefits for the year.', true);
+    for (const s of d.ssa) {
+      required(`ssa.${s.id}.netBenefits`, s.netBenefits, 'Box 5 is your net benefits for the year.', true);
+      big(`ssa.${s.id}.withheld`, s.withheld);
+    }
   }
 
   if (step === 'adjustments') {

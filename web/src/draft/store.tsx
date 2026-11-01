@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 import type { CalculateRequest } from '../api';
 import { tryBuildRequest } from './buildRequest';
+import { isDraftValid } from './validate';
 import { emptyDraft, emptyFlags, type Draft } from './types';
 
 export const STORAGE_KEY = 'ustax.draft.v1';
@@ -48,6 +49,8 @@ export function loadDraft(storage: Pick<Storage, 'getItem'> | undefined = safeSt
       credits: { ...base.credits, ...p.credits },
       cdcc: { ...base.cdcc, ...p.cdcc },
       hsa: { ...base.hsa, ...p.hsa },
+      healthScreening: { ...base.healthScreening, ...p.healthScreening },
+      ssa: (p.ssa ?? []).map((s) => ({ ...s, withheld: s.withheld ?? null })),
     };
   } catch {
     return emptyDraft();
@@ -63,7 +66,7 @@ export interface DraftApi {
   reset: () => void;
   /** Replace the whole draft (for example with an example scenario). */
   replace: (d: Draft) => void;
-  /** The API request for the current draft, or null until a filing status is chosen. Stable between unrelated renders. */
+  /** The API request, or null until required answers are complete and the wizard supports the return. */
   request: CalculateRequest | null;
 }
 
@@ -94,7 +97,7 @@ export function DraftProvider({ children, initial }: { children: ReactNode; init
         dispatch({ type: 'reset' });
       },
       replace: (d) => dispatch({ type: 'replace', draft: d }),
-      request: tryBuildRequest(draft),
+      request: isDraftValid(draft) ? tryBuildRequest(draft) : null,
     }),
     [draft],
   );

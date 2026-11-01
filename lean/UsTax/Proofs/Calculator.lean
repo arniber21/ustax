@@ -408,8 +408,8 @@ theorem apiCalculator_refund_balanceDue_consistent (r : Api.Request) :
   · simpa [linesOf] using h
   · simp [zeroLines, RefundOrBalanceDue]
 
-/-- **The endpoint never answers 500 on a valid request**: an unsupported return always has a
-reason to report (`Api.calculateRequest` returns `fault` only for an empty reason list). -/
+/-- **The pure calculator never returns its internal-inconsistency result**: an unsupported
+return always has a reason to report. HTTP and runtime exceptions are outside this theorem. -/
 theorem calculateRequest_ne_fault (r : Api.Request) (h : r.Valid) :
     Api.calculateRequest r h ≠ .fault := by
   have hs := apiCalculator_supported_iff r
@@ -422,7 +422,8 @@ theorem calculateRequest_ne_fault (r : Api.Request) (h : r.Valid) :
     cases hr : o.reasons with
     | nil => exact absurd hr hne
     | cons x xs => simp
-  · simp [hsup]
+  · simp only [hsup, ↓reduceIte]
+    split <;> simp
 
 /-! ## The theorems on concrete returns (CLAUDE.md section 4)
 

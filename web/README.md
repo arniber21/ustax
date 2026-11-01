@@ -73,12 +73,18 @@ Screenshots: `docs/screenshots/`.
 ```tsx
 const { draft, update, reset, request } = useDraft();   // React context + reducer, persisted to localStorage (`ustax.draft.v1`)
 buildRequest(draft)      // pure Draft -> CalculateRequest (throws DraftIncompleteError without a filing status)
-tryBuildRequest(draft)   // same, or null; `request` from useDraft() is this
+tryBuildRequest(draft)   // conversion only, or null without a filing status
+request                 // useDraft(): null until all required answers are valid and supported
 validateStep(draft, 'income') / validateDraft(draft)   // plain-language errors keyed by field path
 draftFromRequest(req)    // inverse, used for api/examples round-trip tests
 ```
 
-The wizard only collects what `api/schema.json` accepts. Dependents, HSA, EITC, CDCC and the Saver's credit are not in the contract yet, so there are no questions for them (the household step just warns that child-related credits are not in the math).
+The wizard collects dependents, credits, HSA contributions and supported income, including SSA-1099
+box 6 withholding. Birth dates are required for every filer. Explicit health screening answers are
+required: Marketplace coverage and HSA withdrawals, rollovers or excess contributions stop calculation
+because the wizard does not collect those forms. Incomplete or unsupported answers suppress both
+the running estimate and final results; opening `/results` directly returns to the first problem.
+Older saved drafts keep their answers and must complete the new screening questions.
 
 ## Provenance viewer (`src/provenance/`)
 

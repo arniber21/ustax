@@ -1,3 +1,4 @@
+import { fireEvent } from '@testing-library/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -30,9 +31,15 @@ describe('routing', () => {
   it('wizard walks through all seven steps', async () => {
     at('/start/about');
     await userEvent.click(screen.getByRole('radio', { name: /^Single/ }));
+    fireEvent.change(screen.getByLabelText('Your date of birth'), { target: { value: '06/15/1985' } });
     const titles = ['Your household', 'Dependents', 'Income', 'Adjustments and payments', 'Credits and care costs', 'Review your answers'];
     const labels = ['Your household', 'Dependents', 'Income', 'Adjustments and payments', 'Credits and care costs', 'Review'];
     for (const [n, label] of labels.entries()) {
+      if (label === 'Review') {
+        for (const name of [/Marketplace health insurance/, /HSA withdrawals, rollovers/]) {
+          await userEvent.click(within(screen.getByRole('group', { name })).getByRole('radio', { name: 'No' }));
+        }
+      }
       await userEvent.click(screen.getByRole('button', { name: new RegExp(`Next: ${label}`) }));
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(titles[n]!);
     }
@@ -42,8 +49,8 @@ describe('routing', () => {
   it('Next waits for a filing status and says why', async () => {
     at('/start/about');
     await userEvent.click(screen.getByRole('button', { name: /Next: Your household/ }));
-    expect(screen.getByRole('alert')).toHaveTextContent(/Pick the option that fits/);
-    const summary = screen.getByRole('group', { name: 'There is a problem' });
+    expect(screen.getAllByRole('alert').some((e) => /Pick the option that fits/.test(e.textContent ?? ''))).toBe(true);
+    const summary = screen.getByRole('group', { name: 'There are 2 problems' });
     expect(summary).toHaveFocus();
     expect(within(summary).getByRole('link', { name: /Pick the option that fits/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('About you');
@@ -74,7 +81,10 @@ describe('routing', () => {
 
 describe('results (mock mode, $50,000 single)', () => {
   it('shows the refund hero and the line walk from the fixture', async () => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(draftFromRequest(EXAMPLES.refund)));
+    const d = draftFromRequest(EXAMPLES.refund);
+    d.primary.dob = '1985-06-15';
+    d.healthScreening = { marketplace: false, hsaWithdrawals: false };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
     at('/results');
     const summary = await screen.findByRole('region', { name: 'Your refund' });
     expect(summary.querySelector('.result-amount')).toHaveTextContent('$981.00');

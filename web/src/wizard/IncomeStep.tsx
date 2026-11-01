@@ -58,6 +58,7 @@ export function IncomeStep() {
     ...draft.interest.map((i) => i.withheld ?? 0),
     ...draft.unemployment.map((u) => u.withheld ?? 0),
     ...draft.retirement.map((r) => r.withheld ?? 0),
+    ...draft.ssa.map((s) => s.withheld ?? 0),
   ]);
   const interest = sumCents(draft.interest.map((i) => i.interest ?? 0));
 
@@ -145,19 +146,28 @@ export function IncomeStep() {
           onAdd={() => update((d) => ({ ...d, ssa: [...d.ssa, newSsa()] }))}
           onRemove={(id) => update(removeItem('ssa', id))}
           render={(s) => (
-            <MoneyField
-              label="Box 5: net benefits"
-              hint={
-                <>
-                  What you received minus anything you paid back. It can be negative if you repaid more than you got.{' '}
-                  <Where>Box 5 is on the front of your SSA-1099, labeled “Net Benefits for 2024”.</Where>
-                </>
-              }
-              path={`ssa.${s.id}.netBenefits`}
-              nonNegative={false}
-              value={s.netBenefits}
-              onChange={(netBenefits) => update(patchItem('ssa', s.id, { netBenefits }))}
-            />
+            <>
+              <MoneyField
+                label="Box 5: net benefits"
+                hint={
+                  <>
+                    What you received minus anything you paid back. It can be negative if you repaid more than you got.{' '}
+                    <Where>Box 5 is on the front of your SSA-1099, labeled “Net Benefits for 2024”.</Where>
+                  </>
+                }
+                path={`ssa.${s.id}.netBenefits`}
+                nonNegative={false}
+                value={s.netBenefits}
+                onChange={(netBenefits) => update(patchItem('ssa', s.id, { netBenefits }))}
+              />
+              <MoneyField
+                label="Box 6: federal income tax withheld"
+                hint="Tax already paid from your Social Security benefits. Leave blank if box 6 is empty."
+                path={`ssa.${s.id}.withheld`}
+                value={s.withheld}
+                onChange={(withheld) => update(patchItem('ssa', s.id, { withheld }))}
+              />
+            </>
           )}
         />
         {draft.filingStatus === 'MarriedFilingSeparately' && draft.ssa.length > 0 && (
