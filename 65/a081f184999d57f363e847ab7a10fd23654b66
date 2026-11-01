@@ -1,0 +1,24 @@
+web/src/trust/facts.ts
+  s_3031b504518be3::t_2262e98a7d93d7 174,180
+STATUS.md
+  s_3031b504518be3::t_5fb77da416602e 50
+  s_3031b504518be3::t_1fa8ea5e0710cc 9
+scripts/demo.md
+  s_3031b504518be3::t_2262e98a7d93d7 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65a081f184999d57f363e847ab7a10fd23654b66",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
