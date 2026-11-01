@@ -36,8 +36,8 @@ export function WhatIf({ request, client }: { request: CalculateRequest; client?
   const label = delta === 0 ? 'As entered' : `${sign}${formatCents(Math.abs(delta) * 100, { showCents: false })} withheld`;
 
   return (
-    <section aria-labelledby={`${id}-h`} className="rounded-lg border bg-card p-5 sm:p-6">
-      <h2 id={`${id}-h`} className="m-0 text-lg font-semibold">
+    <section aria-labelledby={`${id}-h`} className="prov-noprint rounded-xl border bg-card p-5 shadow-xs sm:p-6">
+      <h2 id={`${id}-h`} className="m-0 text-base font-semibold tracking-tight">
         What if your withholding were different?
       </h2>
       {!usable ? (

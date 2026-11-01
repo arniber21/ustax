@@ -121,7 +121,7 @@ test('5. the provenance drawer for line 15 shows the Catala source and says it i
   await next(page, 'Review');
   await calculate(page);
 
-  await page.getByRole('button', { name: /^How was line 15, .* calculated\?$/ }).click();
+  await page.getByRole('button', { name: /^Law & proof for line 15, / }).click();
   const drawer = page.getByRole('dialog', { name: /Line 15/ });
   await expect(drawer.getByRole('heading', { name: 'The law' })).toBeVisible();
   await expect(drawer.getByRole('heading', { name: 'The rule' })).toBeVisible();
