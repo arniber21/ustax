@@ -24,7 +24,7 @@ More screenshots (every wizard step, amount owed, unsupported return, verificati
 
 ## Try it
 
-You need [devbox](https://www.jetify.com/devbox). Everything else (Lean, Node, Catala) is installed
+You need [devbox](https://www.jetify.com/devbox). Everything else (Lean, Node) is installed
 for you inside the project folder.
 
 ```sh
@@ -32,9 +32,9 @@ curl -fsSL https://get.jetify.com/devbox | bash   # once; or: INSTALL_DEVBOX=1 m
 make install && make run
 ```
 
-- `make install` downloads the pinned Lean toolchain, builds the calculator, installs the web app,
-  and builds the Catala tools. The first run takes a while. `SKIP_CATALA=1 make install` skips Catala,
-  which you only need for the tests.
+- `make install` downloads the pinned Lean toolchain, builds the calculator and installs the web app.
+  The first run takes a few minutes. It does not build Catala, which you only need to run the Catala
+  tests: `make install-all` adds it (10 to 20 minutes the first time, compiled from source).
 - `make run` starts two things. Press Ctrl-C to stop both.
   - The calculator API at <http://localhost:8080> (`POST /calculate`, `GET /health`, `GET /version`).
   - The web app at <http://localhost:5173>. Open this one.

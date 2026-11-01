@@ -32,7 +32,7 @@ Node 22 (web/ needs >= 18), bun (forensics), ninja (clerk), poppler-utils (`pdft
 
 ## Catala
 
-nixpkgs has no Catala package, so devbox provides opam and `scripts/catala-setup.sh` builds OCaml 5.4.1 and `catala.1.3.0` (plus `clerk`) into a project-local opam root `.opam/` (gitignored; your `~/.opam` is untouched; opam sandboxing is disabled for this root). First run takes roughly 10-20 minutes; it is skipped when the right version exists (`SKIP_CATALA=1 make install` skips it entirely). `scripts/devbox-env.sh` puts `.opam/ustax/bin` on PATH inside devbox, so no `eval $(opam env)` is needed. Versions are in `devbox.json` `env` (`USTAX_OCAML`, `USTAX_CATALA`).
+nixpkgs has no Catala package, so devbox provides opam and `scripts/catala-setup.sh` builds OCaml 5.4.1 and `catala.1.3.0` (plus `clerk`) into a project-local opam root `.opam/` (gitignored; your `~/.opam` is untouched; opam sandboxing is disabled for this root). First run takes roughly 10-20 minutes; it is skipped when the right version exists. `make install` does NOT build it by default (the server and web app do not need it); `make install-all` does. `scripts/devbox-env.sh` puts `.opam/ustax/bin` on PATH inside devbox, so no `eval $(opam env)` is needed. Versions are in `devbox.json` `env` (`USTAX_OCAML`, `USTAX_CATALA`).
 
 ## How versions are pinned
 

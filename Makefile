@@ -11,12 +11,14 @@ $(or $(MAKECMDGOALS),install):
 else
 SRC := $(wildcard catala/*.catala_en catala/tests/*.catala_en)
 
-.PHONY: install check run server test-server clean
+.PHONY: install install-all check run server test-server clean
 
 # rules.md: `make install && make run` must work from a clean clone. Needs elan and Node >= 18;
 # opam (Catala) is optional. No sudo. See scripts/install.sh.
-install:   ## Lean toolchain (elan, pinned) + lake build + npm ci in web/ + Catala via opam (SKIP_CATALA=1 skips)
+install:   ## Lean toolchain (elan, pinned) + lake build + npm ci in web/ (what `make run` needs; no Catala)
 	./scripts/install.sh
+install-all: ## install + build Catala 1.3.0 locally (10-20 min first time), for `make check` and `make difftest`
+	INSTALL_CATALA=1 ./scripts/install.sh
 run:       ## build, then start the API on :8080 and the web dev server on :5173 (Ctrl-C stops both)
 	./scripts/run.sh
 server:    ## build and run only the Lean HTTP API (PORT, HOST, ALLOW_ORIGIN; see lean/ServerMain.lean)
