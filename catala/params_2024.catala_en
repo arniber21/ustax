@@ -393,3 +393,42 @@ declaration cdcc_deemed_monthly_income_two_or_more content money equals $500
 # 13". DF familyAndHousehold.xml /familyAndHousehold/*/cdccTurnedThirteenAfterJanFirst.
 declaration cdcc_qualifying_child_age_limit content integer equals 13
 ```
+
+## Premium tax credit: poverty line and applicable figure (issue #32)
+
+```catala-metadata
+# Form 8962 line 4, Tables 1-1 to 1-3 (i8962--2024.pdf p 8). "For 2024, the
+# 2023 federal poverty lines are used": 48 states and DC $14,580 for a family
+# of 1 plus $5,140 for each additional person; Alaska $18,210 plus $6,430;
+# Hawaii $16,770 plus $5,910 (Rev. Proc. 2023-29 and the 2023 HHS poverty
+# guidelines; IRC 36B(d)(3)(B): the line published before the enrollment
+# period). DF ptc.xml /federalPovertyLineMagicNumberStartingNumber and
+# /federalPovertyLineMagicNumberIncrement.
+declaration ptc_poverty_line_family_of_one_other content money equals $14,580
+declaration ptc_poverty_line_increment_other content money equals $5,140
+declaration ptc_poverty_line_family_of_one_alaska content money equals $18,210
+declaration ptc_poverty_line_increment_alaska content money equals $6,430
+declaration ptc_poverty_line_family_of_one_hawaii content money equals $16,770
+declaration ptc_poverty_line_increment_hawaii content money equals $5,910
+
+# Form 8962 Worksheet 2 (i8962--2024.pdf p 9): "Multiply the amount on line 2
+# by 4.0"; a household income above that is entered as 401. DF ptc.xml
+# /householdIncomeAsPercent.
+declaration ptc_poverty_percent_cap_multiple content integer equals 4
+declaration ptc_poverty_percent_over_cap content decimal equals 401.0
+
+# Form 8962 Table 2 (i8962--2024.pdf p 10), applicable figure: 0.0000 up to 150
+# percent, 0.0850 at 400 percent or more. Between, the table is the
+# IRC 36B(b)(3)(A)(i) applicable percentage in the 2024 (Inflation Reduction
+# Act) form, interpolated: 0 to 0.0200 over 150-200, 0.0200 to 0.0400 over
+# 200-250, 0.0400 to 0.0600 over 250-300, 0.0600 to 0.0850 over 300-400, each
+# rounded to four decimals. DF ptc.xml /applicableFigure.
+declaration ptc_applicable_figure_zero_through content integer equals 150
+declaration ptc_applicable_figure_linear_through content integer equals 300
+declaration ptc_applicable_figure_last_row content integer equals 399
+declaration ptc_applicable_figure_max_row content integer equals 400
+declaration ptc_applicable_figure_per_point_low content decimal equals 0.0004
+declaration ptc_applicable_figure_at_300 content decimal equals 0.06
+declaration ptc_applicable_figure_per_point_high content decimal equals 0.00025
+declaration ptc_applicable_figure_max content decimal equals 0.085
+```

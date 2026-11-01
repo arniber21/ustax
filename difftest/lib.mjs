@@ -99,7 +99,7 @@ export function parseCatalaValue(type, s) {
   s = s.trim();
   switch (type) {
     case 'money': return parseMoney(s);
-    case 'int': return BigInt(s);
+    case 'int': return BigInt(s.replace(/\.0+$/, '')); // a whole-valued Catala decimal prints as `399.0`
     case 'bool': if (s !== 'true' && s !== 'false') throw new Error(`bad bool ${s}`); return s === 'true';
     default: return s;
   }
