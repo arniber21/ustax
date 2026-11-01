@@ -95,7 +95,7 @@ export function ResultsView({ request, client, debounceMs }: { request: Calculat
 
       {shown && (
         <ProvenanceProvider lines={shown.lines}>
-          <div className="grid gap-10">
+          <div className="grid gap-10 [&>*]:animate-in [&>*]:fade-in-0 [&>*]:fill-mode-backwards [&>*]:duration-500 [&>:nth-child(2)]:delay-75 [&>:nth-child(3)]:delay-150 [&>:nth-child(n+4)]:delay-200">
             <ResultsHero outcome={shown.outcome} lines={shown.lines} stale={state.status !== 'ok'} />
             {shown.warnings && shown.warnings.length > 0 && <WarningsAlert warnings={shown.warnings} />}
             <LineWalk lines={shown.lines} filingStatus={request.filing_status} />

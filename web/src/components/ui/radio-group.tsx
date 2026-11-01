@@ -11,7 +11,7 @@ export function RadioGroupItem({ className, ...props }: React.ComponentProps<typ
     <RadioGroupPrimitive.Item
       data-slot="radio-group-item"
       className={cn(
-        'peer aspect-square size-5 shrink-0 rounded-full border border-input bg-background transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary aria-invalid:border-destructive',
+        'peer aspect-square size-5 shrink-0 rounded-full border border-input bg-background transition-[color,box-shadow] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary aria-invalid:border-destructive',
         className,
       )}
       {...props}
