@@ -28,25 +28,28 @@ export function HomePage() {
           <DotGlobe />
         </div>
       <section className="relative z-10 grid items-start gap-10 py-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:gap-16 lg:py-20">
-        <div className="max-w-xl [text-shadow:0_0_5px_var(--background),0_0_12px_var(--background),0_0_22px_var(--background)] [&_a]:[text-shadow:none]">
+        <div className="max-w-xl [text-shadow:0_0_5px_var(--background),0_0_12px_var(--background),0_0_22px_var(--background)]">
           <p className="m-0 text-sm font-medium text-muted-foreground">Tax year 2024 · Federal income tax</p>
           <h1 className="mt-3 mb-0 text-4xl leading-[1.1] font-semibold tracking-tight sm:text-5xl">{TAGLINE}</h1>
-          <p className="mt-6 mb-0 text-lg leading-relaxed text-muted-foreground">
-            Calculates your 2024 federal income tax. The arithmetic is checked by a machine-verified proof; here is exactly
-            what is and is not covered.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink size="lg" to="/start/about">
-              Start your return
-              <ArrowRight aria-hidden="true" />
-            </ButtonLink>
-            <ButtonLink size="lg" variant="secondary" to="/trust">
-              What is verified
-            </ButtonLink>
+          {/* translucent card: keeps the body text and buttons readable over the globe while it still shows through */}
+          <div className="mt-6 rounded-xl border border-border/60 bg-background/75 p-5 shadow-sm backdrop-blur-sm [text-shadow:none] sm:p-6">
+            <p className="m-0 text-lg leading-relaxed text-muted-foreground">
+              Calculates your 2024 federal income tax. The arithmetic is checked by a machine-verified proof; here is exactly
+              what is and is not covered.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <ButtonLink size="lg" to="/start/about">
+                Start your return
+                <ArrowRight aria-hidden="true" />
+              </ButtonLink>
+              <ButtonLink size="lg" variant="secondary" to="/trust">
+                What is verified
+              </ButtonLink>
+            </div>
+            <p className="mt-4 mb-0 text-sm text-muted-foreground">
+              Five short steps. Answers are saved in this browser only. Nothing is filed.
+            </p>
           </div>
-          <p className="mt-4 mb-0 text-sm text-muted-foreground">
-            Five short steps. Answers are saved in this browser only. Nothing is filed.
-          </p>
         </div>
 
         <section aria-labelledby="status-h" className="rounded-lg border bg-card">
