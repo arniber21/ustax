@@ -1,6 +1,7 @@
 import UsTax.Cli
 import UsTax.Api.Parse
 import UsTax.Api.Reasons
+import UsTax.Api.Calculate
 
 /-!
 # `ustax`: run the Lean calculator from the command line
@@ -18,6 +19,10 @@ Build with `cd lean && lake build ustax`; the binary is `.lake/build/bin/ustax`.
   request was accepted (the body is the `Repr` of the typed request, so a
   test can see that no field was dropped); otherwise the body is the
   `ErrorResponse` JSON. Used by `scripts/api_conformance.mjs`.
+* `ustax api-calc` reads one `POST /calculate` body per line on stdin and runs the
+  whole endpoint minus sockets (`UsTax.Api.calculate`: parse, validate, the whole-return
+  `Calculator`, the response) and writes `<HTTP status> TAB <response body>` per line,
+  byte for byte the server's answer. Used by `scripts/server_vs_cli.mjs`.
 * `ustax api-reasons` prints the table of the 104 knockout reasons (code,
   category, message) the 422 response can carry, as JSON; the conformance
   script compares it with `api/knockout-reasons.json`.
@@ -29,6 +34,7 @@ open UsTax Cli
 def usage : String :=
   "usage: ustax tentative-tax <taxable income> <filing status>\n" ++
   "       ustax api-parse     (request bodies, one per line, on stdin)\n" ++
+  "       ustax api-calc      (request bodies, one per line, on stdin: status TAB response)\n" ++
   "       ustax api-reasons   (the 422 reason table as JSON)\n" ++
   "       ustax run <Scope>   (JSON lines on stdin; scopes: " ++
   ", ".intercalate (scopes.map (·.1)) ++ ")"
@@ -58,6 +64,15 @@ def apiParseLines (stdin : IO.FS.Stream) (stdout : IO.FS.Stream) : IO Unit := do
       stdout.putStrLn s!"200\t{shown}"
     | .error e => stdout.putStrLn s!"{e.status}\t{e.render}"
 
+/-- Run the endpoint on each stdin line as a request body: `status TAB response body`. -/
+def apiCalcLines (stdin : IO.FS.Stream) (stdout : IO.FS.Stream) : IO Unit := do
+  repeat
+    let line ← stdin.getLine
+    if line.isEmpty then break
+    let text := if line.endsWith "\n" then (line.dropEnd 1).toString else line
+    let reply := Api.calculate text
+    stdout.putStrLn s!"{reply.status}\t{reply.body.render}"
+
 /-- Entry point; see the module docstring. -/
 def main (args : List String) : IO UInt32 := do
   match args with
@@ -70,6 +85,9 @@ def main (args : List String) : IO UInt32 := do
     | _, none => IO.eprintln s!"bad filing status {status.quote}"; return 2
   | ["api-reasons"] =>
     IO.println Api.reasonTableJson
+    return 0
+  | ["api-calc"] =>
+    apiCalcLines (← IO.getStdin) (← IO.getStdout)
     return 0
   | ["api-parse"] =>
     apiParseLines (← IO.getStdin) (← IO.getStdout)

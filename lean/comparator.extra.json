@@ -24,7 +24,15 @@
     "UsTax.Extra.taxableIncome_eq",
     "UsTax.Extra.totalPayments_eq",
     "UsTax.Extra.totalPayments_eq_full",
-    "UsTax.Extra.totalTax_mono_addW2"
+    "UsTax.Extra.totalTax_mono_addW2",
+    "UsTax.Extra.calculator_refund_balanceDue_consistent",
+    "UsTax.Extra.calculator_credits_within_liability",
+    "UsTax.Extra.calculator_totalTax_nonneg",
+    "UsTax.Extra.calculator_credits_le_tax",
+    "UsTax.Extra.calculator_unsupported_iff",
+    "UsTax.Extra.apiCalculator_supported_iff",
+    "UsTax.Extra.apiCalculator_outcome_refund_iff",
+    "UsTax.Extra.calculateRequest_ne_fault"
   ],
   "definition_names": [],
   "permitted_axioms": [

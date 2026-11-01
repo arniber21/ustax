@@ -174,8 +174,8 @@ Turns an untrusted `POST /calculate` body into a typed `Request`, or the 400
   `scripts/gen_lean_api_reasons.py` from `api/knockout-reasons.json`, the 104-constructor
   `KnockoutReason` enumeration with code, category and message (`make api-conformance` checks
   the file is current and that `ustax api-reasons` equals the JSON). `Bridge.lean`:
-  `toForm1040Input`, and the documented stub `toCalculatorInput` (the seam for the Lean
-  `Calculator`, #48; not called by the server).
+  `toCalculatorInput`, the request as the inputs of the whole-return `Calculator` (#48,
+  `docs/api-mapping.md`), and the schema 1.0 slice `toForm1040Input`.
 - `Props.lean` (plausible, before the lemmas) and `Tests.lean` (55 table-driven
   bodies, accepted-value checks, the 400 fixtures byte for byte, responses).
 - `ustax api-parse` (stdin lines to `status TAB body`) and
@@ -199,26 +199,21 @@ converter, left to #52).
 default `http://localhost:5173`). `POST /calculate`, `GET /health`, `GET /version`, `OPTIONS` preflight;
 body cap 256 KiB (413), 415 for a non-JSON content type, 404/405, 422 knockouts, 500 generic.
 
-* `Bridge.lean`: `toForm1040Input : Request → r.Valid → Form1040In`, the one place that knows both
-  vocabularies. Wired: filing status, W-2s (boxes 1 to 13 incl. box 12), 1099-INT, blind / 65 / claimed
-  flags, `filing_details`. `unwiredSections` lists what validates but is not read (1099-G, 1099-MISC,
-  1099-R, SSA-1099, educator and student loan adjustments, estimated payments, and the 1.2.0 sections:
-  the filers' extra answers, `filing_answers`, `dependents`, `credits`, `cdcc`, `premium_tax_credit`,
-  `screening`, `adjustments.hsa`, `combat_pay_election_made`); the 200 response then carries `warnings`
-  with code `section_not_used`, and `field_superseded` for the five schema 1.0 `filing_details` fields
-  that 1.2.0 derives (`docs/api.md` "Warnings"). `toCalculatorInput` is a typed, documented stub for the
-  whole-return Lean `Calculator` (#48); the full mapping is not written.
-* `Calculate.lean`: `calculate : String → Reply`, the whole endpoint minus sockets, with `#guard`s for the
-  $50,000 example, warnings, a knockout and a 400. No tax logic: it calls `Form1040.form1040` and reads
-  the knockout reasons from the same sub-scopes (`FormW2s.formW2s`, `Interest.interest`). Until the
-  `Calculator` scope (#38) exists, `knockoutReasons` is the list of flags `form1040` itself uses plus
-  `HasForeignAccountsOrTrusts` (which `form1040` only passes down); a disagreement with
-  `Form1040Out.unsupported` is `Reply.fault` (HTTP 500).
+* `Bridge.lean`: `toCalculatorInput : Request → Calculator.CalculatorIn`, the one place that knows both
+  vocabularies: every section of schema 1.2.0, mapped as the Catala `ApiCalculator` does
+  (`docs/api-mapping.md`; an absent answer is its schema default, money stays in cents). The response
+  carries `warnings` with code `field_superseded` for the five schema 1.0 `filing_details` fields that
+  1.2.0 derives (`docs/api.md` "Warnings"); there is no `section_not_used` since every section is read.
+* `Calculate.lean`: `calculate : String → Reply`, the whole endpoint minus sockets. No tax logic: it
+  calls `ApiCalculator.apiCalculator` (the whole return, issue #48) and reads `lines`, `outcome` and the
+  knockout reasons (`Calculator.firedKnockouts`) out. `Reply.fault` (HTTP 500) only if a return were
+  unsupported with no reason, which `Proofs.calculateRequest_ne_fault` proves impossible.
+  `ustax api-calc` runs it on request bodies from the command line (`status TAB response`).
 * Tests: `make test-server` starts the server and runs `scripts/server_integration.mjs` (every
-  `api/fixtures` entry, error classes, CORS, warnings; the six fixtures whose answer needs the
-  `Calculator` (EITC, child tax credit, household knockouts) are listed as `SKIP ... needs Lean
-  Calculator (#48)` and refused as skips once the server matches them) and `scripts/server_vs_cli.mjs` (the server against
-  `ustax run Form1040` on an independent re-mapping of about 300 random requests).
+  `api/fixtures` entry, which the Catala `ApiCalculator` generated, byte for byte as JSON; error classes,
+  CORS, warnings) and `scripts/server_vs_cli.mjs` (the server against `ustax api-calc` on every fixture
+  request and 300 random requests; `CATALA_CASES=n` also checks the first `n` against `clerk run` of the
+  Catala `ApiCalculator`).
 
 **Trusted code added by the server.** `ServerMain.lean` (IO only, no theorem; routing, CORS, body cap,
 content-type check, logging of method, path and status only, generic 500), `Std.Http` and `Std.Async`
@@ -366,6 +361,36 @@ the matching `catala/tests/test_*.catala_en` is a `#guard`.
   (`applicableFigureOf_mono`); the HSA deduction is at most line 12 for every input
   (`filerHsaTotalDeductibleAmount_le_limit`), nonnegative with nonnegative contributions, and line 8 is at most
   $9,300. Axioms: `propext`, `Classical.choice`, `Quot.sound`.
+
+## Knockouts and the whole return (issue #48)
+
+Hand-translations (strategy (c)) of `catala/knockouts_income.catala_en`,
+`catala/knockouts_household.catala_en`, `catala/calculator.catala_en` and
+`catala/api_calculator.catala_en`, each with a Catala <-> Lean name table.
+
+- `UsTax/KnockoutsIncome.lean`, `UsTax/KnockoutsHousehold.lean`: every `ko_` condition, the per-module
+  flags, the combined flags and the reason tables. The reason type is the generated
+  `UsTax.Api.KnockoutReason` (`Api/Reasons.lean`), so a fired reason is the API `code`.
+  `KnockoutsIncome/Lemmas.lean`, `KnockoutsHousehold.lean`: the reason list is empty exactly when the
+  combined flag is false.
+- `UsTax/Calculator.lean`: `calculator : CalculatorIn → CalculatorOut`, the whole return in the Catala
+  stages (filers, household, filing status eligibility, income, adjustments, AGI pass, premium tax
+  credit, credits in Direct File's order CDCC, Schedule R, Saver's, EITC, CTC/ODC/ACTC, final pass,
+  knockouts), five `Form1040.form1040` passes; the internals the knockouts and proofs read are fields
+  of `CalculatorOut`. The assertions of `catala/tests/test_calculator.catala_en` are `#guard`s.
+- `UsTax/ApiCalculator.lean`: `apiCalculator : Api.Request → ApiCalculatorOut` (`supported`, `outcome`,
+  `reasons`, the 19 `lines` in cents), on `Api.toCalculatorInput` (`Api/Bridge.lean`).
+- `UsTax/Cli.lean` registers `KnockoutsIncome`, `Calculator` (the Catala JSON input) and `ApiCalculator`
+  (a raw API request, read by `Api.parseRequest`). `make lean-difftest SCOPE=<calculator|api_calculator|knockouts_income>`:
+  the Catala mappings, unchanged except `api_calculator.mjs`'s `leanInput` (Lean reads the API request
+  the Catala input was decoded from). `difftest/lean.mjs` now honours `includeKnockedOut`,
+  `placeholderFalse` and `invert` as `difftest/lib.mjs` does, and dotted output names (`lines.wages`).
+- `UsTax/Calculator/Props.lean` (plausible, first), `UsTax/Spec/Calculator.lean` (`CreditsWithinTax`,
+  `KnockoutSound`, `RefundOutcome`) and `UsTax/Proofs/Calculator.lean`: refund/balance due (#65) and
+  credits within the tax (#66) on the whole return, the CDCC + Schedule R + Saver's limits composed,
+  knockout soundness, `outcome = refund` iff line 34 > 0, and no 500 on a valid request. The statements
+  are in `Comparator/Extra.lean` / `comparator.extra.json` (`docs/spec-surface.md`). Axioms:
+  `propext`, `Classical.choice`, `Quot.sound`.
 
 ## Pattern for Lean modules (follow this for every later scope)
 
