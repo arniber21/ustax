@@ -35,6 +35,23 @@ Tools (elan, bun, ninja, ...) come from devbox: see `docs/devbox.md`.
 and runs, from `.forensics-tool/app`, `bun server.ts <abs path to lean/> --dump forensics-out.json`.
 The project root is `lakefile.toml`, so module roots are inferred (else `--roots UsTax`).
 
+## Trusted surface
+
+What the proofs here rely on without proving it. The full list, with the reason for each item, is
+[`docs/trusted-base.md`](../docs/trusted-base.md); the README has the short version.
+
+- The Lean kernel, compiler and runtime (v4.35.0), and `Std.Http`/`Std.Async` for the server.
+- The spec files, which a human must review (not done yet): `UsTax/Spec/`,
+  `UsTax/Comparator/Challenge.lean` and `Extra.lean` (the statements in `../comparator.json`, 9, and
+  `../comparator.extra.json`, 31), and `Request.Valid` in `UsTax/Api/Spec.lean`. The definitions
+  each statement depends on are listed in `docs/spec-surface.md`.
+- The Tax Table and EIC Table data, derived by us from the IRS PDFs.
+- `ServerMain.lean`, `Api/Json.lean` and `Api/Response.lean`: tested, not proved.
+- Accepted axioms: `propext`, `Classical.choice`, `Quot.sound`. No `axiom` declarations, no `opaque`
+  contracts, no `native_decide` (`make audit`).
+
+The link from this code to the Catala rules is differential testing, not proof.
+
 ## Money library (`UsTax/Money*.lean`, issue #39)
 
 Catala 1.3.0 money semantics, ported from `catala_runtime.ml`, the stdlib

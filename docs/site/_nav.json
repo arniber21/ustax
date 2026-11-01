@@ -20,10 +20,10 @@
       "summary": "The author's write-up of how Catala and Lean were used, and where this goes next."
     },
     {
-      "title": "Write-up (draft)",
+      "title": "Write-up",
       "slug": "writeup",
       "source": "docs/writeup.md",
-      "summary": "Draft project write-up: why, what was built, what is proved, what is tested."
+      "summary": "Project write-up: why, what was built, what is proved, what is tested."
     },
     {
       "title": "Spec surface",
