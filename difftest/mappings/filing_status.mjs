@@ -15,14 +15,10 @@
 // /recommendedFilingStatus, /treatAs{MFJ,MFS,Hoh}. The Enum /recommendedFilingStatus is compared as five booleans
 // `/recommendedFilingStatus=<option>` (one per DF option) that this mapping adds to the scenario's oracle rows,
 // with the completeness of the DF row, because the runner reads scalar Catala outputs only.
-import { loadOracle } from '../lib.mjs';
 import filers from './filers.mjs';
 import { person } from './qualifying_child.mjs';
 import { answers } from './qualifying_relative.mjs';
 import { splitAnswers } from './dependents_benefit_split.mjs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { existsSync } from 'node:fs';
 
 const P = '/familyAndHousehold/*/';
 const val = (f, p) => f.get(p)?.value;
@@ -68,52 +64,19 @@ const { eligible_for_hoh, mfs_spouse_65_or_older, employer_income_subtotal, ...f
 
 const b = (oracle, catala) => ({ oracle, catala, type: 'bool' });
 
-// DF-BUG(20-a): DF /eligibleForSingle is "not maritalStatusAllowsFilingMarried"; IRC 1(c) excludes heads of household
-// and surviving spouses from the single rates (Pub 501 p 6: single only if "you don't qualify for another filing
-// status"). Wherever DF has eligibleForSingle and (eligibleForHoh or eligibleForQss), we differ on:
-//   /eligibleForSingle (DF true, we false);
-//   /hasMultipleEligibleFilingStatuses when single was DF's second option (DF true, we false);
-//   /isFilingStatusValid when the chosen status is single (DF true, we false: knocked out).
-// The list is computed from the DF values of both oracle files, so it names exactly the scenarios where the bug's
-// condition holds; the runner still reports each one as a divergence, never as a pass.
-const here = dirname(fileURLToPath(import.meta.url));
-
+// Single stays selectable for an unmarried filer who is also eligible for HoH or QSS (issue #20 decision), so
+// /eligibleForSingle, /hasMultipleEligibleFilingStatuses and /isFilingStatusValid follow DF there.
+//
 // DF-BUG-19 (issue #19, docs/direct-file-bugs.md): a married filer living apart is "considered unmarried" (IRC 7703(b))
 // only through a child the filer is entitled to claim under section 151. In these two fact graphs the only child is
 // a 4-year-old biological son who is not a citizen, resident or national (fails 152(b)(3)), so he is not a dependent:
 // DF makes the filer a head of household, we do not, and the chosen HoH status is knocked out here.
-const DF_BUG_19 = ['considered_unmarried_for_HOH_nondependent_hoh-qp_1940_TN', 'considered_unmarried_for_HOH_nondependent_hoh-qp_1995_TN']
+const knownDivergence = ['considered_unmarried_for_HOH_nondependent_hoh-qp_1940_TN',
+  'considered_unmarried_for_HOH_nondependent_hoh-qp_1995_TN']
   .flatMap((scenario) => ['/eligibleForHoh', '/isFilingStatusValid'].map((path) => ({
     bug: 'DF-BUG-19', scenario, path,
     note: 'married, lived apart, only child fails the citizen or resident test: IRC 7703(b)(1) needs a claimable child',
   })));
-
-let divergences = null; // computed on first use (every mapping is imported by run.mjs, even when not run)
-function knownDivergence() {
-  if (divergences) return divergences;
-  divergences = [...DF_BUG_19];
-  for (const file of ['oracle/facts.csv', 'oracle/fact_graphs.csv']) {
-    const path = resolve(here, '../..', file);
-    if (!existsSync(path)) continue;
-    for (const [scenario, f] of loadOracle(path)) {
-      const t = (p) => val(f, p) === 'true';
-      if (!(t('/eligibleForSingle') && (t('/eligibleForHoh') || t('/eligibleForQss')))) continue;
-      const other = t('/eligibleForHoh') ? 'HoH' : 'QSS';
-      const note = `unmarried filer eligible for ${other}: IRC 1(c) and Pub 501 p 6 exclude single`;
-      divergences.push({ bug: 'DF-BUG(20-a)', scenario, path: '/eligibleForSingle', note });
-      const count = ['/eligibleForMFJ', '/eligibleForMFS', '/eligibleForSingle', '/eligibleForHoh', '/eligibleForQss']
-        .filter(t).length;
-      if (count === 2) {
-        divergences.push({ bug: 'DF-BUG(20-a)', scenario, path: '/hasMultipleEligibleFilingStatuses', note });
-      }
-      if (val(f, '/filingStatus') === 'single') {
-        divergences.push({ bug: 'DF-BUG(20-a)', scenario, path: '/isFilingStatusValid',
-          note: `${note}; the return chose single, so it is knocked out (ko_filing_status_not_eligible)` });
-      }
-    }
-  }
-  return divergences;
-}
 
 export default {
   name: 'filing_status',
@@ -141,5 +104,5 @@ export default {
     b('/treatAsMFS', 'treat_as_mfs'),
     b('/treatAsHoh', 'treat_as_hoh'),
   ],
-  get knownDivergence() { return knownDivergence(); },
+  knownDivergence,
 };

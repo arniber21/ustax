@@ -45,7 +45,9 @@ screen switches), the capitalised display copies, `/isFilingStatusComplete`
 `/marriedAndLivedApartSecondaryFilerResidencyEligible`, `/pdfSpouseTin`).
 
 Where DF disagrees with the statute, the statute wins (CONVENTIONS section
-8): one place, `eligible_for_single`, marked `# DF-BUG(20-a)`.
+8). This module adds no new divergence: `eligible_for_single` follows DF by
+decision (section on IRC 1 below). DF-BUG-19 (issue #19) reaches this module
+through the HoH count.
 
 ## Declarations: the eligibility check (stage 3)
 
@@ -79,7 +81,7 @@ declaration scope FilingStatusEligibility:
   output eligible_for_qss condition
   # DF: /eligibleForHoh
   output eligible_for_hoh condition
-  # DF: /eligibleForSingle (DF-BUG(20-a), below)
+  # DF: /eligibleForSingle (single stays selectable; see IRC 1 below)
   output eligible_for_single condition
 
   # DF: /isFilingStatusSingle, /isFilingStatusMFJ, /isFilingStatusMFS,
@@ -279,29 +281,29 @@ of household or qualifying surviving spouse. If you are considered
 unmarried, you may be able to file as head of household or as a qualifying
 surviving spouse."
 
-DF `/eligibleForSingle` (line 538) is only `not
+DF `/eligibleForSingle` (line 538) is `not
 /maritalStatusAllowsFilingMarried`, so DF offers "single" to an unmarried
-filer who is a head of household or a surviving spouse, next to HoH or QSS.
-Under 1(c) such a filer is not taxed at the single rates: single is eligible
-only when HoH and QSS are not. This is `DF-BUG(20-a)`. Its effects: DF's
-`/eligibleForSingle` and `/hasMultipleEligibleFilingStatuses` are true for
-every HoH- or QSS-eligible unmarried filer (here false), and a return that
-chooses "single" while eligible for HoH or QSS is valid in DF and is knocked
-out here (`ko_filing_status_not_eligible`). The recommendation is unchanged:
-DF recommends QSS and HoH before single.
+filer who is also a head of household or a surviving spouse, next to HoH or
+QSS. Read strictly, 1(c) does not tax such a filer at the single rates.
+
+**Decision (orchestrator and human, issue #20): single stays a permitted
+choice for every unmarried filer, as in DF.** Reasons: the single rates and
+standard deduction are never more favourable than HoH or QSS, so choosing
+single costs only the filer; the IRS processes such returns and does not
+reject them; and the filing status is the filer's answer (CONVENTIONS section
+7), not something this spec overrides. So `eligible_for_single` is DF's
+definition, a return that chooses single while eligible for HoH or QSS is
+valid and not knocked out, and the recommendation (below) still names the
+better status: QSS or HoH before single, as Pub. 501 p 6 directs ("you don't
+qualify for another filing status"). No DF-BUG is recorded here.
 
 ```catala
 scope FilingStatusEligibility:
-  # DF-BUG(20-a): DF /eligibleForSingle is only "not
-  # maritalStatusAllowsFilingMarried". IRC 1(c) excludes surviving spouses
-  # (2(a)) and heads of household (2(b)) from the single rates; Pub 501 p 6
-  # "you don't qualify for another filing status". Status: candidate.
-  # IRC 1(c), 2(b)(1), 7703(a). DF: /eligibleForSingle
-  rule eligible_for_single under condition
-    not marital_status_allows_filing_married
-    and not eligible_for_hoh
-    and not eligible_for_qss
-  consequence fulfilled
+  # Single stays selectable for an unmarried filer even when HoH or QSS is
+  # also eligible (decision above): the recommendation names the better
+  # status, but a filer may choose the less favourable one. IRC 1(c),
+  # 7703(a); Pub 501 p 6. DF: /eligibleForSingle
+  definition eligible_for_single equals not marital_status_allows_filing_married
 ```
 
 ## The chosen status and the recommendation
@@ -358,9 +360,11 @@ filer wants a separate return, then HoH if eligible, otherwise MFS; for
 everyone else, the first eligible of QSS, HoH, MFS, single. No statute
 defines a recommendation; this is DF's rule, reproduced as is. Outside the
 joint-return branch the order is the one the law imposes or that always
-favours the filer: QSS preempts HoH (2(b)(1)), HoH and QSS exclude single
-(1(c)), and MFS and single never overlap (`eligible_for_mfs` is "married",
-`eligible_for_single` needs "not married"). For a married filer who may also
+favours the filer: QSS preempts HoH (2(b)(1)), HoH and QSS come before single
+(1(c), Pub. 501 p 6; single stays selectable but is never recommended over
+them), and
+MFS and single never overlap (`eligible_for_mfs` is "married",
+`eligible_for_single` is "not married"). For a married filer who may also
 file separately or as HoH, DF picks MFJ without comparing taxes; Pub. 501 p 6
 suggests figuring "your tax both on a joint return and on separate returns",
 which needs the whole return under each status (left to the caller, PR of
@@ -368,8 +372,7 @@ which needs the whole return under each status (left to the caller, PR of
 
 The recommendation is always eligible: each branch tests the eligibility of
 the status it returns, and the last branch is reached only when the filer is
-not married (`eligible_for_mfs` false) and neither HoH nor QSS is eligible,
-which is `eligible_for_single`. The test file checks this on every status.
+not married (`eligible_for_mfs` false), which is `eligible_for_single`. The test file checks this on every status.
 
 ```catala
 scope FilingStatusEligibility:

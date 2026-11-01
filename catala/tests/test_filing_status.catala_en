@@ -260,9 +260,10 @@ immediately preceding the taxable year", the filer keeps up a home that is
 the principal place of abode of a son whom the filer can claim, and a joint
 return could have been made for 2023 (2(a)(2)(B)). IRC 2(b)(1): a head of
 household "is not a surviving spouse". Known-bad outputs rejected: choosing
-HoH is knocked out; choosing single is knocked out too (IRC 1(c) excludes
-surviving spouses, DF-BUG(20-a)); without the joint-return answer the filer is
-not a surviving spouse and becomes a head of household.
+HoH is knocked out; without the joint-return answer the filer is not a
+surviving spouse and becomes a head of household. Choosing single stays
+valid (an unmarried filer may choose the less favourable status; decision of
+issue #20), but QSS is recommended.
 
 ```catala
 #[test]
@@ -297,18 +298,20 @@ scope TestWidowedYearMinusOneWithChild:
   assertion c.r.eligible_for_qss
   assertion c.r.hoh_qualifying_people_count = 1
   assertion not c.r.eligible_for_hoh
-  assertion not c.r.eligible_for_single
+  assertion c.r.eligible_for_single
   assertion not c.r.eligible_for_mfj
   assertion not c.r.eligible_for_mfs
-  assertion not c.r.has_multiple_eligible_filing_statuses
+  assertion c.r.has_multiple_eligible_filing_statuses
   assertion c.r.is_filing_status_valid
   assertion not c.r.unsupported
   assertion c.r.recommended_filing_status = QualifyingSurvivingSpouse
   # Known-bad: QSS preempts HoH
   assertion chose_hoh.r.ko_filing_status_not_eligible
   assertion chose_hoh.r.unsupported
-  # Known-bad: a surviving spouse is not taxed as single (DF-BUG(20-a))
-  assertion chose_single.r.ko_filing_status_not_eligible
+  # Single stays selectable, but QSS is recommended
+  assertion chose_single.r.is_filing_status_valid
+  assertion not chose_single.r.unsupported
+  assertion chose_single.r.recommended_filing_status = QualifyingSurvivingSpouse
   # Without 2(a)(2)(B), not a surviving spouse: head of household instead
   assertion not no_joint.r.eligible_for_qss
   assertion no_joint.r.eligible_for_hoh
@@ -358,16 +361,17 @@ scope TestDivorcedNoDependents:
 
 ## Further cases
 
-### Unmarried with a qualifying child: head of household, not single (DF-BUG(20-a))
+### Unmarried with a qualifying child: head of household recommended, single still allowed
 
 IRC 1(c) taxes as single "every individual (other than a surviving spouse ...
 or the head of a household as defined in section 2(b)) who is not a married
 individual"; Pub. 501 p 6: "Your filing status is single if you are
-considered unmarried and you don't qualify for another filing status." DF
-offers single and HoH; here HoH only. Known-bad output rejected: choosing
-single is knocked out. Without the upkeep (2(b)(1), "over half of the cost of
-maintaining the household") there is no qualifying person and single is the
-only status.
+considered unmarried and you don't qualify for another filing status." HoH
+is recommended; single stays a permitted choice (decision of issue #20: the
+less favourable status costs only the filer). Known-bad output rejected: the
+recommendation is not single. Without the upkeep (2(b)(1), "over half of the
+cost of maintaining the household") there is no qualifying person and single
+is the only status.
 
 ```catala
 #[test]
@@ -383,13 +387,16 @@ scope TestUnmarriedWithChild:
   definition no_upkeep.has_child equals true
   definition no_upkeep.upkeep equals false
   assertion c.r.eligible_for_hoh
-  assertion not c.r.eligible_for_single
-  assertion not c.r.has_multiple_eligible_filing_statuses
+  assertion c.r.eligible_for_single
+  assertion c.r.has_multiple_eligible_filing_statuses
   assertion c.r.is_filing_status_valid
   assertion c.r.recommended_filing_status = HeadOfHousehold
-  # Known-bad: single for a head of household
-  assertion not chose_single.r.is_filing_status_valid
-  assertion chose_single.r.unsupported
+  # Single chosen: valid, not knocked out, HoH still recommended
+  assertion chose_single.r.is_filing_status_valid
+  assertion not chose_single.r.unsupported
+  assertion chose_single.r.recommended_filing_status = HeadOfHousehold
+  # Known-bad: single is not recommended to a head of household
+  assertion c.r.recommended_filing_status != Single
   # No upkeep: single only
   assertion not no_upkeep.r.eligible_for_hoh
   assertion no_upkeep.r.eligible_for_single
@@ -492,6 +499,7 @@ declaration scope TestRecommendationEligible:
   married_apart_hoh_chose_mfs scope Elig
   nra_spouse_hoh scope Elig
   nra_spouse_alone scope Elig
+  none_chose_hoh scope Elig
 
 scope TestRecommendationEligible:
   definition single_hoh.could_hoh equals true
@@ -517,6 +525,7 @@ scope TestRecommendationEligible:
   definition nra_spouse_alone.married equals true
   definition nra_spouse_alone.could_hoh equals true
   definition nra_spouse_alone.filing_status equals MarriedFilingSeparately
+  definition none_chose_hoh.filing_status equals HeadOfHousehold
   assertion single_none.recommendation_is_eligible
   assertion single_hoh.recommendation_is_eligible
   assertion widow_qss_and_hoh.recommendation_is_eligible
@@ -533,7 +542,9 @@ scope TestRecommendationEligible:
   assertion nra_spouse_hoh.e.recommended_filing_status = HeadOfHousehold
   assertion nra_spouse_alone.e.recommended_filing_status = MarriedFilingSeparately
   # Valid exactly when not knocked out
-  assertion single_hoh.e.ko_filing_status_not_eligible
+  assertion not single_hoh.e.ko_filing_status_not_eligible
+  assertion none_chose_hoh.recommendation_is_eligible
+  assertion none_chose_hoh.e.ko_filing_status_not_eligible
   assertion not single_none.e.ko_filing_status_not_eligible
   assertion not nra_spouse_hoh.e.ko_filing_status_not_eligible
   assertion not widow_qss_and_hoh.e.unsupported
