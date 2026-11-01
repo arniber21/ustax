@@ -1,0 +1,185 @@
+> Module Ptc_net
+
+> Using Types
+
+# Premium tax credit, part 3: net PTC, repayment limitation, routing (Form 8962 lines 26 to 29)
+
+Direct File ("DF" below) module `ptc.xml`
+(`../direct-file/direct-file/backend/src/main/resources/tax/ptc.xml`): facts
+`/netPtcAmount` (line 9239), `/netPtcAmountWhenZeroOrPositive` (Form 8962 line 26),
+`/netPtcAmountWhenNegative` (line 27), `/ptcRepaymentLimitation` (line 28, with the
+six constants `/ptcRepaymentLimitationLessThan{200,300,400}PercentFpl{Single,Other}`),
+`/lesserOfNetPtcAmountAndRepaymentLimitation` (line 29). Routing:
+`schedule3.xml` `/otherPaymentsAndRefundableCreditsTotal` (Schedule 3 line 15,
+Form 1040 line 31) and `schedule2.xml` `/totalAdditionalTaxesOwed`
+(Schedule 2 line 3, Form 1040 line 17). Issue #34, scope.md section 6.6. Parts 1
+and 2 are `Ptc_family` (#32) and `Ptc_allowed` (#33).
+
+Law and forms: 26 U.S.C. § 36B(f)(2) (`sources/statute/irc-36B.html`),
+Instructions for Form 8962 (2024) (`sources/forms-instructions/i8962--2024.pdf`
+pp 16 to 17: lines 26 to 29, Table 5), Form 1040 Schedule 2 line 1a and
+Schedule 3 line 9 (`f1040s2--2024.pdf`, `f1040s3--2024.pdf`).
+Tests: `catala/tests/test_ptc_net.catala_en`. The oracle comparison is the
+`calculator` mapping (`make difftest SCOPE=calculator`), where this module feeds
+Form 1040 lines 17 and 31.
+
+## 26 U.S.C. § 36B(f)(2) Excess advance payments
+
+"(A) In general. If the advance payments to a taxpayer under section 1412 of the
+Patient Protection and Affordable Care Act for a taxable year exceed the credit
+allowed by this section (determined without regard to paragraph (1)), the tax
+imposed by this chapter for the taxable year shall be increased by the amount of
+such excess. (B) Limitation on increase. (i) In general. In the case of a
+taxpayer whose household income is less than 400 percent of the poverty line
+for the size of the family involved for the taxable year, the amount of the
+increase under subparagraph (A) shall in no event exceed the applicable dollar
+amount determined in accordance with the following table (one-half of such
+amount in the case of a taxpayer whose tax is determined under section 1(c)
+for the taxable year): Less than 200% $600; At least 200% but less than 300%
+$1,500; At least 300% but less than 400% $2,500. (ii) Indexing of amount [...]
+each of the dollar amounts in the table [...] shall be increased [...]. If the
+amount of any increase under clause (i) is not a multiple of $50, such increase
+shall be rounded to the next lowest multiple of $50."
+
+Section 1(c) is the rate schedule for unmarried individuals other than
+surviving spouses and heads of household, so the halved column is the filing
+status Single only; every other filing status uses the full amounts.
+
+## Form 8962 lines 26 to 29 and Table 5
+
+Instructions for Form 8962 (2024) pp 16 to 17:
+
+"Line 26. If line 24 is greater than line 25, subtract line 25 from line 24 and
+enter the result on line 26. This result is the amount of your PTC that is more
+than the APTC paid, your net PTC. This amount will reduce the amount of tax you
+must pay with your tax return or increase your refund. Also enter the amount
+from line 26 on Schedule 3 (Form 1040), line 9. Skip lines 27 through 29. If
+line 24 is equal to line 25, enter -0- on line 26 and skip lines 27 through 29.
+[...] Line 27. If line 25 is greater than line 24, subtract line 24 from line 25
+and enter the result. Line 28. The excess APTC you must repay may be limited to
+the amounts in Table 5. Enter the appropriate amount from Table 5 on line 28.
+[...] If your entry on Form 8962, line 5, is 400 or more, there is no repayment
+limitation. You must repay the amount shown on line 27. Leave line 28 blank and
+enter the amount from line 27 on line 29. [...] Line 29. Enter the smaller of
+line 27 or line 28. If line 28 is blank, enter the amount from line 27 on
+line 29. Also enter the amount from Form 8962, line 29, on Schedule 2
+(Form 1040), line 1a."
+
+Table 5. Repayment Limitation (2024; the statutory $600, $1,500, $2,500
+indexed and rounded down to a multiple of $50, halved for Single):
+
+| Line 5 is | Single | Any other filing status |
+|---|---|---|
+| Less than 200 | $375 | $750 |
+| At least 200 but less than 300 | $950 | $1,900 |
+| At least 300 but less than 400 | $1,575 | $3,150 |
+| 400 or more | none | none |
+
+Routing. Schedule 3 line 9 (net premium tax credit, Form 8962 line 26) is part
+of Schedule 3 line 15, which is Form 1040 line 31 (other payments and
+refundable credits). Schedule 2 line 1a (Form 8962 line 29) is part of
+Schedule 2 line 3 (additional taxes), which is Form 1040 line 17. Line 17 is
+added to line 16 to give line 18, the tax the credit limit worksheets (CDCC,
+Schedule R, Saver's, CTC/ODC) start from; `Form_1040` does that for its
+`total_additional_taxes_owed` slot, so the credit limits include the excess
+APTC repayment, as in DF.
+
+## Declarations
+
+```catala-metadata
+declaration ptc_repayment_limit_under_200_single content money equals $375
+declaration ptc_repayment_limit_under_200_other content money equals $750
+declaration ptc_repayment_limit_under_300_single content money equals $950
+declaration ptc_repayment_limit_under_300_other content money equals $1,900
+declaration ptc_repayment_limit_under_400_single content money equals $1,575
+declaration ptc_repayment_limit_under_400_other content money equals $3,150
+declaration ptc_repayment_percent_first_step content decimal equals 200.0
+declaration ptc_repayment_percent_second_step content decimal equals 300.0
+declaration ptc_repayment_percent_no_limit content decimal equals 400.0
+
+declaration scope NetPtc:
+  # DF: filingStatus.xml /filingStatus (only Single takes the lower column)
+  input filing_status content Types.FilingStatus
+  # Form 8962 line 5. DF: ptc.xml /householdIncomeAsPercent (Ptc_family)
+  input household_income_as_percent content decimal
+  # DF: ptc.xml /taxFamilySizeIsZero (Ptc_family)
+  input tax_family_size_is_zero condition
+  # Form 8962 line 24. DF: ptc.xml /totalPtcAmountAllowed (Ptc_allowed)
+  input total_ptc_amount_allowed content money
+  # Form 8962 line 25. DF: ptc.xml /totalAptcAmountTaken (Ptc_allowed)
+  input total_aptc_amount_taken content money
+
+  # DF: ptc.xml /netPtcAmount (line 24 minus line 25, may be negative)
+  output net_ptc_amount content money
+  # Form 8962 line 26. DF: ptc.xml /netPtcAmountWhenZeroOrPositive
+  output line26 content money
+  # Form 8962 line 27. DF: ptc.xml /netPtcAmountWhenNegative
+  output line27 content money
+  # Form 8962 line 28 (zero stands for a blank line). DF: ptc.xml /ptcRepaymentLimitation
+  output line28 content money
+  # Form 8962 line 29. DF: ptc.xml /lesserOfNetPtcAmountAndRepaymentLimitation
+  output line29 content money
+  # Schedule 3 line 9, then line 15 and Form 1040 line 31.
+  # DF: schedule3.xml /otherPaymentsAndRefundableCreditsTotal
+  output net_ptc_credit content money
+  # Schedule 2 line 1a, then line 3 and Form 1040 line 17.
+  # DF: schedule2.xml /totalAdditionalTaxesOwed
+  output excess_aptc_repayment content money
+```
+
+## Lines 26 and 27
+
+```catala
+scope NetPtc:
+  definition net_ptc_amount equals total_ptc_amount_allowed - total_aptc_amount_taken
+
+  definition line26 equals
+    if net_ptc_amount >= $0 then net_ptc_amount else $0
+
+  definition line27 equals
+    if net_ptc_amount < $0 then - net_ptc_amount else $0
+```
+
+## Line 28: the repayment limitation
+
+DF writes line 28 as $0 when the tax family size is zero (a workaround so that
+the line is blank, `ptc.xml` `/ptcRepaymentLimitation`); line 29 then repays all
+of line 27. Statute and instructions do not cover family size zero (there is no
+poverty line "for the size of the family involved"), and DF's choice repays in
+full, so it is kept. Question for the human: confirm.
+
+```catala
+scope NetPtc:
+  definition line28 equals
+    if tax_family_size_is_zero then $0
+    else if household_income_as_percent < ptc_repayment_percent_first_step then
+      (if filing_status = Types.FilingStatus.Single
+       then ptc_repayment_limit_under_200_single
+       else ptc_repayment_limit_under_200_other)
+    else if household_income_as_percent < ptc_repayment_percent_second_step then
+      (if filing_status = Types.FilingStatus.Single
+       then ptc_repayment_limit_under_300_single
+       else ptc_repayment_limit_under_300_other)
+    else if household_income_as_percent < ptc_repayment_percent_no_limit then
+      (if filing_status = Types.FilingStatus.Single
+       then ptc_repayment_limit_under_400_single
+       else ptc_repayment_limit_under_400_other)
+    else $0
+```
+
+## Line 29 and routing
+
+A blank line 28 (no limitation) means line 29 is line 27. DF
+`/lesserOfNetPtcAmountAndRepaymentLimitation` takes the lesser only when
+`/ptcRepaymentLimitation` is non-zero; the table amounts are all positive, so
+"line 28 is $0" and "line 28 is blank" coincide.
+
+```catala
+scope NetPtc:
+  definition line29 equals
+    if line28 = $0 then line27
+    else if line27 < line28 then line27 else line28
+
+  definition net_ptc_credit equals line26
+  definition excess_aptc_repayment equals line29
+```

@@ -1,0 +1,194 @@
+# Tests for the Ptc_net module (Form 8962 lines 26 to 29, Table 5)
+
+Run with `clerk test`. The concrete cases of issue #34, worked out by hand from
+Table 5 of the Instructions for Form 8962 (2024) (`sources/forms-instructions/i8962--2024.pdf`
+p 17): excess APTC $2,000 repays $375 / $950 / $1,575 (Single) or $750 / $1,900 /
+$3,150 (other) below 200 / 300 / 400 percent, and all $2,000 at 400 and above.
+
+> Using Types
+> Using Ptc_net as N
+
+## Helper: excess APTC of $2,000 (line 24 = $3,000, line 25 = $5,000)
+
+```catala
+declaration scope Excess2000:
+  context filing_status content Types.FilingStatus
+  context percent content decimal
+  n scope N.NetPtc
+  output repay content money
+
+scope Excess2000:
+  definition n.filing_status equals filing_status
+  definition n.household_income_as_percent equals percent
+  definition n.tax_family_size_is_zero equals false
+  definition n.total_ptc_amount_allowed equals $3,000
+  definition n.total_aptc_amount_taken equals $5,000
+  definition repay equals n.excess_aptc_repayment
+```
+
+## Single
+
+```catala
+#[test]
+declaration scope TestSingleBands:
+  a scope Excess2000
+  b scope Excess2000
+  c scope Excess2000
+  d scope Excess2000
+  e scope Excess2000
+
+scope TestSingleBands:
+  definition a.filing_status equals Types.FilingStatus.Single
+  definition a.percent equals 190.0
+  definition b.filing_status equals Types.FilingStatus.Single
+  definition b.percent equals 250.0
+  definition c.filing_status equals Types.FilingStatus.Single
+  definition c.percent equals 350.0
+  definition d.filing_status equals Types.FilingStatus.Single
+  definition d.percent equals 400.0
+  definition e.filing_status equals Types.FilingStatus.Single
+  definition e.percent equals 401.0
+  assertion a.repay = $375
+  assertion b.repay = $950
+  assertion c.repay = $1,575
+  assertion d.repay = $2,000
+  assertion e.repay = $2,000
+  # known-bad outputs are rejected: the unlimited amount, the other-status amounts
+  assertion a.repay != $2,000
+  assertion a.repay != $750
+  assertion b.repay != $1,900
+  assertion c.repay != $3,150
+```
+
+## Other filing statuses
+
+```catala
+#[test]
+declaration scope TestOtherBands:
+  mfj scope Excess2000
+  mfs scope Excess2000
+  hoh scope Excess2000
+  qss scope Excess2000
+  mfj3 scope Excess2000
+  hoh4 scope Excess2000
+
+scope TestOtherBands:
+  definition mfj.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition mfj.percent equals 190.0
+  definition mfs.filing_status equals Types.FilingStatus.MarriedFilingSeparately
+  definition mfs.percent equals 250.0
+  definition hoh.filing_status equals Types.FilingStatus.HeadOfHousehold
+  definition hoh.percent equals 350.0
+  definition qss.filing_status equals Types.FilingStatus.QualifyingSurvivingSpouse
+  definition qss.percent equals 100.0
+  definition mfj3.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition mfj3.percent equals 350.0
+  definition hoh4.filing_status equals Types.FilingStatus.HeadOfHousehold
+  definition hoh4.percent equals 400.0
+  assertion mfj.repay = $750
+  assertion mfs.repay = $1,900
+  assertion hoh.repay = $2,000
+  assertion qss.repay = $750
+  assertion mfj3.repay = $2,000
+  assertion hoh4.repay = $2,000
+```
+
+Head of household at 350 percent: the other column is $3,150, so the whole
+$2,000 is repaid (the lesser of line 27 and line 28).
+
+## Edges of the bands and small excess
+
+```catala
+#[test]
+declaration scope TestBandEdges:
+  at200 scope N.NetPtc
+  at300 scope N.NetPtc
+  at399 scope N.NetPtc
+  small scope N.NetPtc
+
+scope TestBandEdges:
+  definition at200.filing_status equals Types.FilingStatus.Single
+  definition at200.household_income_as_percent equals 200.0
+  definition at200.tax_family_size_is_zero equals false
+  definition at200.total_ptc_amount_allowed equals $0
+  definition at200.total_aptc_amount_taken equals $5,000
+  definition at300.filing_status equals Types.FilingStatus.Single
+  definition at300.household_income_as_percent equals 300.0
+  definition at300.tax_family_size_is_zero equals false
+  definition at300.total_ptc_amount_allowed equals $0
+  definition at300.total_aptc_amount_taken equals $5,000
+  definition at399.filing_status equals Types.FilingStatus.Single
+  definition at399.household_income_as_percent equals 399.0
+  definition at399.tax_family_size_is_zero equals false
+  definition at399.total_ptc_amount_allowed equals $0
+  definition at399.total_aptc_amount_taken equals $5,000
+  definition small.filing_status equals Types.FilingStatus.Single
+  definition small.household_income_as_percent equals 150.0
+  definition small.tax_family_size_is_zero equals false
+  definition small.total_ptc_amount_allowed equals $100
+  definition small.total_aptc_amount_taken equals $300
+  assertion at200.line28 = $950
+  assertion at200.excess_aptc_repayment = $950
+  assertion at300.line28 = $1,575
+  assertion at399.line28 = $1,575
+  # excess below the limit: repay the excess
+  assertion small.line27 = $200
+  assertion small.excess_aptc_repayment = $200
+  assertion small.net_ptc_credit = $0
+```
+
+## Net PTC positive: line 31, no repayment
+
+```catala
+#[test]
+declaration scope TestNetPositive:
+  n scope N.NetPtc
+
+scope TestNetPositive:
+  definition n.filing_status equals Types.FilingStatus.Single
+  definition n.household_income_as_percent equals 190.0
+  definition n.tax_family_size_is_zero equals false
+  definition n.total_ptc_amount_allowed equals $4,800
+  definition n.total_aptc_amount_taken equals $1,800
+  assertion n.net_ptc_amount = $3,000
+  assertion n.line26 = $3,000
+  assertion n.net_ptc_credit = $3,000
+  assertion n.line27 = $0
+  assertion n.excess_aptc_repayment = $0
+  assertion n.net_ptc_credit != $0
+  assertion n.excess_aptc_repayment != $3,000
+```
+
+## Net PTC zero
+
+```catala
+#[test]
+declaration scope TestNetZero:
+  n scope N.NetPtc
+
+scope TestNetZero:
+  definition n.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition n.household_income_as_percent equals 250.0
+  definition n.tax_family_size_is_zero equals false
+  definition n.total_ptc_amount_allowed equals $2,000
+  definition n.total_aptc_amount_taken equals $2,000
+  assertion n.net_ptc_credit = $0
+  assertion n.excess_aptc_repayment = $0
+```
+
+## Tax family size zero (DF workaround): repay everything
+
+```catala
+#[test]
+declaration scope TestFamilySizeZero:
+  n scope N.NetPtc
+
+scope TestFamilySizeZero:
+  definition n.filing_status equals Types.FilingStatus.Single
+  definition n.household_income_as_percent equals 0.0
+  definition n.tax_family_size_is_zero equals true
+  definition n.total_ptc_amount_allowed equals $0
+  definition n.total_aptc_amount_taken equals $2,000
+  assertion n.line28 = $0
+  assertion n.excess_aptc_repayment = $2,000
+```

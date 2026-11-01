@@ -21,6 +21,7 @@ comparison is `make difftest SCOPE=calculator`.
 > Using Estimated_payments as EP
 > Using Elderly_and_disabled as ED
 > Using Knockouts_income as KI
+> Using Ptc_allowed as PA
 > Using Calculator as Calc
 
 ## Helpers
@@ -157,6 +158,7 @@ declaration scope Defaults:
   output payments content Calc.PaymentsInput
   output credits content Calc.CreditAnswers
   output cdcc_answers content Calc.CdccInput
+  output ptc_answers content Calc.PtcInput
   output screening content Calc.ScreeningAnswers
 
 scope Defaults:
@@ -290,6 +292,24 @@ scope Defaults:
     -- claimed_max_credit_for_prior_tax_year: false
     -- has_household_employee: false
     -- benefits_from_sole_proprietorship_or_partnership: false }
+  definition ptc_answers equals Calc.PtcInput {
+    -- form1095_as: []
+    -- writable_has_ptc_qualifying_plan: false
+    -- writable_has_advanced_ptc: false
+    -- dependent_tp_self_enrolled: false
+    -- dependent_tp_enrolled_someone_else: false
+    -- writable_dependent_tp_other_members_are_part_of_different_tax_family: false
+    -- writable_has_mfs_exception: false
+    -- writable_claiming_mfs_exception_for_fourth_straight_year: false
+    -- writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status: false
+    -- writable_has_employer_sponsored_plan: false
+    -- writable_dependents_required_to_file: false
+    -- writable_self_reported_has_multiple1095_as: false
+    -- writable_is_additional_person_in_enrollment_family: false
+    -- writable_is_additional_person_partof_different_tax_family: false
+    -- writable_is_enrolled_with_other_family: false
+    -- writable_has_immigration_status_not_eligible_for_marketplace: false
+    -- writable_wants_to_use_alt_calculations: false }
   definition screening equals Calc.ScreeningAnswers {
     -- income_sources_supported: true
     -- received_digital_assets: false
@@ -340,6 +360,7 @@ scope TestSingle:
     -- payments: d.payments
     -- credits: d.credits
     -- cdcc_answers: d.cdcc_answers
+    -- ptc_answers: d.ptc_answers
     -- screening: d.screening }
   assertion r.agi = $50,000
   assertion r.taxable_income = $35,400
@@ -381,6 +402,7 @@ scope TestMfj:
     -- payments: d.payments
     -- credits: d.credits
     -- cdcc_answers: d.cdcc_answers
+    -- ptc_answers: d.ptc_answers
     -- screening: d.screening }
   assertion r.ctc_eligible_dependents = 2
   assertion r.num_eitc_qualifying_children = 2
@@ -421,6 +443,7 @@ scope TestMfs:
     -- payments: d.payments
     -- credits: d.credits
     -- cdcc_answers: d.cdcc_answers
+    -- ptc_answers: d.ptc_answers
     -- screening: d.screening }
   assertion r.standard_or_itemized_deductions = $14,600
   assertion r.taxable_income = $15,400
@@ -461,6 +484,7 @@ scope TestHoh:
     -- payments: d.payments
     -- credits: d.credits
     -- cdcc_answers: d.cdcc_answers
+    -- ptc_answers: d.ptc_answers
     -- screening: d.screening }
   assertion r.eligible_for_hoh
   assertion r.taxable_income = $18,100
@@ -505,6 +529,7 @@ scope TestQss:
     -- payments: d.payments
     -- credits: d.credits
     -- cdcc_answers: d.cdcc_answers
+    -- ptc_answers: d.ptc_answers
     -- screening: d.screening }
   assertion r.eligible_for_qss
   assertion not r.eligible_for_hoh
@@ -555,6 +580,7 @@ scope TestKnockout:
     -- payments: d.payments
     -- credits: d.credits
     -- cdcc_answers: d.cdcc_answers
+    -- ptc_answers: d.ptc_answers
     -- screening: d.screening but replace { -- income_sources_supported: false } }
   assertion r.unsupported
   assertion r.fired_knockouts =
@@ -584,8 +610,246 @@ scope TestIneligibleStatus:
     -- payments: d.payments
     -- credits: d.credits
     -- cdcc_answers: d.cdcc_answers
+    -- ptc_answers: d.ptc_answers
     -- screening: d.screening }
   assertion not r.eligible_for_hoh
   assertion r.unsupported
   assertion r.fired_knockouts = [Calc.CalculatorKnockout.FilingStatusNotEligible]
+```
+
+## Premium tax credit: repayment, net credit, and line 17 in the credit limits (issue #34)
+
+`PtcPolicy` is a Form 1095-A for all of 2024 (line 33 annual amounts, no
+change): premium `a`, second lowest cost silver plan premium `b`, advance
+payments `c`; and the ptc.xml answers of a filer with a qualifying plan whose
+APTC was paid.
+
+```catala
+declaration scope PtcPolicy:
+  context premium content money
+  context slcsp content money
+  context aptc content money
+  d scope Defaults
+  output answers content Calc.PtcInput
+
+scope PtcPolicy:
+  definition premium equals $0
+  definition slcsp equals $0
+  definition aptc equals $0
+  definition answers equals d.ptc_answers but replace {
+    -- form1095_as: [PA.Form1095A {
+         -- writable_policy_start_date: |2024-01-01|
+         -- writable_policy_end_date: |2024-12-31|
+         -- writable_special_policy_modification_in_starting_month: false
+         -- writable_has_policy_date_exception: false
+         -- has_coverage_months: true
+         -- coverage_months: [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12]
+         -- writable_premiums_or_slcsp_change: false
+         -- has_change_in_circumstance: false
+         -- writable_ptc_annual_premium: premium
+         -- writable_slcsp_annual_premium: slcsp
+         -- writable_aptc_annual_amount: aptc
+         -- writable_ptc_monthly_premium:
+              map each m among (List.sequence of 1, 13) to $0
+         -- writable_ptc_monthly_slcsp_premium:
+              map each m among (List.sequence of 1, 13) to $0
+         -- writable_ptc_monthly_aptc_premium:
+              map each m among (List.sequence of 1, 13) to $0 }]
+    -- writable_has_ptc_qualifying_plan: true
+    -- writable_has_advanced_ptc: true }
+```
+
+### Single: excess APTC repaid, limited to $950, added to the tax
+
+Wages $30,000, withholding $2,000, one person. AGI $30,000; line 15 =
+$30,000 - $14,600 = $15,400, Tax Table tax $1,619 (as the MFS return above).
+Form 8962: line 1 = 1; line 2a = line 3 = $30,000; line 4 = $14,580; line 5 =
+30,000 / 14,580 = 2.0576, entered as 205; line 7 = (205 - 150) x 0.0004 =
+0.0220; line 8a = $30,000 x 0.0220 = $660. Form 1095-A: premium $9,000, SLCSP
+$10,000, APTC $10,000. Line 11: (d) = $10,000 - $660 = $9,340, (e) = lesser of
+$9,000 and $9,340 = $9,000. Line 24 = $9,000, line 25 = $10,000; line 26
+blank; line 27 = $1,000. Table 5, Single, line 5 = 205: line 28 = $950; line
+29 = lesser of $1,000 and $950 = $950, to Schedule 2 line 1a and Form 1040
+line 17. Line 18 = $1,619 + $950 = $2,569 = total tax (no credits). Payments
+$2,000 (withholding); amount owed $569.
+
+```catala
+#[test]
+declaration scope TestPtcRepayment:
+  d scope Defaults
+  p scope PtcPolicy
+  output r content Calc.Calculator
+
+scope TestPtcRepayment:
+  definition p.premium equals $9,000
+  definition p.slcsp equals $10,000
+  definition p.aptc equals $10,000
+  definition r equals output of Calc.Calculator with {
+    -- filing_status: Types.FilingStatus.Single
+    -- filers: d.filers
+    -- primary_extra: d.extra
+    -- secondary_extra: d.extra
+    -- household: []
+    -- income: d.income but replace {
+         -- w2s: [(output of MkW2 with { -- wages: $30,000 -- withholding: $2,000 }).w2] }
+    -- adjustments: d.adjustments
+    -- payments: d.payments
+    -- credits: d.credits
+    -- cdcc_answers: d.cdcc_answers
+    -- ptc_answers: p.answers
+    -- screening: d.screening }
+  assertion r.agi = $30,000
+  assertion r.net_ptc_amount = - $1,000
+  assertion r.net_ptc_amount_when_zero_or_positive = $0
+  assertion r.net_ptc_amount_when_negative = $1,000
+  assertion r.ptc_repayment_limitation = $950
+  assertion r.lesser_of_net_ptc_amount_and_repayment_limitation = $950
+  assertion r.total_additional_taxes_owed = $950
+  assertion r.other_payments_and_refundable_credits_total = $0
+  assertion r.total_tentative_tax = $2,569
+  assertion r.total_tax = $2,569
+  assertion r.total_other_payments_refundable_credits = $0
+  assertion r.balance_due = $569
+  assertion r.overpayment = $0
+  assertion not r.unsupported
+  # bad outputs: the unlimited repayment, or no repayment at all
+  assertion r.total_additional_taxes_owed != $1,000
+  assertion r.total_tax != $1,619
+  assertion r.balance_due != $0
+```
+
+### Single: net PTC is a payment (Form 1040 line 31)
+
+The same return with APTC of $2,000: line 24 = $9,000, line 25 = $2,000, line
+26 = $7,000 to Schedule 3 line 9 and so line 15 and Form 1040 line 31. Lines
+27 to 29 blank. Tax unchanged at $1,619; payments $2,000 + $7,000 = $9,000;
+refund $9,000 - $1,619 = $7,381.
+
+```catala
+#[test]
+declaration scope TestPtcNetCredit:
+  d scope Defaults
+  p scope PtcPolicy
+  output r content Calc.Calculator
+
+scope TestPtcNetCredit:
+  definition p.premium equals $9,000
+  definition p.slcsp equals $10,000
+  definition p.aptc equals $2,000
+  definition r equals output of Calc.Calculator with {
+    -- filing_status: Types.FilingStatus.Single
+    -- filers: d.filers
+    -- primary_extra: d.extra
+    -- secondary_extra: d.extra
+    -- household: []
+    -- income: d.income but replace {
+         -- w2s: [(output of MkW2 with { -- wages: $30,000 -- withholding: $2,000 }).w2] }
+    -- adjustments: d.adjustments
+    -- payments: d.payments
+    -- credits: d.credits
+    -- cdcc_answers: d.cdcc_answers
+    -- ptc_answers: p.answers
+    -- screening: d.screening }
+  assertion r.net_ptc_amount = $7,000
+  assertion r.net_ptc_amount_when_zero_or_positive = $7,000
+  assertion r.net_ptc_amount_when_negative = $0
+  assertion r.total_additional_taxes_owed = $0
+  assertion r.other_payments_and_refundable_credits_total = $7,000
+  assertion r.total_tax = $1,619
+  assertion r.total_other_payments_refundable_credits = $7,000
+  assertion r.total_payments = $9,000
+  assertion r.overpayment = $7,381
+  assertion r.balance_due = $0
+  assertion not r.unsupported
+  assertion r.overpayment != $981
+  assertion r.total_other_payments_refundable_credits != $0
+```
+
+### Head of household: line 17 is in the tax the credits are limited by
+
+The head of household return above (wages $40,000, one child born 2014,
+tentative tax $1,844, CTC limited to $1,844, ACTC $156) with a Form 1095-A:
+premium $6,000, SLCSP $7,000, APTC $9,000. Tax family of 2: poverty line
+$14,580 + $5,140 = $19,720; line 5 = 40,000 / 19,720 = 2.0283, entered as 202;
+line 7 = (202 - 150) x 0.0004 = 0.0208; line 8a = $40,000 x 0.0208 = $832.
+Line 11: (d) = $7,000 - $832 = $6,168; (e) = $6,000. Line 25 - line 24 = $3,000;
+Table 5, other filing status, 200 to 299: line 28 = $1,900; line 29 = $1,900,
+line 17. Line 18 = $1,844 + $1,900 = $3,744. Credit Limit Worksheet A starts
+from line 18, so the whole CTC $2,000 is allowed and the ACTC is $0 (line 16a
+= $2,000 - $2,000). Total tax = $3,744 - $2,000 = $1,744. EITC $1,448 (as
+above, AGI unchanged). Payments $2,000 + $1,448 = $3,448; refund $3,448 -
+$1,744 = $1,704.
+
+```catala
+#[test]
+declaration scope TestPtcRepaymentRaisesCreditLimit:
+  d scope Defaults
+  p scope PtcPolicy
+  output r content Calc.Calculator
+
+scope TestPtcRepaymentRaisesCreditLimit:
+  definition p.premium equals $6,000
+  definition p.slcsp equals $7,000
+  definition p.aptc equals $9,000
+  definition r equals output of Calc.Calculator with {
+    -- filing_status: Types.FilingStatus.HeadOfHousehold
+    -- filers: d.filers
+    -- primary_extra: d.extra
+    -- secondary_extra: d.extra
+    -- household: [ (output of MkChild with { -- date_of_birth: |2014-09-10| }).member ]
+    -- income: d.income but replace {
+         -- w2s: [(output of MkW2 with { -- wages: $40,000 -- withholding: $2,000 }).w2] }
+    -- adjustments: d.adjustments
+    -- payments: d.payments
+    -- credits: d.credits
+    -- cdcc_answers: d.cdcc_answers
+    -- ptc_answers: p.answers
+    -- screening: d.screening }
+  assertion r.net_ptc_amount = - $3,000
+  assertion r.ptc_repayment_limitation = $1,900
+  assertion r.total_additional_taxes_owed = $1,900
+  assertion r.total_tentative_tax = $3,744
+  assertion r.total_ctc_and_odc = $2,000
+  assertion r.additional_ctc = $0
+  assertion r.earned_income_credit = $1,448
+  assertion r.total_tax = $1,744
+  assertion r.overpayment = $1,704
+  assertion not r.unsupported
+  # without line 17 in the limit the CTC would stop at $1,844 and the ACTC would be $156
+  assertion r.total_ctc_and_odc != $1,844
+  assertion r.additional_ctc != $156
+```
+
+### A PTC knockout is reported
+
+A taxpayer with an employer-sponsored plan as well as the Marketplace plan is
+knocked out (ptc.xml `/hasEmployerSponsoredPlan`).
+
+```catala
+#[test]
+declaration scope TestPtcKnockout:
+  d scope Defaults
+  p scope PtcPolicy
+  output r content Calc.Calculator
+
+scope TestPtcKnockout:
+  definition p.premium equals $9,000
+  definition p.slcsp equals $10,000
+  definition p.aptc equals $2,000
+  definition r equals output of Calc.Calculator with {
+    -- filing_status: Types.FilingStatus.Single
+    -- filers: d.filers
+    -- primary_extra: d.extra
+    -- secondary_extra: d.extra
+    -- household: []
+    -- income: d.income but replace {
+         -- w2s: [(output of MkW2 with { -- wages: $30,000 -- withholding: $2,000 }).w2] }
+    -- adjustments: d.adjustments
+    -- payments: d.payments
+    -- credits: d.credits
+    -- cdcc_answers: d.cdcc_answers
+    -- ptc_answers: p.answers but replace { -- writable_has_employer_sponsored_plan: true }
+    -- screening: d.screening }
+  assertion r.unsupported
+  assertion r.fired_knockouts = [Calc.CalculatorKnockout.PtcKnockouts]
 ```

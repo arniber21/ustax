@@ -113,8 +113,7 @@ three outputs each, exact cents), then Lean against the oracle. `--perturb` is i
 `calculator` (scope `Calculator`, `catala/calculator.catala_en`) runs the whole return with every merged module
 (including CDCC #28 and filing status #20) plugged into `Form1040` and no oracle value as input: every input is a
 writable fact of the scenario (per-person facts from the `/familyAndHousehold/#<uuid>/...` rows of `facts.csv`).
-Scenarios that need the unmerged PTC (#32-#34) are skipped as `blocked by #32-#34 (PTC)` (non-zero
-`/totalAdditionalTaxesOwed` or `/otherPaymentsAndRefundableCreditsTotal`); `CALC_INCLUDE_BLOCKED=1` runs them
-anyway (they then differ only on lines 17/31 and what follows). Result: 151/151 scenarios, 4677/4677 fact checks over
-32 paths, 9 known divergences (DF-BUG-3, DF-BUG(23), and `mfs-4300-none`, whose own DF `/isFilingStatusValid` is
-false), 6 blocked, 4 knocked out (DF-BUG-8).
+The premium tax credit (#32 to #34) is wired in: Form 8962 lines 1 to 29 feed Form 1040 lines 17 and 31 (the ptc.xml
+writables and the `/1095As` collection are mapped as in `ptc_allowed.mjs`). Result: 157/157 scenarios, 5360/5360 fact
+checks over 39 paths, 9 known divergences (DF-BUG-3, DF-BUG(23), and `mfs-4300-none`, whose own DF
+`/isFilingStatusValid` is false), 4 knocked out (DF-BUG-8).
