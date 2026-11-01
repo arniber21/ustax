@@ -1,0 +1,25 @@
+README.md
+  s_3031b504518be3::t_16eef300521ff6 109,144
+  s_3031b504518be3::t_785eb6f3f60542 145
+  s_3031b504518be3::t_81dc693198da9e 1,3,5-7,9-13,15,17,19-100,103,117-143,146-218
+  s_3031b504518be3::t_d4014861ca902c 101-102,104-108,110-116
+docs/writeup.md
+  s_3031b504518be3::t_502eaaabcfafbb 50,107-109,172
+  s_3031b504518be3::t_d8f3294508d8b4 1-49,51-106,110-171,173-244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f06fe505404d726cd22b00648d67e543d7b85fe",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
