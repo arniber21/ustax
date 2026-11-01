@@ -46,7 +46,7 @@ export function AppShell() {
           An independent research project. Not affiliated with the IRS. Nothing is filed.
         </div>
       </div>
-      <header className="border-b bg-background">
+      <header className="relative z-40 border-b bg-background">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6">
           <Logo />
           <span className="hidden border-l pl-4 text-sm text-muted-foreground md:inline">{TAGLINE}</span>
