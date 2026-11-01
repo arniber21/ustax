@@ -13,9 +13,8 @@ at `/docs`.
 ## The pages
 
 - **[How we built this](how-we-built-this.md)**: the author's own account of how Catala and Lean
-  were used, and future directions. Written by the author; sections still marked `TODO(you)` are
-  not written yet.
-- **Existing project documents**, shown here without being moved: the draft
+  were used, and future directions. Written by the author.
+- **Existing project documents**, shown here without being moved: the
   [write-up](../writeup.md), the [spec surface](../spec-surface.md),
   [Catala to Lean](../catala-to-lean.md), the [Direct File bug log](../direct-file-bugs.md),
   [Comparator](../comparator.md), the [proof audit](../audit.md), the

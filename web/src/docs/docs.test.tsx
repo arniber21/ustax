@@ -218,30 +218,18 @@ describe('/docs routes', () => {
     expect(screen.getAllByRole('status')[0]).toHaveTextContent('No page matches');
   });
 
-  it('renders the scaffold with prompts, the facts box, an edit link and prev/next', async () => {
+  it('renders the write-up with an edit link and prev/next', async () => {
     at('/docs/how-we-built-this');
-    expect(await screen.findByRole('heading', { level: 1, name: 'How we built this' })).toBeInTheDocument();
-    for (const h of [
-      'Why formal verification for taxes',
-      'How we used Catala',
-      'How we used Lean',
-      'Connecting Catala and Lean',
-      'The reference implementation bugs we found',
-      'How the agent team worked',
-      'What is proved, what is tested, what is trusted',
-      'Future directions',
-      'Acknowledgements',
-    ]) {
-      expect(screen.getByRole('heading', { level: 2, name: h })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Income Tax Calculator' })).toBeInTheDocument();
+    for (const h of ['Catala', 'Lean', 'Trusted Base']) {
+      expect(screen.getByRole('heading', { name: h })).toBeInTheDocument();
     }
-    expect(screen.getByText(/Facts you can cite/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'docs/spec-surface.md' })).toHaveAttribute('href', '/docs/spec-surface');
     expect(screen.getByRole('link', { name: /Edit this page on GitHub/ })).toHaveAttribute(
       'href',
       'https://github.com/arniber21/ustax/blob/main/docs/site/how-we-built-this.md',
     );
     const toc = screen.getByRole('navigation', { name: 'On this page' });
-    expect(within(toc).getByRole('link', { name: 'Future directions' })).toHaveAttribute('href', '#future-directions');
+    expect(within(toc).getByRole('link', { name: 'Trusted Base' })).toHaveAttribute('href', '#trusted-base');
     const pn = screen.getByRole('navigation', { name: 'Previous and next pages' });
     // the page before the scaffold is 'What "verified" means here'; the one after is the write-up draft
     expect(within(pn).getByRole('link', { name: /What "verified" means here/ })).toHaveAttribute(
