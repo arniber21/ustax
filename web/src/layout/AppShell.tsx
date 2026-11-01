@@ -57,6 +57,9 @@ export function AppShell() {
             <NavLink to="/trust" className={navClass}>
               Verification
             </NavLink>
+            <NavLink to="/docs" className={navClass}>
+              Docs
+            </NavLink>
           </nav>
           <ThemeToggle />
         </div>
@@ -75,6 +78,8 @@ export function AppShell() {
           <p className="m-0">
             A student research project, not tax advice. It does not file anything, and your answers stay in this browser
             except when sent to the calculator. <Link to="/trust">What is verified</Link>
+            {' · '}
+            <Link to="/docs">Docs</Link>
           </p>
         </div>
       </footer>
