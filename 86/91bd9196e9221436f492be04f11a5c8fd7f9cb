@@ -1,0 +1,30 @@
+web/src/pages/HomePage.tsx
+  s_3031b504518be3::t_9d95050103d049 35-36,52
+  s_3031b504518be3::t_8a532a5eba3805 49
+  s_3031b504518be3::t_312c6cde5c04f4 48
+  s_3031b504518be3::t_c115aafb58b290 50
+web/src/components/components.test.tsx
+  s_3031b504518be3::t_8a532a5eba3805 127-128,130-131
+docs/site/what-verified-means.md
+  s_3031b504518be3::t_312c6cde5c04f4 42
+web/src/docs/docs.test.tsx
+  s_3031b504518be3::t_601b6f30ced26f 146,177
+web/src/components/Stepper.tsx
+  s_3031b504518be3::t_8a532a5eba3805 15,61-62,64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8691bd9196e9221436f492be04f11a5c8fd7f9cb",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
