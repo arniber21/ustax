@@ -3,24 +3,11 @@ import { Link } from 'react-router';
 import { ButtonLink } from '../components';
 import { Badge } from '../components/ui/badge';
 import { TAGLINE } from '../layout/AppShell';
-import { STATUS_CLAIMS, type ClaimStatus } from '../trust/claims';
+import { AS_OF, SCOPE_INCLUDED, SCOPE_NOT_INCLUDED, STATUS_CLAIMS, type ClaimStatus } from '../trust/facts';
 
 export function StatusBadge({ status }: { status: ClaimStatus }) {
   return status === 'proven' ? <Badge variant="success">Proven</Badge> : <Badge variant="secondary">Tested</Badge>;
 }
-
-const INCLUDED = [
-  'W-2 wages and federal tax withheld',
-  'Bank interest (Form 1099-INT)',
-  'Standard deduction, including age 65+, blindness and dependent rules',
-  'All five filing statuses',
-];
-
-const NOT_YET = [
-  'Unemployment, retirement and Social Security income (accepted, not yet counted)',
-  'Dependents and the credits that depend on them',
-  'Itemized deductions, self-employment, investments, state tax',
-];
 
 /** Welcome: what this is, what is verified, one way in. */
 export function HomePage() {
@@ -53,7 +40,7 @@ export function HomePage() {
             <h2 id="status-h" className="m-0 text-base font-semibold">
               Verification status
             </h2>
-            <span className="text-xs text-muted-foreground">Lean 4 proofs and tests</span>
+            <span className="text-xs text-muted-foreground">As of {AS_OF}</span>
           </div>
           <ul className="m-0 list-none divide-y p-0">
             {STATUS_CLAIMS.map((c) => (
@@ -67,7 +54,7 @@ export function HomePage() {
             ))}
           </ul>
           <div className="border-t px-5 py-3 text-sm">
-            <Link to="/trust">Theorems, tests and trusted base</Link>
+            <Link to="/trust">Theorems, tests, trusted base and bugs found</Link>
           </div>
         </section>
       </section>
@@ -80,7 +67,7 @@ export function HomePage() {
           <div>
             <h3 className="m-0 text-sm font-semibold">Included in the result</h3>
             <ul className="mt-3 mb-0 grid list-none gap-2 p-0 text-sm">
-              {INCLUDED.map((s) => (
+              {SCOPE_INCLUDED.map((s) => (
                 <li key={s} className="flex gap-2.5">
                   <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />
                   {s}
@@ -89,9 +76,9 @@ export function HomePage() {
             </ul>
           </div>
           <div>
-            <h3 className="m-0 text-sm font-semibold">Not yet included</h3>
+            <h3 className="m-0 text-sm font-semibold">Not included</h3>
             <ul className="mt-3 mb-0 grid list-none gap-2 p-0 text-sm text-muted-foreground">
-              {NOT_YET.map((s) => (
+              {SCOPE_NOT_INCLUDED.map((s) => (
                 <li key={s} className="flex gap-2.5">
                   <Minus aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
                   {s}

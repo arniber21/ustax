@@ -159,4 +159,7 @@ web-test:  ## frontend unit tests (vitest + testing-library)
 	cd web && npm ci --no-audit --no-fund && npm test
 web-dev:   ## frontend dev server on the api/fixtures mock (VITE_API_MOCK=1)
 	cd web && npm ci --no-audit --no-fund && VITE_API_MOCK=1 npm run dev
+.PHONY: e2e
+e2e:       ## Playwright end-to-end tests on the real stack (Lean server :8190 + Vite :5190, started and stopped by the run; see web/README.md)
+	./scripts/e2e.sh
 endif
