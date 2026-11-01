@@ -1,0 +1,97 @@
+web/src/draft/draft.test.ts
+  s_fb780839ec756c::t_33e3c3854e740b 169,263,278,321-326
+web/src/wizard/IncomeStep.tsx
+  s_fb780839ec756c::t_4711d1f4a24063 61,149-170
+README.md
+  s_fb780839ec756c::t_d8b2377cef3017 132,135,146-147,209,213-214
+  s_fb780839ec756c::t_dc2cb411a68253 155-157,171-173
+web/src/App.test.tsx
+  s_fb780839ec756c::t_33e3c3854e740b 1,34,38-42,52-53,84-87
+web/src/wizard/PersonDetails.tsx
+  s_fb780839ec756c::t_9312c2b315d5c9 27
+web/src/draft/buildRequest.ts
+  s_fb780839ec756c::t_9312c2b315d5c9 201
+web/src/draft/fromRequest.ts
+  s_fb780839ec756c::t_9312c2b315d5c9 158-160
+  s_fb780839ec756c::t_05e09b35a31c19 107-110
+web/src/draft/validate.ts
+  s_fb780839ec756c::t_9312c2b315d5c9 45,49,69-76,136-139
+web/src/polish.test.tsx
+  s_fb780839ec756c::t_33e3c3854e740b 155-156,180
+web/src/draft/types.ts
+  s_fb780839ec756c::t_9312c2b315d5c9 155-156,186-187,224,262
+scripts/server_integration.mjs
+  s_fb780839ec756c::t_f136767b75e155 129-149
+  s_fb780839ec756c::t_589fdd8d2da4ba 150-162
+web/src/wizard/ui.tsx
+  s_fb780839ec756c::t_4711d1f4a24063 88-89,94,96,98,103,118
+web/src/draft/review-regressions.test.tsx
+  s_fb780839ec756c::t_97af3525b27adf 1-67
+web/src/pages/ResultsPage.tsx
+  s_fb780839ec756c::t_4711d1f4a24063 2-3,10-15
+web/src/results/useCurrentRequest.ts
+  s_fb780839ec756c::t_4711d1f4a24063 6
+web/src/wizard/ReviewStep.tsx
+  s_fb780839ec756c::t_9312c2b315d5c9 200
+  s_fb780839ec756c::t_4711d1f4a24063 159-160
+web/src/forms/draftSchema.ts
+  s_fb780839ec756c::t_9312c2b315d5c9 108
+docs/api.md
+  s_fb780839ec756c::t_d8b2377cef3017 284-290
+docs/site/what-verified-means.md
+  s_fb780839ec756c::t_d8b2377cef3017 218-220
+docs/spec-surface.md
+  s_fb780839ec756c::t_d8b2377cef3017 442
+lean/UsTax/Api/Calculate.lean
+  s_fb780839ec756c::t_f136767b75e155 85-86,89-90,94-95
+  s_fb780839ec756c::t_33e3c3854e740b 91-93
+web/src/wizard/CreditsStep.tsx
+  s_fb780839ec756c::t_4711d1f4a24063 177,206-227
+web/src/trust/facts.ts
+  s_fb780839ec756c::t_d8b2377cef3017 75,139,347
+web/src/wizard/LiveSummary.tsx
+  s_fb780839ec756c::t_9312c2b315d5c9 97
+docs/writeup.md
+  s_fb780839ec756c::t_d8b2377cef3017 168
+web/src/draft/store.tsx
+  s_fb780839ec756c::t_9312c2b315d5c9 4,52-53,69,100
+lean/UsTax/Comparator/Extra.lean
+  s_fb780839ec756c::t_d8b2377cef3017 260-261
+scripts/demo.md
+  s_fb780839ec756c::t_d8b2377cef3017 24,27
+  s_fb780839ec756c::t_b030394dcbfbf3 16
+web/src/wizard/wizard.test.tsx
+  s_fb780839ec756c::t_33e3c3854e740b 244,247-251,378,388,394,402,456-457,481,490
+lean/UsTax/Proofs/Calculator.lean
+  s_fb780839ec756c::t_36ce230b7ae35b 425-426
+  s_fb780839ec756c::t_f136767b75e155 411-412
+web/src/layout/AppShell.tsx
+  s_fb780839ec756c::t_9312c2b315d5c9 223,229
+web/e2e/scenarios.spec.ts
+  s_fb780839ec756c::t_589fdd8d2da4ba 26-27,63-64,87-88,109-110,132-133,191-259
+  s_fb780839ec756c::t_9e9773eefec0db 18,100,124
+api/fixtures/manifest.json
+  s_fb780839ec756c::t_af9ccd87dcd9c2 227-234
+api/fixtures/refund-single-w2-50k-with-dob.request.json
+  s_fb780839ec756c::t_5dbeb2333193b7 1-17
+web/README.md
+  s_fb780839ec756c::t_98d1bc6c2dfe27 76-77,82-87
+web/e2e/mobile.spec.ts
+  s_fb780839ec756c::t_c6b36355ba5d54 2,10,18-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c74c8290c50f4b543db5fdeed9aa8c58e73682a",
+  "prompts": {},
+  "sessions": {
+    "s_fb780839ec756c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19913-564f-7f51-9f3c-b76d3f925a34",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
