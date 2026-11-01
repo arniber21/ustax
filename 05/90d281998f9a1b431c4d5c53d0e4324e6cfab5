@@ -1,0 +1,34 @@
+api/provenance.schema.json
+  s_3031b504518be3::t_a37b75291e3921 1-181
+Makefile
+  s_3031b504518be3::t_8ac7c2b4f7d25d 77-84
+docs/provenance.md
+  s_3031b504518be3::t_c5010e23009d63 1-110
+api/provenance.json
+  s_3031b504518be3::t_9fff52ec2b27cd 16,18
+  s_3031b504518be3::t_23358a969d9669 1-15,17,19-1142,1164-1652,1660-3518
+  s_3031b504518be3::t_61f295612fd00e 1143-1163,1653-1659
+scripts/export_sources.mjs
+  s_3031b504518be3::t_ff92ce138c68b6 1-27
+scripts/gen_provenance.mjs
+  s_3031b504518be3::t_61f295612fd00e 333-334,402,405-407,456-457
+  s_3031b504518be3::t_9fff52ec2b27cd 403
+  s_3031b504518be3::t_d7d8cdec1fd05f 404
+  s_3031b504518be3::t_dcac37e0a4cc37 1-332,335-401,408-455,458-573
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0590d281998f9a1b431c4d5c53d0e4324e6cfab5",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
