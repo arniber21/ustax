@@ -33,7 +33,7 @@ def failures : List (Int × FilingStatus × Int) :=
   checks.filter fun (x, fs, expected) => tentativeTaxFor x fs != expected
 
 #guard rows.length = 2062
-#guard checks.length = 16480
+#guard checks.length = 16496
 #guard failures.isEmpty
 
 end UsTax.TaxRates.TaxTable
