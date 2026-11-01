@@ -4,113 +4,22 @@ order: 10
 summary: The author's write-up of how Catala and Lean were used, and where this goes next.
 ---
 
-# How we built this
+# Income Tax Calculator
+## Overview
+`ustax` is a formally verified income tax calculator. It leverages a formalization of a subset of US income tax law in the [Catala DSL](https://catala-lang.org/en/doc) to ensure that tax calculation business logic is consistent with the law as written. `ustax` supports the subset of US tax law implemented in the IRS' [Direct File](https://github.com/IRS-Public/direct-file), whose source is publicly available on GitHub. Formalized tax calculations in Catala are converted (via an LLM, but ideally, through transpilation) into Lean code, where we prove additional properties (i.e., tentative tax is monotonically decreasing).
+```mermaid
+graph TD 
+    A[Start Here] --> B{Is it working?} 
+    B -- Yes --> C[Awesome!] 
+    B -- No --> D[Check Syntax]
+```
+### Catala
+Catala is a DSL for the law. It allows people to write laws with code. Crucially, it removes ambiguity in interpretation and enables type-checking. For the subset of the law that deals with numerics, calculations, logic, etc., Catala can be transpiled into either OCaml or Java for automated decision-making and calculation. The French government used Catala to translate, verify, and derive automated calculations for both [income tax](https://gitlab.adullact.net/dgfip/impots-nationaux-revenu-patrimoine-particuliers/ir-catala) and [housing benefits](https://catala-lang.org/en/examples/housing-benefits). 
 
-<!-- TODO(you): one or two sentences that say what this page is and who it is for. Delete this comment when done. -->
+Thus, the entry point for developing `ustax` was first to create the requisite Catala formalization. To do so, I pointed a swarm of agents at a source dump of Direct File. They were first to establish a set of tax laws that they could infer from the program; separately, subagents would search through [US revenue code](https://www.govinfo.gov/app/details/USCODE-2024-title26/) and find the actual tax law based on the inferred specification. Next, another wave of subagents would collaboratively formalize the tax laws in Catala. With a comprehensive Catala specification in hand, 
+### Lean
+Lean is the language of choice for this hackathon. Furthermore, it would enable supplemental verification to Catala's guarantees. Unfortunately, Catala only supports code generation to OCaml, Java, JavaScript, Python, and C. Ideally, we would write a backend for Lean -- unfortunately, an entire compiler backend to a proof verifier is quite a bit to chew off for a weekend hackathon, so I decided to use agents to guide the translation from Catala to Lean. However, in an ideal world, this would be automated.
 
-*Who is this page for, and what should they know after reading it?*
-
-> [!NOTE]
-> This page is a scaffold. The headings and questions below are prompts for the author to answer in
-> their own words. Delete each italic question and each `TODO(you)` comment as you write the section.
-
-> [!TIP]
-> **Facts you can cite.** Each item exists in the repository today. Figures come from
-> [`STATUS.md`](../../STATUS.md), last updated 2026-11-01; re-check them there before you quote them.
->
-> - Spec surface of the main theorems: [`docs/spec-surface.md`](../spec-surface.md)
-> - Direct File reference-implementation bug log: [`docs/direct-file-bugs.md`](../direct-file-bugs.md), 33 entries as of 2026-11-01 (`STATUS.md`)
-> - Catala to Lean strategy and trust story: [`docs/catala-to-lean.md`](../catala-to-lean.md)
-> - Comparator and `lake check`: [`docs/comparator.md`](../comparator.md)
-> - Proof audit (`make audit`): [`docs/audit.md`](../audit.md); last result in `STATUS.md`: PASS, 7,790 declarations, 0 high-severity (2026-11-01)
-> - Catala `Calculator` scope: 157/157 non-knocked-out Direct File scenarios and 5,360/5,360 fact checks; `ApiCalculator`: 157/157 and 3,105/3,105 through the API request shape (`STATUS.md`, 2026-11-01)
-> - Lean vs Catala vs Direct File oracle: calculator 5,360 agree, api_calculator 3,105 agree (`STATUS.md`, 2026-11-01)
-> - Server tests: `make test-server` 46 passed, 0 failed, 1 skipped (`STATUS.md`, 2026-11-01)
-> - Comparator-extra: 23 spec-vs-implementation theorems (`STATUS.md`, 2026-11-01)
-> - Tax year 2024, federal income tax only (site footer)
-
-## Why formal verification for taxes
-
-<!-- TODO(you): your motivation. What went wrong, or could go wrong, with tax software? Why does a proof help? -->
-
-*What made you want a proof, rather than only tests, for a tax calculator?*
-
-## How we used Catala
-
-<!-- TODO(you): law as code. Show one short rule next to the statute text it quotes (a catala code block works here). -->
-
-*What does it look like to write the law as code, with the statute quoted in the same file?*
-
-<!-- TODO(you): the Catala tests you wrote, and what they cover. -->
-
-*What do the Catala tests check, and who wrote the expected values?*
-
-<!-- TODO(you): the differential test against the IRS Direct File engine. What was compared, what matched, what did not. -->
-
-*How did you compare the Catala code against IRS Direct File, and what did the comparison show?*
-
-## How we used Lean
-
-<!-- TODO(you): the hand-written implementation. Why write it by hand in Lean rather than generate it. -->
-
-*Why is the calculator written by hand in Lean?*
-
-<!-- TODO(you): the spec files, and what a reviewer should read first. -->
-
-*Where are the specs, and what should a reviewer read first?*
-
-<!-- TODO(you): Comparator, and why it matters for trusting the theorem statements. -->
-
-*What does Comparator check that a normal build does not?*
-
-<!-- TODO(you): the audit and forensics tooling. -->
-
-*What do `make audit` and the forensics dump catch?*
-
-## Connecting Catala and Lean
-
-<!-- TODO(you): differential testing as the link between the two, and why you chose it. -->
-
-*How do the Catala and Lean calculators agree, and how do you know?*
-
-<!-- TODO(you): why not a translator. Summarise the decision in docs/catala-to-lean.md in your own words. -->
-
-*Why did you not write a Catala-to-Lean translator?*
-
-## The reference implementation bugs we found
-
-<!-- TODO(you): pick the entries worth telling a story about. The full log is docs/direct-file-bugs.md. -->
-
-*Which one or two bugs in the reference implementation best show why this approach is useful?*
-
-## How the agent team worked
-
-<!-- TODO(you): how the work was split, who (or what) did which part, and what a human still had to decide. -->
-
-*How was the work divided between you and the agents, and what did you keep for yourself?*
-
-## What is proved, what is tested, what is trusted
-
-<!-- TODO(you): three short lists. docs/spec-surface.md and the verification page on the site are the source. -->
-
-*What exactly is proved, what is only tested, and what do you ask the reader to trust?*
-
-## Future directions
-
-<!-- TODO(you): for each bullet below, keep it, cut it, or add a sentence on why it matters. -->
-
-*Which of these do you most want to do next, and why?*
-
-- More of the tax code
-- 2025 changes
-- Itemized deductions
-- A verified Catala-to-Lean translator
-- A proof of the full Catala semantics
-- State taxes
-- E-file
-
-## Acknowledgements
-
-<!-- TODO(you): people, projects and tools you want to thank. -->
-
-*Who and what helped?*
+The generated Lean business logic was augmented with a suite of additional correctness theorems for tax calculations, including matching figures between calculation areas, credit calculations, EITC calculations, and more. Finally, I integrated the module with a typical Lean web-server setup with Lean's HTTP library (opportunity: a web server framework for Lean, when we don't want to deal with complexity). Finally, we paired it with a basic frontend written in React and Typescript. 
+### Trusted Base
+Unfortunately, this program has quite a few trusted bases: the Lean compiler, libraries, JSON parsing, etc. A more fleshed-out non-hackathon version could certainly tackle many of these. In particular, we rely on a correct Catala-to-Lean translation -- this should be automated with a compiler. We also rely on correct interpretation of the law text to Catala -- while this is generally subjective, US tax law is usually** explicit (though less so than other countries). By addressing these. 
