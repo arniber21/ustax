@@ -1,0 +1,76 @@
+lean/UsTax/Proofs/Interest.lean
+  s_3031b504518be3::t_676d1d4e97b22e 1-68
+  s_3031b504518be3::t_84a5b9265a6e79 69-73
+lean/UsTax/Proofs/Adjustments.lean
+  s_3031b504518be3::t_b3fffce2c44a24 1-131,133-134
+  s_3031b504518be3::t_ce50ae97f6f2fc 132,135-254
+lean/UsTax/Spec/Form1040Lines.lean
+  s_3031b504518be3::t_0366411f64b78f 1-37
+lean/UsTax/Spec/Interest.lean
+  s_3031b504518be3::t_386bc6ddd2b8aa 1-45
+lean/UsTax/Proofs/SocialSecurity.lean
+  s_3031b504518be3::t_8cb6e77ed52f26 1-177
+lean/UsTax/Comparator/Extra.lean
+  s_3031b504518be3::t_0f7f9e48cb367f 1-210
+lean/UsTax/Spec/SocialSecurity.lean
+  s_3031b504518be3::t_a587d24593fec6 1-76
+lean/UsTax/Proofs/StandardDeduction.lean
+  s_3031b504518be3::t_d344ae1ae0e089 1-78
+  s_3031b504518be3::t_72194a603fc00f 79-86
+lean/UsTax/Spec/Adjustments.lean
+  s_3031b504518be3::t_63e24f3bd1024f 1-85
+lean/UsTax/Proofs/Rounding.lean
+  s_3031b504518be3::t_61f5e25836cf9c 1-22,24-48
+  s_3031b504518be3::t_21e527061305e3 23
+  s_3031b504518be3::t_d783c6c62262f7 49-55
+lean/UsTax/Proofs/SpecProps.lean
+  s_3031b504518be3::t_45723ff2952a4e 1-120
+  s_3031b504518be3::t_e7d51ece51d2f7 121-123
+lean/UsTax/Spec/FormW2.lean
+  s_3031b504518be3::t_bd3cce4b2746f3 1-73
+lean/UsTax/Proofs/FormW2.lean
+  s_3031b504518be3::t_48858ffb36b4cd 1-118
+  s_3031b504518be3::t_3faaf093fffaa6 119-136
+lean/UsTax/Spec/Rounding.lean
+  s_3031b504518be3::t_95de310e0fd11f 1-42
+lean/UsTax/Proofs/Form1040Lines.lean
+  s_3031b504518be3::t_4079d0622e1e93 1-183
+  s_3031b504518be3::t_9cca72aad2b3e3 184-305
+lean/UsTax/Spec/Inputs.lean
+  s_3031b504518be3::t_91d1553eef2603 1-55
+  s_3031b504518be3::t_39949d71213dba 56-59
+lean/UsTax/Spec/StandardDeduction.lean
+  s_3031b504518be3::t_4a58ccfc03f1d9 1-64
+Makefile
+  s_3031b504518be3::t_2a020965ef8258 59-63
+deploy/comparator/entrypoint.sh
+  s_3031b504518be3::t_16eb7433269f1d 9-10,60-63
+docs/comparator.md
+  s_3031b504518be3::t_c7e522d9b9296f 218-227
+docs/spec-surface.md
+  s_3031b504518be3::t_fbb3f675c41b09 279-400
+lean/UsTax.lean
+  s_3031b504518be3::t_fd2bd2e4f3c935 58-74
+lean/UsTax/Proofs/Extra.lean
+  s_3031b504518be3::t_2c8d59b934832f 1-218
+lean/comparator.extra.json
+  s_3031b504518be3::t_8eb988871e5b9a 1-35
+scripts/comparator.sh
+  s_3031b504518be3::t_22c4ac202e7ebf 6-7,29-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c5391ab00e3e11cd595624268ad8a008457b187",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
