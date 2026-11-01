@@ -22,6 +22,8 @@
 > Using Savers_credit as SC
 > Using Elderly_and_disabled as ED
 > Using Knockouts_income as KI
+> Using Cdcc as CD
+> Using Filing_status as FS
 > Using Form_1040 as F1040
 
 # The calculator: one return, from the answers to the refund (issues #38, #48)
@@ -52,18 +54,17 @@ once late for knockouts) without a cycle.
    qualifying child, dependent, benefit split, HoH/QSS and CTC/ODC tests, plus
    the EITC qualifying child test of this file (section "EITC qualifying
    children").
-3. **Filing status eligibility** (`/eligibleForHoh`, `/eligibleForQss`,
-   `filingStatus.xml` lines 549 to 596). TODO(#20): the filing-status module
-   owns the check "the chosen status is eligible" and its knockout; it is not
-   merged, so no knockout is raised here for an ineligible status.
+3. **Filing status eligibility** (`Filing_status.FilingStatusEligibility`,
+   issue #20): `/eligibleForHoh`, `/eligibleForQss`, the check that the
+   chosen status is eligible and its knockout `ko_filing_status_not_eligible`.
 4. **Income** (#12, #13, #21 to #23): W-2s, 1099-INT, 1099-G, 1099-MISC,
    1099-R, SSA-1099.
 5. **Adjustments** (#24, #35): educator expenses, HSA, then (after total
    income) student loan interest.
 6. **Form 1040, AGI pass**: lines 1 to 18 with the income and adjustment
    slots filled and every credit slot at `$0`.
-7. **Credits** in DF's order (scope.md section 6.7): CDCC (TODO(#28), `$0`),
-   Schedule R, Saver's, CTC/ODC; EITC; ACTC (reads EITC and line 18).
+7. **Credits** in DF's order (scope.md section 6.7): CDCC (`Cdcc.Form2441`,
+   issue #28), Schedule R, Saver's, CTC/ODC; EITC; ACTC (reads EITC and line 18).
 8. **Form 1040, final pass**: every slot filled.
 9. **Knockouts**: `unsupported` is the disjunction of the knockouts of every
    module; `fired_knockouts` lists them.
@@ -73,7 +74,7 @@ them, because a later call only adds slots that feed later lines:
 
 | Call | Slots filled | Read by |
 |---|---|---|
-| `f_income` | 1z, 2b, 5b, 8 (no 6b, no adjustments) | Social Security worksheet lines 1 to 8 |
+| `f_income` | 1z (with 1e), 2b, 5b, 8 (no 6b, no adjustments) | Social Security worksheet lines 1 to 8 |
 | `f_total_income` | + 6b, educator, HSA | student loan MAGI (line 9) |
 | `f_agi` | + student loan interest | credits (AGI, line 1z, line 18) |
 | `f_final` | + credits, withholding, estimated payments | the outputs |
@@ -82,11 +83,8 @@ them, because a later call only adds slots that feed later lines:
 
 | Slot | Value | Owner |
 |---|---|---|
-| `taxable_dependent_care` (line 1e) | `$0` | TODO(#28) CDCC |
-| CDCC credit (Schedule 3 line 2, inside line 20) | `$0` | TODO(#28) |
 | `total_additional_taxes_owed` (line 17, excess APTC) | `$0` | TODO(#32 to #34) PTC |
 | `other_payments_and_refundable_credits_total` (line 31, net PTC) | `$0` | TODO(#32 to #34) PTC |
-| filing status eligibility knockout | none | TODO(#20) |
 
 ## Declarations
 
@@ -118,6 +116,54 @@ declaration structure FilerExtra:
   data disability content ED.DisabilityAnswers
   # DF: the HSA answers of /filers/* (hsa.xml)
   data hsa content H.HsaFilerAnswers
+  # DF: the CDCC answers of /filers/* and of the filer (cdcc.xml)
+  data cdcc content CdccFilerAnswers
+
+## A filer's CDCC answers (`Cdcc.CdccFiler` without the W-2 amounts, which the
+## calculator takes from the W-2s).
+declaration structure CdccFilerAnswers:
+  # Form 2441 lines 4, 5 and 18: the elections to include nontaxable combat
+  # pay in earned income (DF /cdccCombatPayElection,
+  # /cdccCombatPayElectionForBenefits, read per filer)
+  data elect_combat_pay_for_credit content boolean
+  data elect_combat_pay_for_benefits content boolean
+  # DF: /writablePrimaryFilerDependentCarePlanMaximum (or Secondary)
+  data dependent_care_plan_maximum content money
+  # DF: /filers/*/isDisabled
+  data is_disabled content boolean
+  # IRC 21(d)(2) deemed income months (see Cdcc.CdccFiler)
+  data deemed_income_month_earnings content list of money
+  # DF: /filers/*/cdccHasDependentCareExpenses
+  data has_dependent_care_expenses content boolean
+  # DF: /filers/*/cdccHadExpensesPaidToQualifyingProvider
+  data expenses_paid_to_qualifying_provider content boolean
+  # DF: /filers/*/writableCdccQualifyingExpenseAmount
+  data writable_qualifying_expense_amount content money
+
+## A household member's CDCC answers (`Cdcc.CdccAnswers` without the upkeep
+## answer, which is `HouseholdMember.upkeep`).
+declaration structure CdccMemberAnswers:
+  # DF: /familyAndHousehold/*/unableToCareForSelf
+  data unable_to_care_for_self content boolean
+  # DF: /familyAndHousehold/*/cdccHasDependentCareExpenses
+  data has_dependent_care_expenses content boolean
+  # DF: /familyAndHousehold/*/cdccHadExpensesPaidToQualifyingProvider
+  data expenses_paid_to_qualifying_provider content boolean
+  # DF: /familyAndHousehold/*/writableCdccQualifyingExpenseAmount
+  data writable_qualifying_expense_amount content money
+
+## The return-level CDCC answers (cdcc.xml), Form 2441 inputs.
+declaration structure CdccInput:
+  data has_mfs_spouse_earned_income content boolean
+  data writable_mfs_spouse_earned_income content money
+  data writable_total_qualified_dependent_care_expenses content money
+  data writable_carryover_amount content money
+  data writable_forfeited_amount content money
+  data has_credit_for_prior_year_expenses content boolean
+  data claimed_credit_for_prior_year_expenses content boolean
+  data claimed_max_credit_for_prior_tax_year content boolean
+  data has_household_employee content boolean
+  data benefits_from_sole_proprietorship_or_partnership content boolean
 
 ## The answers `Filers.Filers` takes, except the filing status (a separate
 ## input) and `eligible_for_hoh` (computed, stage 3).
@@ -159,6 +205,8 @@ declaration structure HouseholdMember:
   # (`six` = more than 6 but less than 7 months is 6, ..., `twelve` is 12);
   # 0 when the question was not asked.
   data months_lived_with_tp_in_us content integer
+  # CDCC answers (#28)
+  data cdcc content CdccMemberAnswers
 
 ## Income forms.
 declaration structure IncomeInput:
@@ -267,6 +315,8 @@ declaration enumeration CalculatorKnockout:
   -- KnockoutHohQpHasNoTin
   -- ClaimedSpouseCombatPayWithoutMfj
   -- SaversCreditKnockouts
+  -- FilingStatusNotEligible
+  -- FlowKnockoutBenefitsDistribution
 
 declaration structure CalculatorKnockoutEntry:
   data reason content CalculatorKnockout
@@ -441,6 +491,7 @@ declaration scope Calculator:
   input adjustments content AdjustmentsInput
   input payments content PaymentsInput
   input credits content CreditAnswers
+  input cdcc_answers content CdccInput
   input screening content ScreeningAnswers
 
   # ---- Stage 1: filers
@@ -455,13 +506,16 @@ declaration scope Calculator:
   internal ctc_dependents content C.CtcOdcDependents
   internal eitc_children content list of EitcQualifyingChildTest
 
-  # ---- Stage 3: filing status eligibility (TODO(#20))
+  # ---- Stage 3: filing status eligibility (#20)
+  internal filing_status_check content FS.FilingStatusEligibility
   # DF: filingStatus.xml /eligibleForQss
   output eligible_for_qss condition
   # DF: filingStatus.xml /eligibleForHoh
   output eligible_for_hoh condition
 
   # ---- Stage 4: income
+  # Form 2441 called for Part III only (line 1e); see stage 4
+  internal cdcc_benefits content CD.Form2441
   internal base_1040 content Form1040Base
   internal slots_income content Form1040Slots
   internal slots_total_income content Form1040Slots
@@ -490,6 +544,10 @@ declaration scope Calculator:
 
   # ---- Stage 7: credits
   internal estimated content EP.EstimatedPayments
+  internal cdcc_members content list of CD.CdccMember
+  internal cdcc_primary content CD.CdccFiler
+  internal cdcc_secondary content CD.CdccFiler
+  internal cdcc content CD.Form2441
   internal primary_disability content ED.DisabilityAnswers
   internal secondary_disability content ED.DisabilityAnswers
   internal schedule_r content ED.ScheduleR
@@ -544,6 +602,8 @@ declaration scope Calculator:
   output ctc_eligible_dependents content integer
   output odc_eligible_dependents content integer
   output cdcc_total_credit content money
+  # Form 1040 line 1e. DF: /taxableDependentCare
+  output taxable_dependent_care content money
   output qualified_saver_credit_amount content money
   output total_edc content money
   # ---- Outputs: knockouts
@@ -659,25 +719,29 @@ scope Calculator:
 
 ### Stage 3: filing status eligibility
 
-`filingStatus.xml` `/eligibleForQss` (line 576): `filerCouldQualifyForQss`
-and at least one QSS qualifying person. `/eligibleForHoh` (line 549): at least
-one HoH qualifying person, `filerCouldQualifyForHoh`, and not eligible for QSS
-("Filers who are eligible for QSS are not eligible for HOH, preventing them
-from taking a less advantageous refund 26 U.S.C. § 2(b)(1)"). These feed the
-community-property knockout of `Filers`. TODO(#20): the check that the chosen
-`filing_status` is among the eligible statuses (and its knockout) belongs to
-the filing-status module.
+`Filing_status.FilingStatusEligibility` (issue #20, `filingStatus.xml`):
+`/eligibleForQss` (line 576), `/eligibleForHoh` (line 549; not if eligible
+for QSS, IRC 2(b)(1)), and the check that the chosen status is eligible
+(`ko_filing_status_not_eligible`, CONVENTIONS section 7 stage 3). The inputs
+are wired as `Filing_status.FilingStatusReturn` wires them. `eligible_for_hoh`
+also feeds the community-property knockout of `Filers` (stage 9).
 
 ```catala
 scope Calculator:
-  rule eligible_for_qss under condition
-    f.filer_could_qualify_for_qss and hoh_qss.qss_qualifying_people_count > 0
+  definition filing_status_check equals
+    output of FS.FilingStatusEligibility with {
+      -- filing_status: filing_status
+      -- marital_status_allows_filing_married: f.eligible_for_mfs
+      -- eligible_for_mfj: f.eligible_for_mfj
+      -- filer_could_qualify_for_hoh: f.filer_could_qualify_for_hoh
+      -- filer_could_qualify_for_qss: f.filer_could_qualify_for_qss
+      -- hoh_qualifying_people_count: hoh_qss.hoh_qualifying_people_count
+      -- qss_qualifying_people_count: hoh_qss.qss_qualifying_people_count }
+
+  rule eligible_for_qss under condition filing_status_check.eligible_for_qss
   consequence fulfilled
 
-  rule eligible_for_hoh under condition
-    hoh_qss.hoh_qualifying_people_count > 0
-    and f.filer_could_qualify_for_hoh
-    and not eligible_for_qss
+  rule eligible_for_hoh under condition filing_status_check.eligible_for_hoh
   consequence fulfilled
 ```
 
@@ -717,6 +781,105 @@ scope Calculator:
     output of RS.Form1099Rs with { -- forms: income.form_1099rs }
 ```
 
+Form 1040 line 1e (taxable dependent care benefits) is Form 2441 Part III
+(line 26), which reads the W-2 box 10 benefits, the expenses and the earned
+income, but not the AGI or the tax (those feed only Part II, the credit). The
+first `Form2441` call (`cdcc_benefits`) gets `$0` for both and supplies only
+line 1e; the second (`cdcc`, stage 7) gets the real ones and supplies the
+credit. An assertion in stage 7 checks that both give the same line 1e.
+
+The per-filer W-2 amounts come from `Form_w2s.FormW2s`: line 1a wages of the
+filer (DF `/primaryFilerEmployerIncomeSubtotalBase`, lines 1b to 1d and 1f to
+1h being `$0`), box 12 code Q, box 10. The secondary filer counts only on a
+joint return (as in `difftest/mappings/cdcc.mjs`). The spouses shared an abode
+for more than half the year when they lived together all year or more than
+six months (`/spouseLivedTogetherMonths`).
+
+```catala
+scope Calculator:
+  definition cdcc_members equals
+    map each m among household to
+      CD.CdccMember {
+        -- member: m.dependent
+        -- cdcc: CD.CdccAnswers {
+             -- unable_to_care_for_self: m.cdcc.unable_to_care_for_self
+             -- has_dependent_care_expenses: m.cdcc.has_dependent_care_expenses
+             -- expenses_paid_to_qualifying_provider: m.cdcc.expenses_paid_to_qualifying_provider
+             -- writable_qualifying_expense_amount: m.cdcc.writable_qualifying_expense_amount
+             -- tp_paid_most_of_home_upkeep: m.upkeep.tp_paid_most_of_home_upkeep } }
+
+  definition cdcc_primary equals CD.CdccFiler {
+    -- employer_income_subtotal_base: w2.primary_filer_wages
+    -- nontaxable_combat_pay: w2.primary_filer_combat_pay
+    -- elect_combat_pay_for_credit: primary_extra.cdcc.elect_combat_pay_for_credit
+    -- elect_combat_pay_for_benefits: primary_extra.cdcc.elect_combat_pay_for_benefits
+    -- dependent_care_benefits: w2.primary_filer_dependent_care_benefits
+    -- dependent_care_plan_maximum: primary_extra.cdcc.dependent_care_plan_maximum
+    -- is_disabled: primary_extra.cdcc.is_disabled
+    -- deemed_income_month_earnings: primary_extra.cdcc.deemed_income_month_earnings
+    -- has_dependent_care_expenses: primary_extra.cdcc.has_dependent_care_expenses
+    -- expenses_paid_to_qualifying_provider: primary_extra.cdcc.expenses_paid_to_qualifying_provider
+    -- writable_qualifying_expense_amount: primary_extra.cdcc.writable_qualifying_expense_amount }
+
+  definition cdcc_secondary equals
+    if f.treat_as_mfj then CD.CdccFiler {
+      -- employer_income_subtotal_base: w2.secondary_filer_wages
+      -- nontaxable_combat_pay: w2.mfj_spouse_combat_pay
+      -- elect_combat_pay_for_credit: secondary_extra.cdcc.elect_combat_pay_for_credit
+      -- elect_combat_pay_for_benefits: secondary_extra.cdcc.elect_combat_pay_for_benefits
+      -- dependent_care_benefits: w2.secondary_filer_dependent_care_benefits
+      -- dependent_care_plan_maximum: secondary_extra.cdcc.dependent_care_plan_maximum
+      -- is_disabled: secondary_extra.cdcc.is_disabled
+      -- deemed_income_month_earnings: secondary_extra.cdcc.deemed_income_month_earnings
+      -- has_dependent_care_expenses: secondary_extra.cdcc.has_dependent_care_expenses
+      -- expenses_paid_to_qualifying_provider: secondary_extra.cdcc.expenses_paid_to_qualifying_provider
+      -- writable_qualifying_expense_amount: secondary_extra.cdcc.writable_qualifying_expense_amount }
+    else CD.CdccFiler {
+      -- employer_income_subtotal_base: $0
+      -- nontaxable_combat_pay: $0
+      -- elect_combat_pay_for_credit: false
+      -- elect_combat_pay_for_benefits: false
+      -- dependent_care_benefits: $0
+      -- dependent_care_plan_maximum: $0
+      -- is_disabled: false
+      -- deemed_income_month_earnings: []
+      -- has_dependent_care_expenses: false
+      -- expenses_paid_to_qualifying_provider: false
+      -- writable_qualifying_expense_amount: $0 }
+
+  definition cdcc_benefits equals
+    output of CD.Form2441 with {
+      -- filing_status: filing_status
+      -- household: cdcc_members
+      -- minimum_filer_date_of_birth: f.minimum_filer_date_of_birth
+      -- treat_filers_as_dependents: f.treat_filers_as_dependents
+      -- either_filer_us_citizen_or_national: f.either_filer_us_citizen_or_national
+      -- treat_as_mfj: f.treat_as_mfj
+      -- lived_apart_last_six_months: f.mfs_filer_could_be_considered_unmarried_for_cdcc
+      -- spouse_same_abode_more_than_half_year:
+           filers.lived_together_all_year_with_spouse
+           or filers.spouse_lived_together_months
+              = F.SpouseLivedTogetherMonths.LivedTogetherMoreThanSixMonths
+      -- primary_filer: cdcc_primary
+      -- secondary_filer: cdcc_secondary
+      -- has_mfs_spouse_earned_income: cdcc_answers.has_mfs_spouse_earned_income
+      -- writable_mfs_spouse_earned_income: cdcc_answers.writable_mfs_spouse_earned_income
+      -- writable_total_qualified_dependent_care_expenses:
+           cdcc_answers.writable_total_qualified_dependent_care_expenses
+      -- writable_carryover_amount: cdcc_answers.writable_carryover_amount
+      -- writable_forfeited_amount: cdcc_answers.writable_forfeited_amount
+      -- has_credit_for_prior_year_expenses: cdcc_answers.has_credit_for_prior_year_expenses
+      -- claimed_credit_for_prior_year_expenses: cdcc_answers.claimed_credit_for_prior_year_expenses
+      -- claimed_max_credit_for_prior_tax_year: cdcc_answers.claimed_max_credit_for_prior_tax_year
+      -- has_household_employee: cdcc_answers.has_household_employee
+      -- benefits_from_sole_proprietorship_or_partnership:
+           cdcc_answers.benefits_from_sole_proprietorship_or_partnership
+      -- agi: $0
+      -- total_tentative_tax: $0 }
+
+  definition taxable_dependent_care equals cdcc_benefits.taxable_benefits
+```
+
 The first Form 1040 call has the income lines that do not depend on Social
 Security benefits: 1z, 2b, 5b, 8 (unemployment compensation and the Alaska
 PFD). The Social Security Benefits Worksheet (`i1040gi--2024.pdf` p 32) reads
@@ -749,8 +912,8 @@ scope Calculator:
     -- treat_filers_as_dependents: f.treat_filers_as_dependents }
 
   definition slots_income equals Form1040Slots {
-    # TODO(#28): CDCC taxable dependent care benefits (line 1e)
-    -- taxable_dependent_care: $0
+    # Line 1e, Form 2441 line 26
+    -- taxable_dependent_care: taxable_dependent_care
     -- taxable_pensions_and_annuities: rs.line_5b
     -- taxable_social_security_benefits: $0
     -- unemployment_compensation: unemployment.unemployment_compensation
@@ -909,7 +1072,7 @@ scope Calculator:
 ### Stage 7: credits
 
 Credit order (scope.md section 6.7, DF `schedule3.xml` and the credit limit
-worksheets): CDCC first (TODO(#28): `$0`), then Schedule R, whose Credit Limit
+worksheets): CDCC first (Form 2441, `cdcc`), then Schedule R, whose Credit Limit
 Worksheet line 3 is line 18 less the CDCC (`elderlyAndDisabled.xml`
 `/edcTaxLiabilityLimitCalc`), then the Saver's credit (Form 8880 line 11:
 line 18 less CDCC and Schedule R), then the CTC/ODC (Credit Limit Worksheet A:
@@ -931,8 +1094,41 @@ scope Calculator:
            payments.paid_estimated_taxes_or_from_last_year_under_different_name
       -- paid_estimated_taxes_with_former_spouse: payments.paid_estimated_taxes_with_former_spouse }
 
-  # TODO(#28): CDCC (Form 2441, Schedule 3 line 2)
-  definition cdcc_total_credit equals $0
+  # Form 2441 line 11, Schedule 3 line 2 (issue #28)
+  definition cdcc equals
+    output of CD.Form2441 with {
+      -- filing_status: filing_status
+      -- household: cdcc_members
+      -- minimum_filer_date_of_birth: f.minimum_filer_date_of_birth
+      -- treat_filers_as_dependents: f.treat_filers_as_dependents
+      -- either_filer_us_citizen_or_national: f.either_filer_us_citizen_or_national
+      -- treat_as_mfj: f.treat_as_mfj
+      -- lived_apart_last_six_months: f.mfs_filer_could_be_considered_unmarried_for_cdcc
+      -- spouse_same_abode_more_than_half_year:
+           filers.lived_together_all_year_with_spouse
+           or filers.spouse_lived_together_months
+              = F.SpouseLivedTogetherMonths.LivedTogetherMoreThanSixMonths
+      -- primary_filer: cdcc_primary
+      -- secondary_filer: cdcc_secondary
+      -- has_mfs_spouse_earned_income: cdcc_answers.has_mfs_spouse_earned_income
+      -- writable_mfs_spouse_earned_income: cdcc_answers.writable_mfs_spouse_earned_income
+      -- writable_total_qualified_dependent_care_expenses:
+           cdcc_answers.writable_total_qualified_dependent_care_expenses
+      -- writable_carryover_amount: cdcc_answers.writable_carryover_amount
+      -- writable_forfeited_amount: cdcc_answers.writable_forfeited_amount
+      -- has_credit_for_prior_year_expenses: cdcc_answers.has_credit_for_prior_year_expenses
+      -- claimed_credit_for_prior_year_expenses: cdcc_answers.claimed_credit_for_prior_year_expenses
+      -- claimed_max_credit_for_prior_tax_year: cdcc_answers.claimed_max_credit_for_prior_tax_year
+      -- has_household_employee: cdcc_answers.has_household_employee
+      -- benefits_from_sole_proprietorship_or_partnership:
+           cdcc_answers.benefits_from_sole_proprietorship_or_partnership
+      -- agi: f_agi.agi
+      -- total_tentative_tax: f_agi.total_tentative_tax }
+
+  # Part III does not read AGI or the tax: both calls give the same line 1e.
+  assertion cdcc.taxable_benefits = cdcc_benefits.taxable_benefits
+
+  definition cdcc_total_credit equals cdcc.cdcc_total_credit
 
   # DF: /primaryFilerHasW2WagesGreaterThan0, /secondaryFilerHasW2WagesGreaterThan0
   definition primary_disability equals primary_extra.disability but replace {
@@ -1128,8 +1324,9 @@ AGI (the interest knockouts read it) and the real
 `/knockoutHasNoPaymentsOrCredits` of the final return (the HSA knockout reads
 it). The household and credit members (issue #37) are the `unsupported` of
 each module: `Filers` (called again with the computed `eligible_for_hoh`),
-`Qualifying_child`, `Dependents_benefit_split`, `Hoh_qss_persons`, `Eitc` and
-`Savers_credit`. `Form1040.unsupported` adds nothing new: its W-2 and interest
+`Qualifying_child`, `Dependents_benefit_split`, `Hoh_qss_persons`, `Eitc`,
+`Savers_credit`, `Filing_status` (the chosen status is not eligible) and
+`Cdcc`. `Form1040.unsupported` adds nothing new: its W-2 and interest
 members and its `ko_knockout_has_no_payments_or_credits` are already in
 `income_ko`; it is kept in the disjunction anyway.
 
@@ -1272,6 +1469,10 @@ scope Calculator:
         -- fired: eitc.ko_claimed_spouse_combat_pay_without_mfj }
     ; CalculatorKnockoutEntry { -- reason: SaversCreditKnockouts
         -- fired: savers.ko_savers_credit_knockouts }
+    ; CalculatorKnockoutEntry { -- reason: FilingStatusNotEligible
+        -- fired: filing_status_check.ko_filing_status_not_eligible }
+    ; CalculatorKnockoutEntry { -- reason: FlowKnockoutBenefitsDistribution
+        -- fired: cdcc.ko_flow_knockout_benefits_distribution }
     ]
 
   definition fired_knockouts equals
@@ -1287,6 +1488,8 @@ scope Calculator:
     or hoh_qss.unsupported
     or eitc.unsupported
     or savers.unsupported
+    or filing_status_check.unsupported
+    or cdcc.unsupported
   consequence fulfilled
 ```
 

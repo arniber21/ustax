@@ -6,8 +6,9 @@
 // fact (/agi, /numEitcQualifyingChildren, /minimumFilerDateOfBirth, ...) is read as an input.
 //
 // Scenarios that need a module that is not merged are skipped with the reason "blocked by #n" (listed by the
-// runner, never counted as pass): CDCC #28 (/cdccTotalCredit or /taxableDependentCare non-zero) and PTC #32-#34
-// (/totalAdditionalTaxesOwed or /otherPaymentsAndRefundableCreditsTotal non-zero).
+// runner, never counted as pass): PTC #32-#34 (/totalAdditionalTaxesOwed or /otherPaymentsAndRefundableCreditsTotal
+// non-zero). CDCC answers follow difftest/mappings/cdcc.mjs: the per-person and per-filer expense answers count
+// only when /writableCdccHasQualifyingExpenses is true (DF does not ask them otherwise).
 //
 // Defaults for questions DF did not ask are the module mappings' defaults (each read only behind a gate that is
 // false for that scenario). Additional defaults here:
@@ -73,8 +74,44 @@ function extra(f, role) {
     is_student: !!id && bool(f, `/filers/#${id}/isStudent`),
     disability: edcMap.inputs[`${role}_answers`](f),
     hsa: hsaMap.inputs[role === 'primary' ? 'primary_filer' : 'secondary_filer'](f),
+    cdcc: cdccFiler(f, id, role),
   };
 }
+
+// ---- CDCC (as cdcc.mjs) ---------------------------------------------------------------------
+const hasCdccExpenses = (f) => bool(f, '/writableCdccHasQualifyingExpenses');
+const dollars = (f, p) => Number(cents(f, p)) / 100;
+function cdccFiler(f, id, role) {
+  const own = role === 'primary'
+    ? ['usePrimaryCombatPay', 'useBothCombatPay', 'usePrimaryNotSpouseCombatPay']
+    : ['useSpouseCombatPay', 'useBothCombatPay', 'useSpouseNotPrimaryCombatPay'];
+  const it = `/filers/#${id}/`;
+  return {
+    elect_combat_pay_for_credit: own.includes(val(f, '/cdccCombatPayElection')),
+    elect_combat_pay_for_benefits: own.includes(val(f, '/cdccCombatPayElectionForBenefits')),
+    dependent_care_plan_maximum: dollars(f, role === 'primary'
+      ? '/writablePrimaryFilerDependentCarePlanMaximum' : '/writableSecondaryFilerDependentCarePlanMaximum'),
+    is_disabled: !!id && bool(f, it + 'isDisabled'),
+    deemed_income_month_earnings: [],
+    has_dependent_care_expenses: !!id && hasCdccExpenses(f) && bool(f, it + 'cdccHasDependentCareExpenses'),
+    expenses_paid_to_qualifying_provider: !!id && bool(f, it + 'cdccHadExpensesPaidToQualifyingProvider'),
+    writable_qualifying_expense_amount: id ? dollars(f, it + 'writableCdccQualifyingExpenseAmount') : 0,
+  };
+}
+const cdccAnswers = (f) => ({
+  has_mfs_spouse_earned_income: bool(f, '/hasMfjSpouseEarnedIncome'),
+  writable_mfs_spouse_earned_income: dollars(f, '/writableMfsSpouseEarnedIncome'),
+  writable_total_qualified_dependent_care_expenses: dollars(f, '/writableCdccTotalQualifiedDependentCareExpenses'),
+  writable_carryover_amount: bool(f, '/hasCdccCarryoverAmountFromPriorTaxYear')
+    ? dollars(f, '/writableCdccCarryoverAmountFromPriorTaxYear') : 0,
+  // DF-BUG(27) (cdcc.mjs): the statute counts the forfeited amount whatever box 10 says.
+  writable_forfeited_amount: bool(f, '/writableHasCdccForfeitedCredits') ? dollars(f, '/writableCdccForfeitedCredits') : 0,
+  has_credit_for_prior_year_expenses: bool(f, '/cdccHasCreditForPriorYearExpenses'),
+  claimed_credit_for_prior_year_expenses: bool(f, '/cdccClaimedCreditForPriorYearExpenses'),
+  claimed_max_credit_for_prior_tax_year: bool(f, '/cdccClaimedMaxCreditForPriorTaxYear'),
+  has_household_employee: bool(f, '/flowKnockoutHouseholdEmployee'),
+  benefits_from_sole_proprietorship_or_partnership: false,
+});
 
 // ---- household ------------------------------------------------------------------------------
 // The writable rows of one household member, keyed as in oracle/persons.csv (/familyAndHousehold/*/<fact>).
@@ -98,6 +135,13 @@ function household(f) {
       ssn_employment_validity: upper(pv('ssnEmploymentValidity') || 'neither'),
       ssn_only_for_federally_funded_benefit: pv('ssnOnlyForFederallyFundedBenefit') === 'true',
       months_lived_with_tp_in_us: MONTHS[pv('monthsLivedWithTPInUS')] ?? 0,
+      cdcc: {
+        unable_to_care_for_self: pv('unableToCareForSelf') === 'true',
+        has_dependent_care_expenses: hasCdccExpenses(f) && pv('cdccHasDependentCareExpenses') === 'true',
+        expenses_paid_to_qualifying_provider: pv('cdccHadExpensesPaidToQualifyingProvider') === 'true',
+        writable_qualifying_expense_amount: pv('writableCdccQualifyingExpenseAmount')
+          ? Number(pv('writableCdccQualifyingExpenseAmount')) : 0,
+      },
     };
   });
 }
@@ -107,7 +151,6 @@ function household(f) {
 function blocked(f) {
   if (process.env.CALC_INCLUDE_BLOCKED === '1') return true;
   const r = [];
-  if (cents(f, '/cdccTotalCredit') !== 0n || cents(f, '/taxableDependentCare') !== 0n) r.push('blocked by #28 (CDCC)');
   if (cents(f, '/totalAdditionalTaxesOwed') !== 0n || cents(f, '/otherPaymentsAndRefundableCreditsTotal') !== 0n)
     r.push('blocked by #32-#34 (PTC)');
   return r.length ? r.join(', ') : true;
@@ -141,6 +184,15 @@ export const knownDivergence = [
   // the qualifying child of another taxpayer who must file. IRC 152(c)(4) cannot be decided from the return, so
   // the formalization knocks out (QualifyingChildTieBreaker); DF accepts the return.
   { scenario: 'qss_35K_1 dependent-signed', path: '/flowIsKnockedOut', bug: 'DF-BUG-3' },
+  // Not a DF bug: the scenario file has /filingStatus = headOfHousehold while DF's own /isFilingStatusValid is false
+  // (/filingStatusChoice wantsMarriedFilingSeparately, /eligibleForHoh false). DF's UI never offers an ineligible
+  // status; the formalization makes it the knockout ko_filing_status_not_eligible (#20, CONVENTIONS section 7).
+  { scenario: 'mfs-4300-none', path: '/flowIsKnockedOut', bug: 'invalid input: DF /isFilingStatusValid=false (#20)' },
+  // DF-BUG(23) (cdcc.mjs): the foster child of the non-parent Form 8332 split is a CDCC qualifying person in DF;
+  // IRC 21(e)(5) gives the child to the custodial parent only. CDCC $702 (DF) vs $602 (law), and everything after it.
+  ...['/cdccTotalCredit', '/line8OfSchedule3', '/nonRefundableCredits', '/totalTax', '/totalCtcAndOdc',
+    '/additionalCtc', '/totalOtherPaymentsRefundableCredits', '/totalPayments', '/overpayment', '/balanceDue']
+    .map((path) => ({ scenario: 'hoh-cdcc-multiple-careproviders', path, bug: 'DF-BUG(23)' })),
   ...bug13Scenarios.flatMap((scenario) => EDC_DOWNSTREAM.map((path) => ({ scenario, path, bug: 'DF-BUG(13)' }))),
 ];
 
@@ -191,10 +243,13 @@ export default {
       has_self_reported_non_taxable_payments: bool(f, '/writableHasSelfReportedNonTaxablePayments'),
       self_reported_non_taxable_payment_amount: Number(cents(f, '/writableEdcSelfReportedNonTaxablePaymentAmount')) / 100,
     }),
+    cdcc_answers: cdccAnswers,
     screening: (f) => pick(koMap.inputs, SCREENING, f),
   },
   outputs: [
     m('/wages', 'wages'),
+    m('/taxableDependentCare', 'taxable_dependent_care'),
+    m('/cdccTotalCredit', 'cdcc_total_credit'),
     m('/totalIncome', 'total_income'),
     m('/taxableSocialSecurityBenefits', 'taxable_social_security_benefits'),
     m('/educatorExpensesAdjustment', 'educator_expenses_adjustment'),

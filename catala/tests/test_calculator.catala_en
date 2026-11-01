@@ -141,6 +141,11 @@ scope MkChild:
     -- ssn_employment_validity: C.SsnEmploymentValidity.Neither
     -- ssn_only_for_federally_funded_benefit: false
     -- months_lived_with_tp_in_us: 12
+    -- cdcc: Calc.CdccMemberAnswers {
+         -- unable_to_care_for_self: false
+         -- has_dependent_care_expenses: false
+         -- expenses_paid_to_qualifying_provider: false
+         -- writable_qualifying_expense_amount: $0 }
   }
 
 declaration scope Defaults:
@@ -151,6 +156,7 @@ declaration scope Defaults:
   output adjustments content Calc.AdjustmentsInput
   output payments content Calc.PaymentsInput
   output credits content Calc.CreditAnswers
+  output cdcc_answers content Calc.CdccInput
   output screening content Calc.ScreeningAnswers
 
 scope Defaults:
@@ -191,7 +197,16 @@ scope Defaults:
          -- writable_marital_change_affect_contribution_limit_bool: false
          -- has_made_qualified_hsa_funding_distribution: false
          -- writable_hsa_nonemployer_contributions_tax_year: $0
-         -- writable_hsa_nonemployer_contributions_tax_year_plus_one: $0 } }
+         -- writable_hsa_nonemployer_contributions_tax_year_plus_one: $0 }
+    -- cdcc: Calc.CdccFilerAnswers {
+         -- elect_combat_pay_for_credit: false
+         -- elect_combat_pay_for_benefits: false
+         -- dependent_care_plan_maximum: $0
+         -- is_disabled: false
+         -- deemed_income_month_earnings: []
+         -- has_dependent_care_expenses: false
+         -- expenses_paid_to_qualifying_provider: false
+         -- writable_qualifying_expense_amount: $0 } }
   definition filers equals Calc.FilersInput {
     -- marital_status: F.MaritalStatus.NeverMarried
     -- year_of_spouse_death: F.YearOfSpouseDeath.DiedBeforeTaxYearMinusTwo
@@ -264,6 +279,17 @@ scope Defaults:
     -- has_self_reported_contributions: false
     -- has_self_reported_non_taxable_payments: false
     -- self_reported_non_taxable_payment_amount: $0 }
+  definition cdcc_answers equals Calc.CdccInput {
+    -- has_mfs_spouse_earned_income: false
+    -- writable_mfs_spouse_earned_income: $0
+    -- writable_total_qualified_dependent_care_expenses: $0
+    -- writable_carryover_amount: $0
+    -- writable_forfeited_amount: $0
+    -- has_credit_for_prior_year_expenses: false
+    -- claimed_credit_for_prior_year_expenses: false
+    -- claimed_max_credit_for_prior_tax_year: false
+    -- has_household_employee: false
+    -- benefits_from_sole_proprietorship_or_partnership: false }
   definition screening equals Calc.ScreeningAnswers {
     -- income_sources_supported: true
     -- received_digital_assets: false
@@ -313,6 +339,7 @@ scope TestSingle:
     -- adjustments: d.adjustments
     -- payments: d.payments
     -- credits: d.credits
+    -- cdcc_answers: d.cdcc_answers
     -- screening: d.screening }
   assertion r.agi = $50,000
   assertion r.taxable_income = $35,400
@@ -353,6 +380,7 @@ scope TestMfj:
     -- adjustments: d.adjustments
     -- payments: d.payments
     -- credits: d.credits
+    -- cdcc_answers: d.cdcc_answers
     -- screening: d.screening }
   assertion r.ctc_eligible_dependents = 2
   assertion r.num_eitc_qualifying_children = 2
@@ -392,6 +420,7 @@ scope TestMfs:
     -- adjustments: d.adjustments
     -- payments: d.payments
     -- credits: d.credits
+    -- cdcc_answers: d.cdcc_answers
     -- screening: d.screening }
   assertion r.standard_or_itemized_deductions = $14,600
   assertion r.taxable_income = $15,400
@@ -431,6 +460,7 @@ scope TestHoh:
     -- adjustments: d.adjustments
     -- payments: d.payments
     -- credits: d.credits
+    -- cdcc_answers: d.cdcc_answers
     -- screening: d.screening }
   assertion r.eligible_for_hoh
   assertion r.taxable_income = $18,100
@@ -474,6 +504,7 @@ scope TestQss:
     -- adjustments: d.adjustments
     -- payments: d.payments
     -- credits: d.credits
+    -- cdcc_answers: d.cdcc_answers
     -- screening: d.screening }
   assertion r.eligible_for_qss
   assertion not r.eligible_for_hoh
@@ -523,8 +554,38 @@ scope TestKnockout:
     -- adjustments: d.adjustments
     -- payments: d.payments
     -- credits: d.credits
+    -- cdcc_answers: d.cdcc_answers
     -- screening: d.screening but replace { -- income_sources_supported: false } }
   assertion r.unsupported
   assertion r.fired_knockouts =
     [Calc.CalculatorKnockout.IncomeOrHsa content KI.KnockoutReason.IncomeSourcesNotSupported]
+```
+
+A never-married filer with no household member who chooses head of household
+is not eligible for that status (IRC 2(b)(1) needs a qualifying person): the
+return is knocked out with `FilingStatusNotEligible` (issue #20).
+
+```catala
+#[test]
+declaration scope TestIneligibleStatus:
+  d scope Defaults
+  output r content Calc.Calculator
+
+scope TestIneligibleStatus:
+  definition r equals output of Calc.Calculator with {
+    -- filing_status: Types.FilingStatus.HeadOfHousehold
+    -- filers: d.filers
+    -- primary_extra: d.extra
+    -- secondary_extra: d.extra
+    -- household: []
+    -- income: d.income but replace {
+         -- w2s: [(output of MkW2 with { -- wages: $50,000 -- withholding: $5,000 }).w2] }
+    -- adjustments: d.adjustments
+    -- payments: d.payments
+    -- credits: d.credits
+    -- cdcc_answers: d.cdcc_answers
+    -- screening: d.screening }
+  assertion not r.eligible_for_hoh
+  assertion r.unsupported
+  assertion r.fired_knockouts = [Calc.CalculatorKnockout.FilingStatusNotEligible]
 ```

@@ -111,10 +111,10 @@ three outputs each, exact cents), then Lean against the oracle. `--perturb` is i
 ## Whole return (issues #38, #48)
 
 `calculator` (scope `Calculator`, `catala/calculator.catala_en`) runs the whole return with every merged module
-plugged into `Form1040` and no oracle value as input: every input is a writable fact of the scenario
-(per-person facts from the `/familyAndHousehold/#<uuid>/...` rows of `facts.csv`). Scenarios that need an
-unmerged module are skipped as `blocked by #28 (CDCC)` or `blocked by #32-#34 (PTC)` (non-zero
-`/cdccTotalCredit`, `/taxableDependentCare`, `/totalAdditionalTaxesOwed` or
-`/otherPaymentsAndRefundableCreditsTotal`); `CALC_INCLUDE_BLOCKED=1` runs them anyway. Result: 142/142
-scenarios, 4120/4120 fact checks over 30 paths, 1 known divergence (DF-BUG-3, `qss_35K_1 dependent-signed`
-knocked out by the qualifying-child tie-breaker), 15 blocked, 4 knocked out (DF-BUG-8).
+(including CDCC #28 and filing status #20) plugged into `Form1040` and no oracle value as input: every input is a
+writable fact of the scenario (per-person facts from the `/familyAndHousehold/#<uuid>/...` rows of `facts.csv`).
+Scenarios that need the unmerged PTC (#32-#34) are skipped as `blocked by #32-#34 (PTC)` (non-zero
+`/totalAdditionalTaxesOwed` or `/otherPaymentsAndRefundableCreditsTotal`); `CALC_INCLUDE_BLOCKED=1` runs them
+anyway (they then differ only on lines 17/31 and what follows). Result: 151/151 scenarios, 4677/4677 fact checks over
+32 paths, 9 known divergences (DF-BUG-3, DF-BUG(23), and `mfs-4300-none`, whose own DF `/isFilingStatusValid` is
+false), 6 blocked, 4 knocked out (DF-BUG-8).
