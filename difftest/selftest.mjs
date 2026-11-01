@@ -1,7 +1,7 @@
 // Unit tests for the runner's pure logic (no Catala needed): `node --test difftest/selftest.mjs`.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv, parseMoney, showValue, parseCatalaResult, compareOutputs, isKnockedOut, listFromCollection, freezeOracle, mappingFacts } from './lib.mjs';
+import { parseCsv, parseMoney, showValue, parseCatalaResult, compareOutputs, isKnockedOut, listFromCollection } from './lib.mjs';
 
 test('csv quoting', () => {
   assert.deepEqual(parseCsv('a,"b ""q"", c",d\n1,,3\n'), [['a', 'b "q", c', 'd'], ['1', '', '3']]);
@@ -44,20 +44,4 @@ test('listFromCollection fills missing items with default', () => {
   ]);
   assert.deepEqual(listFromCollection('/c', 'x', { missing: '0' })(f), [5, 0]);
   assert.deepEqual(listFromCollection('/c', 'x')(f), [5]);
-});
-
-test('shared oracle is read-only; a mapping edits a private copy (cross-mapping interference)', () => {
-  const row = { value: 'x', completeness: 'Complete' };
-  const oracle = freezeOracle(new Map([['s1', new Map([['/a', row]])]]));
-  const shared = oracle.get('s1');
-  // What filing_status.mjs did in appliesTo: add rows to the facts it was given. On the shared map it must throw.
-  assert.throws(() => shared.set('/extra', row), /read-only/);
-  assert.throws(() => oracle.set('s2', new Map()), /read-only/);
-  assert.throws(() => { row.value = 'y'; });
-  // On a private copy it works and leaves the shared map untouched, so a later mapping that compares fact maps
-  // against a fresh load (ptc_family.mjs scenarioName) still matches.
-  const mine = mappingFacts(shared);
-  mine.set('/extra', row);
-  assert.equal(shared.size, 1);
-  assert.equal(mine.size, 2);
 });

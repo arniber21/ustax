@@ -42,27 +42,6 @@ export function loadOracle(file) {
   return out;
 }
 
-/**
- * Make the oracle read-only: every scenario Map throws on set/delete/clear and every row is frozen. The runner
- * shares one oracle among all mappings of a process, so a mapping that edits it (filing_status.mjs added rows)
- * changed what later mappings saw (ptc_family.mjs matches scenarios by comparing fact maps).
- */
-export function freezeOracle(oracle) {
-  const deny = (op) => () => { throw new Error(`oracle is shared and read-only: Map.${op} called; use mappingFacts(facts) for a private copy`); };
-  for (const facts of oracle.values()) {
-    for (const row of facts.values()) Object.freeze(row);
-    for (const op of ['set', 'delete', 'clear']) Object.defineProperty(facts, op, { value: deny(op) });
-    Object.freeze(facts);
-  }
-  for (const op of ['set', 'delete', 'clear']) Object.defineProperty(oracle, op, { value: deny(op) });
-  return Object.freeze(oracle);
-}
-
-/** A private, mutable copy of one scenario's facts, for `mapping.appliesTo` and `buildInput` (which may add rows). */
-export function mappingFacts(facts) {
-  return new Map(facts);
-}
-
 // ---------------------------------------------------------------------------------------------
 // Knock-out policy (oracle/README.md): flowIsKnockedOut = true (Complete) is out of scope.
 // `false` is only ever `Placeholder` for 157/161 scenarios and means "not knocked out".

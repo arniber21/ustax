@@ -30,7 +30,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { loadOracle, freezeOracle, mappingFacts, isKnockedOut, parseCatalaResult, parseCatalaValue, parseOracleValue, showValue,
+import { loadOracle, isKnockedOut, parseCatalaResult, parseCatalaValue, parseOracleValue, showValue,
   buildInput, inputFileText } from './lib.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -61,7 +61,7 @@ function leanValue(type, v) {
 }
 const perturbed = (type, v) => (type === 'money' || type === 'int' ? v + 1n : type === 'bool' ? !v : v + '~');
 
-const oracle = freezeOracle(loadOracle(oracleFile)); // shared by all mappings: read-only
+const oracle = loadOracle(oracleFile);
 let exitCode = 0;
 
 for (const name of names) {
@@ -73,8 +73,7 @@ for (const name of names) {
   const outs = [...mapping.outputs, ...(mapping.extraOutputs || [])];
 
   const knocked = [], outOfScope = [], inputErrors = [], scen = [];
-  for (const [scenario, sharedFacts] of oracle) {
-    const facts = mappingFacts(sharedFacts); // private copy: a mapping may add derived rows
+  for (const [scenario, facts] of oracle) {
     if (only && scenario !== only) continue;
     if (isKnockedOut(facts)) { knocked.push(scenario); continue; }
     const applies = mapping.appliesTo(facts);

@@ -129,6 +129,35 @@ declaration enumeration KnockoutReason:
   -- FlowKnockoutUnsupportedState
   -- IsTooLateToFileOrResubmit
   -- KnockoutHasNoPaymentsOrCredits
+  # (household, credit and PTC knockouts: Knockouts_household, issue #37)
+  -- FlowKnockoutFilerAgeYoungerThan16
+  -- SpouseItemizesKnockout
+  -- PrimaryFilerResidencyKnockout
+  -- FlowKnockoutHasApplicableRegisteredDomesticPartnership
+  -- KnockoutSubjectToCommunityPropertyLaws
+  -- KnockoutHohQpHasNoTin
+  -- KnockedOutByNonCustodialParentBenefitSplit
+  -- KnockedOutByContradictory8832
+  -- SaversCreditKnockouts
+  -- FlowKnockoutBenefitsDistribution
+  -- KnockoutCdccWorksheetA
+  -- FlowKnockoutHouseholdEmployee
+  -- DependentTpRequiresAllocations
+  -- HasPtcQualifyingPlanAndQsehra
+  -- NeedsAllocations
+  -- HasEmployerSponsoredPlan
+  -- DependentsRequiredToFile
+  -- SelfReportedHasMultiple1095As
+  -- HasImmigrationStatusNotEligibleForMarketplace
+  -- WantsToUseAltCalculations
+  -- ExtraQualifyingChildTieBreaker
+  -- ExtraClaimedSpouseCombatPayWithoutMfj
+  -- ExtraFilingStatusNotEligible
+  -- ExtraCdccSoleProprietorshipBenefits
+  -- ExtraCdccBothSpousesDeemedIncome
+  -- ExtraTpNeedsToAdd1095A
+  -- ExtraTpNeedsToDelete1095A
+  -- KnockoutPersonBornAndDiedInTaxYearWithoutTin
 
 ## One row of the table behind `fired_knockouts`.
 declaration structure KnockoutEntry:

@@ -22,6 +22,7 @@
 > Using Savers_credit as SC
 > Using Elderly_and_disabled as ED
 > Using Knockouts_income as KI
+> Using Knockouts_household as KH
 > Using Cdcc as CD
 > Using Ptc_family as PF
 > Using Ptc_allowed as PA
@@ -307,6 +308,8 @@ declaration structure CreditAnswers:
 
 ## The screening questions that only feed knockouts (KnockoutsIncome inputs).
 declaration structure ScreeningAnswers:
+  # DF: /familyAndHousehold dates of birth, deceased and TIN type (Knockouts_household)
+  data member_vitals content list of KH.MemberVitals
   data income_sources_supported content boolean
   data received_digital_assets content boolean
   data disposed_digital_assets content boolean
@@ -329,24 +332,11 @@ declaration structure ScreeningAnswers:
   data is_after_resubmission_deadline content boolean
 
 ## Every knockout the calculator can report. Income, HSA and process
-## knockouts keep the reason of `Knockouts_income`; the others are one
-## constructor per DF fact (or per module knockout without a DF fact).
+## knockouts come from `Knockouts_income`, household, credit and PTC knockouts
+## from `Knockouts_household` (issue #37); both use `KI.KnockoutReason`.
 declaration enumeration CalculatorKnockout:
   -- IncomeOrHsa content KI.KnockoutReason
-  -- FlowKnockoutFilerAgeYoungerThan16
-  -- SpouseItemizesKnockout
-  -- PrimaryFilerResidencyKnockout
-  -- FlowKnockoutHasApplicableRegisteredDomesticPartnership
-  -- KnockoutSubjectToCommunityPropertyLaws
-  -- QualifyingChildTieBreaker
-  -- KnockedOutByContradictory8832
-  -- KnockedOutByNonCustodialParentBenefitSplit
-  -- KnockoutHohQpHasNoTin
-  -- ClaimedSpouseCombatPayWithoutMfj
-  -- SaversCreditKnockouts
-  -- FilingStatusNotEligible
-  -- FlowKnockoutBenefitsDistribution
-  -- PtcKnockouts
+  -- Household content KI.KnockoutReason
 
 declaration structure CalculatorKnockoutEntry:
   data reason content CalculatorKnockout
@@ -600,6 +590,7 @@ declaration scope Calculator:
   # ---- Stage 9: knockouts
   internal filers_ko content F.Filers
   internal income_ko content KI.KnockoutsIncome
+  internal household_ko content KH.KnockoutsHousehold
   internal knockout_table content list of CalculatorKnockoutEntry
 
   # ---- Outputs: Form 1040 (final pass)
@@ -1598,39 +1589,42 @@ scope Calculator:
       -- is_after_tax_day_and_not_resubmitting: screening.is_after_tax_day_and_not_resubmitting
       -- is_after_resubmission_deadline: screening.is_after_resubmission_deadline }
 
+  definition household_ko equals
+    output of KH.KnockoutsHousehold with {
+      -- member_vitals: screening.member_vitals
+      -- in_flow_knockout_filer_age_younger_than16: filers_ko.ko_flow_knockout_filer_age_younger_than16
+      -- in_spouse_itemizes_knockout: filers_ko.ko_spouse_itemizes_knockout
+      -- in_primary_filer_residency_knockout: filers_ko.ko_primary_filer_residency_knockout
+      -- in_flow_knockout_has_applicable_registered_domestic_partnership: filers_ko.ko_flow_knockout_has_applicable_registered_domestic_partnership
+      -- in_knockout_subject_to_community_property_laws: filers_ko.ko_knockout_subject_to_community_property_laws
+      -- in_knockout_hoh_qp_has_no_tin: hoh_qss.ko_knockout_hoh_qp_has_no_tin
+      -- in_knocked_out_by_non_custodial_parent_benefit_split: benefit_split.ko_knocked_out_by_non_custodial_parent_benefit_split
+      -- in_knocked_out_by_contradictory8832: benefit_split.ko_knocked_out_by_contradictory8832
+      -- in_savers_credit_knockouts: savers.ko_savers_credit_knockouts
+      -- in_flow_knockout_benefits_distribution: cdcc.ko_flow_knockout_benefits_distribution
+      -- in_knockout_cdcc_worksheet_a: cdcc.benefits.ko_knockout_cdcc_worksheet_a
+      -- in_flow_knockout_household_employee: cdcc.benefits.ko_knockout_household_employee
+      -- in_dependent_tp_requires_allocations: ptc_allowed.ko_dependent_tp_requires_allocations
+      -- in_has_ptc_qualifying_plan_and_qsehra: ptc_allowed.ko_has_ptc_qualifying_plan_and_qsehra
+      -- in_needs_allocations: ptc_allowed.ko_needs_allocations
+      -- in_has_employer_sponsored_plan: ptc_allowed.ko_has_employer_sponsored_plan
+      -- in_dependents_required_to_file: ptc_allowed.ko_dependents_required_to_file
+      -- in_self_reported_has_multiple1095_as: ptc_allowed.ko_self_reported_has_multiple1095_as
+      -- in_has_immigration_status_not_eligible_for_marketplace: ptc_allowed.ko_has_immigration_status_not_eligible_for_marketplace
+      -- in_wants_to_use_alt_calculations: ptc_allowed.ko_wants_to_use_alt_calculations
+      -- in_qualifying_child_tie_breaker: qualifying_children.ko_qualifying_child_tie_breaker
+      -- in_claimed_spouse_combat_pay_without_mfj: eitc.ko_claimed_spouse_combat_pay_without_mfj
+      -- in_filing_status_not_eligible: filing_status_check.ko_filing_status_not_eligible
+      -- in_sole_proprietorship_benefits: cdcc.benefits.ko_sole_proprietorship_benefits
+      -- in_both_spouses_deemed_income: cdcc.benefits.ko_both_spouses_deemed_income
+      -- in_tp_needs_to_add1095_a: ptc_allowed.ko_tp_needs_to_add1095_a
+      -- in_tp_needs_to_delete1095_a: ptc_allowed.ko_tp_needs_to_delete1095_a }
+
   definition knockout_table equals
     (map each r among income_ko.fired_knockouts to
        CalculatorKnockoutEntry { -- reason: IncomeOrHsa content r -- fired: true })
-    ++ [
-      CalculatorKnockoutEntry { -- reason: FlowKnockoutFilerAgeYoungerThan16
-        -- fired: filers_ko.ko_flow_knockout_filer_age_younger_than16 }
-    ; CalculatorKnockoutEntry { -- reason: SpouseItemizesKnockout
-        -- fired: filers_ko.ko_spouse_itemizes_knockout }
-    ; CalculatorKnockoutEntry { -- reason: PrimaryFilerResidencyKnockout
-        -- fired: filers_ko.ko_primary_filer_residency_knockout }
-    ; CalculatorKnockoutEntry { -- reason: FlowKnockoutHasApplicableRegisteredDomesticPartnership
-        -- fired: filers_ko.ko_flow_knockout_has_applicable_registered_domestic_partnership }
-    ; CalculatorKnockoutEntry { -- reason: KnockoutSubjectToCommunityPropertyLaws
-        -- fired: filers_ko.ko_knockout_subject_to_community_property_laws }
-    ; CalculatorKnockoutEntry { -- reason: QualifyingChildTieBreaker
-        -- fired: qualifying_children.ko_qualifying_child_tie_breaker }
-    ; CalculatorKnockoutEntry { -- reason: KnockedOutByContradictory8832
-        -- fired: benefit_split.ko_knocked_out_by_contradictory8832 }
-    ; CalculatorKnockoutEntry { -- reason: KnockedOutByNonCustodialParentBenefitSplit
-        -- fired: benefit_split.ko_knocked_out_by_non_custodial_parent_benefit_split }
-    ; CalculatorKnockoutEntry { -- reason: KnockoutHohQpHasNoTin
-        -- fired: hoh_qss.ko_knockout_hoh_qp_has_no_tin }
-    ; CalculatorKnockoutEntry { -- reason: ClaimedSpouseCombatPayWithoutMfj
-        -- fired: eitc.ko_claimed_spouse_combat_pay_without_mfj }
-    ; CalculatorKnockoutEntry { -- reason: SaversCreditKnockouts
-        -- fired: savers.ko_savers_credit_knockouts }
-    ; CalculatorKnockoutEntry { -- reason: FilingStatusNotEligible
-        -- fired: filing_status_check.ko_filing_status_not_eligible }
-    ; CalculatorKnockoutEntry { -- reason: FlowKnockoutBenefitsDistribution
-        -- fired: cdcc.ko_flow_knockout_benefits_distribution }
-    ; CalculatorKnockoutEntry { -- reason: PtcKnockouts
-        -- fired: ptc_allowed.unsupported }
-    ]
+    ++ (map each r among household_ko.fired_knockouts to
+       CalculatorKnockoutEntry { -- reason: Household content r -- fired: true })
 
   definition fired_knockouts equals
     map each e among (list of e among knockout_table such that e.fired) to e.reason
@@ -1639,6 +1633,7 @@ scope Calculator:
   rule unsupported under condition
     income_ko.unsupported_income_or_hsa
     or f_final.unsupported
+    or household_ko.unsupported_household
     or filers_ko.unsupported
     or qualifying_children.unsupported
     or benefit_split.unsupported

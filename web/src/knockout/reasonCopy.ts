@@ -203,10 +203,16 @@ export const REASON_COPY: Record<string, string> = {
   WantsToUseAltCalculations: 'You want to use an alternative method for premium credit calculations.',
   // credits
   SaversCreditKnockouts: 'You may qualify for the Saver’s Credit.',
-  KnockoutStudentOrDisabled: 'You or a dependent is a student or has a disability, which changes credit rules.',
   FlowKnockoutBenefitsDistribution: 'You received benefits that affect your credits.',
   KnockoutCdccWorksheetA: 'You paid for child or dependent care, which needs a special worksheet.',
   FlowKnockoutHouseholdEmployee: 'You paid someone to work in your home.',
+  ExtraQualifyingChildTieBreaker: 'A child could be claimed by more than one person, and we can’t decide who gets to.',
+  ExtraClaimedSpouseCombatPayWithoutMfj: 'Your spouse’s combat pay affects the earned income credit, and you aren’t filing jointly.',
+  ExtraFilingStatusNotEligible: 'The filing status you chose doesn’t fit your household.',
+  ExtraCdccSoleProprietorshipBenefits: 'Your dependent care benefits come from a business you own.',
+  ExtraCdccBothSpousesDeemedIncome: 'Both spouses count as having income they didn’t earn for the child care credit.',
+  ExtraTpNeedsToAdd1095A: 'You have marketplace coverage but no Form 1095-A has been added.',
+  ExtraTpNeedsToDelete1095A: 'You entered more than one Form 1095-A, which we can’t handle yet.',
 };
 
 export interface FriendlyReason {

@@ -311,6 +311,7 @@ scope Defaults:
     -- writable_has_immigration_status_not_eligible_for_marketplace: false
     -- writable_wants_to_use_alt_calculations: false }
   definition screening equals Calc.ScreeningAnswers {
+    -- member_vitals: []
     -- income_sources_supported: true
     -- received_digital_assets: false
     -- disposed_digital_assets: false
@@ -614,7 +615,7 @@ scope TestIneligibleStatus:
     -- screening: d.screening }
   assertion not r.eligible_for_hoh
   assertion r.unsupported
-  assertion r.fired_knockouts = [Calc.CalculatorKnockout.FilingStatusNotEligible]
+  assertion r.fired_knockouts = [Calc.CalculatorKnockout.Household content KI.KnockoutReason.ExtraFilingStatusNotEligible]
 ```
 
 ## Premium tax credit: repayment, net credit, and line 17 in the credit limits (issue #34)
@@ -851,5 +852,5 @@ scope TestPtcKnockout:
     -- ptc_answers: p.answers but replace { -- writable_has_employer_sponsored_plan: true }
     -- screening: d.screening }
   assertion r.unsupported
-  assertion r.fired_knockouts = [Calc.CalculatorKnockout.PtcKnockouts]
+  assertion r.fired_knockouts = [Calc.CalculatorKnockout.Household content KI.KnockoutReason.HasEmployerSponsoredPlan]
 ```
