@@ -6,6 +6,7 @@ web/src/trust/facts.test.ts
   s_3031b504518be3::t_a6a07219e7f2ad 2,5
 web/src/pages/HomePage.tsx
   s_3031b504518be3::t_eb969f57bda2a8 1,5,7-9,11,13,16-33,36-37,53-59,91,94-132,134-135,138,141-170,172-175
+  s_3031b504518be3::t_7af52cbf9cf006 60-90
 web/src/trust/facts.ts
   s_3031b504518be3::t_4c2dcad1716c8c 199-200
   s_3031b504518be3::t_e52d11674d5405 356-357
