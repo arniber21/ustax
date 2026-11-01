@@ -1,0 +1,59 @@
+web/src/provenance/SourcePane.tsx
+  s_3031b504518be3::t_7c9c368947a8d0 3,66-73
+web/src/wizard/LiveSummary.tsx
+  s_3031b504518be3::t_dfb801d0eaf58d 19,22-24,28,101-108,179-181
+web/src/provenance/ProvenanceProvider.tsx
+  s_3031b504518be3::t_d706a58e117e8d 88
+  s_3031b504518be3::t_5514895773067e 2,9-11
+web/src/layout/WizardLayout.tsx
+  s_3031b504518be3::t_dfb801d0eaf58d 130
+web/index.html
+  s_3031b504518be3::t_bb5191b4c2212b 7-8,10-23
+web/src/results/ResultsView.tsx
+  s_3031b504518be3::t_fe39956e8bb6da 112
+web/src/components/MoneyInput.tsx
+  s_3031b504518be3::t_844a044f03a368 62
+web/src/docs/docs.css
+  s_3031b504518be3::t_708912c53d79e0 5-7
+web/src/results/MoneyFlow.tsx
+  s_3031b504518be3::t_4df215a4989966 29
+web/public/favicon.svg
+  s_3031b504518be3::t_4bc88439ac3f27 1
+web/src/layout/AppShell.tsx
+  s_3031b504518be3::t_ed482d666bba26 240,243
+web/src/wizard/W2Help.tsx
+  s_3031b504518be3::t_844a044f03a368 72-74
+web/src/provenance/ProvenanceDrawer.tsx
+  s_3031b504518be3::t_7c9c368947a8d0 2-4,258-265,267,270-291
+web/src/provenance/StatusChip.tsx
+  s_3031b504518be3::t_d706a58e117e8d 6,17
+  s_3031b504518be3::t_917c9f8c67f8a4 1-5,7-16,18-20
+README.md
+  s_3031b504518be3::t_e2a88456f70cfe 20-21
+web/src/pages/HomePage.tsx
+  s_3031b504518be3::t_861d67acc44e7b 85
+web/src/polish.test.tsx
+  s_3031b504518be3::t_e4be69c8503ff7 7
+  s_3031b504518be3::t_cd9c75239eb3ff 1-6,8-17,19-296,299,306-307,315-316,319,321-336
+  s_3031b504518be3::t_3108eeb516e5da 18,297-298,300-305,308-314,317-318,320
+web/src/command/CommandPalette.tsx
+  s_3031b504518be3::t_eaa3fb172e1edf 6,65-76
+web/src/docs/DocsRoutes.tsx
+  s_3031b504518be3::t_10636b5ad85242 5,33,108,166,201-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5e917acf447a59c3f1c4f54771ad8d274dce9005",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
