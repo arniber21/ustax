@@ -23,6 +23,12 @@ statement depends on; filter keeps modules rooted at `UsTax`) and
 (`docs/comparator.md`). `UsTax/Comparator/Challenge.lean` holds the trusted
 statements with intended `sorry` proofs; it is not imported by `UsTax.lean`.
 
+Main theorems (issue #63): the properties are defined in `UsTax/Spec/*.lean`
+(no calculator imports), the statements are in `UsTax/Comparator/Challenge.lean`,
+the proofs in `UsTax/Proofs/Main.lean` (the comparator solution module), and
+statements still to be proved in `UsTax/Comparator/Pending.lean`. The spec
+surface of each, reviewed, is `docs/spec-surface.md`.
+
 `make forensics` clones for-all-dev/forensics into `.forensics-tool/` (gitignored)
 and runs, from `.forensics-tool/app`, `bun server.ts <abs path to lean/> --dump forensics-out.json`.
 The project root is `lakefile.toml`, so module roots are inferred (else `--roots UsTax`).

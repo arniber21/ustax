@@ -31,6 +31,14 @@ import UsTax.EstimatedPayments
 import UsTax.Form1040Full
 import UsTax.Income.Props
 import UsTax.Income.Lemmas
+import UsTax.Spec.TaxMonotone
+import UsTax.Spec.RefundBalance
+import UsTax.Spec.Credits
+import UsTax.Spec.Eitc
+import UsTax.Spec.TaxTable
+import UsTax.Proofs.Form1040
+import UsTax.Proofs.TaxTable
+import UsTax.Proofs.Main
 import UsTax.Cli
 import UsTax.Api.Json
 import UsTax.Api.Error
