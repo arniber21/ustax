@@ -1,0 +1,31 @@
+.dockerignore
+  s_3031b504518be3::t_7ac9849d6f6b1d 1-12
+Makefile
+  s_3031b504518be3::t_8e5bad4b2e7332 90-100
+docker-compose.yml
+  s_3031b504518be3::t_98dca03980bdb1 1-27
+Dockerfile
+  s_3031b504518be3::t_d831abefb9ab53 57-62
+  s_3031b504518be3::t_7ac9849d6f6b1d 1-32,34-56,63-69
+  s_3031b504518be3::t_4b19018932d6a3 33
+deploy/Caddyfile.docker
+  s_3031b504518be3::t_7bc0d46a435550 1-25
+docs/deploy.md
+  s_3031b504518be3::t_565d0281bb6922 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aead92f177ea638e20017fcc77acf5b1c335e2b0",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
