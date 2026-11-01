@@ -1,6 +1,7 @@
 import type { FilingStatus } from '../api';
 import { Callout } from '../components';
 import { useDraft, type FlagsDraft } from '../draft';
+import { PersonDetails } from './PersonDetails';
 import { Check, ChoiceCards, FormSection, StepHeader, type CardOption } from './ui';
 
 export const FILING_STATUS_OPTIONS: readonly CardOption<FilingStatus>[] = [
@@ -39,7 +40,7 @@ export function AboutStep() {
   return (
     <>
       <StepHeader
-        eyebrow="Step 1 of 5"
+        eyebrow="Step 1 of 7"
         title="About you"
         intro="Your filing status sets your standard deduction (the part of income that is not taxed) and your tax rates. You can change any answer later."
       />
@@ -59,13 +60,19 @@ export function AboutStep() {
         )}
       </FormSection>
 
+      <FormSection title="You" note="A few facts about you on December 31, 2024. The credits you may qualify for depend on them.">
+        <PersonDetails who="you" value={draft.primary} onChange={setPrimary} pathPrefix="primary" />
+      </FormSection>
+
       <FormSection title="Age, sight and dependency" note="Select anything that was true on December 31, 2024. Each one can change your standard deduction.">
-        <Check
-          label="I am 65 or older"
-          hint="You count as 65 if your 65th birthday is on or before January 1, 2025."
-          checked={draft.primary.age65}
-          onChange={(age65) => setPrimary({ age65 })}
-        />
+        {draft.primary.dob === '' && (
+          <Check
+            label="I am 65 or older"
+            hint="You count as 65 if your 65th birthday is on or before January 1, 2025. Not needed if you gave your date of birth."
+            checked={draft.primary.age65}
+            onChange={(age65) => setPrimary({ age65 })}
+          />
+        )}
         <Check
           label="I am blind"
           hint="Legally blind in both eyes, with a statement from your eye doctor."

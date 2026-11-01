@@ -7,7 +7,7 @@ import type { Role } from '../draft';
 import { useStepError } from './stepErrors';
 import { cn } from '@/lib/utils';
 
-/** Step title block: "Step n of 5", the h1, a short plain intro. */
+/** Step title block: "Step n of 7", the h1, a short plain intro. */
 export function StepHeader({ eyebrow, title, intro }: { eyebrow: string; title: string; intro?: ReactNode }) {
   return (
     <header className="mb-8">
@@ -192,10 +192,13 @@ interface RepeaterProps<T extends { id: string }> {
   render: (item: T, index: number) => ReactNode;
   empty: ReactNode;
   errorPath?: string;
+  /** Button text when the list is empty / not empty. Default: "Add a {noun}" / "Add another {noun}". */
+  addLabel?: string;
+  addAnotherLabel?: string;
 }
 
 /** A list of repeatable forms with add and remove. */
-export function Repeater<T extends { id: string }>({ noun, items, max, onAdd, onRemove, render, empty, errorPath }: RepeaterProps<T>) {
+export function Repeater<T extends { id: string }>({ noun, items, max, onAdd, onRemove, render, empty, errorPath, addLabel, addAnotherLabel }: RepeaterProps<T>) {
   const error = useStepError(errorPath);
   return (
     <div className="grid gap-4" data-path={errorPath} data-invalid={error ? true : undefined}>
@@ -218,7 +221,7 @@ export function Repeater<T extends { id: string }>({ noun, items, max, onAdd, on
       <div>
         <Button variant="secondary" disabled={items.length >= max} onClick={onAdd}>
           <Plus aria-hidden="true" />
-          {items.length === 0 ? `Add a ${noun}` : `Add another ${noun}`}
+          {items.length === 0 ? (addLabel ?? `Add a ${noun}`) : (addAnotherLabel ?? `Add another ${noun}`)}
         </Button>
       </div>
     </div>

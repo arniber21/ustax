@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { formatCents } from '../api';
 import { Pencil } from 'lucide-react';
 import { Button, Callout } from '../components';
-import { isJoint, useDraft, validateDraft, type Cents, type Draft } from '../draft';
+import { RELATIONSHIPS, isJoint, useDraft, validateDraft, type Cents, type Draft } from '../draft';
 import { WIZARD_STEPS, stepPath, type WizardStepId } from '../layout/steps';
 import { FILING_STATUS_OPTIONS } from './AboutStep';
 import { StepHeader } from './ui';
@@ -40,6 +40,20 @@ function flagList(f: { age65: boolean; blind: boolean; canBeClaimed: boolean }):
   return out.length ? out.join(', ') : 'None';
 }
 
+const MARITAL: Record<string, string> = { NeverMarried: 'Never married', Married: 'Married', Divorced: 'Divorced or legally separated', Widowed: 'Widowed' };
+const LIVED: Record<string, string> = {
+  LivedTogetherMoreThanSixMonths: 'Together more than six months',
+  LivedTogetherSixMonthsOrLess: 'Together six months or less',
+  LivedApartAllYear: 'Apart all year',
+};
+
+function personList(f: { dob: string; age65: boolean; blind: boolean; canBeClaimed: boolean }): string {
+  const flags = flagList({ ...f, age65: f.dob === '' && f.age65 });
+  return f.dob ? `${f.dob}${flags === 'None' ? '' : `, ${flags}`}` : flags;
+}
+
+const careTotal = (d: Draft): number => (d.hasDependents ? d.dependents.reduce((n, p) => n + (p.careExpenses ?? 0), 0) : 0);
+
 function Empty() {
   return <p className="m-0 px-4 py-3 text-sm text-muted-foreground sm:px-5">Nothing added.</p>;
 }
@@ -54,7 +68,7 @@ export function ReviewStep() {
   return (
     <>
       <StepHeader
-        eyebrow="Step 5 of 5"
+        eyebrow="Step 7 of 7"
         title="Review your answers"
         intro="Check each section before calculating. Use Edit to change an answer."
       />
@@ -75,16 +89,36 @@ export function ReviewStep() {
       <Block title="About you" step="about">
         <dl className="m-0 divide-y">
           <Row label="Filing status" value={status?.label ?? 'Not chosen yet'} />
-          <Row label="You: 65+, blind, dependent" value={flagList(d.primary)} />
-          {isJoint(d) && <Row label="Spouse: 65+, blind, dependent" value={flagList(d.spouse)} />}
+          <Row label="You: born, 65+, blind, dependent" value={personList(d.primary)} />
+          {isJoint(d) && <Row label="Spouse: born, 65+, blind, dependent" value={personList(d.spouse)} />}
         </dl>
       </Block>
 
-      <Block title="Household" step="household">
+      <Block title="Your household" step="household">
         <dl className="m-0 divide-y">
-          <Row label="Dependents" value={d.hasDependents ? 'Yes (not included in the math yet)' : 'None'} />
+          <Row label="Marital status" value={MARITAL[d.maritalStatus] ?? 'Same as your filing status'} />
+          {d.filingStatus === 'MarriedFilingSeparately' && (
+            <Row label="Lived with your spouse" value={LIVED[d.spouseLivedTogether] ?? 'Not answered'} />
+          )}
+          <Row label="Paid over half the cost of your home" value={d.paidHomeUpkeep ? 'Yes' : 'No'} />
           <Row label="Accounts outside the U.S." value={d.foreignAccounts ? 'Yes' : 'No'} />
         </dl>
+      </Block>
+
+      <Block title="Dependents" step="dependents">
+        {d.hasDependents && d.dependents.length > 0 ? (
+          <dl className="m-0 divide-y">
+            {d.dependents.map((p, i) => (
+              <Row
+                key={p.id}
+                label={p.name.trim() || `Person ${i + 1}`}
+                value={`${RELATIONSHIPS.find((r) => r.value === p.relationship)?.label ?? 'Relationship not chosen'}, born ${p.dob || 'date not entered'}${p.claim ? '' : ', not claimed by you'}`}
+              />
+            ))}
+          </dl>
+        ) : (
+          <p className="m-0 px-4 py-3 text-sm text-muted-foreground sm:px-5">No dependents.</p>
+        )}
       </Block>
 
       <Block title="Income" step="income">
@@ -96,6 +130,14 @@ export function ReviewStep() {
           <Row label="Teacher expenses" value={d.educator.primary || (isJoint(d) && d.educator.spouse) ? money((d.educator.primary ? (d.educator.primaryExpenses ?? 0) : 0) + (isJoint(d) && d.educator.spouse ? (d.educator.spouseExpenses ?? 0) : 0)) : 'None'} />
           <Row label="Student loan interest" value={d.studentLoan.hadPayments ? money(d.studentLoan.interest) : 'None'} />
           <Row label="Tax you paid on your own" value={d.estimated.paid ? money(d.estimated.amount) : 'None'} />
+        </dl>
+      </Block>
+
+      <Block title="Credits and care costs" step="credits">
+        <dl className="m-0 divide-y">
+          <Row label="Child and dependent care" value={d.cdcc.paid ? money(careTotal(d)) : 'None'} />
+          <Row label="Health savings account" value={d.hsa.has ? 'Activity outside your W-2' : 'None'} />
+          <Row label="Health insurance from the Marketplace (1095-A)" value="Not supported yet" />
         </dl>
       </Block>
 

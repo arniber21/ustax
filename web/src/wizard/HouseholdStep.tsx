@@ -1,26 +1,65 @@
 import { Callout } from '../components';
-import { isJoint, useDraft, type FlagsDraft } from '../draft';
+import { isJoint, useDraft, type Draft, type FlagsDraft } from '../draft';
+import { SelectField } from './fields';
+import { PersonDetails } from './PersonDetails';
 import { Check, FormSection, StepHeader, YesNo } from './ui';
 
-/** Step 2: spouse and household facts the calculator uses. */
+/** Step 2: marital details, where you lived, who paid for the home, and a few questions the IRS asks everyone. */
 export function HouseholdStep() {
   const { draft, update } = useDraft();
   const joint = isJoint(draft);
   const separate = draft.filingStatus === 'MarriedFilingSeparately';
   const setSpouse = (patch: Partial<FlagsDraft>) => update((d) => ({ ...d, spouse: { ...d.spouse, ...patch } }));
-  const married = joint || separate;
+  const unmarriedStatus = draft.filingStatus === 'Single' || draft.filingStatus === 'HeadOfHousehold' || draft.filingStatus === 'QualifyingSurvivingSpouse';
+  const setScreening = (patch: Partial<Draft['screening']>) => update((d) => ({ ...d, screening: { ...d.screening, ...patch } }));
 
   return (
     <>
       <StepHeader
-        eyebrow="Step 2 of 5"
-        title="Household"
-        intro={married ? 'Questions about your spouse and anyone you support.' : 'Two questions about who you support and accounts abroad.'}
+        eyebrow="Step 2 of 7"
+        title="Your household"
+        intro="Whether you were married, where you and your spouse lived, and who paid for your home. Children and other people you support come next."
       />
+
+      <FormSection title="Marital status" note="Your status on December 31, 2024.">
+        <SelectField
+          label="Which describes you?"
+          hint="If you skip this, we use the filing status you picked."
+          value={draft.maritalStatus}
+          placeholder="Use my filing status"
+          options={[
+            { value: 'NeverMarried', label: 'Never married' },
+            { value: 'Married', label: 'Married' },
+            { value: 'Divorced', label: 'Divorced or legally separated' },
+            { value: 'Widowed', label: 'Widowed' },
+          ]}
+          onChange={(maritalStatus) => update({ maritalStatus })}
+          path="maritalStatus"
+        />
+        {draft.maritalStatus === 'Widowed' && (
+          <SelectField
+            label="When did your spouse die?"
+            hint="It decides whether you can still use a joint return rate."
+            value={draft.yearOfSpouseDeath}
+            placeholder="Choose the year"
+            options={[
+              { value: 'DiedInTaxYear', label: 'In 2024' },
+              { value: 'DiedTaxYearMinusOne', label: 'In 2023' },
+              { value: 'DiedTaxYearMinusTwo', label: 'In 2022' },
+              { value: 'DiedBeforeTaxYearMinusTwo', label: 'Before 2022' },
+            ]}
+            onChange={(yearOfSpouseDeath) => update({ yearOfSpouseDeath })}
+            path="yearOfSpouseDeath"
+          />
+        )}
+      </FormSection>
 
       {joint && (
         <FormSection title="Your spouse" note="Select anything that was true for your spouse on December 31, 2024.">
-          <Check label="My spouse is 65 or older" checked={draft.spouse.age65} onChange={(age65) => setSpouse({ age65 })} />
+          <PersonDetails who="your spouse" value={draft.spouse} onChange={setSpouse} pathPrefix="spouse" />
+          {draft.spouse.dob === '' && (
+            <Check label="My spouse is 65 or older" checked={draft.spouse.age65} onChange={(age65) => setSpouse({ age65 })} />
+          )}
           <Check label="My spouse is blind" checked={draft.spouse.blind} onChange={(blind) => setSpouse({ blind })} />
           <Check
             label="Someone else can claim my spouse as a dependent"
@@ -44,30 +83,39 @@ export function HouseholdStep() {
       )}
 
       {separate && (
-        <FormSection title="Your spouse">
+        <FormSection title="Your spouse" note="You file apart, so we only need to know how you lived.">
           <YesNo
             legend="Is your spouse 65 or older?"
             hint="Same rule: their 65th birthday is on or before January 1, 2025."
             value={draft.mfsSpouse65}
             onChange={(mfsSpouse65) => update({ mfsSpouse65 })}
           />
+          <SelectField
+            label="Did you live with your spouse in 2024?"
+            hint="Living apart for the last six months can open credits that are otherwise closed to married people filing separately."
+            value={draft.spouseLivedTogether}
+            placeholder="Choose one"
+            options={[
+              { value: 'LivedTogetherMoreThanSixMonths', label: 'Yes, together for more than six months' },
+              { value: 'LivedTogetherSixMonthsOrLess', label: 'Together for six months or less' },
+              { value: 'LivedApartAllYear', label: 'No, we lived apart all year' },
+            ]}
+            onChange={(spouseLivedTogether) => update({ spouseLivedTogether })}
+            path="spouseLivedTogether"
+          />
         </FormSection>
       )}
 
-      <FormSection title="Dependents">
-        <YesNo
-          legend="Do you support a child or another relative who lives with you?"
-          hint="Anyone you could list as a dependent on your return."
-          value={draft.hasDependents}
-          onChange={(hasDependents) => update({ hasDependents })}
-        />
-        {draft.hasDependents && (
-          <Callout tone="warn" title="Dependents aren’t in our math yet">
-            The child tax credit, the earned income credit and dependent care credits are not calculated yet, so your
-            result will not include them. They could lower your tax.
-          </Callout>
-        )}
-      </FormSection>
+      {unmarriedStatus && (
+        <FormSection title="Your home">
+          <YesNo
+            legend="Did you pay more than half of the cost of keeping up your home in 2024?"
+            hint="Rent or mortgage interest, utilities, repairs, property tax, and food eaten at home. Head of household and the earned income credit look at this. It only counts if someone you support lived with you."
+            value={draft.paidHomeUpkeep}
+            onChange={(paidHomeUpkeep) => update({ paidHomeUpkeep })}
+          />
+        </FormSection>
+      )}
 
       <FormSection title="Foreign accounts">
         <YesNo
@@ -76,6 +124,35 @@ export function HouseholdStep() {
           value={draft.foreignAccounts}
           onChange={(foreignAccounts) => update({ foreignAccounts })}
         />
+        <YesNo
+          legend="Did you create a foreign trust or receive money from one?"
+          value={draft.screening.foreignTrustGrantor}
+          onChange={(foreignTrustGrantor) => setScreening({ foreignTrustGrantor })}
+        />
+      </FormSection>
+
+      <FormSection title="Other questions the IRS asks" note="These do not change your tax here. They tell us whether your return needs a form we cannot do yet.">
+        <YesNo
+          legend="Did you receive digital assets, such as cryptocurrency, as a reward, payment or gift?"
+          value={draft.screening.digitalReceived}
+          onChange={(digitalReceived) => setScreening({ digitalReceived })}
+        />
+        <YesNo
+          legend="Did you sell, trade or otherwise dispose of digital assets in 2024?"
+          value={draft.screening.digitalDisposed}
+          onChange={(digitalDisposed) => setScreening({ digitalDisposed })}
+        />
+        <YesNo
+          legend="Did you put money into an IRA for 2024?"
+          value={draft.screening.iraContributions}
+          onChange={(iraContributions) => setScreening({ iraContributions })}
+        />
+        {(draft.screening.digitalReceived || draft.screening.digitalDisposed) && (
+          <Callout tone="warn" title="We may not be able to finish your return">
+            Digital asset activity needs forms we do not calculate yet. You can keep going, and the result page will say so
+            if it stops us.
+          </Callout>
+        )}
       </FormSection>
     </>
   );

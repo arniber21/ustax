@@ -17,7 +17,7 @@ Without `VITE_API_MOCK=1` the client calls `VITE_API_URL` (default `http://local
 | Path | What | Filled in by |
 | --- | --- | --- |
 | `/` | Welcome | shell |
-| `/start/:step` | Wizard: `about`, `household`, `income`, `adjustments`, `review` | `src/wizard/*Step.tsx` (#76 to #78), chosen by `pages/StepPage.tsx` |
+| `/start/:step` | Wizard: `about`, `household`, `dependents`, `income`, `adjustments`, `credits`, `review` | `src/wizard/*Step.tsx` (#76 to #78), chosen by `pages/StepPage.tsx` |
 | `/results` | Result summary (refund or amount owed), Form 1040 line table, "How this was calculated" accordion, `warnings` alert, what-if slider, error/offline states (`src/results/`). Request comes from `useCurrentRequest` (the wizard draft) | #79 |
 | `/cant-do-yet` | Knockout page: alert plus a table of reasons by category (`src/knockout/`: per-code copy in `reasonCopy.ts`, a test fails if a code in `api/knockout-reasons.json` has none). Also shown inline on `/results` | #80 |
 | `/trust` | What is proven (theorem names), tested, trusted, not covered. Copy lives in `src/trust/claims.ts`; keep it within docs/spec-surface.md and docs/audit.md | #82 |

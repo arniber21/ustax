@@ -1,4 +1,3 @@
-import { Callout } from '../components';
 import { isJoint, useDraft } from '../draft';
 import { MoneyField } from './fields';
 import { Check, FormSection, StepHeader, Where, YesNo } from './ui';
@@ -14,7 +13,7 @@ export function AdjustmentsStep() {
   return (
     <>
       <StepHeader
-        eyebrow="Step 4 of 5"
+        eyebrow="Step 5 of 7"
         title="Adjustments and payments"
         intro="Amounts that come off your income before it is taxed, and tax you paid to the IRS yourself. Answer No to anything that does not apply."
       />
@@ -108,11 +107,6 @@ export function AdjustmentsStep() {
           </>
         )}
       </FormSection>
-
-      <Callout tone="info" title="Not asked yet">
-        Health savings accounts, child and dependent care, the earned income credit and the saver’s credit are not part of
-        the calculation yet, so there are no questions for them.
-      </Callout>
     </>
   );
 }

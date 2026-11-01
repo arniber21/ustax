@@ -25,11 +25,11 @@ describe('routing', () => {
     for (const a of screen.getAllByRole('link', { name: 'What is verified' })) expect(a).toHaveAttribute('href', '/trust');
   });
 
-  it('wizard walks through all five steps', async () => {
+  it('wizard walks through all seven steps', async () => {
     at('/start/about');
     await userEvent.click(screen.getByRole('radio', { name: /^Single/ }));
-    const titles = ['Household', 'Income', 'Adjustments and payments', 'Review your answers'];
-    const labels = ['Household', 'Income', 'Adjustments and payments', 'Review'];
+    const titles = ['Your household', 'Dependents', 'Income', 'Adjustments and payments', 'Credits and care costs', 'Review your answers'];
+    const labels = ['Your household', 'Dependents', 'Income', 'Adjustments and payments', 'Credits and care costs', 'Review'];
     for (const [n, label] of labels.entries()) {
       await userEvent.click(screen.getByRole('button', { name: new RegExp(`Next: ${label}`) }));
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(titles[n]!);
@@ -39,7 +39,7 @@ describe('routing', () => {
 
   it('Next waits for a filing status and says why', async () => {
     at('/start/about');
-    await userEvent.click(screen.getByRole('button', { name: /Next: Household/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Next: Your household/ }));
     expect(screen.getByRole('alert')).toHaveTextContent(/Pick the option that fits/);
     const summary = screen.getByRole('group', { name: 'There is a problem' });
     expect(summary).toHaveFocus();
