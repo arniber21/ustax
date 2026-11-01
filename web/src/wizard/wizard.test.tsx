@@ -90,7 +90,7 @@ describe('Household step', () => {
     seed({ filingStatus: 'MarriedFilingJointly' });
     at('/start/household');
     expect(screen.getByRole('checkbox', { name: 'My spouse is 65 or older' })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Your spouse’s date of birth'), { target: { value: '1987-09-30' } });
+    fireEvent.change(screen.getByLabelText('Your spouse’s date of birth'), { target: { value: '09/30/1987' } });
     expect(screen.queryByRole('checkbox', { name: 'My spouse is 65 or older' })).not.toBeInTheDocument();
     expect(buildRequest(saved()).filers).toEqual({ secondary: { date_of_birth: '1987-09-30' } });
   });
@@ -115,7 +115,7 @@ describe('About step details', () => {
   it('collects date of birth, citizenship and the rest, and sends them', async () => {
     seed({ filingStatus: 'Single' });
     at('/start/about');
-    fireEvent.change(screen.getByLabelText('Your date of birth'), { target: { value: '1990-06-15' } });
+    fireEvent.change(screen.getByLabelText('Your date of birth'), { target: { value: '06/15/1990' } });
     await userEvent.selectOptions(screen.getByLabelText('Your citizenship'), 'resident');
     await userEvent.click(screen.getByRole('checkbox', { name: /I have a Social Security number/ }));
     await userEvent.click(screen.getByRole('checkbox', { name: /full-time student/ }));
@@ -126,11 +126,14 @@ describe('About step details', () => {
   });
 });
 
+/** `2014-09-10` -> `09/10/2014`, the way people type a date into the date picker. */
+const usDate = (iso: string) => `${iso.slice(5, 7)}/${iso.slice(8)}/${iso.slice(0, 4)}`;
+
 describe('Dependents step', () => {
   const add = async (rel: string, dob: string, index = 0) => {
     const card = screen.getAllByRole('region', { name: /^Person \d/ })[index]!;
     await userEvent.selectOptions(within(card).getByLabelText('How are they related to you?'), rel);
-    fireEvent.change(within(card).getByLabelText('Date of birth'), { target: { value: dob } });
+    fireEvent.change(within(card).getByLabelText('Date of birth'), { target: { value: usDate(dob) } });
     return card;
   };
 
@@ -216,10 +219,10 @@ describe('Dependents step', () => {
       w2s: [{ ...newW2(), wages: 8000000, withholding: 300000 }],
     });
     at('/start/about');
-    fireEvent.change(screen.getByLabelText('Your date of birth'), { target: { value: '1986-04-12' } });
+    fireEvent.change(screen.getByLabelText('Your date of birth'), { target: { value: '04/12/1986' } });
     await next('Your household');
     await userEvent.selectOptions(screen.getByLabelText('Which describes you?'), 'Married');
-    fireEvent.change(screen.getByLabelText('Your spouse’s date of birth'), { target: { value: '1987-09-30' } });
+    fireEvent.change(screen.getByLabelText('Your spouse’s date of birth'), { target: { value: '09/30/1987' } });
     await next('Dependents');
     await userEvent.click(within(screen.getByRole('group', { name: /children or other people you support/ })).getByRole('radio', { name: 'Yes' }));
     await add('BiologicalChild', '2016-03-01');

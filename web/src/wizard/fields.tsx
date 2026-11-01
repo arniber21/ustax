@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Field, MoneyInput, Select, type MoneyInputProps, type SelectProps } from '../components';
-import { Input } from '../components/ui/input';
+import { DatePicker } from '../components/ui/date-picker';
 import { useStepError } from './stepErrors';
 
 /** `MoneyInput` that shows the step's validation message for `path` once the person tries to continue. */
@@ -16,8 +16,9 @@ export function SelectField<V extends string>({ path, ...rest }: Omit<SelectProp
 }
 
 /**
- * A date (`YYYY-MM-DD`) in a native date input: phones get their date picker, keyboards can type it.
- * Dates cannot be later than the end of the tax year; the draft keeps the ISO text as typed.
+ * A date (`YYYY-MM-DD`) in the shadcn Date Picker: type MM/DD/YYYY or pick from a calendar with
+ * month and year dropdowns. Dates cannot be later than the end of the tax year; text that is not a
+ * valid date yet stays in the draft as typed, and validation reports it.
  */
 export function DateField({
   label,
@@ -36,14 +37,13 @@ export function DateField({
   return (
     <Field label={label} hint={hint} error={error} path={path}>
       {(control) => (
-        <Input
+        <DatePicker
           {...control}
-          type="date"
-          className="max-w-48"
           min="1900-01-01"
           max="2024-12-31"
+          calendarLabel={`Choose ${label.toLowerCase()}`}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={onChange}
         />
       )}
     </Field>
