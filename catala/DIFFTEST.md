@@ -108,6 +108,12 @@ three outputs each, exact cents), then Lean against the oracle. `--perturb` is i
 `--dense 100 1000000` sweeps every dollar to $1,000,000. The pattern for later modules is in
 `lean/README.md`, "Pattern for Lean modules".
 
+Premium tax credit and HSA (issue #47): `ptc_family`, `ptc_allowed` (through the wrapper `PtcAllowedDifftest`),
+`ptc_net` and `hsa`. `ptc_net.mjs` (scope `NetPtc`) is new: it checks Form 8962 lines 26 to 29 on their own
+(inputs: the oracle's `/householdIncomeAsPercent`, `/taxFamilySize`, `/totalPtcAmountAllowed`,
+`/totalAptcAmountTaken`); the return-level check stays `calculator`. `hsa.mjs` gained `extraOutputs`
+(`requires_form_8889`, `number_of_filers_required_to_file_form_8889`, `unsupported`; Lean = Catala only).
+
 ## Whole return (issues #38, #48)
 
 `calculator` (scope `Calculator`, `catala/calculator.catala_en`) runs the whole return with every merged module

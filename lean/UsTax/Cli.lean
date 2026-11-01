@@ -24,6 +24,10 @@ import UsTax.FilingStatus
 import UsTax.Eitc
 import UsTax.CtcOdc
 import UsTax.EitcCtcDifftest
+import UsTax.PtcFamily
+import UsTax.PtcAllowed
+import UsTax.PtcNet
+import UsTax.Hsa
 
 /-!
 # Command-line and JSON boundary of the Lean calculator
@@ -1492,6 +1496,321 @@ def runCtcOdcFromHousehold (j : Json) : Except String Json := do
 
 end EitcCtc
 
+/-! ### Premium tax credit and HSA scopes (issue #47)
+
+Decimals (Form 8962 line 5) are JSON numbers, read exactly (`ratOfJson`); a whole-valued decimal
+is written back as a JSON integer, as the difftest reads Catala's `253.0`. -/
+
+section PtcHsa
+
+open PtcFamily PtcAllowed PtcNet Hsa
+
+/-- A Catala decimal from a JSON number (exact) or a decimal string. -/
+def ratOfJson : Json → Except String Rat
+  | .num n => .ok ((n.mantissa : Rat) / ((10 ^ n.exponent : Nat) : Rat))
+  | .str s => match Json.parse s with
+    | .ok (.num n) => .ok ((n.mantissa : Rat) / ((10 ^ n.exponent : Nat) : Rat))
+    | _ => .error s!"bad decimal {s.quote}"
+  | j => .error s!"bad decimal {j.compress}"
+
+/-- A decimal output: a JSON integer when whole, else the exact fraction as a string. -/
+def ratJson (q : Rat) : Json :=
+  if q.den = 1 then toJson q.num else Json.str s!"{q.num}/{q.den}"
+
+/-- Required integer field `k`. -/
+def intReq (j : Json) (k : String) : Except String Int := do (← field j k).getInt?
+
+/-- Catala scope `Ptc_family.PtcFamily`. -/
+def runPtcFamily (j : Json) : Except String Json := do
+  let o := ptcFamily
+    { filingStatus := ← filingStatusOfJson (← field j "filing_status")
+      claimedDependentsCount := ← intReq j "claimed_dependents_count"
+      primarySomeoneCanClaimForTaxBenefits := ← boolReq j "primary_someone_can_claim_for_tax_benefits"
+      secondarySomeoneCanClaimForTaxBenefits :=
+        ← boolReq j "secondary_someone_can_claim_for_tax_benefits"
+      livedInAk := ← boolReq j "lived_in_ak", livedInHi := ← boolReq j "lived_in_hi"
+      agi := ← moneyReq j "agi", taxExemptInterest := ← moneyReq j "tax_exempt_interest"
+      nonTaxableSocialSecurityBenefits := ← moneyReq j "non_taxable_social_security_benefits" }
+  return Json.mkObj
+    [("tax_family_size", toJson o.taxFamilySize),
+     ("tax_family_size_is_zero", bj o.taxFamilySizeIsZero),
+     ("federal_poverty_location", Json.str o.federalPovertyLocation.catalaName),
+     ("federal_poverty_level_threshold", mj o.federalPovertyLevelThreshold),
+     ("ptc_magi", mj o.ptcMagi), ("household_income", mj o.householdIncome),
+     ("household_income_as_percent", ratJson o.householdIncomeAsPercent),
+     ("applicable_figure", ratJson o.applicableFigure),
+     ("ptc_annual_contribution_amount", mj o.ptcAnnualContributionAmount),
+     ("ptc_monthly_contribution_amount", mj o.ptcMonthlyContributionAmount)]
+
+/-- Catala `Ptc_allowed.Form1095A`. -/
+def form1095AOfJson (j : Json) : Except String Form1095A :=
+  return {
+    writablePolicyStartDate := ← dateReq j "writable_policy_start_date"
+    writablePolicyEndDate := ← dateReq j "writable_policy_end_date"
+    writableSpecialPolicyModificationInStartingMonth :=
+      ← boolReq j "writable_special_policy_modification_in_starting_month"
+    writableHasPolicyDateException := ← boolReq j "writable_has_policy_date_exception"
+    hasCoverageMonths := ← boolReq j "has_coverage_months"
+    coverageMonths := ← listReq j "coverage_months" (·.getInt?)
+    writablePremiumsOrSlcspChange := ← boolReq j "writable_premiums_or_slcsp_change"
+    hasChangeInCircumstance := ← boolReq j "has_change_in_circumstance"
+    writablePtcAnnualPremium := ← moneyReq j "writable_ptc_annual_premium"
+    writableSlcspAnnualPremium := ← moneyReq j "writable_slcsp_annual_premium"
+    writableAptcAnnualAmount := ← moneyReq j "writable_aptc_annual_amount"
+    writablePtcMonthlyPremium := ← listReq j "writable_ptc_monthly_premium" moneyOfJson
+    writablePtcMonthlySlcspPremium := ← listReq j "writable_ptc_monthly_slcsp_premium" moneyOfJson
+    writablePtcMonthlyAptcPremium := ← listReq j "writable_ptc_monthly_aptc_premium" moneyOfJson }
+
+/-- The inputs of `PtcAllowed` (shared with the difftest wrapper `PtcAllowedDifftest`). -/
+def ptcAllowedInOfJson (j : Json) : Except String PtcAllowedIn :=
+  return {
+    filingStatus := ← filingStatusOfJson (← field j "filing_status")
+    isMfjDependent := ← boolReq j "is_mfj_dependent"
+    notMfjAndPrimaryFilerCouldBeDependentAndClaimerIsRequiredToFileOrFilingForCredits :=
+      ← boolReq j
+        "not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits"
+    primaryFilerIsClaimedAsDependent := ← boolReq j "primary_filer_is_claimed_as_dependent"
+    isMarried := ← boolReq j "is_married"
+    secondaryFilerResidencyEligibleForMfj := ← boolReq j "secondary_filer_residency_eligible_for_mfj"
+    livedApartLastSixMonths := ← boolReq j "lived_apart_last_six_months"
+    allEligibleFilersAreUsCitizensOrNationals :=
+      ← boolReq j "all_eligible_filers_are_us_citizens_or_nationals"
+    claimedDependentsCount := ← intReq j "claimed_dependents_count"
+    hasQsehra := ← boolReq j "has_qsehra"
+    householdIncomeAsPercent := ← ratOfJson (← field j "household_income_as_percent")
+    ptcAnnualContributionAmount := ← moneyReq j "ptc_annual_contribution_amount"
+    ptcMonthlyContributionAmount := ← moneyReq j "ptc_monthly_contribution_amount"
+    form1095As := ← listReq j "form1095_as" form1095AOfJson
+    writableHasPtcQualifyingPlan := ← boolReq j "writable_has_ptc_qualifying_plan"
+    writableHasAdvancedPtc := ← boolReq j "writable_has_advanced_ptc"
+    dependentTpSelfEnrolled := ← boolReq j "dependent_tp_self_enrolled"
+    dependentTpEnrolledSomeoneElse := ← boolReq j "dependent_tp_enrolled_someone_else"
+    writableDependentTpOtherMembersArePartOfDifferentTaxFamily :=
+      ← boolReq j "writable_dependent_tp_other_members_are_part_of_different_tax_family"
+    writableHasMfsException := ← boolReq j "writable_has_mfs_exception"
+    writableClaimingMfsExceptionForFourthStraightYear :=
+      ← boolReq j "writable_claiming_mfs_exception_for_fourth_straight_year"
+    writableBelow100ThresholdAndNotEligibleForMedicaidBecauseOfImmigrationStatus :=
+      ← boolReq j
+        "writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status"
+    writableHasEmployerSponsoredPlan := ← boolReq j "writable_has_employer_sponsored_plan"
+    writableDependentsRequiredToFile := ← boolReq j "writable_dependents_required_to_file"
+    writableSelfReportedHasMultiple1095As := ← boolReq j "writable_self_reported_has_multiple1095_as"
+    writableIsAdditionalPersonInEnrollmentFamily :=
+      ← boolReq j "writable_is_additional_person_in_enrollment_family"
+    writableIsAdditionalPersonPartofDifferentTaxFamily :=
+      ← boolReq j "writable_is_additional_person_partof_different_tax_family"
+    writableIsEnrolledWithOtherFamily := ← boolReq j "writable_is_enrolled_with_other_family"
+    writableHasImmigrationStatusNotEligibleForMarketplace :=
+      ← boolReq j "writable_has_immigration_status_not_eligible_for_marketplace"
+    writableWantsToUseAltCalculations := ← boolReq j "writable_wants_to_use_alt_calculations" }
+
+/-- The scalar outputs of `PtcAllowed` that the difftest wrapper exposes. -/
+def ptcAllowedScalars (o : PtcAllowedOut) : List (String × Json) :=
+  [("maybe_eligible_for_ptc", bj o.maybeEligibleForPtc),
+   ("has_ptc_qualifying_plan", bj o.hasPtcQualifyingPlan),
+   ("has_advanced_ptc", bj o.hasAdvancedPtc),
+   ("not_ptc_applicable_tax_payer", bj o.notPtcApplicableTaxPayer),
+   ("potentially_applicable_tax_payer", bj o.potentiallyApplicableTaxPayer),
+   ("may_need_to_file_form8962", bj o.mayNeedToFileForm8962),
+   ("needs_to_file_form8962", bj o.needsToFileForm8962),
+   ("needs_to_file_form8962_monthly", bj o.needsToFileForm8962Monthly),
+   ("ptc_can_report_annual_totals", bj o.ptcCanReportAnnualTotals),
+   ("total_ptc_annual_premium", mj o.totalPtcAnnualPremium),
+   ("total_annual_slcsp_premium", mj o.totalAnnualSlcspPremium),
+   ("total_annual_aptc_amount", mj o.totalAnnualAptcAmount),
+   ("annual_max_premium_assistance", mj o.annualMaxPremiumAssistance),
+   ("annual_ptc_allowed", mj o.annualPtcAllowed),
+   ("total_ptc_amount_allowed", mj o.totalPtcAmountAllowed),
+   ("total_aptc_amount_taken", mj o.totalAptcAmountTaken),
+   ("ko_dependent_tp_requires_allocations", bj o.koDependentTpRequiresAllocations),
+   ("ko_has_ptc_qualifying_plan_and_qsehra", bj o.koHasPtcQualifyingPlanAndQsehra),
+   ("ko_needs_allocations", bj o.koNeedsAllocations),
+   ("ko_has_employer_sponsored_plan", bj o.koHasEmployerSponsoredPlan),
+   ("ko_dependents_required_to_file", bj o.koDependentsRequiredToFile),
+   ("ko_self_reported_has_multiple1095_as", bj o.koSelfReportedHasMultiple1095As),
+   ("ko_has_immigration_status_not_eligible_for_marketplace",
+     bj o.koHasImmigrationStatusNotEligibleForMarketplace),
+   ("ko_wants_to_use_alt_calculations", bj o.koWantsToUseAltCalculations),
+   ("ko_tp_needs_to_add1095_a", bj o.koTpNeedsToAdd1095A),
+   ("ko_tp_needs_to_delete1095_a", bj o.koTpNeedsToDelete1095A),
+   ("unsupported", bj o.unsupported)]
+
+/-- One row of Form 8962 lines 12 to 23 as a Catala `PtcMonth` JSON object. -/
+def ptcMonthJson (r : PtcMonth) : Json :=
+  Json.mkObj [("month_number", toJson r.monthNumber), ("has_active_policy", bj r.hasActivePolicy),
+    ("enrollment_premium", mj r.enrollmentPremium), ("slcsp_premium", mj r.slcspPremium),
+    ("contribution_amount", mj r.contributionAmount),
+    ("max_premium_assistance", mj r.maxPremiumAssistance), ("ptc_allowed", mj r.ptcAllowed),
+    ("advance_payment", mj r.advancePayment)]
+
+/-- Catala scope `Ptc_allowed.PtcAllowed` (scalar outputs and `ptc_months`). -/
+def runPtcAllowed (j : Json) : Except String Json := do
+  let o := ptcAllowed (← ptcAllowedInOfJson j)
+  return Json.mkObj (ptcAllowedScalars o ++
+    [("qualified_for_ptc", bj o.qualifiedForPtc),
+     ("is_below100_percent_federal_poverty_level", bj o.isBelow100PercentFederalPovertyLevel),
+     ("ptc_months", Json.arr (o.ptcMonths.map ptcMonthJson).toArray)])
+
+/-- The month prefixes of the difftest wrapper, January first. -/
+def monthPrefixes : List String :=
+  ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+
+/-- Catala scope `PtcAllowedDifftest` (`catala/tests/difftest_ptc_allowed.catala_en`): the
+outputs of `PtcAllowed`, each month of lines 12 to 23 as scalars `<month>_<column>`. -/
+def runPtcAllowedDifftest (j : Json) : Except String Json := do
+  let o := ptcAllowed (← ptcAllowedInOfJson j)
+  let monthFields := (monthPrefixes.zip o.ptcMonths).flatMap fun (p, r) =>
+    [(p ++ "_has_active_policy", bj r.hasActivePolicy),
+     (p ++ "_enrollment_premium", mj r.enrollmentPremium),
+     (p ++ "_slcsp_premium", mj r.slcspPremium),
+     (p ++ "_contribution_amount", mj r.contributionAmount),
+     (p ++ "_max_premium_assistance", mj r.maxPremiumAssistance),
+     (p ++ "_ptc_allowed", mj r.ptcAllowed),
+     (p ++ "_advance_payment", mj r.advancePayment)]
+  return Json.mkObj (ptcAllowedScalars o ++ monthFields)
+
+/-- Catala scope `Ptc_net.NetPtc`. -/
+def runNetPtc (j : Json) : Except String Json := do
+  let o := netPtc
+    { filingStatus := ← filingStatusOfJson (← field j "filing_status")
+      householdIncomeAsPercent := ← ratOfJson (← field j "household_income_as_percent")
+      taxFamilySizeIsZero := ← boolReq j "tax_family_size_is_zero"
+      totalPtcAmountAllowed := ← moneyReq j "total_ptc_amount_allowed"
+      totalAptcAmountTaken := ← moneyReq j "total_aptc_amount_taken" }
+  return Json.mkObj
+    [("net_ptc_amount", mj o.netPtcAmount), ("line26", mj o.line26), ("line27", mj o.line27),
+     ("line28", mj o.line28), ("line29", mj o.line29), ("net_ptc_credit", mj o.netPtcCredit),
+     ("excess_aptc_repayment", mj o.excessAptcRepayment)]
+
+/-- An HSA enumeration field `k` from its Catala case name. -/
+private def hsaEnum {α} (j : Json) (k : String) (cases : List (String × α)) : Except String α :=
+  enumReq j k k (fun s => cases.lookup s)
+
+/-- Catala `Hsa.HsaFilerAnswers`. -/
+def hsaFilerAnswersOfJson (j : Json) : Except String HsaFilerAnswers :=
+  return {
+    writablePrimaryFilerHasMadeContributionsToHsa :=
+      ← boolReq j "writable_primary_filer_has_made_contributions_to_hsa"
+    writableSecondaryFilerHasMadeContributionsToHsa :=
+      ← boolReq j "writable_secondary_filer_has_made_contributions_to_hsa"
+    enrolledInMedicare := ← hsaEnum j "enrolled_in_medicare"
+      [("MedicareAllYear", .medicareAllYear), ("MedicarePartOfYear", .medicarePartOfYear),
+       ("MedicareNoneOfYear", .medicareNoneOfYear)]
+    hsaHdhpCoverageStatus := ← hsaEnum j "hsa_hdhp_coverage_status"
+      [("HdhpAllYear", .hdhpAllYear), ("HdhpPartOfYear", .hdhpPartOfYear),
+       ("HdhpNoneOfYear", .hdhpNoneOfYear)]
+    typeOfHdhp := ← hsaEnum j "type_of_hdhp"
+      [("SelfOnly", .selfOnly), ("Family", .family), ("BothSelfAndFamily", .bothSelfAndFamily)]
+    hadOtherCoverageIneligibleForHsa := ← hsaEnum j "had_other_coverage_ineligible_for_hsa"
+      [("OtherCoverageWholeYear", .otherCoverageWholeYear),
+       ("OtherCoveragePartOfYear", .otherCoveragePartOfYear),
+       ("OtherCoverageNoneOfYear", .otherCoverageNoneOfYear)]
+    writableMfsLine6Check := ← boolReq j "writable_mfs_line6_check"
+    writableChangeInMaritalStatusDuringTaxYear :=
+      ← hsaEnum j "writable_change_in_marital_status_during_tax_year"
+        [("WasMarriedOrDivorcedThisYear", .wasMarriedOrDivorcedThisYear),
+         ("WasNotMarriedNorDivorcedThisYear", .wasNotMarriedNorDivorcedThisYear)]
+    writableMaritalChangeAffectContributionLimitBool :=
+      ← boolReq j "writable_marital_change_affect_contribution_limit_bool"
+    hasMadeQualifiedHsaFundingDistribution := ← boolReq j "has_made_qualified_hsa_funding_distribution"
+    writableHsaNonemployerContributionsTaxYear :=
+      ← moneyReq j "writable_hsa_nonemployer_contributions_tax_year"
+    writableHsaNonemployerContributionsTaxYearPlusOne :=
+      ← moneyReq j "writable_hsa_nonemployer_contributions_tax_year_plus_one" }
+
+/-- Catala `Hsa.HsaDistribution`. -/
+def hsaDistributionOfJson (j : Json) : Except String HsaDistribution :=
+  return {
+    filer := ← filerRoleOfJson (← field j "filer")
+    writableDistributionsRolloverBool := ← boolReq j "writable_distributions_rollover_bool"
+    writableDistributionsRolloverAmount := ← moneyReq j "writable_distributions_rollover_amount"
+    writableGrossDistribution := ← moneyReq j "writable_gross_distribution"
+    hasWithdrawnExcessContributions := ← boolReq j "has_withdrawn_excess_contributions"
+    writableWithdrawnExcessContributionsAmount :=
+      ← moneyReq j "writable_withdrawn_excess_contributions_amount"
+    writableEarningsOnExcessContributions := ← moneyReq j "writable_earnings_on_excess_contributions"
+    hsaDistributionCode := ← hsaEnum j "hsa_distribution_code"
+      [("NormalDistribution", .normalDistribution), ("ExcessContributions", .excessContributions),
+       ("Disability", .disability), ("DeathOtherThanCode6", .deathOtherThanCode6),
+       ("ProhibitedTransaction", .prohibitedTransaction),
+       ("DeathDistributionAfterYear", .deathDistributionAfterYear)]
+    writableFmvOnDateOfDeath := ← moneyReq j "writable_fmv_on_date_of_death"
+    writableQualifiedMedExpenses := ← moneyReq j "writable_qualified_med_expenses" }
+
+/-- Catala scope `Hsa.Hsa` (its outputs that do not depend on the filer role). -/
+def runHsa (j : Json) : Except String Json := do
+  let i : HsaIn := {
+    isFilingStatusMfj := ← boolReq j "is_filing_status_mfj"
+    isMarried := ← boolReq j "is_married", isSingle := ← boolReq j "is_single"
+    primaryFilerAge55OrOlder := ← boolReq j "primary_filer_age55_or_older"
+    secondaryFilerAge55OrOlder := ← boolReq j "secondary_filer_age55_or_older"
+    primaryFilerCanBeClaimed := ← boolReq j "primary_filer_can_be_claimed"
+    secondaryFilerCanBeClaimed := ← boolReq j "secondary_filer_can_be_claimed"
+    primaryFilerTotalHsaContributionsFromW2s :=
+      ← moneyReq j "primary_filer_total_hsa_contributions_from_w2s"
+    secondaryFilerTotalHsaContributionsFromW2s :=
+      ← moneyReq j "secondary_filer_total_hsa_contributions_from_w2s"
+    hasPrimaryFilerHsaContributionsFromW2s := ← boolReq j "has_primary_filer_hsa_contributions_from_w2s"
+    hasSecondaryFilerHsaContributionsFromW2s :=
+      ← boolReq j "has_secondary_filer_hsa_contributions_from_w2s"
+    knockoutHasNoPaymentsOrCredits := ← boolReq j "knockout_has_no_payments_or_credits"
+    paidEstimatedTaxesOrFromLastYear := ← boolReq j "paid_estimated_taxes_or_from_last_year"
+    taxExemptInterest := ← moneyReq j "tax_exempt_interest"
+    pensionsAndAnnuities := ← moneyReq j "pensions_and_annuities"
+    socialSecurityBenefits := ← moneyReq j "social_security_benefits"
+    primaryFiler := ← hsaFilerAnswersOfJson (← field j "primary_filer")
+    secondaryFiler := ← hsaFilerAnswersOfJson (← field j "secondary_filer")
+    someFilerHadNonW2HsaActivity := ← boolReq j "some_filer_had_non_w2_hsa_activity"
+    writablePrimaryFilerHadNonW2HsaActivity :=
+      ← boolReq j "writable_primary_filer_had_non_w2_hsa_activity"
+    writableSecondaryFilerHadNonW2HsaActivity :=
+      ← boolReq j "writable_secondary_filer_had_non_w2_hsa_activity"
+    hasHsaMedicalSavingsAccountType := ← boolReq j "has_hsa_medical_savings_account_type"
+    writableHasHsaExcessContributionsPreviousYear :=
+      ← boolReq j "writable_has_hsa_excess_contributions_previous_year"
+    writableHasHsaWithdrawnExcessContributionsYesNo :=
+      ← boolReq j "writable_has_hsa_withdrawn_excess_contributions_yes_no"
+    someFilersMadeTestingPeriodContribution :=
+      ← boolReq j "some_filers_made_testing_period_contribution"
+    someFilersHaveTestingPeriodAdditionalIncome :=
+      ← boolReq j "some_filers_have_testing_period_additional_income"
+    hsaDistributions := ← listReq j "hsa_distributions" hsaDistributionOfJson }
+  let o := hsa i
+  return Json.mkObj
+    [("hsa_total_deductible_amount", mj o.hsaTotalDeductibleAmount),
+     ("number_of_filers_required_to_file_form_8889", toJson o.numberOfFilersRequiredToFileForm8889),
+     ("requires_form_8889", bj o.requiresForm8889),
+     ("ko_filer_is_dependent_and_contributes_to_hsa", bj o.koFilerIsDependentAndContributesToHsa),
+     ("ko_hsa_excess_contributions", bj o.koHsaExcessContributions),
+     ("ko_hsa_medical_savings_account_type", bj o.koHsaMedicalSavingsAccountType),
+     ("ko_mfs_line6_check", bj o.koMfsLine6Check),
+     ("ko_earnings_on_excess_contributions", bj o.koEarningsOnExcessContributions),
+     ("ko_hsa_distribution_code", bj o.koHsaDistributionCode),
+     ("ko_hsa_unqualified_distributions", bj o.koHsaUnqualifiedDistributions),
+     ("ko_hsa_distribution_fmv", bj o.koHsaDistributionFmv),
+     ("ko_hsa_contributions_over_limit", bj o.koHsaContributionsOverLimit),
+     ("ko_other_coverage_part_of_year", bj o.koOtherCoveragePartOfYear),
+     ("ko_other_coverage_whole_year", bj o.koOtherCoverageWholeYear),
+     ("ko_marital_change_affects_contribution_limit", bj o.koMaritalChangeAffectsContributionLimit),
+     ("ko_made_qualified_hsa_funding_distribution", bj o.koMadeQualifiedHsaFundingDistribution),
+     ("ko_hsa_testing_period_additional_income_yes", bj o.koHsaTestingPeriodAdditionalIncomeYes),
+     ("ko_no_payments_hsa_distribution", bj o.koNoPaymentsHsaDistribution),
+     ("ko_not_enrolled_in_hdhp", bj o.koNotEnrolledInHdhp),
+     ("ko_enrolled_in_medicare_all_year", bj o.koEnrolledInMedicareAllYear),
+     ("ko_hsa_coverage_changing", bj o.koHsaCoverageChanging),
+     ("ko_hsa_self_and_family_coverage", bj o.koHsaSelfAndFamilyCoverage),
+     ("ko_hdhp_coverage_not_all_year", bj o.koHdhpCoverageNotAllYear),
+     ("ko_hsa_coverage", bj o.koHsaCoverage),
+     ("ko_contribution_summary_none_allowed", bj o.koContributionSummaryNoneAllowed),
+     ("ko_hdhp_coverage_status_not_needed", bj o.koHdhpCoverageStatusNotNeeded),
+     ("ko_has_hsa_distributions_without_activity", bj o.koHasHsaDistributionsWithoutActivity),
+     ("ko_hsa_distributions_secondary_filer_used_without_mfj",
+       bj o.koHsaDistributionsSecondaryFilerUsedWithoutMfj),
+     ("unsupported", bj o.unsupported)]
+
+end PtcHsa
+
 /-- The scopes implemented in Lean, by Catala scope name. Add one line per
 new module. -/
 def scopes : List (String × (Json → Except String Json)) :=
@@ -1522,7 +1841,12 @@ def scopes : List (String × (Json → Except String Json)) :=
    ("EitcFromFilers", runEitcFromFilers),
    ("CtcOdcPersonTest", runCtcOdcPersonTest),
    ("Schedule8812", runSchedule8812),
-   ("CtcOdcFromHousehold", runCtcOdcFromHousehold)]
+   ("CtcOdcFromHousehold", runCtcOdcFromHousehold),
+   ("PtcFamily", runPtcFamily),
+   ("PtcAllowed", runPtcAllowed),
+   ("PtcAllowedDifftest", runPtcAllowedDifftest),
+   ("NetPtc", runNetPtc),
+   ("Hsa", runHsa)]
 
 /-- Run scope `name` on one JSON input. -/
 def runScope (name : String) (input : Json) : Except String Json :=
