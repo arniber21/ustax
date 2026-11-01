@@ -250,7 +250,15 @@ export default {
     }),
     cdcc_answers: cdccAnswers,
     ptc_answers: (f) => pick(ptcMap.inputs, PTC_ANSWERS, f),
-    screening: (f) => pick(koMap.inputs, SCREENING, f),
+    screening: (f) => ({
+      ...pick(koMap.inputs, SCREENING, f),
+      // knockouts_household.catala_en: the data of /knockoutPersonBornAndDiedInTaxYearWithoutTin, per member
+      member_vitals: collectionIds(f, '/familyAndHousehold').map((id) => {
+        const pf = personFacts(f, id);
+        const pv = (n) => pf.get(P + n)?.value;
+        return { date_of_birth: person(pf).date_of_birth, deceased: pv('deceased') === 'true', has_tin_type_none: pv('tinType') === 'none' };
+      }),
+    }),
   },
   outputs: [
     m('/wages', 'wages'),

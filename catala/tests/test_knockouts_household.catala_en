@@ -1,0 +1,575 @@
+# Tests for the Knockouts_household module (issue #37)
+
+Run with `clerk test`. GENERATED from the knockout table of `catala/knockouts_household.catala_en`.
+Each knockout case sets just that condition on a clean return and checks that
+the combined flag is true and that the list of reasons is exactly that one
+reason; the clean return has no reason. A known-bad output (a flag without a
+reason, a reason that did not fire) is rejected by the exact assertions. The
+born-and-died knockout is computed here from the member data: three boundary
+cases show that each of its three tests is needed. Checklist DF fact to Catala
+name: `docs/knockout-inventory.md`. Oracle comparison:
+`make difftest SCOPE=calculator` (`/flowIsKnockedOut`).
+
+> Using Types
+> Using Knockouts_income as KI
+> Using Knockouts_household as KH
+
+## Helper: a clean return
+
+```catala
+declaration scope Case:
+  context c_vitals content list of KH.MemberVitals
+
+  context c_flow_knockout_filer_age_younger_than16 content boolean
+  context c_spouse_itemizes_knockout content boolean
+  context c_primary_filer_residency_knockout content boolean
+  context c_flow_knockout_has_applicable_registered_domestic_partnership content boolean
+  context c_knockout_subject_to_community_property_laws content boolean
+  context c_knockout_hoh_qp_has_no_tin content boolean
+  context c_knocked_out_by_non_custodial_parent_benefit_split content boolean
+  context c_knocked_out_by_contradictory8832 content boolean
+  context c_savers_credit_knockouts content boolean
+  context c_flow_knockout_benefits_distribution content boolean
+  context c_knockout_cdcc_worksheet_a content boolean
+  context c_flow_knockout_household_employee content boolean
+  context c_dependent_tp_requires_allocations content boolean
+  context c_has_ptc_qualifying_plan_and_qsehra content boolean
+  context c_needs_allocations content boolean
+  context c_has_employer_sponsored_plan content boolean
+  context c_dependents_required_to_file content boolean
+  context c_self_reported_has_multiple1095_as content boolean
+  context c_has_immigration_status_not_eligible_for_marketplace content boolean
+  context c_wants_to_use_alt_calculations content boolean
+  context c_qualifying_child_tie_breaker content boolean
+  context c_claimed_spouse_combat_pay_without_mfj content boolean
+  context c_filing_status_not_eligible content boolean
+  context c_sole_proprietorship_benefits content boolean
+  context c_both_spouses_deemed_income content boolean
+  context c_tp_needs_to_add1095_a content boolean
+  context c_tp_needs_to_delete1095_a content boolean
+  f scope KH.KnockoutsHousehold
+  output unsupported content boolean
+  output n_fired content integer
+  output fired content list of KI.KnockoutReason
+
+scope Case:
+  definition c_vitals equals []
+  definition c_flow_knockout_filer_age_younger_than16 equals false
+  definition c_spouse_itemizes_knockout equals false
+  definition c_primary_filer_residency_knockout equals false
+  definition c_flow_knockout_has_applicable_registered_domestic_partnership equals false
+  definition c_knockout_subject_to_community_property_laws equals false
+  definition c_knockout_hoh_qp_has_no_tin equals false
+  definition c_knocked_out_by_non_custodial_parent_benefit_split equals false
+  definition c_knocked_out_by_contradictory8832 equals false
+  definition c_savers_credit_knockouts equals false
+  definition c_flow_knockout_benefits_distribution equals false
+  definition c_knockout_cdcc_worksheet_a equals false
+  definition c_flow_knockout_household_employee equals false
+  definition c_dependent_tp_requires_allocations equals false
+  definition c_has_ptc_qualifying_plan_and_qsehra equals false
+  definition c_needs_allocations equals false
+  definition c_has_employer_sponsored_plan equals false
+  definition c_dependents_required_to_file equals false
+  definition c_self_reported_has_multiple1095_as equals false
+  definition c_has_immigration_status_not_eligible_for_marketplace equals false
+  definition c_wants_to_use_alt_calculations equals false
+  definition c_qualifying_child_tie_breaker equals false
+  definition c_claimed_spouse_combat_pay_without_mfj equals false
+  definition c_filing_status_not_eligible equals false
+  definition c_sole_proprietorship_benefits equals false
+  definition c_both_spouses_deemed_income equals false
+  definition c_tp_needs_to_add1095_a equals false
+  definition c_tp_needs_to_delete1095_a equals false
+  definition f.member_vitals equals c_vitals
+  definition f.in_flow_knockout_filer_age_younger_than16 equals c_flow_knockout_filer_age_younger_than16
+  definition f.in_spouse_itemizes_knockout equals c_spouse_itemizes_knockout
+  definition f.in_primary_filer_residency_knockout equals c_primary_filer_residency_knockout
+  definition f.in_flow_knockout_has_applicable_registered_domestic_partnership equals c_flow_knockout_has_applicable_registered_domestic_partnership
+  definition f.in_knockout_subject_to_community_property_laws equals c_knockout_subject_to_community_property_laws
+  definition f.in_knockout_hoh_qp_has_no_tin equals c_knockout_hoh_qp_has_no_tin
+  definition f.in_knocked_out_by_non_custodial_parent_benefit_split equals c_knocked_out_by_non_custodial_parent_benefit_split
+  definition f.in_knocked_out_by_contradictory8832 equals c_knocked_out_by_contradictory8832
+  definition f.in_savers_credit_knockouts equals c_savers_credit_knockouts
+  definition f.in_flow_knockout_benefits_distribution equals c_flow_knockout_benefits_distribution
+  definition f.in_knockout_cdcc_worksheet_a equals c_knockout_cdcc_worksheet_a
+  definition f.in_flow_knockout_household_employee equals c_flow_knockout_household_employee
+  definition f.in_dependent_tp_requires_allocations equals c_dependent_tp_requires_allocations
+  definition f.in_has_ptc_qualifying_plan_and_qsehra equals c_has_ptc_qualifying_plan_and_qsehra
+  definition f.in_needs_allocations equals c_needs_allocations
+  definition f.in_has_employer_sponsored_plan equals c_has_employer_sponsored_plan
+  definition f.in_dependents_required_to_file equals c_dependents_required_to_file
+  definition f.in_self_reported_has_multiple1095_as equals c_self_reported_has_multiple1095_as
+  definition f.in_has_immigration_status_not_eligible_for_marketplace equals c_has_immigration_status_not_eligible_for_marketplace
+  definition f.in_wants_to_use_alt_calculations equals c_wants_to_use_alt_calculations
+  definition f.in_qualifying_child_tie_breaker equals c_qualifying_child_tie_breaker
+  definition f.in_claimed_spouse_combat_pay_without_mfj equals c_claimed_spouse_combat_pay_without_mfj
+  definition f.in_filing_status_not_eligible equals c_filing_status_not_eligible
+  definition f.in_sole_proprietorship_benefits equals c_sole_proprietorship_benefits
+  definition f.in_both_spouses_deemed_income equals c_both_spouses_deemed_income
+  definition f.in_tp_needs_to_add1095_a equals c_tp_needs_to_add1095_a
+  definition f.in_tp_needs_to_delete1095_a equals c_tp_needs_to_delete1095_a
+  definition unsupported equals f.unsupported_household
+  definition n_fired equals number of f.fired_knockouts
+  definition fired equals f.fired_knockouts
+```
+
+## Clean return: nothing fires.
+
+```catala
+#[test]
+declaration scope TestClean:
+  c scope Case
+
+scope TestClean:
+  assertion not c.unsupported
+  assertion c.n_fired = 0
+```
+
+## FlowKnockoutFilerAgeYoungerThan16 (/flowKnockoutFilerAgeYoungerThan16).
+
+```catala
+#[test]
+declaration scope TestFlowKnockoutFilerAgeYoungerThan16:
+  c scope Case
+
+scope TestFlowKnockoutFilerAgeYoungerThan16:
+  definition c.c_flow_knockout_filer_age_younger_than16 equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.FlowKnockoutFilerAgeYoungerThan16
+```
+
+## SpouseItemizesKnockout (/spouseItemizesKnockout).
+
+```catala
+#[test]
+declaration scope TestSpouseItemizesKnockout:
+  c scope Case
+
+scope TestSpouseItemizesKnockout:
+  definition c.c_spouse_itemizes_knockout equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.SpouseItemizesKnockout
+```
+
+## PrimaryFilerResidencyKnockout (/primaryFilerResidencyKnockout).
+
+```catala
+#[test]
+declaration scope TestPrimaryFilerResidencyKnockout:
+  c scope Case
+
+scope TestPrimaryFilerResidencyKnockout:
+  definition c.c_primary_filer_residency_knockout equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.PrimaryFilerResidencyKnockout
+```
+
+## FlowKnockoutHasApplicableRegisteredDomesticPartnership (/flowKnockoutHasApplicableRegisteredDomesticPartnership).
+
+```catala
+#[test]
+declaration scope TestFlowKnockoutHasApplicableRegisteredDomesticPartnership:
+  c scope Case
+
+scope TestFlowKnockoutHasApplicableRegisteredDomesticPartnership:
+  definition c.c_flow_knockout_has_applicable_registered_domestic_partnership equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.FlowKnockoutHasApplicableRegisteredDomesticPartnership
+```
+
+## KnockoutSubjectToCommunityPropertyLaws (/knockoutSubjectToCommunityPropertyLaws).
+
+```catala
+#[test]
+declaration scope TestKnockoutSubjectToCommunityPropertyLaws:
+  c scope Case
+
+scope TestKnockoutSubjectToCommunityPropertyLaws:
+  definition c.c_knockout_subject_to_community_property_laws equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.KnockoutSubjectToCommunityPropertyLaws
+```
+
+## KnockoutHohQpHasNoTin (/knockoutHohQpHasNoTin).
+
+```catala
+#[test]
+declaration scope TestKnockoutHohQpHasNoTin:
+  c scope Case
+
+scope TestKnockoutHohQpHasNoTin:
+  definition c.c_knockout_hoh_qp_has_no_tin equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.KnockoutHohQpHasNoTin
+```
+
+## KnockedOutByNonCustodialParentBenefitSplit (/knockedOutByNonCustodialParentBenefitSplit).
+
+```catala
+#[test]
+declaration scope TestKnockedOutByNonCustodialParentBenefitSplit:
+  c scope Case
+
+scope TestKnockedOutByNonCustodialParentBenefitSplit:
+  definition c.c_knocked_out_by_non_custodial_parent_benefit_split equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.KnockedOutByNonCustodialParentBenefitSplit
+```
+
+## KnockedOutByContradictory8832 (/knockedOutByContradictory8832).
+
+```catala
+#[test]
+declaration scope TestKnockedOutByContradictory8832:
+  c scope Case
+
+scope TestKnockedOutByContradictory8832:
+  definition c.c_knocked_out_by_contradictory8832 equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.KnockedOutByContradictory8832
+```
+
+## SaversCreditKnockouts (/saversCreditKnockouts).
+
+```catala
+#[test]
+declaration scope TestSaversCreditKnockouts:
+  c scope Case
+
+scope TestSaversCreditKnockouts:
+  definition c.c_savers_credit_knockouts equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.SaversCreditKnockouts
+```
+
+## FlowKnockoutBenefitsDistribution (/flowKnockoutBenefitsDistribution).
+
+```catala
+#[test]
+declaration scope TestFlowKnockoutBenefitsDistribution:
+  c scope Case
+
+scope TestFlowKnockoutBenefitsDistribution:
+  definition c.c_flow_knockout_benefits_distribution equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.FlowKnockoutBenefitsDistribution
+```
+
+## KnockoutCdccWorksheetA (/knockoutCdccWorksheetA).
+
+```catala
+#[test]
+declaration scope TestKnockoutCdccWorksheetA:
+  c scope Case
+
+scope TestKnockoutCdccWorksheetA:
+  definition c.c_knockout_cdcc_worksheet_a equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.KnockoutCdccWorksheetA
+```
+
+## FlowKnockoutHouseholdEmployee (/flowKnockoutHouseholdEmployee).
+
+```catala
+#[test]
+declaration scope TestFlowKnockoutHouseholdEmployee:
+  c scope Case
+
+scope TestFlowKnockoutHouseholdEmployee:
+  definition c.c_flow_knockout_household_employee equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.FlowKnockoutHouseholdEmployee
+```
+
+## DependentTpRequiresAllocations (/dependentTpRequiresAllocations).
+
+```catala
+#[test]
+declaration scope TestDependentTpRequiresAllocations:
+  c scope Case
+
+scope TestDependentTpRequiresAllocations:
+  definition c.c_dependent_tp_requires_allocations equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.DependentTpRequiresAllocations
+```
+
+## HasPtcQualifyingPlanAndQsehra (/hasPtcQualifyingPlanAndQsehra).
+
+```catala
+#[test]
+declaration scope TestHasPtcQualifyingPlanAndQsehra:
+  c scope Case
+
+scope TestHasPtcQualifyingPlanAndQsehra:
+  definition c.c_has_ptc_qualifying_plan_and_qsehra equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.HasPtcQualifyingPlanAndQsehra
+```
+
+## NeedsAllocations (/needsAllocations).
+
+```catala
+#[test]
+declaration scope TestNeedsAllocations:
+  c scope Case
+
+scope TestNeedsAllocations:
+  definition c.c_needs_allocations equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.NeedsAllocations
+```
+
+## HasEmployerSponsoredPlan (/hasEmployerSponsoredPlan).
+
+```catala
+#[test]
+declaration scope TestHasEmployerSponsoredPlan:
+  c scope Case
+
+scope TestHasEmployerSponsoredPlan:
+  definition c.c_has_employer_sponsored_plan equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.HasEmployerSponsoredPlan
+```
+
+## DependentsRequiredToFile (/dependentsRequiredToFile).
+
+```catala
+#[test]
+declaration scope TestDependentsRequiredToFile:
+  c scope Case
+
+scope TestDependentsRequiredToFile:
+  definition c.c_dependents_required_to_file equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.DependentsRequiredToFile
+```
+
+## SelfReportedHasMultiple1095As (/selfReportedHasMultiple1095As).
+
+```catala
+#[test]
+declaration scope TestSelfReportedHasMultiple1095As:
+  c scope Case
+
+scope TestSelfReportedHasMultiple1095As:
+  definition c.c_self_reported_has_multiple1095_as equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.SelfReportedHasMultiple1095As
+```
+
+## HasImmigrationStatusNotEligibleForMarketplace (/hasImmigrationStatusNotEligibleForMarketplace).
+
+```catala
+#[test]
+declaration scope TestHasImmigrationStatusNotEligibleForMarketplace:
+  c scope Case
+
+scope TestHasImmigrationStatusNotEligibleForMarketplace:
+  definition c.c_has_immigration_status_not_eligible_for_marketplace equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.HasImmigrationStatusNotEligibleForMarketplace
+```
+
+## WantsToUseAltCalculations (/wantsToUseAltCalculations).
+
+```catala
+#[test]
+declaration scope TestWantsToUseAltCalculations:
+  c scope Case
+
+scope TestWantsToUseAltCalculations:
+  definition c.c_wants_to_use_alt_calculations equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.WantsToUseAltCalculations
+```
+
+## ExtraQualifyingChildTieBreaker (no flow.xml fact, IRC 152(c)(4) tie-breaker cannot be decided from the return (DF-BUG-3); Qualifying_child.ko_qualifying_child_tie_breaker).
+
+```catala
+#[test]
+declaration scope TestExtraQualifyingChildTieBreaker:
+  c scope Case
+
+scope TestExtraQualifyingChildTieBreaker:
+  definition c.c_qualifying_child_tie_breaker equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.ExtraQualifyingChildTieBreaker
+```
+
+## ExtraClaimedSpouseCombatPayWithoutMfj (no flow.xml fact, Eitc.ko_claimed_spouse_combat_pay_without_mfj).
+
+```catala
+#[test]
+declaration scope TestExtraClaimedSpouseCombatPayWithoutMfj:
+  c scope Case
+
+scope TestExtraClaimedSpouseCombatPayWithoutMfj:
+  definition c.c_claimed_spouse_combat_pay_without_mfj equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.ExtraClaimedSpouseCombatPayWithoutMfj
+```
+
+## ExtraFilingStatusNotEligible (no flow.xml fact, Filing_status.ko_filing_status_not_eligible (DF refuses invalid status in its UI)).
+
+```catala
+#[test]
+declaration scope TestExtraFilingStatusNotEligible:
+  c scope Case
+
+scope TestExtraFilingStatusNotEligible:
+  definition c.c_filing_status_not_eligible equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.ExtraFilingStatusNotEligible
+```
+
+## ExtraCdccSoleProprietorshipBenefits (no flow.xml fact, Cdcc.Form2441PartIII.ko_sole_proprietorship_benefits (Form 2441 line 22)).
+
+```catala
+#[test]
+declaration scope TestExtraCdccSoleProprietorshipBenefits:
+  c scope Case
+
+scope TestExtraCdccSoleProprietorshipBenefits:
+  definition c.c_sole_proprietorship_benefits equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.ExtraCdccSoleProprietorshipBenefits
+```
+
+## ExtraCdccBothSpousesDeemedIncome (no flow.xml fact, Cdcc.Form2441PartIII.ko_both_spouses_deemed_income (Reg. 1.21-2(b)(4)(iii))).
+
+```catala
+#[test]
+declaration scope TestExtraCdccBothSpousesDeemedIncome:
+  c scope Case
+
+scope TestExtraCdccBothSpousesDeemedIncome:
+  definition c.c_both_spouses_deemed_income equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.ExtraCdccBothSpousesDeemedIncome
+```
+
+## ExtraTpNeedsToAdd1095A (no flow.xml fact, /tpNeedsToAdd1095A, BlockSubmissionOnTrue (ptc.xml line 1027); Ptc_allowed.ko_tp_needs_to_add1095_a).
+
+```catala
+#[test]
+declaration scope TestExtraTpNeedsToAdd1095A:
+  c scope Case
+
+scope TestExtraTpNeedsToAdd1095A:
+  definition c.c_tp_needs_to_add1095_a equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.ExtraTpNeedsToAdd1095A
+```
+
+## ExtraTpNeedsToDelete1095A (no flow.xml fact, /tpNeedsToDelete1095A, BlockSubmissionOnTrue (ptc.xml line 1042); Ptc_allowed.ko_tp_needs_to_delete1095_a).
+
+```catala
+#[test]
+declaration scope TestExtraTpNeedsToDelete1095A:
+  c scope Case
+
+scope TestExtraTpNeedsToDelete1095A:
+  definition c.c_tp_needs_to_delete1095_a equals true
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.ExtraTpNeedsToDelete1095A
+```
+
+## Born and died: all three.
+
+```catala
+#[test]
+declaration scope TestBornDiedAllFires:
+  c scope Case
+
+scope TestBornDiedAllFires:
+  definition c.c_vitals equals [ KH.MemberVitals {
+      -- date_of_birth: |2024-03-01|
+      -- deceased: true
+      -- has_tin_type_none: true } ]
+  assertion c.unsupported
+  assertion c.n_fired = 1
+  assertion exists r among c.fired such that r = KI.KnockoutReason.KnockoutPersonBornAndDiedInTaxYearWithoutTin
+```
+
+## Born and died: with a TIN.
+
+```catala
+#[test]
+declaration scope TestBornDiedWithQuiet:
+  c scope Case
+
+scope TestBornDiedWithQuiet:
+  definition c.c_vitals equals [ KH.MemberVitals {
+      -- date_of_birth: |2024-03-01|
+      -- deceased: true
+      -- has_tin_type_none: false } ]
+  assertion not c.unsupported
+  assertion c.n_fired = 0
+```
+
+## Born and died: alive.
+
+```catala
+#[test]
+declaration scope TestBornDiedAliveQuiet:
+  c scope Case
+
+scope TestBornDiedAliveQuiet:
+  definition c.c_vitals equals [ KH.MemberVitals {
+      -- date_of_birth: |2024-03-01|
+      -- deceased: false
+      -- has_tin_type_none: true } ]
+  assertion not c.unsupported
+  assertion c.n_fired = 0
+```
+
+## Born and died: born in 2023.
+
+```catala
+#[test]
+declaration scope TestBornDiedBornQuiet:
+  c scope Case
+
+scope TestBornDiedBornQuiet:
+  definition c.c_vitals equals [ KH.MemberVitals {
+      -- date_of_birth: |2023-12-31|
+      -- deceased: true
+      -- has_tin_type_none: true } ]
+  assertion not c.unsupported
+  assertion c.n_fired = 0
+```
+
+## Statute-first: deemed income is supported, not refused.
+
+DF `/knockoutStudentOrDisabled` has no condition (module header). The test is
+`Cdcc` (`test_cdcc.catala_en`, deemed income cases).
