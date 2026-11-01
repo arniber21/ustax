@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { formatCents } from '../api';
-import { Pencil } from 'lucide-react';
+import { CircleAlert, CircleCheck, Pencil, RotateCcw } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button, Callout } from '../components';
+import { Badge } from '../components/ui/badge';
 import { RELATIONSHIPS, isJoint, useDraft, validateDraft, type Cents, type Draft } from '../draft';
 import { WIZARD_STEPS, stepPath, type WizardStepId } from '../layout/steps';
 import { FILING_STATUS_OPTIONS } from './AboutStep';
@@ -20,12 +22,29 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function Block({ title, step, children }: { title: string; step: WizardStepId; children: ReactNode }) {
+function Block({ title, step, ok, children }: { title: string; step: WizardStepId; ok: boolean; children: ReactNode }) {
   return (
-    <section aria-label={title} className="mb-6 overflow-hidden rounded-lg border bg-card">
-      <div className="flex items-center justify-between gap-3 border-b bg-muted px-4 py-3 sm:px-5">
-        <h2 className="m-0 text-base font-semibold">{title}</h2>
-        <Link to={stepPath(step)} className="inline-flex items-center gap-1.5 text-sm font-medium" aria-label={`Edit ${title}`}>
+    <section aria-label={title} className="mb-4 overflow-hidden rounded-xl border bg-card shadow-xs">
+      <div className="flex items-center justify-between gap-3 border-b bg-muted/60 px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h2 className="m-0 text-base font-semibold">{title}</h2>
+          {ok ? (
+            <Badge variant="success">
+              <CircleCheck aria-hidden="true" />
+              Complete
+            </Badge>
+          ) : (
+            <Badge variant="warning">
+              <CircleAlert aria-hidden="true" />
+              Needs attention
+            </Badge>
+          )}
+        </div>
+        <Link
+          to={stepPath(step)}
+          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium no-underline hover:bg-accent"
+          aria-label={`Edit ${title}`}
+        >
           <Pencil aria-hidden="true" className="size-3.5" />
           Edit
         </Link>
@@ -86,7 +105,7 @@ export function ReviewStep() {
         </Callout>
       )}
 
-      <Block title="About you" step="about">
+      <Block title="About you" step="about" ok={!bad.includes('about')}>
         <dl className="m-0 divide-y">
           <Row label="Filing status" value={status?.label ?? 'Not chosen yet'} />
           <Row label="You: born, 65+, blind, dependent" value={personList(d.primary)} />
@@ -94,7 +113,7 @@ export function ReviewStep() {
         </dl>
       </Block>
 
-      <Block title="Your household" step="household">
+      <Block title="Your household" step="household" ok={!bad.includes('household')}>
         <dl className="m-0 divide-y">
           <Row label="Marital status" value={MARITAL[d.maritalStatus] ?? 'Same as your filing status'} />
           {d.filingStatus === 'MarriedFilingSeparately' && (
@@ -105,7 +124,7 @@ export function ReviewStep() {
         </dl>
       </Block>
 
-      <Block title="Dependents" step="dependents">
+      <Block title="Dependents" step="dependents" ok={!bad.includes('dependents')}>
         {d.hasDependents && d.dependents.length > 0 ? (
           <dl className="m-0 divide-y">
             {d.dependents.map((p, i) => (
@@ -121,11 +140,11 @@ export function ReviewStep() {
         )}
       </Block>
 
-      <Block title="Income" step="income">
+      <Block title="Income" step="income" ok={!bad.includes('income')}>
         <IncomeSummary d={d} />
       </Block>
 
-      <Block title="Adjustments and payments" step="adjustments">
+      <Block title="Adjustments and payments" step="adjustments" ok={!bad.includes('adjustments')}>
         <dl className="m-0 divide-y">
           <Row label="Teacher expenses" value={d.educator.primary || (isJoint(d) && d.educator.spouse) ? money((d.educator.primary ? (d.educator.primaryExpenses ?? 0) : 0) + (isJoint(d) && d.educator.spouse ? (d.educator.spouseExpenses ?? 0) : 0)) : 'None'} />
           <Row label="Student loan interest" value={d.studentLoan.hadPayments ? money(d.studentLoan.interest) : 'None'} />
@@ -133,7 +152,7 @@ export function ReviewStep() {
         </dl>
       </Block>
 
-      <Block title="Credits and care costs" step="credits">
+      <Block title="Credits and care costs" step="credits" ok={!bad.includes('credits')}>
         <dl className="m-0 divide-y">
           <Row label="Child and dependent care" value={d.cdcc.paid ? money(careTotal(d)) : 'None'} />
           <Row label="Health savings account" value={d.hsa.has ? 'Activity outside your W-2' : 'None'} />
@@ -141,9 +160,17 @@ export function ReviewStep() {
         </dl>
       </Block>
 
-      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground">
         <span>Your answers are saved in this browser until you clear them.</span>
-        <Button variant="secondary" onClick={reset} className="h-8 px-3">
+        <Button
+          variant="ghost"
+          onClick={() => {
+            reset();
+            toast('Answers cleared', { description: 'You are starting a new return.' });
+          }}
+          className="h-8 px-3"
+        >
+          <RotateCcw aria-hidden="true" />
           Start over
         </Button>
       </div>

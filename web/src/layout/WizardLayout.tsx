@@ -1,20 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, CircleAlert } from 'lucide-react';
 import { Navigate, Outlet, useNavigate, useParams } from 'react-router';
+import { toast } from 'sonner';
 import { Button, ButtonLink, Stepper } from '../components';
 import { useDraft, validateDraft, validateStep, type StepErrors } from '../draft';
+import { DraftForm } from '../forms/DraftForm';
 import { StepErrorsContext } from '../wizard/stepErrors';
+import { LiveSummaryBar, LiveSummaryCard, useEstimate } from '../wizard/LiveSummary';
 import { WIZARD_STEPS, stepIndex, stepPath } from './steps';
 
-/** Move focus to the field for `path` (opening a collapsed <details> if needed). */
-function focusField(path: string) {
+/** Move focus to the field for `path` (opening a collapsed "More" section if needed). */
+export function focusField(path: string) {
   const box = document.querySelector<HTMLElement>(`[data-path="${CSS.escape(path)}"]`);
   if (!box) return;
+  const go = () => {
+    const control = box.querySelector<HTMLElement>('input, select, button, textarea');
+    box.scrollIntoView?.({ block: 'center' });
+    control?.focus();
+  };
   const details = box.closest('details');
   if (details) details.open = true;
-  const control = box.querySelector<HTMLElement>('input, select, button, textarea');
-  box.scrollIntoView?.({ block: 'center' });
-  control?.focus();
+  const more = box.closest<HTMLElement>('[data-more][data-state="closed"]');
+  if (more) {
+    more.querySelector<HTMLElement>('button')?.click();
+    requestAnimationFrame(go);
+    return;
+  }
+  go();
 }
 
 /** GOV.UK-style error summary: every problem on the step, each one a link to its field. */
@@ -31,7 +43,7 @@ function ErrorSummary({ errors }: { errors: StepErrors }) {
       tabIndex={-1}
       aria-labelledby="error-summary-h"
       role="group"
-      className="mb-8 scroll-mt-6 rounded-md border-2 border-destructive bg-background px-5 py-4 outline-none focus-visible:outline-2 focus-visible:outline-ring"
+      className="mb-8 scroll-mt-24 animate-in rounded-xl border border-destructive/50 bg-destructive-soft px-5 py-4 shadow-xs outline-none fade-in-0 slide-in-from-top-1 focus-visible:outline-2 focus-visible:outline-ring"
     >
       <h2 id="error-summary-h" className="m-0 flex items-center gap-2 text-base font-semibold">
         <CircleAlert aria-hidden="true" className="size-5 text-destructive" />
@@ -57,12 +69,32 @@ function ErrorSummary({ errors }: { errors: StepErrors }) {
   );
 }
 
-/** Wizard frame: step list on the left (top on phones), the step (an <Outlet/>) on the right, Back/Next below. */
+const SAVED_KEY = 'ustax.savedToast';
+
+/** Tell people once per session that their answers persist (and where). */
+function useSavedToast() {
+  return () => {
+    try {
+      if (sessionStorage.getItem(SAVED_KEY)) return;
+      sessionStorage.setItem(SAVED_KEY, '1');
+    } catch {
+      return;
+    }
+    toast.success('Progress saved', { description: 'Your answers are kept in this browser only. Nothing is filed.' });
+  };
+}
+
+/**
+ * Wizard frame: the stepper on the left, the step (an <Outlet/> inside the step's form) in the middle,
+ * the running estimate on the right (a bottom bar below 1280px), Back/Next under the step.
+ */
 export function WizardLayout() {
   const { step } = useParams();
   const navigate = useNavigate();
   const { draft } = useDraft();
   const [attempt, setAttempt] = useState<{ step: string; n: number } | null>(null);
+  const estimate = useEstimate();
+  const savedToast = useSavedToast();
   const i = stepIndex(step);
   if (i < 0) return <Navigate to={stepPath('about')} replace />;
 
@@ -78,6 +110,7 @@ export function WizardLayout() {
       setAttempt({ step: current.id, n: (attempt?.n ?? 0) + 1 });
       return;
     }
+    savedToast();
     navigate(next ? stepPath(next.id) : '/results');
   };
 
@@ -86,6 +119,7 @@ export function WizardLayout() {
     const all = validateDraft(draft);
     const firstBad = WIZARD_STEPS.find((s) => Object.keys(all[s.id]).length > 0);
     if (firstBad) {
+      toast.error(`Check “${firstBad.label}”`, { description: 'Something there needs an answer before we can calculate.' });
       navigate(stepPath(firstBad.id));
       return;
     }
@@ -93,18 +127,20 @@ export function WizardLayout() {
   };
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-16 lg:py-12">
-      <aside className="lg:sticky lg:top-8 lg:self-start">
+    <div className="mx-auto grid max-w-6xl gap-8 px-4 py-8 pb-28 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10 lg:py-10 xl:grid-cols-[13rem_minmax(0,1fr)_17rem] xl:pb-12">
+      <aside className="lg:sticky lg:top-24 lg:self-start">
         <Stepper steps={WIZARD_STEPS} current={i} hrefFor={(id) => stepPath(id as (typeof WIZARD_STEPS)[number]['id'])} />
       </aside>
-      <div className="min-w-0 max-w-2xl">
+      <div className="min-w-0 max-w-3xl">
         {showSummary && <ErrorSummary key={attempt?.n} errors={errors} />}
-        <StepErrorsContext.Provider value={{ errors, attempted }}>
-          <div key={step} className="animate-in fade-in-0 duration-300">
-            <Outlet />
-          </div>
-        </StepErrorsContext.Provider>
-        <div className="mt-10 flex flex-wrap-reverse items-center justify-between gap-3 border-t pt-6">
+        <DraftForm>
+          <StepErrorsContext.Provider value={{ errors, attempted }}>
+            <div key={step} className="animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
+              <Outlet />
+            </div>
+          </StepErrorsContext.Provider>
+        </DraftForm>
+        <div className="mt-4 flex flex-wrap-reverse items-center justify-between gap-3 border-t pt-6">
           {prev ? (
             <ButtonLink variant="ghost" to={stepPath(prev.id)}>
               <ArrowLeft aria-hidden="true" />
@@ -129,6 +165,10 @@ export function WizardLayout() {
           )}
         </div>
       </div>
+      <aside aria-label="Running estimate" className="hidden xl:sticky xl:top-24 xl:block xl:self-start">
+        <LiveSummaryCard e={estimate} />
+      </aside>
+      <LiveSummaryBar e={estimate} />
     </div>
   );
 }

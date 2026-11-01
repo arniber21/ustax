@@ -1,3 +1,4 @@
+import { Globe2, Heart, House, ListChecks, UserRound } from 'lucide-react';
 import { Callout } from '../components';
 import { isJoint, useDraft, type Draft, type FlagsDraft } from '../draft';
 import { SelectField } from './fields';
@@ -21,7 +22,7 @@ export function HouseholdStep() {
         intro="Whether you were married, where you and your spouse lived, and who paid for your home. Children and other people you support come next."
       />
 
-      <FormSection title="Marital status" note="Your status on December 31, 2024.">
+      <FormSection icon={Heart} title="Marital status" note="Your status on December 31, 2024.">
         <SelectField
           label="Which describes you?"
           hint="If you skip this, we use the filing status you picked."
@@ -55,7 +56,7 @@ export function HouseholdStep() {
       </FormSection>
 
       {joint && (
-        <FormSection title="Your spouse" note="Select anything that was true for your spouse on December 31, 2024.">
+        <FormSection icon={UserRound} title="Your spouse" note="Select anything that was true for your spouse on December 31, 2024.">
           <PersonDetails who="your spouse" value={draft.spouse} onChange={setSpouse} pathPrefix="spouse" />
           {draft.spouse.dob === '' && (
             <Check label="My spouse is 65 or older" checked={draft.spouse.age65} onChange={(age65) => setSpouse({ age65 })} />
@@ -83,7 +84,7 @@ export function HouseholdStep() {
       )}
 
       {separate && (
-        <FormSection title="Your spouse" note="You file apart, so we only need to know how you lived.">
+        <FormSection icon={UserRound} title="Your spouse" note="You file apart, so we only need to know how you lived.">
           <YesNo
             legend="Is your spouse 65 or older?"
             hint="Same rule: their 65th birthday is on or before January 1, 2025."
@@ -107,7 +108,7 @@ export function HouseholdStep() {
       )}
 
       {unmarriedStatus && (
-        <FormSection title="Your home">
+        <FormSection icon={House} title="Your home">
           <YesNo
             legend="Did you pay more than half of the cost of keeping up your home in 2024?"
             hint="Rent or mortgage interest, utilities, repairs, property tax, and food eaten at home. Head of household and the earned income credit look at this. It only counts if someone you support lived with you."
@@ -117,7 +118,7 @@ export function HouseholdStep() {
         </FormSection>
       )}
 
-      <FormSection title="Foreign accounts">
+      <FormSection icon={Globe2} title="Foreign accounts">
         <YesNo
           legend="Did you have a bank account, trust, or other financial account outside the U.S.?"
           hint="Having one doesn’t change your tax by itself. The IRS just asks."
@@ -131,7 +132,7 @@ export function HouseholdStep() {
         />
       </FormSection>
 
-      <FormSection title="Other questions the IRS asks" note="These do not change your tax here. They tell us whether your return needs a form we cannot do yet.">
+      <FormSection icon={ListChecks} title="Other questions the IRS asks" note="These do not change your tax here. They tell us whether your return needs a form we cannot do yet.">
         <YesNo
           legend="Did you receive digital assets, such as cryptocurrency, as a reward, payment or gift?"
           value={draft.screening.digitalReceived}

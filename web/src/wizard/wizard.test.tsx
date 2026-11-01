@@ -1,11 +1,13 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { App } from '../App';
-import { contractProblems } from '../api';
+import { App, preloadRoutes } from '../App';
+
+beforeAll(preloadRoutes);
+import { contractProblems } from '../api/validate';
 import { STORAGE_KEY, buildRequest, emptyDraft, emptyFlags, loadDraft, newDependent, newW2, useDraft, type Draft } from '../draft';
 
 const seed = (d: Partial<Draft>) => window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...emptyDraft(), ...d }));
@@ -116,7 +118,9 @@ describe('About step details', () => {
     seed({ filingStatus: 'Single' });
     at('/start/about');
     fireEvent.change(screen.getByLabelText('Your date of birth'), { target: { value: '06/15/1990' } });
-    await userEvent.selectOptions(screen.getByLabelText('Your citizenship'), 'resident');
+    // shadcn/ui Select: open the listbox, pick the option.
+    await userEvent.click(screen.getByRole('combobox', { name: 'Your citizenship' }));
+    await userEvent.click(await screen.findByRole('option', { name: /I was a resident alien all of 2024/ }));
     await userEvent.click(screen.getByRole('checkbox', { name: /I have a Social Security number/ }));
     await userEvent.click(screen.getByRole('checkbox', { name: /full-time student/ }));
     expect(screen.queryByRole('checkbox', { name: /I am 65 or older/ })).not.toBeInTheDocument();
@@ -321,7 +325,11 @@ describe('Income step', () => {
     at('/start/income');
     await userEvent.click(screen.getByRole('button', { name: 'Add a box 12 entry' }));
     const row = screen.getByRole('group', { name: 'Box 12 entry 1' });
-    await userEvent.selectOptions(within(row).getByLabelText('Code'), 'D');
+    // Combobox: open it, type to filter, pick.
+    await userEvent.click(within(row).getByRole('combobox', { name: 'Code' }));
+    await userEvent.type(await screen.findByRole('combobox', { name: 'Search code' }, { timeout: 5000 }), '401');
+    await userEvent.click(await screen.findByRole('option', { name: /^D: 401\(k\)/ }));
+    expect(within(row).getByRole('combobox', { name: 'Code' })).toHaveTextContent('D: 401(k) contributions');
     await userEvent.type(within(row).getByLabelText('Amount'), '6000');
     const req = buildRequest(saved());
     expect(req.w2s?.[0]?.box12).toEqual({ D: 600000 });
@@ -331,14 +339,14 @@ describe('Income step', () => {
   it('offers the spouse as the owner of a form only on joint returns', async () => {
     seed({ filingStatus: 'MarriedFilingJointly', w2s: [{ ...newW2(), wages: 100 }] });
     at('/start/income');
-    await userEvent.selectOptions(screen.getByLabelText('Whose form is this?'), 'SecondaryFiler');
+    await userEvent.click(within(screen.getByRole('group', { name: 'Whose form is this?' })).getByRole('radio', { name: 'My spouse’s' }));
     expect(saved().w2s[0]!.filer).toBe('SecondaryFiler');
   });
 
   it('does not offer a spouse on a single return', () => {
     seed({ filingStatus: 'Single', w2s: [{ ...newW2(), wages: 100 }] });
     at('/start/income');
-    expect(screen.queryByLabelText('Whose form is this?')).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Whose form is this?' })).not.toBeInTheDocument();
   });
 
   it('collects 1099-INT, 1099-G, 1099-R and SSA-1099', async () => {

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { sumCents } from '../api';
-import { Plus, Trash2 } from 'lucide-react';
-import { Button, Callout, Select, Stat, StatGroup } from '../components';
+import { Briefcase, Landmark, Plus, Trash2, type LucideIcon, HandCoins, PiggyBank, ShieldCheck } from 'lucide-react';
+import { Button, Callout, Combobox, Stat, StatGroup } from '../components';
 import {
   BOX12_CODES,
   CODES_1099R,
@@ -23,6 +23,7 @@ import {
 import { MoneyField } from './fields';
 import { useStepError } from './stepErrors';
 import { Check, FormSection, More, Repeater, StepHeader, Where, WhoSelect } from './ui';
+import { W2Help } from './W2Help';
 
 type ListKey = 'w2s' | 'interest' | 'unemployment' | 'retirement' | 'ssa';
 
@@ -38,9 +39,9 @@ const removeItem = (key: ListKey, id: string) => (d: Draft): Draft => ({
   [key]: (d[key] as { id: string }[]).filter((x) => x.id !== id),
 });
 
-function Section({ title, form, children }: { title: string; form: string; children: ReactNode }) {
+function Section({ title, form, icon, children }: { title: string; form: string; icon: LucideIcon; children: ReactNode }) {
   return (
-    <FormSection title={title} note={form} aria-label={title}>
+    <FormSection title={title} note={form} aria-label={title} icon={icon}>
       {children}
     </FormSection>
   );
@@ -68,7 +69,7 @@ export function IncomeStep() {
         intro="Add one entry for each tax form you received for 2024. Skip any you did not get. You can type cents; each box is rounded to the nearest dollar, as on the paper form."
       />
 
-      <div className="mb-8">
+      <div className="mb-6">
       <StatGroup>
         <Stat label="W-2 wages entered" cents={wages} showCents />
         <Stat label="Interest entered" cents={interest} showCents />
@@ -76,22 +77,25 @@ export function IncomeStep() {
       </StatGroup>
       </div>
 
-      <Section title="Jobs (W-2)" form="Form W-2, “Wage and Tax Statement”. Your employer sends one for each job.">
+      <Section icon={Briefcase} title="Jobs (W-2)" form="Form W-2, “Wage and Tax Statement”. Your employer sends one for each job.">
+        <W2Help />
         <Repeater
           noun="W-2"
+          emptyIcon={Briefcase}
           items={draft.w2s}
           max={LIMITS.maxItems}
           errorPath="w2s"
-          empty="No W-2 yet. If you had a job in 2024, add it here."
+          empty="If you had a job in 2024, your employer sent you a W-2 by early February. Add one for each job."
           onAdd={() => update((d) => ({ ...d, w2s: [...d.w2s, newW2()] }))}
           onRemove={(id) => update(removeItem('w2s', id))}
           render={(w) => <W2Form w={w} joint={joint} />}
         />
       </Section>
 
-      <Section title="Bank interest (1099-INT)" form="Form 1099-INT. Banks send one if you earned $10 or more in interest.">
+      <Section icon={Landmark} title="Bank interest (1099-INT)" form="Form 1099-INT. Banks send one if you earned $10 or more in interest.">
         <Repeater
           noun="1099-INT"
+          emptyIcon={Landmark}
           items={draft.interest}
           max={LIMITS.maxItems}
           errorPath="interest"
@@ -102,9 +106,10 @@ export function IncomeStep() {
         />
       </Section>
 
-      <Section title="Unemployment (1099-G)" form="Form 1099-G. Your state sends it if you collected unemployment.">
+      <Section icon={HandCoins} title="Unemployment (1099-G)" form="Form 1099-G. Your state sends it if you collected unemployment.">
         <Repeater
           noun="1099-G"
+          emptyIcon={HandCoins}
           items={draft.unemployment}
           max={LIMITS.maxItems}
           errorPath="unemployment"
@@ -115,9 +120,10 @@ export function IncomeStep() {
         />
       </Section>
 
-      <Section title="Retirement withdrawals (1099-R)" form="Form 1099-R. Sent when you took money out of a pension, IRA or 401(k).">
+      <Section icon={PiggyBank} title="Retirement withdrawals (1099-R)" form="Form 1099-R. Sent when you took money out of a pension, IRA or 401(k).">
         <Repeater
           noun="1099-R"
+          emptyIcon={PiggyBank}
           items={draft.retirement}
           max={LIMITS.maxItems}
           errorPath="retirement"
@@ -128,9 +134,10 @@ export function IncomeStep() {
         />
       </Section>
 
-      <Section title="Social Security (SSA-1099)" form="Form SSA-1099. Sent in January if you got Social Security benefits.">
+      <Section icon={ShieldCheck} title="Social Security (SSA-1099)" form="Form SSA-1099. Sent in January if you got Social Security benefits.">
         <Repeater
           noun="SSA-1099"
+          emptyIcon={ShieldCheck}
           items={draft.ssa}
           max={LIMITS.maxSsaForms}
           errorPath="ssa"
@@ -187,7 +194,7 @@ function W2Form({ w, joint }: { w: W2Draft; joint: boolean }) {
         label="Box 1: wages, tips, other pay"
         hint={
           <>
-            The main number. <Where>Box 1 is the first dollar box on your W-2, top left under your name and address.</Where>
+            The main number. <Where>Box 1 is the first dollar box on your W-2, top right, next to the employer’s ID number.</Where>
           </>
         }
         path={`${p}.wages`}
@@ -270,12 +277,13 @@ function W2Form({ w, joint }: { w: W2Draft; joint: boolean }) {
 function Box12Code({ value, onChange, path }: { value: string; onChange: (c: string) => void; path: string }) {
   const error = useStepError(path);
   return (
-    <Select
+    <Combobox
       label="Code"
       path={path}
       value={value}
       error={error}
       placeholder="Pick the letter"
+      searchPlaceholder="Type a letter or a word, like 401(k)"
       options={BOX12_CODES.map((c) => ({ value: c.code, label: `${c.code}: ${c.label}` }))}
       onChange={onChange}
     />

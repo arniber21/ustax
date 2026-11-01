@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Field, MoneyInput, Select, type MoneyInputProps, type SelectProps } from '../components';
+import { ChoiceSelect, Field, MoneyInput, Select, type MoneyInputProps, type SelectProps } from '../components';
 import { DatePicker } from '../components/ui/date-picker';
 import { useStepError } from './stepErrors';
 
@@ -13,6 +13,12 @@ export function MoneyField({ path, ...rest }: Omit<MoneyInputProps, 'error'> & {
 export function SelectField<V extends string>({ path, ...rest }: Omit<SelectProps<V>, 'error'> & { path?: string }) {
   const error = useStepError(path);
   return <Select {...rest} path={path} error={error} />;
+}
+
+/** `ChoiceSelect` (shadcn/ui Select) that shows the step's validation message for `path`. */
+export function ChoiceSelectField<V extends string>({ path, ...rest }: Omit<SelectProps<V>, 'error'> & { path?: string }) {
+  const error = useStepError(path);
+  return <ChoiceSelect {...rest} path={path} error={error} />;
 }
 
 /**
