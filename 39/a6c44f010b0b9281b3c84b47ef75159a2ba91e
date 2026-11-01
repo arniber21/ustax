@@ -1,0 +1,25 @@
+web/src/App.test.tsx
+  s_3031b504518be3::t_9fa7474be2dd83 6-7,64,73-77
+  s_3031b504518be3::t_13dd5878ac1100 78-80
+web/src/pages/ResultsPage.tsx
+  s_3031b504518be3::t_c73de3821567f2 5,7-9
+  s_3031b504518be3::t_879aca931c1877 1
+web/src/results/useCurrentRequest.ts
+  s_3031b504518be3::t_c73de3821567f2 2,5-6,8-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "39a6c44f010b0b9281b3c84b47ef75159a2ba91e",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
