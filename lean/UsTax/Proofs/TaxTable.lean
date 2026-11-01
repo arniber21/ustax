@@ -8,7 +8,7 @@ Method. `tentativeTaxFor` is monotone in taxable income
 (`tentativeTaxFor_mono`). So if it equals the printed amount at the first cent
 of a row (`atLeast`) and at the last cent (`butLessThan - $0.01`), it equals it
 on every cent in between. The two endpoint checks for every row and every
-filing status (2,060 rows x 5 statuses x 2 = 20,600 evaluations) are done by
+filing status (2,062 rows x 5 statuses x 2 = 20,620 evaluations) are done by
 the **kernel** (`decide +kernel`, no `native_decide`), one theorem per data
 chunk `rows0` ... `rows20`, about 3 s each.
 
@@ -67,14 +67,36 @@ theorem tentativeTaxFor_matchesTaxTable (fs : FilingStatus) (ti : Int) :
   have m2 := tentativeTaxFor_mono fs (show ti ≤ dollars r.butLessThan - 1 by omega)
   omega
 
-/-- The data has no row for [$5, $25): the CSV it is generated from skips the
-printed rows [$5, $15) and [$15, $25). Every other pair of neighbouring rows
-abuts, and the last row ends at $100,000. (A fact about the data, recorded
-for the reviewer; see `docs/spec-surface.md`.) -/
-theorem rows_layout :
-    (rows.take 2).map (fun r => (r.atLeast, r.butLessThan)) = [(0, 5), (25, 50)] ∧
-    ((rows.drop 1).zip (rows.drop 2)).all (fun (a, b) => a.butLessThan == b.atLeast) = true ∧
-    (rows.getLast?.map (·.butLessThan)) = some 100_000 := by
-  decide +kernel
+/-- The rows chain from `a` to `b`: the first starts at `a`, each is nonempty,
+each starts where the previous ended, and the last ends at `b`. -/
+def chainOk : Int → List Row → Int → Bool
+  | a, [], b => a == b
+  | a, r :: rs, b => r.atLeast == a && decide (r.atLeast < r.butLessThan) &&
+      chainOk r.butLessThan rs b
+
+theorem chainOk_cover : ∀ (L : List Row) (a b x : Int), chainOk a L b = true → a ≤ x → x < b →
+    ∃ r ∈ L, r.atLeast ≤ x ∧ x < r.butLessThan
+  | [], a, b, x, h, h1, h2 => by
+    simp only [chainOk, beq_iff_eq] at h; omega
+  | r :: rs, a, b, x, h, h1, h2 => by
+    simp only [chainOk, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at h
+    obtain ⟨⟨ha, hlt⟩, hrest⟩ := h
+    by_cases hx : x < r.butLessThan
+    · exact ⟨r, List.mem_cons_self .., by omega, hx⟩
+    · obtain ⟨r', hr', h'⟩ := chainOk_cover rs r.butLessThan b x hrest (by omega) h2
+      exact ⟨r', List.mem_cons_of_mem _ hr', h'⟩
+
+/-- The printed rows tile $0 to $100,000 with no gap and no overlap. (The
+earlier version of the data lacked the rows [$5, $15) and [$15, $25).) -/
+theorem rows_chain : chainOk 0 rows 100_000 = true := by decide +kernel
+
+/-- Every cent of taxable income in [$0, $100,000) is in some row, so the
+Tax Table property (main theorem 5) constrains line 16 for all of them. -/
+theorem rows_cover (ti : Int) (h0 : 0 ≤ ti) (h1 : ti < dollars 100_000) :
+    ∃ r ∈ rows, InRow r ti := by
+  have hc := chainOk_cover rows 0 100_000 (ti / 100) rows_chain (by omega)
+    (by unfold dollars at h1; omega)
+  obtain ⟨r, hr, a, b⟩ := hc
+  exact ⟨r, hr, by unfold dollars; omega, by unfold dollars; omega⟩
 
 end UsTax.Proofs

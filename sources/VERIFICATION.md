@@ -19,7 +19,7 @@ Checked 2026-10-31 against the files in this folder. "p" = PDF page index. Rev. 
 | Single (11,600; 47,150; 100,525; 191,950; 243,725; 609,350) bases 1,160; 5,426; 17,168.50; 39,110.50; 55,678.50; 183,647.25 | as listed | identical | Table 3, p 6 | MATCH |
 | MFS: same as single to 243,725; 365,600 at 35%; above 98,334.75 + 37% | as listed | identical | Table 4, pp 6-7 | MATCH |
 | Rates 10/12/22/24/32/35/37 | as listed | identical | Tables 1-4 | MATCH |
-| Tax Table midpoint method: TI<5 uses 2.50; <15 uses 10; <25 uses 20; <3,000 uses $25-row midpoint (+12.50); <100,000 uses $50-row midpoint (+25); then schedule, round half up | as listed | Reproduces all 2,060 published rows for all four statuses: 8,240 of 8,240 values equal | `i1040gi--2024.pdf` pp 64-75; script output in `forms-instructions/derived-tax-table-2024.csv` | MATCH |
+| Tax Table midpoint method: TI<5 uses 2.50; <15 uses 10; <25 uses 20; <3,000 uses $25-row midpoint (+12.50); <100,000 uses $50-row midpoint (+25); then schedule, round half up | as listed | Reproduces all 2,062 published rows for all four statuses: 8,248 of 8,248 values equal | `i1040gi--2024.pdf` pp 64-75; script output in `forms-instructions/derived-tax-table-2024.csv` | MATCH |
 | Use of Tax Computation Worksheet at TI >= 100,000 | "TI itself" | 1040 instructions say use the worksheet (exact income, no midpoint) from 100,000 | `i1040gi` p 64, p 76 | MATCH |
 
 ## Standard deduction and dependents (scope.md §4.2, §5.2)

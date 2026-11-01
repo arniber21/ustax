@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Generate lean/UsTax/TaxRates/TaxTableData.lean from the printed Tax Table.
 
-Input: sources/forms-instructions/derived-tax-table-2024.csv (2,060 rows of the
+Input: sources/forms-instructions/derived-tax-table-2024.csv (2,062 rows of the
 2024 Tax Table, i1040gi--2024.pdf pp 64 to 75; columns at_least,
 but_less_than, single, mfj, mfs, hoh, whole dollars).
 Output: one Lean list literal of the rows, used by the golden test
 lean/UsTax/TaxRates/TaxTable.lean (each row checked at its lowest dollar and
-its highest cent, four statuses: 16,480 checks).
+its highest cent, four statuses: 16,496 checks).
 
 Run from the repository root: python3 scripts/gen_lean_tax_table.py
 Then rebuild: cd lean && lake build UsTax.TaxRates.TaxTable
@@ -17,7 +17,7 @@ SRC = "sources/forms-instructions/derived-tax-table-2024.csv"
 OUT = "lean/UsTax/TaxRates/TaxTableData.lean"
 
 rows = list(csv.DictReader(open(SRC)))
-assert len(rows) == 2060, len(rows)
+assert len(rows) == 2062, len(rows)
 cols = ["at_least", "but_less_than", "single", "mfj", "mfs", "hoh"]
 
 lines = []
