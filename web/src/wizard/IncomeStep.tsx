@@ -63,7 +63,7 @@ export function IncomeStep() {
   return (
     <>
       <StepHeader
-        eyebrow="Step 3 of 5"
+        eyebrow="Step 4 of 7"
         title="Income"
         intro="Add one entry for each tax form you received for 2024. Skip any you did not get. You can type cents; each box is rounded to the nearest dollar, as on the paper form."
       />

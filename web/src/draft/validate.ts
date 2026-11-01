@@ -1,8 +1,16 @@
 import type { WizardStepId } from '../layout/steps';
-import { LIMITS, type Cents, type Draft } from './types';
+import { LIMITS, RELATIONSHIPS, type Cents, type Draft } from './types';
 
 /** Problems found in one step, keyed by field path (`w2.<id>.wages`, `filingStatus`, ...). Plain-language messages. */
 export type StepErrors = Record<string, string>;
+
+/** True for a real calendar date written `YYYY-MM-DD` (the contract pattern, plus a month and day that exist). */
+export function isIsoDate(v: string): boolean {
+  if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(v)) return false;
+  const [y, m, d] = v.split('-').map(Number) as [number, number, number];
+  const t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+}
 
 const TOO_BIG = 'That number is too big. Check the digits and try again.';
 
@@ -21,8 +29,58 @@ export function validateStep(d: Draft, step: WizardStepId): StepErrors {
     else big(path, v, signed);
   };
 
+  /** A date of birth: optional when `needed` is false. Not in the future of the tax year, not before 1900. */
+  const dob = (path: string, v: string, who: string, needed: boolean) => {
+    if (v === '') {
+      if (needed) e[path] = `Enter ${who} date of birth.`;
+      return;
+    }
+    if (!isIsoDate(v)) e[path] = `Enter ${who} date of birth as a real date.`;
+    else if (v > LIMITS.lastDayOfTaxYear) e[path] = `${who[0]!.toUpperCase()}${who.slice(1)} date of birth cannot be after December 31, 2024.`;
+    else if (v < '1900-01-01') e[path] = `Check ${who} date of birth: the year looks too early.`;
+  };
+
   if (step === 'about') {
     if (d.filingStatus === null) e.filingStatus = 'Pick the option that fits you best. You can change it later.';
+    dob('primary.dob', d.primary.dob, 'your', false);
+  }
+
+  if (step === 'household') {
+    if (d.filingStatus === 'MarriedFilingJointly') dob('spouse.dob', d.spouse.dob, 'your spouse’s', false);
+  }
+
+  if (step === 'dependents' && d.hasDependents) {
+    if (d.dependents.length === 0) e.dependents = 'Add each person you support, or answer No above.';
+    if (d.dependents.length > LIMITS.maxDependents) e.dependents = `We can take up to ${LIMITS.maxDependents} people.`;
+    for (const p of d.dependents) {
+      const k = `dep.${p.id}`;
+      if (p.relationship === '' || !RELATIONSHIPS.some((r) => r.value === p.relationship)) {
+        e[`${k}.relationship`] = 'Pick how this person is related to you.';
+      }
+      dob(`${k}.dob`, p.dob, 'their', true);
+      if (p.residency === 'SixToElevenMonths' && (p.months === null || p.months < 6 || p.months > 11)) {
+        e[`${k}.months`] = 'Pick how many months, from 6 to 11.';
+      }
+      big(`${k}.grossIncome`, p.grossIncome);
+    }
+  }
+
+  if (step === 'credits') {
+    if (d.cdcc.paid) {
+      big('cdcc.totalQualified', d.cdcc.totalQualified);
+      if (d.hasDependents) {
+        for (const p of d.dependents) {
+          const k = `dep.${p.id}`;
+          big(`${k}.careExpenses`, p.careExpenses);
+          if ((p.careExpenses ?? 0) > 0 && p.careProviderQualifies === null) {
+            e[`${k}.careProviderQualifies`] = 'Tell us whether the person who provided the care counts.';
+          }
+        }
+      }
+    }
+    for (const f of [d.primary, ...(d.filingStatus === 'MarriedFilingJointly' ? [d.spouse] : [])]) {
+      if (d.hsa.has && f.hsa.contributed) big(f === d.primary ? 'hsa.primary.directContributions' : 'hsa.spouse.directContributions', f.hsa.directContributions);
+    }
   }
 
   if (step === 'income') {
@@ -88,8 +146,10 @@ export function validateDraft(d: Draft): Record<WizardStepId, StepErrors> {
   return {
     about: validateStep(d, 'about'),
     household: validateStep(d, 'household'),
+    dependents: validateStep(d, 'dependents'),
     income: validateStep(d, 'income'),
     adjustments: validateStep(d, 'adjustments'),
+    credits: validateStep(d, 'credits'),
     review: validateStep(d, 'review'),
   };
 }

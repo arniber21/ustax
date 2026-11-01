@@ -1,17 +1,67 @@
-import type { CalculateRequest } from '../api';
+import type { CalculateRequest, Dependent, FilerFlags } from '../api';
 import {
   emptyDraft,
+  emptyFlags,
+  type Citizenship,
+  type DependentDraft,
   newId,
   type Draft,
   type FlagsDraft,
   type Role,
 } from './types';
 
-const flags = (f: { is_blind?: boolean; age65_or_older?: boolean; can_be_claimed_as_dependent?: boolean } | undefined): FlagsDraft => ({
-  blind: f?.is_blind ?? false,
-  age65: f?.age65_or_older ?? false,
-  canBeClaimed: f?.can_be_claimed_as_dependent ?? false,
-});
+const flags = (f: FilerFlags | undefined, who: 'primary' | 'secondary'): FlagsDraft => {
+  const h = f?.hsa;
+  const mine = who === 'primary' ? h?.writable_primary_filer_has_made_contributions_to_hsa : h?.writable_secondary_filer_has_made_contributions_to_hsa;
+  return {
+    ...emptyFlags(),
+    blind: f?.is_blind ?? false,
+    age65: f?.age65_or_older ?? false,
+    canBeClaimed: f?.can_be_claimed_as_dependent ?? false,
+    dob: f?.date_of_birth ?? '',
+    citizenship: f?.noncitizen_resident_full_year ? 'resident' : f?.is_us_citizen_full_year === false ? 'other' : 'citizen',
+    hasSsn: f?.tin?.tin_is_ssn ?? true,
+    student: f?.is_student ?? false,
+    retiredOnDisability: f?.disability?.is_retired_on_perm_or_total_disability ?? false,
+    hsa: {
+      contributed: mine ?? false,
+      coverage: h?.hsa_hdhp_coverage_status ?? '',
+      type: h?.type_of_hdhp ?? '',
+      medicare: h?.enrolled_in_medicare ?? '',
+      directContributions: h?.writable_hsa_nonemployer_contributions_tax_year ?? null,
+    },
+  };
+};
+
+const dependent = (p: Dependent): DependentDraft => {
+  const c = p.cdcc;
+  const citizenship: Citizenship =
+    p.is_us_citizen_full_year === false
+      ? p.us_resident ? 'resident' : p.us_national ? 'national' : p.canada_mexico_resident ? 'canadaMexico' : 'other'
+      : 'citizen';
+  return {
+    id: newId(),
+    name: '',
+    relationship: p.relationship,
+    dob: p.date_of_birth,
+    residency: p.residency_duration ?? 'AllYear',
+    months: p.months_lived_with_tp_in_us !== undefined && p.months_lived_with_tp_in_us >= 6 && p.months_lived_with_tp_in_us < 12 ? p.months_lived_with_tp_in_us : null,
+    tinType: p.tin_type,
+    citizenship,
+    student: p.full_time_student ?? false,
+    disabled: p.permanent_total_disability ?? false,
+    ownSupport: p.own_support ?? false,
+    youSupport: p.qr_support_test ?? false,
+    claimableByOther: p.could_be_qualifying_child_of_another ?? false,
+    married: p.married ?? false,
+    jointReturn: p.joint_return ?? false,
+    grossIncome: m(p.gross_income),
+    claim: p.tp_claims ?? true,
+    unableToSelfCare: c?.unable_to_care_for_self ?? false,
+    careExpenses: m(c?.writable_qualifying_expense_amount),
+    careProviderQualifies: c?.has_dependent_care_expenses ? (c.expenses_paid_to_qualifying_provider ?? false) : null,
+  };
+};
 
 const m = (v: number | undefined): number | null => v ?? null;
 
@@ -22,13 +72,39 @@ const m = (v: number | undefined): number | null => v ?? null;
 export function draftFromRequest(req: CalculateRequest): Draft {
   const d = emptyDraft();
   d.filingStatus = req.filing_status;
-  d.primary = flags(req.filers?.primary);
-  d.spouse = flags(req.filers?.secondary);
+  d.primary = flags(req.filers?.primary, 'primary');
+  d.spouse = flags(req.filers?.secondary, 'secondary');
   const fd = req.filing_details;
   d.spouseDiedThisYear = fd?.is_widowed_in_tax_year ?? false;
   d.deceasedSpouseWas65 = fd?.mfj_deceased_spouse_reached_age65 ?? false;
   d.mfsSpouse65 = fd?.mfs_spouse_65_or_older ?? false;
   d.foreignAccounts = fd?.has_foreign_accounts_or_trusts ?? false;
+
+  const fa = req.filing_answers;
+  d.maritalStatus = fa?.marital_status ?? '';
+  d.yearOfSpouseDeath = fa?.year_of_spouse_death ?? '';
+  d.spouseLivedTogether = fa?.spouse_lived_together_months ?? '';
+  d.dependents = (req.dependents ?? []).map(dependent);
+  d.hasDependents = d.dependents.length > 0;
+  d.paidHomeUpkeep = (req.dependents ?? []).some((p) => p.tp_paid_most_of_home_upkeep === true);
+  const cr = req.credits;
+  d.credits = {
+    eitcImproperClaims: cr?.eitc_had_improper_claims ?? false,
+    ctcImproperClaims: cr?.received_improper_claims ?? false,
+    eitcQcOfAnother: cr?.eitc_qc_of_another ?? false,
+  };
+  const sc = req.screening;
+  d.screening = {
+    digitalReceived: sc?.received_digital_assets ?? false,
+    digitalDisposed: sc?.disposed_digital_assets ?? false,
+    iraContributions: sc?.made_ira_contributions ?? false,
+    foreignTrustGrantor: sc?.is_foreign_trusts_grantor ?? false,
+  };
+  d.cdcc = {
+    paid: (req.dependents ?? []).some((p) => p.cdcc?.has_dependent_care_expenses || p.cdcc?.unable_to_care_for_self) || req.cdcc !== undefined,
+    totalQualified: m(req.cdcc?.writable_total_qualified_dependent_care_expenses),
+  };
+  d.hsa = { has: req.adjustments?.hsa?.some_filer_had_non_w2_hsa_activity ?? false };
 
   d.w2s = (req.w2s ?? []).map((w) => ({
     id: newId(),

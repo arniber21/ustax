@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 import type { CalculateRequest } from '../api';
 import { tryBuildRequest } from './buildRequest';
-import { emptyDraft, type Draft } from './types';
+import { emptyDraft, emptyFlags, type Draft } from './types';
 
 export const STORAGE_KEY = 'ustax.draft.v1';
 
@@ -36,7 +36,19 @@ export function loadDraft(storage: Pick<Storage, 'getItem'> | undefined = safeSt
     if (!raw) return emptyDraft();
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== 'object' || parsed === null || (parsed as { version?: unknown }).version !== 1) return emptyDraft();
-    return { ...emptyDraft(), ...(parsed as Partial<Draft>) };
+    const p = parsed as Partial<Draft>;
+    // Nested objects added after a draft was saved fall back to their defaults.
+    const base = emptyDraft();
+    return {
+      ...base,
+      ...p,
+      primary: { ...emptyFlags(), ...p.primary, hsa: { ...emptyFlags().hsa, ...p.primary?.hsa } },
+      spouse: { ...emptyFlags(), ...p.spouse, hsa: { ...emptyFlags().hsa, ...p.spouse?.hsa } },
+      screening: { ...base.screening, ...p.screening },
+      credits: { ...base.credits, ...p.credits },
+      cdcc: { ...base.cdcc, ...p.cdcc },
+      hsa: { ...base.hsa, ...p.hsa },
+    };
   } catch {
     return emptyDraft();
   }

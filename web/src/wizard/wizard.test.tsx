@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { App } from '../App';
 import { contractProblems } from '../api';
-import { STORAGE_KEY, buildRequest, emptyDraft, loadDraft, newW2, useDraft, type Draft } from '../draft';
+import { STORAGE_KEY, buildRequest, emptyDraft, emptyFlags, loadDraft, newDependent, newW2, useDraft, type Draft } from '../draft';
 
 const seed = (d: Partial<Draft>) => window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...emptyDraft(), ...d }));
 const at = (path: string) =>
@@ -32,7 +34,7 @@ describe('About step', () => {
     at('/start/about');
     await userEvent.click(screen.getByRole('checkbox', { name: /65 or older/ }));
     await userEvent.click(screen.getByRole('checkbox', { name: /I am blind/ }));
-    expect(saved().primary).toEqual({ age65: true, blind: true, canBeClaimed: false });
+    expect(saved().primary).toMatchObject({ age65: true, blind: true, canBeClaimed: false });
   });
 
   it('warns about the surviving spouse rules', async () => {
@@ -68,11 +70,225 @@ describe('Household step', () => {
     expect(saved().spouseDiedThisYear).toBe(true);
   });
 
-  it('is honest that dependents are not in the math yet', async () => {
+  it('asks the marital and home questions that credits need', async () => {
+    seed({ filingStatus: 'HeadOfHousehold' });
+    at('/start/household');
+    await userEvent.selectOptions(screen.getByLabelText('Which describes you?'), 'Divorced');
+    await userEvent.click(within(screen.getByRole('group', { name: /more than half of the cost of keeping up your home/ })).getByRole('radio', { name: 'Yes' }));
+    expect(saved()).toMatchObject({ maritalStatus: 'Divorced', paidHomeUpkeep: true });
+    expect(screen.queryByLabelText('Did you live with your spouse in 2024?')).not.toBeInTheDocument();
+  });
+
+  it('asks married people filing separately whether they lived together', async () => {
+    seed({ filingStatus: 'MarriedFilingSeparately' });
+    at('/start/household');
+    await userEvent.selectOptions(screen.getByLabelText('Did you live with your spouse in 2024?'), 'LivedApartAllYear');
+    expect(buildRequest(saved()).filing_answers).toEqual({ spouse_lived_together_months: 'LivedApartAllYear' });
+  });
+
+  it('takes the spouse’s date of birth and hides the 65 box once it is known', async () => {
+    seed({ filingStatus: 'MarriedFilingJointly' });
+    at('/start/household');
+    expect(screen.getByRole('checkbox', { name: 'My spouse is 65 or older' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Your spouse’s date of birth'), { target: { value: '1987-09-30' } });
+    expect(screen.queryByRole('checkbox', { name: 'My spouse is 65 or older' })).not.toBeInTheDocument();
+    expect(buildRequest(saved()).filers).toEqual({ secondary: { date_of_birth: '1987-09-30' } });
+  });
+
+  it('rejects a spouse date of birth after the tax year', async () => {
+    seed({ filingStatus: 'MarriedFilingJointly', spouse: { ...emptyFlags(), dob: '2025-02-01' } });
+    at('/start/household');
+    await next('Dependents');
+    expect(screen.getByRole('alert')).toHaveTextContent(/cannot be after December 31, 2024/);
+  });
+
+  it('records the screening answers and warns about digital assets', async () => {
     seed({ filingStatus: 'Single' });
     at('/start/household');
-    await userEvent.click(within(screen.getByRole('group', { name: /child or another relative/ })).getByRole('radio', { name: 'Yes' }));
-    expect(screen.getByText(/Dependents aren’t in our math yet/)).toBeInTheDocument();
+    await userEvent.click(within(screen.getByRole('group', { name: /sell, trade or otherwise dispose/ })).getByRole('radio', { name: 'Yes' }));
+    expect(screen.getByText(/may not be able to finish your return/)).toBeInTheDocument();
+    expect(buildRequest(saved()).screening).toEqual({ disposed_digital_assets: true });
+  });
+});
+
+describe('About step details', () => {
+  it('collects date of birth, citizenship and the rest, and sends them', async () => {
+    seed({ filingStatus: 'Single' });
+    at('/start/about');
+    fireEvent.change(screen.getByLabelText('Your date of birth'), { target: { value: '1990-06-15' } });
+    await userEvent.selectOptions(screen.getByLabelText('Your citizenship'), 'resident');
+    await userEvent.click(screen.getByRole('checkbox', { name: /I have a Social Security number/ }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /full-time student/ }));
+    expect(screen.queryByRole('checkbox', { name: /I am 65 or older/ })).not.toBeInTheDocument();
+    expect(buildRequest(saved()).filers).toEqual({
+      primary: { date_of_birth: '1990-06-15', is_us_citizen_full_year: false, noncitizen_resident_full_year: true, is_student: true, tin: { tin_is_ssn: false } },
+    });
+  });
+});
+
+describe('Dependents step', () => {
+  const add = async (rel: string, dob: string, index = 0) => {
+    const card = screen.getAllByRole('region', { name: /^Person \d/ })[index]!;
+    await userEvent.selectOptions(within(card).getByLabelText('How are they related to you?'), rel);
+    fireEvent.change(within(card).getByLabelText('Date of birth'), { target: { value: dob } });
+    return card;
+  };
+
+  it('starts with a gate and shows no cards until you say yes', async () => {
+    seed({ filingStatus: 'Single' });
+    at('/start/dependents');
+    expect(screen.queryByRole('region', { name: /^Person/ })).not.toBeInTheDocument();
+    await userEvent.click(within(screen.getByRole('group', { name: /children or other people you support/ })).getByRole('radio', { name: 'Yes' }));
+    expect(screen.getByRole('region', { name: 'Person 1' })).toBeInTheDocument();
+    expect(saved().hasDependents).toBe(true);
+  });
+
+  it('adds, fills and removes people, and builds the contract shape', async () => {
+    seed({ filingStatus: 'HeadOfHousehold', paidHomeUpkeep: true });
+    at('/start/dependents');
+    await userEvent.click(within(screen.getByRole('group', { name: /children or other people you support/ })).getByRole('radio', { name: 'Yes' }));
+    await add('BiologicalChild', '2014-09-10');
+    await userEvent.click(screen.getByRole('button', { name: 'Add another person' }));
+    expect(screen.getByRole('region', { name: 'Person 2' })).toBeInTheDocument();
+    await add('Parent', '1950-01-01', 1);
+    const second = screen.getByRole('region', { name: 'Person 2' });
+    await userEvent.selectOptions(within(second).getByLabelText('How long did they live with you in 2024?'), 'SixToElevenMonths');
+    await userEvent.selectOptions(within(second).getByLabelText('How many months?'), '9');
+    await userEvent.click(within(second).getByRole('checkbox', { name: /I paid for more than half/ }));
+    expect(buildRequest(saved()).dependents).toEqual([
+      { relationship: 'BiologicalChild', date_of_birth: '2014-09-10', tin_type: 'Ssn', tp_paid_most_of_home_upkeep: true },
+      {
+        relationship: 'Parent', date_of_birth: '1950-01-01', tin_type: 'Ssn', residency_duration: 'SixToElevenMonths',
+        months_lived_with_tp_in_us: 9, qr_support_test: true, tp_paid_most_of_home_upkeep: true,
+      },
+    ]);
+    expect(contractProblems('CalculateRequest', buildRequest(saved()))).toEqual([]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Person 1' }));
+    expect(saved().dependents).toHaveLength(1);
+    expect(saved().dependents[0]?.relationship).toBe('Parent');
+  });
+
+  it('names are kept on screen and never sent', async () => {
+    seed({ filingStatus: 'Single' });
+    at('/start/dependents');
+    await userEvent.click(within(screen.getByRole('group', { name: /children or other people you support/ })).getByRole('radio', { name: 'Yes' }));
+    await userEvent.type(screen.getByLabelText('First name (optional)'), 'Maya');
+    await add('BiologicalChild', '2019-05-01');
+    expect(saved().dependents[0]?.name).toBe('Maya');
+    expect(JSON.stringify(buildRequest(saved()))).not.toContain('Maya');
+  });
+
+  it('needs a relationship and date of birth before moving on', async () => {
+    seed({ filingStatus: 'Single' });
+    at('/start/dependents');
+    await userEvent.click(within(screen.getByRole('group', { name: /children or other people you support/ })).getByRole('radio', { name: 'Yes' }));
+    await next('Income');
+    const summary = screen.getByRole('group', { name: 'There are 2 problems' });
+    expect(within(summary).getByRole('link', { name: /related to you/ })).toBeInTheDocument();
+    expect(within(summary).getByRole('link', { name: /date of birth/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('alert').length).toBeGreaterThan(0);
+  });
+
+  it('every control in a card has an accessible name', async () => {
+    seed({ filingStatus: 'Single' });
+    at('/start/dependents');
+    await userEvent.click(within(screen.getByRole('group', { name: /children or other people you support/ })).getByRole('radio', { name: 'Yes' }));
+    const card = screen.getByRole('region', { name: 'Person 1' });
+    for (const el of within(card).getAllByRole('combobox')) expect(el).toHaveAccessibleName();
+    for (const el of within(card).getAllByRole('checkbox')) expect(el).toHaveAccessibleName();
+    for (const el of within(card).getAllByRole('textbox')) expect(el).toHaveAccessibleName();
+    expect(within(card).getByRole('button', { name: 'Remove Person 1' })).toBeInTheDocument();
+  });
+
+  it('answering No hides the list but keeps nothing in the request', async () => {
+    seed({ filingStatus: 'Single', hasDependents: true, dependents: [{ ...newDependent(), relationship: 'BiologicalChild', dob: '2018-01-01' }] });
+    at('/start/dependents');
+    await userEvent.click(within(screen.getByRole('group', { name: /children or other people you support/ })).getByRole('radio', { name: 'No' }));
+    expect(screen.queryByRole('region', { name: /^Person/ })).not.toBeInTheDocument();
+    expect(buildRequest(saved()).dependents).toBeUndefined();
+  });
+
+  it('the family flow builds exactly api/examples/family-mfj-two-kids', async () => {
+    const family = JSON.parse(readFileSync(join(__dirname, '../../../api/examples/family-mfj-two-kids.request.json'), 'utf8'));
+    seed({
+      filingStatus: 'MarriedFilingJointly',
+      w2s: [{ ...newW2(), wages: 8000000, withholding: 300000 }],
+    });
+    at('/start/about');
+    fireEvent.change(screen.getByLabelText('Your date of birth'), { target: { value: '1986-04-12' } });
+    await next('Your household');
+    await userEvent.selectOptions(screen.getByLabelText('Which describes you?'), 'Married');
+    fireEvent.change(screen.getByLabelText('Your spouse’s date of birth'), { target: { value: '1987-09-30' } });
+    await next('Dependents');
+    await userEvent.click(within(screen.getByRole('group', { name: /children or other people you support/ })).getByRole('radio', { name: 'Yes' }));
+    await add('BiologicalChild', '2016-03-01');
+    await userEvent.click(screen.getByRole('button', { name: 'Add another person' }));
+    await add('BiologicalChild', '2019-05-01', 1);
+    expect(buildRequest(saved())).toEqual(family);
+    await next('Income');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Income');
+  });
+});
+
+describe('Credits step', () => {
+  const kid = { ...newDependent(), name: 'Maya', relationship: 'BiologicalChild' as const, dob: '2019-05-01' };
+
+  it('says what is not supported rather than hiding it', () => {
+    seed({ filingStatus: 'Single' });
+    at('/start/credits');
+    expect(screen.getByText(/Form 1095-A\) is not supported yet/)).toBeInTheDocument();
+  });
+
+  it('collects care costs per person, then asks who provided the care', async () => {
+    seed({ filingStatus: 'Single', hasDependents: true, dependents: [kid] });
+    at('/start/credits');
+    await userEvent.click(within(screen.getByRole('group', { name: /pay someone to care for a child under 13/ })).getByRole('radio', { name: 'Yes' }));
+    await userEvent.type(screen.getByLabelText('What did you pay to care for Maya?'), '2500');
+    await userEvent.click(screen.getByRole('radio', { name: /Someone else/ }));
+    expect(buildRequest(saved()).dependents?.[0]?.cdcc).toEqual({
+      has_dependent_care_expenses: true, expenses_paid_to_qualifying_provider: true, writable_qualifying_expense_amount: 250000,
+    });
+  });
+
+  it('will not continue with care costs but no answer about the provider', async () => {
+    seed({ filingStatus: 'Single', hasDependents: true, dependents: [{ ...kid, careExpenses: 100000 }], cdcc: { paid: true, totalQualified: null } });
+    at('/start/credits');
+    await next('Review');
+    expect(screen.getAllByRole('alert')[0]).toHaveTextContent(/person who provided the care/);
+  });
+
+  it('sends you to the dependents step when there is nobody to attach care costs to', async () => {
+    seed({ filingStatus: 'Single' });
+    at('/start/credits');
+    await userEvent.click(within(screen.getByRole('group', { name: /pay someone to care for a child under 13/ })).getByRole('radio', { name: 'Yes' }));
+    expect(screen.getByRole('link', { name: 'Dependents step' })).toHaveAttribute('href', '/start/dependents');
+  });
+
+  it('collects HSA answers for each spouse on a joint return', async () => {
+    seed({ filingStatus: 'MarriedFilingJointly' });
+    at('/start/credits');
+    await userEvent.click(within(screen.getByRole('group', { name: /HSA activity that is not on a W-2/ })).getByRole('radio', { name: 'Yes' }));
+    await userEvent.click(within(screen.getByRole('group', { name: /Did you put money into an HSA directly/ })).getByRole('radio', { name: 'Yes' }));
+    await userEvent.selectOptions(screen.getByLabelText('Your high-deductible health plan in 2024'), 'HdhpAllYear');
+    await userEvent.type(screen.getByLabelText('Total you put in directly'), '1500');
+    await userEvent.click(within(screen.getByRole('group', { name: /Did your spouse put money into an HSA/ })).getByRole('radio', { name: 'Yes' }));
+    const req = buildRequest(saved());
+    expect(req.adjustments?.hsa).toEqual({
+      some_filer_had_non_w2_hsa_activity: true,
+      writable_primary_filer_had_non_w2_hsa_activity: true,
+      writable_secondary_filer_had_non_w2_hsa_activity: true,
+    });
+    expect(req.filers?.primary?.hsa).toMatchObject({ hsa_hdhp_coverage_status: 'HdhpAllYear', writable_hsa_nonemployer_contributions_tax_year: 150000 });
+    expect(req.filers?.secondary?.hsa).toEqual({ writable_secondary_filer_has_made_contributions_to_hsa: true });
+    expect(contractProblems('CalculateRequest', req)).toEqual([]);
+  });
+
+  it('records the credit screening answers', async () => {
+    seed({ filingStatus: 'Single' });
+    at('/start/credits');
+    await userEvent.click(screen.getByRole('checkbox', { name: /disallowed my earned income credit/ }));
+    expect(buildRequest(saved()).credits).toEqual({ eitc_had_improper_claims: true });
   });
 });
 
@@ -213,7 +429,7 @@ describe('Adjustments step', () => {
   it('requires the amount once you say yes', async () => {
     seed({ filingStatus: 'Single', estimated: { paid: true, amount: null, differentName: false } });
     at('/start/adjustments');
-    await next('Review');
+    await next('Credits and care costs');
     expect(screen.getByRole('alert')).toHaveTextContent(/How much did you pay/);
   });
 });
@@ -232,6 +448,20 @@ describe('Review step', () => {
     expect(screen.getByRole('link', { name: 'Edit Income' })).toHaveAttribute('href', '/start/income');
     expect(screen.getByRole('link', { name: 'Edit About you' })).toHaveAttribute('href', '/start/about');
     expect(screen.queryByText(/need your attention/)).not.toBeInTheDocument();
+  });
+
+  it('lists dependents and credits answers', () => {
+    seed({
+      filingStatus: 'Single',
+      hasDependents: true,
+      dependents: [{ ...newDependent(), name: 'Maya', relationship: 'BiologicalChild', dob: '2019-05-01', careExpenses: 250000, careProviderQualifies: true }],
+      cdcc: { paid: true, totalQualified: null },
+    });
+    at('/start/review');
+    expect(screen.getByRole('region', { name: 'Dependents' })).toHaveTextContent('MayaSon or daughter, born 2019-05-01');
+    expect(screen.getByRole('link', { name: 'Edit Dependents' })).toHaveAttribute('href', '/start/dependents');
+    expect(screen.getByRole('region', { name: 'Credits and care costs' })).toHaveTextContent('$2,500');
+    expect(screen.getByText('Not supported yet')).toBeInTheDocument();
   });
 
   it('flags missing answers with a link to fix them', () => {

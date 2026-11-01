@@ -1,5 +1,6 @@
 import type {
   CalculateRequest,
+  Dependent,
   FilerFlags,
   Form1099G,
   Form1099Int,
@@ -8,7 +9,7 @@ import type {
   FormW2,
   W2Box12,
 } from '../api';
-import { isJoint, type Cents, type Draft, type FlagsDraft, type Role } from './types';
+import { isJoint, type Cents, type DependentDraft, type Draft, type FlagsDraft, type Role } from './types';
 
 /** Thrown by `buildRequest` when the draft has no filing status yet. Use `canBuildRequest` to check first. */
 export class DraftIncompleteError extends Error {
@@ -28,12 +29,77 @@ function putTrue<T extends object, K extends string>(out: T, key: K, value: bool
   if (value) (out as Record<string, unknown>)[key] = true;
 }
 
-function flagsOut(f: FlagsDraft): FilerFlags | undefined {
-  const o: FilerFlags = {};
+type Obj = Record<string, unknown>;
+const nonEmpty = (o: Obj): Obj | undefined => (Object.keys(o).length ? o : undefined);
+
+function hsaFilerOut(f: FlagsDraft, who: 'primary' | 'secondary'): Obj | undefined {
+  const h = f.hsa;
+  if (!h.contributed) return undefined;
+  const o: Obj = { [`writable_${who}_filer_has_made_contributions_to_hsa`]: true };
+  if (h.coverage) o.hsa_hdhp_coverage_status = h.coverage;
+  if (h.type) o.type_of_hdhp = h.type;
+  if (h.medicare) o.enrolled_in_medicare = h.medicare;
+  put(o, 'writable_hsa_nonemployer_contributions_tax_year', h.directContributions);
+  return o;
+}
+
+/** One filer's facts. `date_of_birth` replaces `age65_or_older` in the contract, so only one of them is sent. */
+function filerOut(f: FlagsDraft, who: 'primary' | 'secondary', hsa: boolean): FilerFlags | undefined {
+  const o: Obj = {};
   putTrue(o, 'is_blind', f.blind);
-  putTrue(o, 'age65_or_older', f.age65);
+  if (f.dob) o.date_of_birth = f.dob;
+  else putTrue(o, 'age65_or_older', f.age65);
   putTrue(o, 'can_be_claimed_as_dependent', f.canBeClaimed);
-  return Object.keys(o).length ? o : undefined;
+  if (f.citizenship !== 'citizen') o.is_us_citizen_full_year = false;
+  putTrue(o, 'noncitizen_resident_full_year', f.citizenship === 'resident');
+  putTrue(o, 'is_student', f.student);
+  if (!f.hasSsn) o.tin = { tin_is_ssn: false };
+  if (f.retiredOnDisability) o.disability = { is_retired_on_perm_or_total_disability: true };
+  const h = hsa ? hsaFilerOut(f, who) : undefined;
+  if (h) o.hsa = h;
+  return nonEmpty(o) as FilerFlags | undefined;
+}
+
+function dependentOut(p: DependentDraft, d: Draft, cdcc: boolean): Dependent {
+  const o: Obj = { relationship: p.relationship, date_of_birth: p.dob, tin_type: p.tinType };
+  putTrue(o, 'full_time_student', p.student);
+  putTrue(o, 'permanent_total_disability', p.disabled);
+  if (p.residency !== 'AllYear') {
+    o.residency_duration = p.residency;
+    if (p.residency === 'SixToElevenMonths' && p.months !== null) o.months_lived_with_tp_in_us = p.months;
+  }
+  putTrue(o, 'own_support', p.ownSupport);
+  putTrue(o, 'married', p.married);
+  putTrue(o, 'joint_return', p.married && p.jointReturn);
+  putTrue(o, 'could_be_qualifying_child_of_another', p.claimableByOther);
+  put(o, 'gross_income', p.grossIncome);
+  putTrue(o, 'qr_support_test', p.youSupport);
+  if (p.citizenship !== 'citizen') {
+    o.is_us_citizen_full_year = false;
+    putTrue(o, 'us_resident', p.citizenship === 'resident');
+    putTrue(o, 'us_national', p.citizenship === 'national');
+    putTrue(o, 'canada_mexico_resident', p.citizenship === 'canadaMexico');
+  }
+  if (!p.claim) o.tp_claims = false;
+  putTrue(o, 'tp_paid_most_of_home_upkeep', d.paidHomeUpkeep);
+  if (cdcc) {
+    const c: Obj = {};
+    putTrue(c, 'unable_to_care_for_self', p.unableToSelfCare);
+    if (p.careExpenses !== null && p.careExpenses > 0) {
+      c.has_dependent_care_expenses = true;
+      c.expenses_paid_to_qualifying_provider = p.careProviderQualifies === true;
+      c.writable_qualifying_expense_amount = p.careExpenses;
+    }
+    if (Object.keys(c).length) o.cdcc = c;
+  }
+  return o as unknown as Dependent;
+}
+
+function hsaWho(d: Draft): Obj {
+  const o: Obj = {};
+  putTrue(o, 'writable_primary_filer_had_non_w2_hsa_activity', d.primary.hsa.contributed);
+  putTrue(o, 'writable_secondary_filer_had_non_w2_hsa_activity', isJoint(d) && d.spouse.hsa.contributed);
+  return o;
 }
 
 /**
@@ -53,9 +119,9 @@ export function buildRequest(d: Draft): CalculateRequest {
   const req: Record<string, unknown> = { api_version: 1, tax_year: 2024, filing_status: d.filingStatus };
 
   const filers: { primary?: FilerFlags; secondary?: FilerFlags } = {};
-  const primary = flagsOut(d.primary);
+  const primary = filerOut(d.primary, 'primary', d.hsa.has);
   if (primary) filers.primary = primary;
-  const secondary = joint ? flagsOut(d.spouse) : undefined;
+  const secondary = joint ? filerOut(d.spouse, 'secondary', d.hsa.has) : undefined;
   if (secondary) filers.secondary = secondary;
   if (Object.keys(filers).length) req.filers = filers;
 
@@ -136,6 +202,32 @@ export function buildRequest(d: Draft): CalculateRequest {
     req.social_security = ss;
   }
 
+  const fa: Obj = {};
+  if (d.maritalStatus) fa.marital_status = d.maritalStatus;
+  if (d.yearOfSpouseDeath && d.maritalStatus === 'Widowed') fa.year_of_spouse_death = d.yearOfSpouseDeath;
+  if (d.spouseLivedTogether && d.filingStatus === 'MarriedFilingSeparately') fa.spouse_lived_together_months = d.spouseLivedTogether;
+  if (Object.keys(fa).length) req.filing_answers = fa;
+
+  const people = d.hasDependents ? d.dependents : [];
+  if (people.length) req.dependents = people.map((p) => dependentOut(p, d, d.cdcc.paid));
+
+  const credits: Obj = {};
+  putTrue(credits, 'eitc_had_improper_claims', d.credits.eitcImproperClaims);
+  putTrue(credits, 'received_improper_claims', d.credits.ctcImproperClaims);
+  putTrue(credits, 'eitc_qc_of_another', d.credits.eitcQcOfAnother);
+  if (Object.keys(credits).length) req.credits = credits;
+
+  if (d.cdcc.paid && d.cdcc.totalQualified !== null) {
+    req.cdcc = { writable_total_qualified_dependent_care_expenses: d.cdcc.totalQualified };
+  }
+
+  const screening: Obj = {};
+  putTrue(screening, 'received_digital_assets', d.screening.digitalReceived);
+  putTrue(screening, 'disposed_digital_assets', d.screening.digitalDisposed);
+  putTrue(screening, 'made_ira_contributions', d.screening.iraContributions);
+  putTrue(screening, 'is_foreign_trusts_grantor', d.screening.foreignTrustGrantor);
+  if (Object.keys(screening).length) req.screening = screening;
+
   const adjustments: Record<string, unknown> = {};
   const ed = d.educator;
   const educatorWho = joint ? (ed.primary && ed.spouse ? 'BothDid' : ed.primary ? 'TpDid' : ed.spouse ? 'SpouseDid' : 'Neither') : ed.primary ? 'TpDid' : 'Neither';
@@ -150,6 +242,7 @@ export function buildRequest(d: Draft): CalculateRequest {
     put(o, 'interest_amount', d.studentLoan.interest);
     adjustments.student_loan_interest = o;
   }
+  if (d.hsa.has) adjustments.hsa = { some_filer_had_non_w2_hsa_activity: true, ...hsaWho(d) };
   if (Object.keys(adjustments).length) req.adjustments = adjustments;
 
   if (d.estimated.paid) {
