@@ -8,6 +8,7 @@ React + TypeScript + Vite frontend. Talks to the calculator through the typed cl
 make web-dev     # dev server on the api/fixtures mock (VITE_API_MOCK=1)
 make web-test    # vitest + testing-library
 make web-build   # lint, typecheck, production build
+make e2e         # Playwright end-to-end tests on the REAL stack (see below)
 ```
 
 Without `VITE_API_MOCK=1` the client calls `VITE_API_URL` (default `http://localhost:8080`).
@@ -20,7 +21,7 @@ Without `VITE_API_MOCK=1` the client calls `VITE_API_URL` (default `http://local
 | `/start/:step` | Wizard: `about`, `household`, `dependents`, `income`, `adjustments`, `credits`, `review` | `src/wizard/*Step.tsx` (#76 to #78), chosen by `pages/StepPage.tsx` |
 | `/results` | Result summary (refund or amount owed), Form 1040 line table, "How this was calculated" accordion, `warnings` alert, what-if slider, error/offline states (`src/results/`). Request comes from `useCurrentRequest` (the wizard draft) | #79 |
 | `/cant-do-yet` | Knockout page: alert plus a table of reasons by category (`src/knockout/`: per-code copy in `reasonCopy.ts`, a test fails if a code in `api/knockout-reasons.json` has none). Also shown inline on `/results` | #80 |
-| `/trust` | What is proven (theorem names), tested, trusted, not covered. Copy lives in `src/trust/claims.ts`; keep it within docs/spec-surface.md and docs/audit.md | #82 |
+| `/trust` | What is proved (40 Comparator-checked theorems), tested, trusted, not covered, bugs found in Direct File. All data lives in `src/trust/facts.ts`; `facts.test.ts` fails if it drifts from `lean/comparator*.json`, `docs/direct-file-bugs.md` or `STATUS.md` | #82 |
 
 Add a step body by routing `start/:step` children (see `src/App.tsx`); `WizardLayout` supplies progress and Back/Next from `src/layout/steps.ts`.
 
@@ -81,3 +82,11 @@ The wizard only collects what `api/schema.json` accepts. Dependents, HSA, EITC, 
 Each Form 1040 line on `/results` has a "How was this calculated?" button (also inside the "How this was calculated" accordion) that opens a sheet: the law (citations), the Catala rule (Shiki, vendored Catala grammar, definition lines marked), what is proved (Lean theorems from `proofs.theorems`, or "No theorem covers this line yet"), how it is tested, and the Direct File fact. Data: `api/provenance.json` (docs/provenance.md). Catala is shown as a readable rule validated by tests, never as proved.
 
 `npm run dev` and `npm run build` first run `scripts/sync-provenance.mjs`: it fails if `api/provenance.json` is stale (same check as `make provenance-check`; run `make provenance` and commit), then copies it and the referenced sources to `public/provenance.json` and `public/sources/` (gitignored). Running `npx vite` directly skips this: run `node scripts/sync-provenance.mjs` once. Shiki, its grammars and themes are dynamic imports (separate chunks).
+
+## End-to-end tests (`make e2e`)
+
+Playwright drives the browser against the real Lean server (`lean/.lake/build/bin/ustax-server`) and the Vite dev server, no mocks. Playwright starts both (`webServer` in `playwright.config.ts`) on ports 8190 and 5190 and stops both when the run ends, so nothing is left running and the usual 8080/5173 stay free. Specs: `e2e/scenarios.spec.ts` (single filer, MFJ with two children via the wizard, head of household with the earned income credit, a knockout, the provenance drawer, the date picker, keyboard-only) and `e2e/mobile.spec.ts` (Pixel 7 smoke). Expected amounts come from `api/examples/*.response.json`.
+
+- Browser: `make e2e` runs `npx playwright install chromium` (about 150 MB, cached in `~/Library/Caches/ms-playwright`). To use the installed Google Chrome instead: `E2E_CHANNEL=chrome make e2e`.
+- `SKIP_LEAN_BUILD=1` skips `lake build ustax-server`; `USTAX_SERVER_BIN=<path>` uses another binary; `E2E_API_PORT` / `E2E_WEB_PORT` change the ports; `ARGS="-g keyboard"` filters tests.
+- Works with `USTAX_NO_DEVBOX=1`. The demo script is `scripts/demo.md`.

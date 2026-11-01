@@ -1,2 +1,4 @@
 public/provenance.json
 public/sources/
+test-results/
+playwright-report/

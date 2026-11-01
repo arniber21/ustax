@@ -55,11 +55,13 @@ describe('routing', () => {
   it('trust page lists the verification story', () => {
     at('/trust');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/What is verified/);
-    for (const h of ['Proven', 'Tested, not proven', 'Trusted base', 'Not covered']) {
+    for (const h of ['Proved in Lean', 'Tested, not proved', 'Trusted base', 'Not covered', 'Bugs we found in the IRS reference implementation']) {
       expect(screen.getByRole('heading', { level: 2, name: h })).toBeInTheDocument();
     }
     expect(screen.getByText('refund_balanceDue_consistent')).toBeInTheDocument();
-    expect(screen.getByText(/linked by differential testing, not by proof/)).toBeInTheDocument();
+    expect(screen.getByText('eitc_within_bounds')).toBeInTheDocument();
+    expect(screen.getByText('DF-BUG-8')).toBeInTheDocument();
+    expect(screen.getByText(/tested, not proved/)).toBeInTheDocument();
   });
 
   it('unknown route shows a 404 page', () => {
