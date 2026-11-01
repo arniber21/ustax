@@ -551,157 +551,199 @@
     },
     {
       "code": "FlowKnockoutFilerAgeYoungerThan16",
-      "df_fact": "/flowKnockoutFilerAgeYoungerThan16",
       "category": "filers",
-      "pending": true,
-      "message": "Flow Knockout Filer Age Younger Than16"
+      "df_fact": "/flowKnockoutFilerAgeYoungerThan16",
+      "message": "Flow Knockout Filer Age Younger Than16",
+      "pending": false
     },
     {
       "code": "SpouseItemizesKnockout",
-      "df_fact": "/spouseItemizesKnockout",
       "category": "filers",
-      "pending": true,
-      "message": "Spouse Itemizes Knockout"
+      "df_fact": "/spouseItemizesKnockout",
+      "message": "Spouse Itemizes Knockout",
+      "pending": false
     },
     {
       "code": "PrimaryFilerResidencyKnockout",
-      "df_fact": "/primaryFilerResidencyKnockout",
       "category": "filers",
-      "pending": true,
-      "message": "Primary Filer Residency Knockout"
+      "df_fact": "/primaryFilerResidencyKnockout",
+      "message": "Primary Filer Residency Knockout",
+      "pending": false
     },
     {
       "code": "FlowKnockoutHasApplicableRegisteredDomesticPartnership",
-      "df_fact": "/flowKnockoutHasApplicableRegisteredDomesticPartnership",
       "category": "filers",
-      "pending": true,
-      "message": "Flow Knockout Has Applicable Registered Domestic Partnership"
+      "df_fact": "/flowKnockoutHasApplicableRegisteredDomesticPartnership",
+      "message": "Flow Knockout Has Applicable Registered Domestic Partnership",
+      "pending": false
     },
     {
       "code": "KnockoutSubjectToCommunityPropertyLaws",
-      "df_fact": "/knockoutSubjectToCommunityPropertyLaws",
       "category": "filers",
-      "pending": true,
-      "message": "Knockout Subject To Community Property Laws"
+      "df_fact": "/knockoutSubjectToCommunityPropertyLaws",
+      "message": "Knockout Subject To Community Property Laws",
+      "pending": false
     },
     {
       "code": "KnockoutHohQpHasNoTin",
+      "category": "household",
       "df_fact": "/knockoutHohQpHasNoTin",
-      "category": "household",
-      "pending": true,
-      "message": "Knockout Hoh Qp Has No Tin"
-    },
-    {
-      "code": "KnockoutPersonBornAndDiedInTaxYearWithoutTin",
-      "df_fact": "/knockoutPersonBornAndDiedInTaxYearWithoutTin",
-      "category": "household",
-      "pending": true,
-      "message": "Knockout Person Born And Died In Tax Year Without Tin"
+      "message": "Knockout Hoh Qp Has No Tin",
+      "pending": false
     },
     {
       "code": "KnockedOutByNonCustodialParentBenefitSplit",
-      "df_fact": "/knockedOutByNonCustodialParentBenefitSplit",
       "category": "household",
-      "pending": true,
-      "message": "Knocked Out By Non Custodial Parent Benefit Split"
+      "df_fact": "/knockedOutByNonCustodialParentBenefitSplit",
+      "message": "Knocked Out By Non Custodial Parent Benefit Split",
+      "pending": false
     },
     {
       "code": "KnockedOutByContradictory8832",
-      "df_fact": "/knockedOutByContradictory8832",
       "category": "household",
-      "pending": true,
-      "message": "Knocked Out By Contradictory8832"
-    },
-    {
-      "code": "DependentTpRequiresAllocations",
-      "df_fact": "/dependentTpRequiresAllocations",
-      "category": "health_coverage",
-      "pending": true,
-      "message": "Dependent Tp Requires Allocations"
-    },
-    {
-      "code": "HasPtcQualifyingPlanAndQsehra",
-      "df_fact": "/hasPtcQualifyingPlanAndQsehra",
-      "category": "health_coverage",
-      "pending": true,
-      "message": "Has Ptc Qualifying Plan And Qsehra"
-    },
-    {
-      "code": "NeedsAllocations",
-      "df_fact": "/needsAllocations",
-      "category": "health_coverage",
-      "pending": true,
-      "message": "Needs Allocations"
-    },
-    {
-      "code": "HasEmployerSponsoredPlan",
-      "df_fact": "/hasEmployerSponsoredPlan",
-      "category": "health_coverage",
-      "pending": true,
-      "message": "Has Employer Sponsored Plan"
-    },
-    {
-      "code": "DependentsRequiredToFile",
-      "df_fact": "/dependentsRequiredToFile",
-      "category": "health_coverage",
-      "pending": true,
-      "message": "Dependents Required To File"
-    },
-    {
-      "code": "SelfReportedHasMultiple1095As",
-      "df_fact": "/selfReportedHasMultiple1095As",
-      "category": "health_coverage",
-      "pending": true,
-      "message": "Self Reported Has Multiple1095 As"
-    },
-    {
-      "code": "HasImmigrationStatusNotEligibleForMarketplace",
-      "df_fact": "/hasImmigrationStatusNotEligibleForMarketplace",
-      "category": "health_coverage",
-      "pending": true,
-      "message": "Has Immigration Status Not Eligible For Marketplace"
-    },
-    {
-      "code": "WantsToUseAltCalculations",
-      "df_fact": "/wantsToUseAltCalculations",
-      "category": "health_coverage",
-      "pending": true,
-      "message": "Wants To Use Alt Calculations"
+      "df_fact": "/knockedOutByContradictory8832",
+      "message": "Knocked Out By Contradictory8832",
+      "pending": false
     },
     {
       "code": "SaversCreditKnockouts",
+      "category": "credits",
       "df_fact": "/saversCreditKnockouts",
-      "category": "credits",
-      "pending": true,
-      "message": "Savers Credit Knockouts"
-    },
-    {
-      "code": "KnockoutStudentOrDisabled",
-      "df_fact": "/knockoutStudentOrDisabled",
-      "category": "credits",
-      "pending": true,
-      "message": "Knockout Student Or Disabled"
+      "message": "Savers Credit Knockouts",
+      "pending": false
     },
     {
       "code": "FlowKnockoutBenefitsDistribution",
-      "df_fact": "/flowKnockoutBenefitsDistribution",
       "category": "credits",
-      "pending": true,
-      "message": "Flow Knockout Benefits Distribution"
+      "df_fact": "/flowKnockoutBenefitsDistribution",
+      "message": "Flow Knockout Benefits Distribution",
+      "pending": false
     },
     {
       "code": "KnockoutCdccWorksheetA",
-      "df_fact": "/knockoutCdccWorksheetA",
       "category": "credits",
-      "pending": true,
-      "message": "Knockout Cdcc Worksheet A"
+      "df_fact": "/knockoutCdccWorksheetA",
+      "message": "Knockout Cdcc Worksheet A",
+      "pending": false
     },
     {
       "code": "FlowKnockoutHouseholdEmployee",
-      "df_fact": "/flowKnockoutHouseholdEmployee",
       "category": "credits",
-      "pending": true,
-      "message": "Flow Knockout Household Employee"
+      "df_fact": "/flowKnockoutHouseholdEmployee",
+      "message": "Flow Knockout Household Employee",
+      "pending": false
+    },
+    {
+      "code": "DependentTpRequiresAllocations",
+      "category": "health_coverage",
+      "df_fact": "/dependentTpRequiresAllocations",
+      "message": "Dependent Tp Requires Allocations",
+      "pending": false
+    },
+    {
+      "code": "HasPtcQualifyingPlanAndQsehra",
+      "category": "health_coverage",
+      "df_fact": "/hasPtcQualifyingPlanAndQsehra",
+      "message": "Has Ptc Qualifying Plan And Qsehra",
+      "pending": false
+    },
+    {
+      "code": "NeedsAllocations",
+      "category": "health_coverage",
+      "df_fact": "/needsAllocations",
+      "message": "Needs Allocations",
+      "pending": false
+    },
+    {
+      "code": "HasEmployerSponsoredPlan",
+      "category": "health_coverage",
+      "df_fact": "/hasEmployerSponsoredPlan",
+      "message": "Has Employer Sponsored Plan",
+      "pending": false
+    },
+    {
+      "code": "DependentsRequiredToFile",
+      "category": "health_coverage",
+      "df_fact": "/dependentsRequiredToFile",
+      "message": "Dependents Required To File",
+      "pending": false
+    },
+    {
+      "code": "SelfReportedHasMultiple1095As",
+      "category": "health_coverage",
+      "df_fact": "/selfReportedHasMultiple1095As",
+      "message": "Self Reported Has Multiple1095 As",
+      "pending": false
+    },
+    {
+      "code": "HasImmigrationStatusNotEligibleForMarketplace",
+      "category": "health_coverage",
+      "df_fact": "/hasImmigrationStatusNotEligibleForMarketplace",
+      "message": "Has Immigration Status Not Eligible For Marketplace",
+      "pending": false
+    },
+    {
+      "code": "WantsToUseAltCalculations",
+      "category": "health_coverage",
+      "df_fact": "/wantsToUseAltCalculations",
+      "message": "Wants To Use Alt Calculations",
+      "pending": false
+    },
+    {
+      "code": "ExtraQualifyingChildTieBreaker",
+      "category": "household",
+      "df_fact": null,
+      "message": "Extra Qualifying Child Tie Breaker",
+      "pending": false
+    },
+    {
+      "code": "ExtraClaimedSpouseCombatPayWithoutMfj",
+      "category": "credits",
+      "df_fact": null,
+      "message": "Extra Claimed Spouse Combat Pay Without Mfj",
+      "pending": false
+    },
+    {
+      "code": "ExtraFilingStatusNotEligible",
+      "category": "household",
+      "df_fact": null,
+      "message": "Extra Filing Status Not Eligible",
+      "pending": false
+    },
+    {
+      "code": "ExtraCdccSoleProprietorshipBenefits",
+      "category": "credits",
+      "df_fact": null,
+      "message": "Extra Cdcc Sole Proprietorship Benefits",
+      "pending": false
+    },
+    {
+      "code": "ExtraCdccBothSpousesDeemedIncome",
+      "category": "credits",
+      "df_fact": null,
+      "message": "Extra Cdcc Both Spouses Deemed Income",
+      "pending": false
+    },
+    {
+      "code": "ExtraTpNeedsToAdd1095A",
+      "category": "health_coverage",
+      "df_fact": null,
+      "message": "Extra Tp Needs To Add1095 A",
+      "pending": false
+    },
+    {
+      "code": "ExtraTpNeedsToDelete1095A",
+      "category": "health_coverage",
+      "df_fact": null,
+      "message": "Extra Tp Needs To Delete1095 A",
+      "pending": false
+    },
+    {
+      "code": "KnockoutPersonBornAndDiedInTaxYearWithoutTin",
+      "category": "household",
+      "df_fact": "/knockoutPersonBornAndDiedInTaxYearWithoutTin",
+      "message": "Knockout Person Born And Died In Tax Year Without Tin",
+      "pending": false
     }
   ]
 }
