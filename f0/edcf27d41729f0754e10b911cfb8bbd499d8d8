@@ -1,0 +1,25 @@
+web/src/components/brand/DotGlobe.tsx
+  s_3031b504518be3::t_46a7193422842e 17,19
+web/src/components/brand/DotGlobe.test.tsx
+  s_3031b504518be3::t_486b33f35fd517 11,14-15,18-24
+web/src/components/brand/globeGeometry.ts
+  s_3031b504518be3::t_46a7193422842e 6,37,90,119,121
+  s_3031b504518be3::t_a9a729a1185ed2 40-41
+  s_3031b504518be3::t_486b33f35fd517 5,7-8,38,45-46,51,54-57,59,61,63-68,91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f0edcf27d41729f0754e10b911cfb8bbd499d8d8",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "unknown"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
