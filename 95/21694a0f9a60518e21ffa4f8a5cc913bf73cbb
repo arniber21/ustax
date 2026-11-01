@@ -1,0 +1,27 @@
+web/src/draft/buildRequest.ts
+  s_3031b504518be3::t_6a958ca71ebe98 104
+web/src/wizard/IncomeStep.tsx
+  s_3031b504518be3::t_6a958ca71ebe98 301
+web/src/draft/validate.ts
+  s_3031b504518be3::t_6a958ca71ebe98 54
+web/src/draft/fromRequest.ts
+  s_3031b504518be3::t_6a958ca71ebe98 59
+web/src/draft/types.ts
+  s_3031b504518be3::t_6a958ca71ebe98 57,142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9521694a0f9a60518e21ffa4f8a5cc913bf73cbb",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
