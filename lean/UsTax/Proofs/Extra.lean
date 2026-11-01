@@ -4,6 +4,7 @@ import UsTax.Proofs.FormW2
 import UsTax.Proofs.SocialSecurity
 import UsTax.Proofs.Adjustments
 import UsTax.Proofs.Form1040Lines
+import UsTax.Proofs.Calculator
 import UsTax.Audit
 
 /-!
@@ -191,6 +192,55 @@ theorem totalTax_mono_addW2 (i : Form1040.Form1040In) (w : FormW2s.FormW2) (hw :
     (Form1040.form1040 i).totalTax ≤ (Form1040.form1040 { i with w2s := w :: i.w2s }).totalTax := by
   apply UsTax.Proofs.totalTax_mono_addW2 <;> assumption
 
+/-! ## The whole return and the API answer (issue #48) -/
+
+/-- Refund and amount owed on the whole return are exclusive and consistent (#65). -/
+theorem calculator_refund_balanceDue_consistent (i : Calculator.CalculatorIn) :
+    RefundOrBalanceDue (Calculator.calculator i).totalTax (Calculator.calculator i).totalPayments
+      (Calculator.calculator i).overpayment (Calculator.calculator i).balanceDue := by
+  exact UsTax.Proofs.calculator_refund_balanceDue_consistent _
+
+/-- On the whole return, the nonrefundable credits used (lines 19 + 20 = 21) never exceed line 18
+(#66). -/
+theorem calculator_credits_within_liability (i : Calculator.CalculatorIn) :
+    CreditsWithinLiability (Calculator.calculator i).totalTentativeTax
+      (Calculator.calculator i).nonRefundableCredits
+      (Calculator.calculator i).taxLessNonRefundableCredits := by
+  exact UsTax.Proofs.calculator_credits_within_liability _
+
+/-- On the whole return, total tax (line 24) is never negative. -/
+theorem calculator_totalTax_nonneg (i : Calculator.CalculatorIn) :
+    0 ≤ (Calculator.calculator i).totalTax := by
+  exact UsTax.Proofs.calculator_totalTax_nonneg _
+
+/-- The CDCC, Schedule R and Saver's credits together are within line 18 of the tax pass (#66). -/
+theorem calculator_credits_le_tax (i : Calculator.CalculatorIn) :
+    CreditsWithinTax (Calculator.calculator i).cdccTotalCredit (Calculator.calculator i).totalEdc
+      (Calculator.calculator i).qualifiedSaverCreditAmount
+      (Calculator.calculator i).fTax.totalTentativeTax := by
+  exact UsTax.Proofs.calculator_credits_le_tax _
+
+/-- A return is unsupported exactly when at least one knockout reason fired. -/
+theorem calculator_unsupported_iff (i : Calculator.CalculatorIn) :
+    (Calculator.calculator i).unsupported = true ↔ (Calculator.calculator i).firedKnockouts ≠ [] := by
+  exact UsTax.Proofs.calculator_unsupported_iff _
+
+/-- The API answer: `supported = false` exactly when `reasons` is non-empty. -/
+theorem apiCalculator_supported_iff (r : Api.Request) :
+    KnockoutSound (ApiCalculator.apiCalculator r).supported (ApiCalculator.apiCalculator r).reasons := by
+  exact UsTax.Proofs.apiCalculator_supported_iff _
+
+/-- The API answer: `outcome = refund` exactly when line 34 is positive. -/
+theorem apiCalculator_outcome_refund_iff (r : Api.Request) :
+    RefundOutcome (ApiCalculator.apiCalculator r).outcome
+      (ApiCalculator.apiCalculator r).lines.overpayment := by
+  exact UsTax.Proofs.apiCalculator_outcome_refund_iff _
+
+/-- The endpoint never answers 500 on a valid request. -/
+theorem calculateRequest_ne_fault (r : Api.Request) (h : r.Valid) :
+    Api.calculateRequest r h ≠ .fault := by
+  exact UsTax.Proofs.calculateRequest_ne_fault r h
+
 end UsTax.Extra
 
 #audit_axioms UsTax.Extra.standardDeduction_eq_spec
@@ -216,3 +266,11 @@ end UsTax.Extra
 #audit_axioms UsTax.Extra.totalPayments_eq
 #audit_axioms UsTax.Extra.totalPayments_eq_full
 #audit_axioms UsTax.Extra.totalTax_mono_addW2
+#audit_axioms UsTax.Extra.calculator_refund_balanceDue_consistent
+#audit_axioms UsTax.Extra.calculator_credits_within_liability
+#audit_axioms UsTax.Extra.calculator_totalTax_nonneg
+#audit_axioms UsTax.Extra.calculator_credits_le_tax
+#audit_axioms UsTax.Extra.calculator_unsupported_iff
+#audit_axioms UsTax.Extra.apiCalculator_supported_iff
+#audit_axioms UsTax.Extra.apiCalculator_outcome_refund_iff
+#audit_axioms UsTax.Extra.calculateRequest_ne_fault

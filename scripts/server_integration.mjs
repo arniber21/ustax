@@ -3,12 +3,11 @@
 //   node scripts/server_integration.mjs [base-url]      (default http://127.0.0.1:8080, or $BASE_URL)
 //
 // Runs every entry of api/fixtures/manifest.json against a live server and compares status and body
-// with the fixture (JSON equality, key order ignored), then CORS and extra error cases.
-// An entry is reported SKIP, with the reason, when it cannot be reproduced over HTTP (500) or when
-// the slice cannot answer it yet (NEEDS_CALCULATOR below: the Lean Calculator, issue #48, has not
-// landed); a skip is never counted as a pass. A skipped fixture is still sent to the server, which must
-// answer with a well-formed 200 or 422 of the fixture's shape, and the skip is refused (FAIL) once the
-// server's answer equals the fixture, so the list cannot go stale. The summary lists every skip.
+// with the fixture (JSON equality, key order ignored), then CORS and extra error cases. The fixtures were
+// generated from the Catala ApiCalculator (`make api-examples`); since the Lean Calculator (issue #48) the
+// server computes the whole return, so every one of them (credits, dependents, household knockouts) is
+// expected to match exactly. An entry is reported SKIP, with the reason, only when it cannot be
+// reproduced over HTTP (500); a skip is never counted as a pass. The summary lists every skip.
 // Exit 1 on any failure.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -25,18 +24,6 @@ const skippedNames = [];
 const ok = (name) => { pass++; console.log(`PASS ${name}`); };
 const bad = (name, why) => { fail++; console.log(`FAIL ${name}: ${why}`); };
 const skipped = (name, why) => { skip++; skippedNames.push(name); console.log(`SKIP ${name}: ${why}`); };
-
-// Fixtures whose expected answer needs the whole-return Calculator (EITC, child tax credit, household
-// knockouts), which the Lean slice does not have yet. Key: manifest name. Value: what is missing.
-const NEEDS_CALCULATOR = {
-  'hoh-w2-60k': 'child tax credit for dependents[] ($2,000) not computed',
-  'qss-w2-80k': 'child tax credit for dependents[] ($2,000) not computed',
-  'family-mfj-two-kids': 'child tax credit for two dependents ($4,000) not computed',
-  'eitc-hoh-one-child': 'earned income credit and additional child tax credit not computed',
-  'refund-below-standard-deduction': 'earned income credit ($632, line 27) not computed',
-  'knocked-out-hoh-no-qualifying-person': '422 ExtraFilingStatusNotEligible needs the household knockouts',
-};
-const SKIP_PREFIX = 'skipped: needs Lean Calculator (#48)';
 
 // Key-order-insensitive canonical form.
 const canon = (v) => Array.isArray(v) ? v.map(canon)
@@ -80,21 +67,6 @@ for (const e of read('fixtures/manifest.json').fixtures) {
       expectBody(name, r, 413, want);
     } else if (e.method === 'GET') {
       expectBody(name, await call('GET', e.path), e.status, want);
-    } else if (NEEDS_CALCULATOR[e.name]) {
-      const r = await call('POST', e.path, { body: readText(e.request), type: e.content_type ?? 'application/json' });
-      if (r.status === e.status && same(r.json, want)) { bad(name, 'now matches the fixture: remove it from NEEDS_CALCULATOR'); continue; }
-      // the answer must still be a well-formed reply of the expected kind
-      const shapeOk = (r.status === 200 && r.json?.supported === true && Array.isArray(r.json.reasons)
-          && same(Object.keys(r.json.lines ?? {}).sort(), Object.keys(want.lines ?? r.json.lines ?? {}).sort()))
-        || (r.status === 422 && r.json?.supported === false && r.json.reasons.length > 0);
-      if (!shapeOk) { bad(name, `not a well-formed 200/422 reply: ${r.status} ${r.text.slice(0, 200)}`); continue; }
-      // a request with sections the slice does not read must say so
-      const req = JSON.parse(readText(e.request));
-      const unread = ['dependents', 'filing_answers', 'credits', 'cdcc', 'premium_tax_credit', 'screening'].filter((k) => k in req);
-      const warned = new Set((r.json.warnings ?? []).filter((w) => w.code === 'section_not_used').map((w) => w.path));
-      const missing = unread.filter((k) => ![...warned].some((w) => w === `/${k}`));
-      if (missing.length) { bad(name, `no section_not_used warning for ${missing.join(', ')}`); continue; }
-      skipped(name, `${SKIP_PREFIX}: ${NEEDS_CALCULATOR[e.name]} (server answered ${r.status}${warned.size ? `, warns ${[...warned].join(' ')}` : ', no warning'})`);
     } else {
       const body = readText(e.request);
       const r = await call('POST', e.path, { body, type: e.content_type ?? 'application/json' });
@@ -127,17 +99,18 @@ expectBody('GET /calculate/extra is 404', await call('GET', '/calculate/extra'),
   if (!r.text.includes('Internal') && r.json?.status === 'ok') ok('GET /health'); else bad('GET /health', r.text);
 }
 
-// ---- 3. warnings for accepted-but-unused sections (proposed contract change) ----
+// ---- 3. every section is read; only superseded 1.0 fields warn ----
 {
   const req = JSON.parse(small);
   req.form_1099g = [{ filer: 'PrimaryFiler', unemployment_compensation: 100000 }];
   req.estimated_payments = { paid_estimated_taxes_or_from_last_year: true, amount: 1000 };
   const r = await call('POST', '/calculate', { body: JSON.stringify(req) });
-  const w = r.json?.warnings?.map((x) => x.path).sort().join(',');
   const lines = read('examples/single-w2-50k.response.json').lines;
-  if (r.status === 200 && w === '/estimated_payments,/form_1099g' && same(r.json.lines, lines)) ok('unused sections: 200, unchanged lines, warnings name each');
-  else bad('unused sections warnings', r.text.slice(0, 500));
-  // schema 1.2.0 sections are accepted, the lines stay those of the slice, and each unread section is named
+  // $1,000 of unemployment compensation (line 8) and $10 of estimated payments (line 26) are counted
+  if (r.status === 200 && !('warnings' in r.json) && r.json.lines.total_income === lines.total_income + 100000
+      && r.json.lines.total_payments === lines.total_payments + 1000) ok('1099-G and estimated payments are read: 200, lines include them, no warning');
+  else bad('1099-G and estimated payments', r.text.slice(0, 500));
+  // schema 1.2.0 sections are read (a child gives the child tax credit); the superseded flag warns
   const r2 = JSON.parse(small);
   r2.filing_details = { treat_as_mfs: false, has_foreign_accounts_or_trusts: false };
   r2.filers = { primary: { date_of_birth: '1990-01-01', is_student: true } };
@@ -146,12 +119,11 @@ expectBody('GET /calculate/extra is 404', await call('GET', '/calculate/extra'),
   r2.screening = { made_ira_contributions: false };
   const a = await call('POST', '/calculate', { body: JSON.stringify(r2) });
   const got = (a.json?.warnings ?? []).map((x) => `${x.code} ${x.path}`).sort().join(', ');
-  const wantW = ['field_superseded /filing_details/treat_as_mfs', 'section_not_used /credits', 'section_not_used /dependents',
-    'section_not_used /filers/primary', 'section_not_used /screening'].sort().join(', ');
-  if (a.status === 200 && got === wantW && same(a.json.lines, lines)) ok('schema 1.2.0 sections: 200, slice lines, section_not_used and field_superseded warnings');
-  else bad('schema 1.2.0 sections warnings', `${a.status} ${got} | ${a.text.slice(0, 300)}`);
+  if (a.status === 200 && got === 'field_superseded /filing_details/treat_as_mfs' && a.json.lines.non_refundable_credits === 200000)
+    ok('schema 1.2.0 sections: 200, child tax credit computed, only field_superseded warns');
+  else bad('schema 1.2.0 sections', `${a.status} ${got} | ${a.text.slice(0, 300)}`);
   const clean = await call('POST', '/calculate', { body: small });
-  if (clean.json && !('warnings' in clean.json)) ok('no warnings key when nothing is unused'); else bad('warnings key on a clean request', clean.text.slice(0, 200));
+  if (clean.json && !('warnings' in clean.json)) ok('no warnings key when nothing is superseded'); else bad('warnings key on a clean request', clean.text.slice(0, 200));
 }
 
 // ---- 4. CORS ----

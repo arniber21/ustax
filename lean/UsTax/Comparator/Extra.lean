@@ -14,6 +14,12 @@ import UsTax.StudentLoanAdjustment
 import UsTax.EstimatedPayments
 import UsTax.Form1040
 import UsTax.Form1040Full
+import UsTax.Spec.Calculator
+import UsTax.Spec.RefundBalance
+import UsTax.Spec.Credits
+import UsTax.Calculator
+import UsTax.ApiCalculator
+import UsTax.Api.Calculate
 
 /-!
 # Second challenge for `lake comparator`: module specs (issue #64)
@@ -205,6 +211,55 @@ theorem totalPayments_eq_full (i : Form1040Full.Form1040FullIn) :
 /-- Adding a W-2 with nonnegative wages never lowers line 24 (credits fixed). -/
 theorem totalTax_mono_addW2 (i : Form1040.Form1040In) (w : FormW2s.FormW2) (hw : 0 ≤ w.writableWages) :
     (Form1040.form1040 i).totalTax ≤ (Form1040.form1040 { i with w2s := w :: i.w2s }).totalTax := by
+  sorry
+
+/-! ## The whole return and the API answer (issue #48) -/
+
+/-- Refund and amount owed on the whole return are exclusive and consistent (#65). -/
+theorem calculator_refund_balanceDue_consistent (i : Calculator.CalculatorIn) :
+    RefundOrBalanceDue (Calculator.calculator i).totalTax (Calculator.calculator i).totalPayments
+      (Calculator.calculator i).overpayment (Calculator.calculator i).balanceDue := by
+  sorry
+
+/-- On the whole return, the nonrefundable credits used (lines 19 + 20 = 21) never exceed line 18
+(#66). -/
+theorem calculator_credits_within_liability (i : Calculator.CalculatorIn) :
+    CreditsWithinLiability (Calculator.calculator i).totalTentativeTax
+      (Calculator.calculator i).nonRefundableCredits
+      (Calculator.calculator i).taxLessNonRefundableCredits := by
+  sorry
+
+/-- On the whole return, total tax (line 24) is never negative. -/
+theorem calculator_totalTax_nonneg (i : Calculator.CalculatorIn) :
+    0 ≤ (Calculator.calculator i).totalTax := by
+  sorry
+
+/-- The CDCC, Schedule R and Saver's credits together are within line 18 of the tax pass (#66). -/
+theorem calculator_credits_le_tax (i : Calculator.CalculatorIn) :
+    CreditsWithinTax (Calculator.calculator i).cdccTotalCredit (Calculator.calculator i).totalEdc
+      (Calculator.calculator i).qualifiedSaverCreditAmount
+      (Calculator.calculator i).fTax.totalTentativeTax := by
+  sorry
+
+/-- A return is unsupported exactly when at least one knockout reason fired. -/
+theorem calculator_unsupported_iff (i : Calculator.CalculatorIn) :
+    (Calculator.calculator i).unsupported = true ↔ (Calculator.calculator i).firedKnockouts ≠ [] := by
+  sorry
+
+/-- The API answer: `supported = false` exactly when `reasons` is non-empty. -/
+theorem apiCalculator_supported_iff (r : Api.Request) :
+    KnockoutSound (ApiCalculator.apiCalculator r).supported (ApiCalculator.apiCalculator r).reasons := by
+  sorry
+
+/-- The API answer: `outcome = refund` exactly when line 34 is positive. -/
+theorem apiCalculator_outcome_refund_iff (r : Api.Request) :
+    RefundOutcome (ApiCalculator.apiCalculator r).outcome
+      (ApiCalculator.apiCalculator r).lines.overpayment := by
+  sorry
+
+/-- The endpoint never answers 500 on a valid request. -/
+theorem calculateRequest_ne_fault (r : Api.Request) (h : r.Valid) :
+    Api.calculateRequest r h ≠ .fault := by
   sorry
 
 end UsTax.Extra

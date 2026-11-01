@@ -138,11 +138,12 @@ Every harness has a **negative control**: `DIFFTEST_PERTURB=1` and `LEAN_DIFFTES
 outputs on purpose, and the run must fail. It does (PRs #111, #117, #135). A harness that cannot fail
 proves nothing.
 
-The honest gap: today the **running server** uses less of the Lean calculator than the Catala calculator
-covers. The server computes W-2 wages, interest, the standard deduction, tax, withholding and the refund
-or balance due. It accepts other income and adjustments but reports them as "not yet used"
-(`lean/UsTax/Api/Bridge.lean`, `unwiredSections`). The Lean credit modules are not written yet.
-<!-- TODO(final): update which modules the server runs -->
+The running server computes the **whole return** with the Lean calculator (issue #48): every merged
+module (income, adjustments, HSA, filing status and household, CDCC, Schedule R, Saver's credit, EITC,
+CTC/ODC/ACTC, premium tax credit) and the knockouts, through `lean/UsTax/Calculator.lean` (the port of
+`catala/calculator.catala_en`) and `lean/UsTax/ApiCalculator.lean` (the port of the Catala
+`ApiCalculator`). `make lean-difftest SCOPE=calculator` and `SCOPE=api_calculator` agree with Catala
+on all 157 oracle scenarios that are not knocked out.
 
 ## Bugs in the reference implementation
 

@@ -28,6 +28,8 @@ import UsTax.PtcFamily
 import UsTax.PtcAllowed
 import UsTax.PtcNet
 import UsTax.Hsa
+import UsTax.Calculator
+import UsTax.ApiCalculator
 
 /-!
 # Command-line and JSON boundary of the Lean calculator
@@ -1811,6 +1813,413 @@ def runHsa (j : Json) : Except String Json := do
 
 end PtcHsa
 
+/-! ### The whole return: `Calculator` and `ApiCalculator` (issue #48)
+
+`Calculator` takes the Catala JSON input of `catala/calculator.catala_en` (the shape
+`difftest/mappings/calculator.mjs` writes); its outputs are the Catala output names.
+`ApiCalculator` takes a raw API request (`POST /calculate` body, cents, `api/schema.json` 1.2.0),
+read by the server's strict reader `Api.parseRequest`, and prints the Catala `ApiCalculator`
+outputs (`supported`, `outcome`, `reasons`, `lines.*` in dollars) so that the difftest compares it
+with `clerk run` on the request the decode script made from the same API request. -/
+
+section Calculator
+
+open Calculator Filers QualifyingChild DependentsBenefitSplit QualifyingRelative
+
+/-- Catala `Calculator.FilerTin`. -/
+def filerTinOfJson (j : Json) : Except String Calculator.FilerTin :=
+  return {
+    tinIsSsn := ← boolReq j "tin_is_ssn"
+    ssnEmploymentValidity := ← enumReq j "ssn_employment_validity" "SSN employment validity"
+      fun | "Neither" => some .neither | "NotValid" => some .notValid
+          | "ValidOnlyWithDhsAuthorization" => some .validOnlyWithDhsAuthorization | _ => none
+    hasSsnOnlyForBenefits := ← boolReq j "has_ssn_only_for_benefits" }
+
+/-- Catala `Calculator.CdccFilerAnswers`. -/
+def cdccFilerAnswersOfJson (j : Json) : Except String Calculator.CdccFilerAnswers :=
+  return {
+    electCombatPayForCredit := ← boolReq j "elect_combat_pay_for_credit"
+    electCombatPayForBenefits := ← boolReq j "elect_combat_pay_for_benefits"
+    dependentCarePlanMaximum := ← moneyReq j "dependent_care_plan_maximum"
+    isDisabled := ← boolReq j "is_disabled"
+    deemedIncomeMonthEarnings := ← listReq j "deemed_income_month_earnings" moneyOfJson
+    hasDependentCareExpenses := ← boolReq j "has_dependent_care_expenses"
+    expensesPaidToQualifyingProvider := ← boolReq j "expenses_paid_to_qualifying_provider"
+    writableQualifyingExpenseAmount := ← moneyReq j "writable_qualifying_expense_amount" }
+
+/-- Catala `Calculator.FilerExtra`. -/
+def filerExtraOfJson (j : Json) : Except String FilerExtra :=
+  return {
+    tin := ← filerTinOfJson (← field j "tin"), isStudent := ← boolReq j "is_student"
+    disability := ← disabilityAnswersOfJson (← field j "disability")
+    hsa := ← hsaFilerAnswersOfJson (← field j "hsa")
+    cdcc := ← cdccFilerAnswersOfJson (← field j "cdcc") }
+
+/-- Catala `Calculator.FilersInput`. -/
+def filersInputOfJson (j : Json) : Except String FilersInput :=
+  return {
+    maritalStatus := ← enumReq j "marital_status" "marital status" MaritalStatus.ofString?
+    yearOfSpouseDeath := ← enumReq j "year_of_spouse_death" "year of spouse death"
+      YearOfSpouseDeath.ofString?
+    primaryFiler := ← filerAnswersOfJson (← field j "primary_filer")
+    secondaryFiler := ← filerAnswersOfJson (← field j "secondary_filer")
+    secondaryFilerDateOfDeath := ← dateReq j "secondary_filer_date_of_death"
+    primaryFilerPotentialClaimerFiledOnlyForRefund :=
+      ← boolReq j "primary_filer_potential_claimer_filed_only_for_refund"
+    mfjRequiredToFile := ← boolReq j "mfj_required_to_file"
+    mfjDependentsFilingForCredits := ← boolReq j "mfj_dependents_filing_for_credits"
+    livedTogetherAllYearWithSpouse := ← boolReq j "lived_together_all_year_with_spouse"
+    spouseLivedTogetherMonths := ← enumReq j "spouse_lived_together_months" "lived-together months"
+      SpouseLivedTogetherMonths.ofString?
+    writableLivedApartLastSixMonths := ← boolReq j "writable_lived_apart_last_six_months"
+    writableSeparationAgreement := ← boolReq j "writable_separation_agreement"
+    canFileJointlyYearOfSpouseDeath := ← boolReq j "can_file_jointly_year_of_spouse_death"
+    inRegisteredDomesticPartnership := ← boolReq j "in_registered_domestic_partnership"
+    filerResidenceAndIncomeState := ← enumReq j "filer_residence_and_income_state" "state"
+      ScopedState.ofString?
+    spouseItemizes := ← boolReq j "spouse_itemizes"
+    mfsLivingSpouseFilingReturn := ← boolReq j "mfs_living_spouse_filing_return"
+    mfsDeceasedSpouseFilingReturn := ← boolReq j "mfs_deceased_spouse_filing_return"
+    mfsSpouseHasGrossIncome := ← boolReq j "mfs_spouse_has_gross_income"
+    mfsSpouse65OrOlder := ← boolReq j "mfs_spouse_65_or_older" }
+
+/-- Catala `Calculator.HouseholdMember`. -/
+def calcMemberOfJson (j : Json) : Except String Calculator.HouseholdMember := do
+  let u ← field j "upkeep"
+  let c ← field j "cdcc"
+  return {
+    dependent := ← depMemberOfJson (← field j "dependent")
+    upkeep := { tpPaidMostOfHomeUpkeep := ← boolReq u "tp_paid_most_of_home_upkeep"
+                tpPaidMostOfParentHomeUpkeep := ← boolReq u "tp_paid_most_of_parent_home_upkeep" }
+    ssnEmploymentValidity := ← enumReq j "ssn_employment_validity" "SSN employment validity"
+      CtcOdc.SsnEmploymentValidity.ofString?
+    ssnOnlyForFederallyFundedBenefit := ← boolReq j "ssn_only_for_federally_funded_benefit"
+    monthsLivedWithTpInUs := ← intReq j "months_lived_with_tp_in_us"
+    cdcc := { unableToCareForSelf := ← boolReq c "unable_to_care_for_self"
+              hasDependentCareExpenses := ← boolReq c "has_dependent_care_expenses"
+              expensesPaidToQualifyingProvider := ← boolReq c "expenses_paid_to_qualifying_provider"
+              writableQualifyingExpenseAmount := ← moneyReq c "writable_qualifying_expense_amount" } }
+
+/-- Catala `Calculator.CalculatorIn`, from the scope's JSON input. -/
+def calculatorInOfJson (j : Json) : Except String CalculatorIn := do
+  let inc ← field j "income"
+  let adj ← field j "adjustments"
+  let h ← field adj "hsa"
+  let pay ← field j "payments"
+  let cr ← field j "credits"
+  let cd ← field j "cdcc_answers"
+  let pt ← field j "ptc_answers"
+  let sc ← field j "screening"
+  return {
+    filingStatus := ← filingStatusOfJson (← field j "filing_status")
+    filers := ← filersInputOfJson (← field j "filers")
+    primaryExtra := ← filerExtraOfJson (← field j "primary_extra")
+    secondaryExtra := ← filerExtraOfJson (← field j "secondary_extra")
+    household := ← listReq j "household" calcMemberOfJson
+    income := {
+      w2s := ← listReq inc "w2s" w2OfJson
+      combatPayElection := ← combatPayElectionOfJson (← field inc "combat_pay_election")
+      combatPayElectionMade := ← boolReq inc "combat_pay_election_made"
+      interestReports := ← listReq inc "interest_reports" interestReportOfJson
+      form1099Gs := ← listReq inc "form_1099gs" form1099GOfJson
+      form1099Miscs := ← listReq inc "form_1099miscs" form1099MiscOfJson
+      form1099Rs := ← listReq inc "form_1099rs" form1099ROfJson
+      ssaNetBenefits := ← listReq inc "ssa_net_benefits" moneyOfJson
+      ssaFederalTaxWithheld := ← listReq inc "ssa_federal_tax_withheld" moneyOfJson }
+    adjustments := {
+      wasK12Educators := ← enumReq adj "was_k12_educators" "K-12 educator"
+        EducatorAdjustment.K12EducatorOptions.ofString?
+      primaryEducatorExpensesWritable := ← moneyReq adj "primary_educator_expenses_writable"
+      secondaryEducatorExpensesWritable := ← moneyReq adj "secondary_educator_expenses_writable"
+      hadStudentLoanInterestPayments := ← boolReq adj "had_student_loan_interest_payments"
+      studentLoansQualify := ← boolReq adj "student_loans_qualify"
+      studentLoanInterestAmount := ← moneyReq adj "student_loan_interest_amount"
+      hsa := {
+        someFilerHadNonW2HsaActivity := ← boolReq h "some_filer_had_non_w2_hsa_activity"
+        writablePrimaryFilerHadNonW2HsaActivity :=
+          ← boolReq h "writable_primary_filer_had_non_w2_hsa_activity"
+        writableSecondaryFilerHadNonW2HsaActivity :=
+          ← boolReq h "writable_secondary_filer_had_non_w2_hsa_activity"
+        hasHsaMedicalSavingsAccountType := ← boolReq h "has_hsa_medical_savings_account_type"
+        writableHasHsaExcessContributionsPreviousYear :=
+          ← boolReq h "writable_has_hsa_excess_contributions_previous_year"
+        writableHasHsaWithdrawnExcessContributionsYesNo :=
+          ← boolReq h "writable_has_hsa_withdrawn_excess_contributions_yes_no"
+        someFilersMadeTestingPeriodContribution :=
+          ← boolReq h "some_filers_made_testing_period_contribution"
+        someFilersHaveTestingPeriodAdditionalIncome :=
+          ← boolReq h "some_filers_have_testing_period_additional_income"
+        hsaDistributions := ← listReq h "hsa_distributions" hsaDistributionOfJson } }
+    payments := {
+      paidEstimatedTaxesOrFromLastYear := ← boolReq pay "paid_estimated_taxes_or_from_last_year"
+      estimatedTaxPaymentWritable := ← moneyReq pay "estimated_tax_payment_writable"
+      paidEstimatedTaxesOrFromLastYearUnderDifferentName :=
+        ← boolReq pay "paid_estimated_taxes_or_from_last_year_under_different_name"
+      paidEstimatedTaxesWithFormerSpouse := ← enumReq pay "paid_estimated_taxes_with_former_spouse"
+        "former spouse" EstimatedPayments.PaidWithFormerSpouse.ofString? }
+    credits := {
+      eitcQcOfAnother := ← boolReq cr "eitc_qc_of_another"
+      eitcQcOfAnotherRequiredToFile := ← boolReq cr "eitc_qc_of_another_required_to_file"
+      eitcQcOfAnotherIsFiling := ← boolReq cr "eitc_qc_of_another_is_filing"
+      eitcQcOfAnotherIsFilingRefundOnly := ← boolReq cr "eitc_qc_of_another_is_filing_refund_only"
+      eitcHadImproperClaims := ← boolReq cr "eitc_had_improper_claims"
+      eitcImproperClaimsDueToQc := ← boolReq cr "eitc_improper_claims_due_to_qc"
+      eitcImproperClaimTakenSinceDisallowal := ← boolReq cr "eitc_improper_claim_taken_since_disallowal"
+      eitcReceivedImproperClaimsNotice := ← enumReq cr "eitc_received_improper_claims_notice"
+        "improper claims notice" Eitc.ImproperClaimsNotice.ofString?
+      eitcImproperClaimsNoticeExpired := ← boolReq cr "eitc_improper_claims_notice_expired"
+      receivedImproperClaims := ← boolReq cr "received_improper_claims"
+      receivedImproperClaimsNotice := ← enumReq cr "received_improper_claims_notice"
+        "improper claims notice" Eitc.ImproperClaimsNotice.ofString?
+      improperClaimsNoticeExpired := ← boolReq cr "improper_claims_notice_expired"
+      hasFiledCtcOdcSinceNoticeExpired := ← boolReq cr "has_filed_ctc_odc_since_notice_expired"
+      hasDistributionsInLastThreeYears := ← boolReq cr "has_distributions_in_last_three_years"
+      hasCurrentYearDistributions := ← boolReq cr "has_current_year_distributions"
+      hasSelfReportedContributions := ← boolReq cr "has_self_reported_contributions"
+      hasSelfReportedNonTaxablePayments := ← boolReq cr "has_self_reported_non_taxable_payments"
+      selfReportedNonTaxablePaymentAmount := ← moneyReq cr "self_reported_non_taxable_payment_amount" }
+    cdccAnswers := {
+      hasMfsSpouseEarnedIncome := ← boolReq cd "has_mfs_spouse_earned_income"
+      writableMfsSpouseEarnedIncome := ← moneyReq cd "writable_mfs_spouse_earned_income"
+      writableTotalQualifiedDependentCareExpenses :=
+        ← moneyReq cd "writable_total_qualified_dependent_care_expenses"
+      writableCarryoverAmount := ← moneyReq cd "writable_carryover_amount"
+      writableForfeitedAmount := ← moneyReq cd "writable_forfeited_amount"
+      hasCreditForPriorYearExpenses := ← boolReq cd "has_credit_for_prior_year_expenses"
+      claimedCreditForPriorYearExpenses := ← boolReq cd "claimed_credit_for_prior_year_expenses"
+      claimedMaxCreditForPriorTaxYear := ← boolReq cd "claimed_max_credit_for_prior_tax_year"
+      hasHouseholdEmployee := ← boolReq cd "has_household_employee"
+      benefitsFromSoleProprietorshipOrPartnership :=
+        ← boolReq cd "benefits_from_sole_proprietorship_or_partnership" }
+    ptcAnswers := {
+      form1095As := ← listReq pt "form1095_as" form1095AOfJson
+      writableHasPtcQualifyingPlan := ← boolReq pt "writable_has_ptc_qualifying_plan"
+      writableHasAdvancedPtc := ← boolReq pt "writable_has_advanced_ptc"
+      dependentTpSelfEnrolled := ← boolReq pt "dependent_tp_self_enrolled"
+      dependentTpEnrolledSomeoneElse := ← boolReq pt "dependent_tp_enrolled_someone_else"
+      writableDependentTpOtherMembersArePartOfDifferentTaxFamily :=
+        ← boolReq pt "writable_dependent_tp_other_members_are_part_of_different_tax_family"
+      writableHasMfsException := ← boolReq pt "writable_has_mfs_exception"
+      writableClaimingMfsExceptionForFourthStraightYear :=
+        ← boolReq pt "writable_claiming_mfs_exception_for_fourth_straight_year"
+      writableBelow100ThresholdAndNotEligibleForMedicaidBecauseOfImmigrationStatus :=
+        ← boolReq pt
+          "writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status"
+      writableHasEmployerSponsoredPlan := ← boolReq pt "writable_has_employer_sponsored_plan"
+      writableDependentsRequiredToFile := ← boolReq pt "writable_dependents_required_to_file"
+      writableSelfReportedHasMultiple1095As := ← boolReq pt "writable_self_reported_has_multiple1095_as"
+      writableIsAdditionalPersonInEnrollmentFamily :=
+        ← boolReq pt "writable_is_additional_person_in_enrollment_family"
+      writableIsAdditionalPersonPartofDifferentTaxFamily :=
+        ← boolReq pt "writable_is_additional_person_partof_different_tax_family"
+      writableIsEnrolledWithOtherFamily := ← boolReq pt "writable_is_enrolled_with_other_family"
+      writableHasImmigrationStatusNotEligibleForMarketplace :=
+        ← boolReq pt "writable_has_immigration_status_not_eligible_for_marketplace"
+      writableWantsToUseAltCalculations := ← boolReq pt "writable_wants_to_use_alt_calculations" }
+    screening := {
+      memberVitals := ← listReq sc "member_vitals" fun m => do
+        return { dateOfBirth := ← dateReq m "date_of_birth", deceased := ← boolReq m "deceased"
+                 hasTinTypeNone := ← boolReq m "has_tin_type_none" }
+      incomeSourcesSupported := ← boolReq sc "income_sources_supported"
+      receivedDigitalAssets := ← boolReq sc "received_digital_assets"
+      disposedDigitalAssets := ← boolReq sc "disposed_digital_assets"
+      hasForeignAccounts := ← boolReq sc "has_foreign_accounts"
+      isForeignTrustsGrantor := ← boolReq sc "is_foreign_trusts_grantor"
+      hasForeignTrustsTransactions := ← boolReq sc "has_foreign_trusts_transactions"
+      madeIraContributions := ← boolReq sc "made_ira_contributions"
+      w2Box15IncomeFromDifferentState := ← boolReq sc "w2_box15_income_from_different_state"
+      w2HasBox14NyrrtaKnockoutCode := ← boolReq sc "w2_has_box14_nyrrta_knockout_code"
+      w2HasRrtaCodesInBox14 := ← boolReq sc "w2_has_rrta_codes_in_box14"
+      livedInNy := ← boolReq sc "lived_in_ny"
+      w2PaidYonkersTaxes := ← boolReq sc "w2_paid_yonkers_taxes"
+      partYearYonkersResident := ← boolReq sc "part_year_yonkers_resident"
+      primaryFilerFormsAnotherState := ← boolReq sc "primary_filer_forms_another_state"
+      receivedAlaskaPfd := ← boolReq sc "received_alaska_pfd"
+      spouseReceivedAlaskaPfd := ← boolReq sc "spouse_received_alaska_pfd"
+      spouseLivesInOtherOrMultipleStates := ← boolReq sc "spouse_lives_in_other_or_multiple_states"
+      spouseFormsAnotherState := ← boolReq sc "spouse_forms_another_state"
+      isAfterTaxDayAndNotResubmitting := ← boolReq sc "is_after_tax_day_and_not_resubmitting"
+      isAfterResubmissionDeadline := ← boolReq sc "is_after_resubmission_deadline" } }
+
+/-- Catala scope `Knockouts_income.KnockoutsIncome` (issue #36): the flags of each module, the
+combined flag and the reasons that fired. -/
+def runKnockoutsIncome (j : Json) : Except String Json := do
+  let i : KnockoutsIncome.KnockoutsIncomeIn := {
+    filingStatus := ← filingStatusOfJson (← field j "filing_status"), agi := ← moneyReq j "agi"
+    primaryFilerCanBeClaimed := ← boolReq j "primary_filer_can_be_claimed"
+    secondaryFilerCanBeClaimed := ← boolReq j "secondary_filer_can_be_claimed"
+    paidEstimatedTaxesOrFromLastYear := ← boolReq j "paid_estimated_taxes_or_from_last_year"
+    knockoutHasNoPaymentsOrCredits := ← boolReq j "knockout_has_no_payments_or_credits"
+    incomeSourcesSupported := ← boolReq j "income_sources_supported"
+    receivedDigitalAssets := ← boolReq j "received_digital_assets"
+    disposedDigitalAssets := ← boolReq j "disposed_digital_assets"
+    hasForeignAccounts := ← boolReq j "has_foreign_accounts"
+    isForeignTrustsGrantor := ← boolReq j "is_foreign_trusts_grantor"
+    hasForeignTrustsTransactions := ← boolReq j "has_foreign_trusts_transactions"
+    madeIraContributions := ← boolReq j "made_ira_contributions"
+    interestReports := ← listReq j "interest_reports" interestReportOfJson
+    w2s := ← listReq j "w2s" w2OfJson
+    combatPayElection := ← combatPayElectionOfJson (← field j "combat_pay_election")
+    w2Box15IncomeFromDifferentState := ← boolReq j "w2_box15_income_from_different_state"
+    w2HasBox14NyrrtaKnockoutCode := ← boolReq j "w2_has_box14_nyrrta_knockout_code"
+    w2HasRrtaCodesInBox14 := ← boolReq j "w2_has_rrta_codes_in_box14"
+    livedInNy := ← boolReq j "lived_in_ny"
+    w2PaidYonkersTaxes := ← boolReq j "w2_paid_yonkers_taxes"
+    partYearYonkersResident := ← boolReq j "part_year_yonkers_resident"
+    filerResidenceAndIncomeState := ← enumReq j "filer_residence_and_income_state" "state"
+      ScopedState.ofString?
+    primaryFilerFormsAnotherState := ← boolReq j "primary_filer_forms_another_state"
+    receivedAlaskaPfd := ← boolReq j "received_alaska_pfd"
+    spouseReceivedAlaskaPfd := ← boolReq j "spouse_received_alaska_pfd"
+    treatAsMfj := ← boolReq j "treat_as_mfj"
+    spouseLivesInOtherOrMultipleStates := ← boolReq j "spouse_lives_in_other_or_multiple_states"
+    spouseFormsAnotherState := ← boolReq j "spouse_forms_another_state"
+    form1099Gs := ← listReq j "form_1099gs" form1099GOfJson
+    form1099Miscs := ← listReq j "form_1099miscs" form1099MiscOfJson
+    form1099Rs := ← listReq j "form_1099rs" form1099ROfJson
+    reportNetBenefits := ← listReq j "report_net_benefits" moneyOfJson
+    livedApartAllYear := ← boolReq j "lived_apart_all_year"
+    line1z := ← moneyReq j "line_1z", line2a := ← moneyReq j "line_2a"
+    line2b := ← moneyReq j "line_2b", line3b := ← moneyReq j "line_3b"
+    line4b := ← moneyReq j "line_4b", line5b := ← moneyReq j "line_5b"
+    line7CapitalGains := ← moneyReq j "line_7_capital_gains"
+    line8OtherIncome := ← moneyReq j "line_8_other_income"
+    adjustmentsExcludingStudentLoanInterest :=
+      ← moneyReq j "adjustments_excluding_student_loan_interest"
+    estimatedTaxPaymentWritable := ← moneyReq j "estimated_tax_payment_writable"
+    paidEstimatedTaxesOrFromLastYearUnderDifferentName :=
+      ← boolReq j "paid_estimated_taxes_or_from_last_year_under_different_name"
+    paidEstimatedTaxesWithFormerSpouse := ← enumReq j "paid_estimated_taxes_with_former_spouse"
+      "former spouse" EstimatedPayments.PaidWithFormerSpouse.ofString?
+    isFilingStatusMfj := ← boolReq j "is_filing_status_mfj"
+    isMarried := ← boolReq j "is_married", isSingle := ← boolReq j "is_single"
+    primaryFilerAge55OrOlder := ← boolReq j "primary_filer_age55_or_older"
+    secondaryFilerAge55OrOlder := ← boolReq j "secondary_filer_age55_or_older"
+    primaryFilerTotalHsaContributionsFromW2s :=
+      ← moneyReq j "primary_filer_total_hsa_contributions_from_w2s"
+    secondaryFilerTotalHsaContributionsFromW2s :=
+      ← moneyReq j "secondary_filer_total_hsa_contributions_from_w2s"
+    hasPrimaryFilerHsaContributionsFromW2s := ← boolReq j "has_primary_filer_hsa_contributions_from_w2s"
+    hasSecondaryFilerHsaContributionsFromW2s :=
+      ← boolReq j "has_secondary_filer_hsa_contributions_from_w2s"
+    taxExemptInterest := ← moneyReq j "tax_exempt_interest"
+    pensionsAndAnnuities := ← moneyReq j "pensions_and_annuities"
+    socialSecurityBenefits := ← moneyReq j "social_security_benefits"
+    hsaPrimaryFiler := ← hsaFilerAnswersOfJson (← field j "hsa_primary_filer")
+    hsaSecondaryFiler := ← hsaFilerAnswersOfJson (← field j "hsa_secondary_filer")
+    someFilerHadNonW2HsaActivity := ← boolReq j "some_filer_had_non_w2_hsa_activity"
+    writablePrimaryFilerHadNonW2HsaActivity :=
+      ← boolReq j "writable_primary_filer_had_non_w2_hsa_activity"
+    writableSecondaryFilerHadNonW2HsaActivity :=
+      ← boolReq j "writable_secondary_filer_had_non_w2_hsa_activity"
+    hasHsaMedicalSavingsAccountType := ← boolReq j "has_hsa_medical_savings_account_type"
+    writableHasHsaExcessContributionsPreviousYear :=
+      ← boolReq j "writable_has_hsa_excess_contributions_previous_year"
+    writableHasHsaWithdrawnExcessContributionsYesNo :=
+      ← boolReq j "writable_has_hsa_withdrawn_excess_contributions_yes_no"
+    someFilersMadeTestingPeriodContribution :=
+      ← boolReq j "some_filers_made_testing_period_contribution"
+    someFilersHaveTestingPeriodAdditionalIncome :=
+      ← boolReq j "some_filers_have_testing_period_additional_income"
+    hsaDistributions := ← listReq j "hsa_distributions" hsaDistributionOfJson
+    isAfterTaxDayAndNotResubmitting := ← boolReq j "is_after_tax_day_and_not_resubmitting"
+    isAfterResubmissionDeadline := ← boolReq j "is_after_resubmission_deadline" }
+  let o := KnockoutsIncome.knockoutsIncome i
+  return Json.mkObj
+    [("unsupported_interest", bj o.unsupportedInterest), ("unsupported_w2s", bj o.unsupportedW2s),
+     ("unsupported_unemployment", bj o.unsupportedUnemployment),
+     ("unsupported_misc", bj o.unsupportedMisc), ("unsupported_rs", bj o.unsupportedRs),
+     ("unsupported_ss", bj o.unsupportedSs), ("unsupported_ep", bj o.unsupportedEp),
+     ("unsupported_hsa", bj o.unsupportedHsa), ("unsupported_local", bj o.unsupportedLocal),
+     ("unsupported_income_or_hsa", bj o.unsupportedIncomeOrHsa),
+     ("fired_knockouts", Json.arr (o.firedKnockouts.map (Json.str ∘ Api.KnockoutReason.code)).toArray)]
+
+/-- A fired knockout as Catala prints it (`IncomeOrHsa content X`, `Household content X`). -/
+def calculatorKnockoutName : CalculatorKnockout → String
+  | .incomeOrHsa r => s!"IncomeOrHsa content {r.code}"
+  | .household r => s!"Household content {r.code}"
+
+/-- Catala scope `Calculator.Calculator` (its outputs). -/
+def runCalculator (j : Json) : Except String Json := do
+  let o := calculator (← calculatorInOfJson j)
+  return Json.mkObj
+    [("eligible_for_qss", bj o.eligibleForQss), ("eligible_for_hoh", bj o.eligibleForHoh),
+     ("wages", mj o.wages), ("employer_income_subtotal", mj o.employerIncomeSubtotal),
+     ("interest_income", mj o.interestIncome),
+     ("taxable_pensions_and_annuities", mj o.taxablePensionsAndAnnuities),
+     ("social_security_benefits", mj o.socialSecurityBenefits),
+     ("taxable_social_security_benefits", mj o.taxableSocialSecurityBenefits),
+     ("other_income", mj o.otherIncome), ("total_income", mj o.totalIncome),
+     ("adjustments_to_income", mj o.adjustmentsToIncome), ("agi", mj o.agi),
+     ("standard_or_itemized_deductions", mj o.standardOrItemizedDeductions),
+     ("total_deductions", mj o.totalDeductions), ("taxable_income", mj o.taxableIncome),
+     ("tentative_tax_from_taxable_income", mj o.tentativeTaxFromTaxableIncome),
+     ("total_tentative_tax", mj o.totalTentativeTax), ("total_ctc_and_odc", mj o.totalCtcAndOdc),
+     ("line8_of_schedule3", mj o.line8OfSchedule3),
+     ("non_refundable_credits", mj o.nonRefundableCredits),
+     ("tax_less_non_refundable_credits", mj o.taxLessNonRefundableCredits),
+     ("total_tax", mj o.totalTax), ("form_w2_withholding", mj o.formW2Withholding),
+     ("form_1099_withholding", mj o.form1099Withholding),
+     ("total_withholding", mj o.totalWithholding),
+     ("estimated_and_from_last_year", mj o.estimatedAndFromLastYear),
+     ("earned_income_credit", mj o.earnedIncomeCredit), ("additional_ctc", mj o.additionalCtc),
+     ("total_other_payments_refundable_credits", mj o.totalOtherPaymentsRefundableCredits),
+     ("total_payments", mj o.totalPayments), ("overpayment", mj o.overpayment),
+     ("balance_due", mj o.balanceDue),
+     ("educator_expenses_adjustment", mj o.educatorExpensesAdjustment),
+     ("student_loan_interest_adjustment_amount", mj o.studentLoanInterestAdjustmentAmount),
+     ("hsa_total_deductible_amount", mj o.hsaTotalDeductibleAmount),
+     ("num_eitc_qualifying_children", toJson o.numEitcQualifyingChildren),
+     ("ctc_eligible_dependents", toJson o.ctcEligibleDependents),
+     ("odc_eligible_dependents", toJson o.odcEligibleDependents),
+     ("cdcc_total_credit", mj o.cdccTotalCredit), ("taxable_dependent_care", mj o.taxableDependentCare),
+     ("qualified_saver_credit_amount", mj o.qualifiedSaverCreditAmount),
+     ("total_edc", mj o.totalEdc), ("net_ptc_amount", mj o.netPtcAmount),
+     ("net_ptc_amount_when_zero_or_positive", mj o.netPtcAmountWhenZeroOrPositive),
+     ("net_ptc_amount_when_negative", mj o.netPtcAmountWhenNegative),
+     ("ptc_repayment_limitation", mj o.ptcRepaymentLimitation),
+     ("lesser_of_net_ptc_amount_and_repayment_limitation",
+       mj o.lesserOfNetPtcAmountAndRepaymentLimitation),
+     ("total_additional_taxes_owed", mj o.totalAdditionalTaxesOwed),
+     ("other_payments_and_refundable_credits_total", mj o.otherPaymentsAndRefundableCreditsTotal),
+     ("unsupported", bj o.unsupported),
+     ("fired_knockouts", Json.arr (o.firedKnockouts.map (Json.str ∘ calculatorKnockoutName)).toArray)]
+
+/-- The 19 `lines` of the response as a JSON object of dollars (Catala `ApiLines`). -/
+def apiLinesJson (l : Api.Lines) : Json :=
+  Json.mkObj
+    [("wages", mj l.wages), ("employer_income_subtotal", mj l.employerIncomeSubtotal),
+     ("interest_income", mj l.interestIncome), ("total_income", mj l.totalIncome),
+     ("adjustments_to_income", mj l.adjustmentsToIncome), ("agi", mj l.agi),
+     ("standard_or_itemized_deductions", mj l.standardOrItemizedDeductions),
+     ("total_deductions", mj l.totalDeductions), ("taxable_income", mj l.taxableIncome),
+     ("tentative_tax_from_taxable_income", mj l.tentativeTaxFromTaxableIncome),
+     ("total_tentative_tax", mj l.totalTentativeTax),
+     ("non_refundable_credits", mj l.nonRefundableCredits),
+     ("tax_less_non_refundable_credits", mj l.taxLessNonRefundableCredits),
+     ("total_tax", mj l.totalTax), ("total_withholding", mj l.totalWithholding),
+     ("total_other_payments_refundable_credits", mj l.totalOtherPaymentsRefundableCredits),
+     ("total_payments", mj l.totalPayments), ("overpayment", mj l.overpayment),
+     ("balance_due", mj l.balanceDue)]
+
+/-- Catala scope `Api_calculator.ApiCalculator`, on a raw API request (`POST /calculate` body,
+read by `Api.parseRequest`; a body the server would reject with a 400 is an error here). Outputs:
+`supported`, `outcome` (Catala constructor name), `reasons` (Catala printing of each knockout) and
+`lines` (dollars). -/
+def runApiCalculator (j : Json) : Except String Json := do
+  match Api.parseRequest j.compress with
+  | .error e => .error s!"request rejected ({e.status}): {e.render}"
+  | .ok r =>
+    let o := ApiCalculator.apiCalculator r
+    let outcome := match o.outcome with
+      | .refund => "Refund" | .balanceDue => "BalanceDue" | .even => "Even"
+    return Json.mkObj
+      [("supported", bj o.supported), ("outcome", Json.str outcome),
+       ("reasons", Json.arr (o.reasons.map (Json.str ∘ calculatorKnockoutName)).toArray),
+       ("lines", apiLinesJson o.lines)]
+
+end Calculator
+
 /-- The scopes implemented in Lean, by Catala scope name. Add one line per
 new module. -/
 def scopes : List (String × (Json → Except String Json)) :=
@@ -1846,7 +2255,10 @@ def scopes : List (String × (Json → Except String Json)) :=
    ("PtcAllowed", runPtcAllowed),
    ("PtcAllowedDifftest", runPtcAllowedDifftest),
    ("NetPtc", runNetPtc),
-   ("Hsa", runHsa)]
+   ("Hsa", runHsa),
+   ("KnockoutsIncome", runKnockoutsIncome),
+   ("Calculator", runCalculator),
+   ("ApiCalculator", runApiCalculator)]
 
 /-- Run scope `name` on one JSON input. -/
 def runScope (name : String) (input : Json) : Except String Json :=

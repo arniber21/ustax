@@ -485,15 +485,11 @@ private def singleW2 : String :=
    ("field_superseded", "/filing_details/treat_filers_as_dependents")]
 -- the fields that are not superseded do not warn
 #guard warningsOf (singleW2 ++ ",\"filing_details\":{\"has_foreign_accounts_or_trusts\":false,\"mfs_spouse_65_or_older\":true,\"combat_pay_election\":\"NoCombatPay\"}}") == []
--- every new section is accepted and named as not used
-#guard warningsOf (singleW2 ++ ",\"dependents\":[" ++ dep "" ++ "],\"credits\":{},\"cdcc\":{},\"premium_tax_credit\":{},\"screening\":{},\"filing_answers\":{},\"adjustments\":{\"hsa\":{}}}") ==
-  [("section_not_used", "/adjustments/hsa"), ("section_not_used", "/filing_answers"),
-   ("section_not_used", "/dependents"), ("section_not_used", "/credits"), ("section_not_used", "/cdcc"),
-   ("section_not_used", "/premium_tax_credit"), ("section_not_used", "/screening")]
--- the 1.0 flags of the filers are read; the new answers are not
+-- every section is read by the whole-return calculator (#48): no `section_not_used`
+#guard warningsOf (singleW2 ++ ",\"dependents\":[" ++ dep "" ++ "],\"credits\":{},\"cdcc\":{},\"premium_tax_credit\":{},\"screening\":{},\"filing_answers\":{},\"adjustments\":{\"hsa\":{}}}") == []
+-- the filers' answers are read, old and new
 #guard warningsOf (singleW2 ++ ",\"filers\":{\"primary\":{\"is_blind\":true,\"age65_or_older\":true}}}") == []
-#guard warningsOf (singleW2 ++ ",\"filers\":{\"primary\":{\"is_blind\":true,\"date_of_birth\":\"1950-01-01\"}}}") ==
-  [("section_not_used", "/filers/primary")]
+#guard warningsOf (singleW2 ++ ",\"filers\":{\"primary\":{\"is_blind\":true,\"date_of_birth\":\"1950-01-01\"}}}") == []
 -- an empty `dependents` list is nothing to say
 #guard warningsOf (singleW2 ++ ",\"dependents\":[]}") == []
 

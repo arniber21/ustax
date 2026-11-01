@@ -91,6 +91,12 @@ import UsTax.Hsa
 import UsTax.PtcHsa.Spec
 import UsTax.PtcHsa.Props
 import UsTax.PtcHsa.Lemmas
+import UsTax.KnockoutsIncome
+import UsTax.KnockoutsIncome.Lemmas
+import UsTax.KnockoutsHousehold
+import UsTax.Calculator
+import UsTax.Calculator.Props
+import UsTax.Spec.Calculator
 import UsTax.Cli
 import UsTax.Api.Json
 import UsTax.Api.Error
@@ -103,6 +109,8 @@ import UsTax.Api.Parse
 import UsTax.Api.Response
 import UsTax.Api.Reasons
 import UsTax.Api.Bridge
+import UsTax.ApiCalculator
 import UsTax.Api.Calculate
 import UsTax.Api.Props
 import UsTax.Api.Tests
+import UsTax.Proofs.Calculator

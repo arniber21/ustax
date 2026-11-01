@@ -2,31 +2,31 @@ import UsTax.Api.Parse
 import UsTax.Api.Response
 import UsTax.Api.Bridge
 import UsTax.Api.Reasons
+import UsTax.ApiCalculator
 
 /-!
-# `POST /calculate` without HTTP (issue #52)
+# `POST /calculate` without HTTP (issues #52, #48)
 
 ```
-body text --parseRequest--> Request --toForm1040Input--> Form1040In --form1040--> Form1040Out
-                                                                      |--> Lines (200)  or  reasons (422)
+body text --parseRequest--> Request --toCalculatorInput--> CalculatorIn --calculator--> CalculatorOut
+           (ApiCalculator.apiCalculator = toCalculatorInput, then calculator, then the outputs)
+                                                       |--> Lines (200)  or  reasons (422)
 ```
 
 `calculate : String → Reply` is the whole endpoint minus sockets. It holds **no
-tax logic**: the bridge maps names, `Form1040.form1040` computes, and this file
-only reads the result out.
+tax logic**: the bridge maps names (`Api.toCalculatorInput`), the whole-return
+`Calculator.calculator` computes (via `ApiCalculator.apiCalculator`, the Lean port of
+the Catala `ApiCalculator`), and this file only reads the result out.
 
-**Knockout reasons.** `Form1040Out.unsupported` is one Boolean. The reason
-list is read from the same sub-scopes `form1040` calls (`FormW2s.formW2s`,
-`Interest.interest` with the real AGI) plus the two reasons `form1040` itself
-decides (`HasForeignAccountsOrTrusts`, which `form1040` only passes down, and
-`KnockoutHasNoPaymentsOrCredits`), in the order of the Catala `KnockoutReason`
-enumeration. When #38 lands, `knockoutReasons` is replaced by the `Calculator`
-scope's `fired_knockouts`. `Reply.fault` is returned (HTTP 500) if the two
-ever disagree about whether the return is supported.
+**Knockout reasons** are the `Calculator`'s `firedKnockouts` (income, HSA and process
+reasons first, then household, credit and premium tax credit reasons), each with the code,
+category and message of `api/knockout-reasons.json`. `Reply.fault` (HTTP 500) is returned if
+the return is unsupported but no reason fired; `UsTax.Proofs.apiCalculator_supported_iff`
+proves that this never happens.
 
-**Warnings** (`docs/api.md` "Warnings"): `warnings` lists request sections that were
-accepted but not read by this slice (`section_not_used`) and schema 1.0 fields that
-schema 1.2.0 supersedes (`field_superseded`).
+**Warnings** (`docs/api.md` "Warnings"): `warnings` lists the schema 1.0 fields that
+schema 1.2.0 supersedes (`field_superseded`). Every section of the request is read, so
+there is no `section_not_used` since schema 1.2.0.
 -/
 
 namespace UsTax.Api
@@ -51,61 +51,10 @@ def calculateSuccessW (l : Lines) (ws : List Warning) : J :=
         ("message", .str w.message)]))])
   | j => j
 
-/-- The warnings for a request: first the schema 1.0 `filing_details` fields that
-schema 1.2.0 supersedes (`field_superseded`), then each section the slice does not
-read (`section_not_used`). -/
+/-- The warnings for a request: the schema 1.0 `filing_details` fields that schema 1.2.0
+supersedes (`field_superseded`). -/
 def warnings (r : Request) : List Warning :=
-  (supersededFields r).map (fun u => ⟨"field_superseded", u.path, u.message⟩) ++
-  (unwiredSections r).map fun u => ⟨"section_not_used", u.path, u.message⟩
-
-/-- Form 1040 output to the response `lines`. -/
-def Lines.ofOut (o : Form1040.Form1040Out) : Lines :=
-  { wages := o.wages, employerIncomeSubtotal := o.employerIncomeSubtotal
-    interestIncome := o.interestIncome, totalIncome := o.totalIncome
-    adjustmentsToIncome := o.adjustmentsToIncome, agi := o.agi
-    standardOrItemizedDeductions := o.standardOrItemizedDeductions
-    totalDeductions := o.totalDeductions, taxableIncome := o.taxableIncome
-    tentativeTaxFromTaxableIncome := o.tentativeTaxFromTaxableIncome
-    totalTentativeTax := o.totalTentativeTax, nonRefundableCredits := o.nonRefundableCredits
-    taxLessNonRefundableCredits := o.taxLessNonRefundableCredits, totalTax := o.totalTax
-    totalWithholding := o.totalWithholding
-    totalOtherPaymentsRefundableCredits := o.totalOtherPaymentsRefundableCredits
-    totalPayments := o.totalPayments, overpayment := o.overpayment, balanceDue := o.balanceDue }
-
-/-- The knockout table, `(fired, code, category, message)`, in `KnockoutReason`
-order. Codes, categories and messages are those of `api/knockout-reasons.json`. -/
-def knockoutReasons (i : Form1040.Form1040In) (o : Form1040.Form1040Out) :
-    List UnsupportedReason :=
-  let w2 := FormW2s.formW2s
-    { w2s := i.w2s, filingStatus := i.filingStatus,
-      primaryFilerCanBeClaimed := i.primaryFilerCanBeClaimed,
-      secondaryFilerCanBeClaimed := i.secondaryFilerCanBeClaimed,
-      combatPayElection := i.combatPayElection }
-  let int := Interest.interest
-    { interestReports := i.interestReports, hasForeignAccountsOrTrusts := i.hasForeignAccountsOrTrusts,
-      filingStatus := i.filingStatus, agi := o.agi, flowHasSeenDeductions := true }
-  let table : List (Bool × KnockoutReason) :=
-    [(int.koHasRequiredFactaFilings, .hasRequiredFactaFilings),
-     (int.koFlowKnockoutHasEarlyWithdrawlPenalty, .flowKnockoutHasEarlyWithdrawlPenalty),
-     (int.koFlowKnockoutHasBonds, .flowKnockoutHasBonds),
-     (int.koFlowKnockoutHasForeignTaxPaid, .flowKnockoutHasForeignTaxPaid),
-     (int.koFlowKnockoutWithholdingUnsupportedState, .flowKnockoutWithholdingUnsupportedState),
-     (int.koFlowKnockoutStateTaxWithheld, .flowKnockoutStateTaxWithheld),
-     (int.koHasInterestIncomeAndAgiAboveThresholdForMfs, .hasInterestIncomeAndAgiAboveThresholdForMfs),
-     (int.koHasInterestIncomeAndAgiAboveThresholdForMfjOrQss, .hasInterestIncomeAndAgiAboveThresholdForMfjOrQss),
-     (int.koHasInterestIncomeAndAgiAboveThresholdForSingleOrHoh, .hasInterestIncomeAndAgiAboveThresholdForSingleOrHoh),
-     (int.koFlowKnockoutTaxExemptInterest, .flowKnockoutTaxExemptInterest),
-     (w2.koKnockoutForBox12Value, .knockoutForBox12Value),
-     (w2.koKnockoutForBox12Dependency, .knockoutForBox12Dependency),
-     (w2.koFlowKnockoutAllocatedTips, .flowKnockoutAllocatedTips),
-     (w2.koFlowKnockoutStatutoryEmployee, .flowKnockoutStatutoryEmployee),
-     (w2.koFlowKnockoutThirdPartySickPay, .flowKnockoutThirdPartySickPay),
-     (w2.koFlowKnockoutNonQualifiedPlans, .flowKnockoutNonQualifiedPlans),
-     (w2.koKnockoutMedicareWages, .knockoutMedicareWages),
-     (w2.koAnyFilerExceedsMaxOasdiWages, .anyFilerExceedsMaxOasdiWages),
-     (i.hasForeignAccountsOrTrusts, .hasForeignAccountsOrTrusts),
-     (o.koKnockoutHasNoPaymentsOrCredits, .knockoutHasNoPaymentsOrCredits)]
-  (table.filter (·.1)).map (·.2.toReason)
+  (supersededFields r).map fun u => ⟨"field_superseded", u.path, u.message⟩
 
 /-- What `POST /calculate` answers, before HTTP framing. -/
 inductive Reply where
@@ -133,14 +82,13 @@ def Reply.body : Reply → J
   | .rejected e => e.toJ
   | .fault => ApiError.internal.toJ
 
-/-- The calculation on a validated request. -/
-def calculateRequest (r : Request) (h : r.Valid) : Reply :=
-  let i := toForm1040Input r h
-  let o := Form1040.form1040 i
-  let rs := knockoutReasons i o
-  if rs.isEmpty then
-    if o.unsupported then .fault else .success (Lines.ofOut o) (warnings r)
-  else .unsupported rs
+/-- The calculation on a validated request: the whole return (`ApiCalculator.apiCalculator`). -/
+def calculateRequest (r : Request) (_h : r.Valid) : Reply :=
+  let o := ApiCalculator.apiCalculator r
+  if o.supported then .success o.lines (warnings r)
+  else match o.unsupportedReasons with
+    | [] => .fault
+    | rs => .unsupported rs
 
 /-- Request text to reply. Validation failures are 400s. -/
 def calculate (body : String) : Reply :=
@@ -160,10 +108,16 @@ private def single50k : String :=
     l.taxableIncome == 3540000 && l.totalTax == 401900 && l.balanceDue == 401900 && ws.isEmpty
   | _ => false
 
--- a 1099-G is accepted but not read: the response says so
+-- a 1099-G is read: $1 of unemployment compensation adds to line 9, no warning
 #guard match calculate (single50k ++
     ",\"form_1099g\":[{\"filer\":\"PrimaryFiler\",\"unemployment_compensation\":100}]}") with
-  | .success l ws => l.totalTax == 401900 && ws.map (·.path) == ["/form_1099g"]
+  | .success l ws => l.totalIncome == 5000100 && ws.isEmpty
+  | _ => false
+
+-- head of household with no qualifying person: 422 with the household reason
+#guard match calculate ("{\"api_version\":1,\"tax_year\":2024,\"filing_status\":\"HeadOfHousehold\"," ++
+    "\"w2s\":[{\"filer\":\"PrimaryFiler\",\"wages\":5000000}]}") with
+  | .unsupported rs => rs.map (·.code) == ["ExtraFilingStatusNotEligible"]
   | _ => false
 
 -- foreign accounts: 422 with that reason only

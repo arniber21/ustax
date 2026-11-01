@@ -314,7 +314,7 @@ calculator's `Money` functions (`Proofs/Rounding.lean`).
 | `lean/UsTax/Spec/{Rounding,StandardDeduction,Interest,FormW2,SocialSecurity,Adjustments,Form1040Lines,Inputs}.lean` | the specs, each with examples and rejected bad outputs |
 | `lean/UsTax/Proofs/{StandardDeduction,Interest,FormW2,SocialSecurity,Adjustments,Form1040Lines}.lean` | the proofs; each theorem on a concrete input (hypotheses discharged) and a rejected bad output |
 | `lean/UsTax/Proofs/SpecProps.lean` | plausible tests of every statement (run before proving; run on every build), plus a negative control |
-| `lean/UsTax/Comparator/Extra.lean` | the 23 statements with `sorry` (challenge) |
+| `lean/UsTax/Comparator/Extra.lean` | the 23 module statements and the 8 whole-return statements of #48 (below) with `sorry` (challenge) |
 | `lean/UsTax/Proofs/Extra.lean` | the same, proved (solution) |
 | `lean/comparator.extra.json` | `make comparator-extra` |
 
@@ -420,3 +420,60 @@ amounts itself.
 9. **Monotone in "other income"** for line 6b is stated by changing line 8 of
    the worksheet input; the proof covers any change of modified AGI
    (`Proofs.tiers_mono`).
+
+## The whole return and the API answer (issue #48, `comparator.extra.json`)
+
+Eight more statements of the second challenge (`lean/UsTax/Comparator/Extra.lean`, section "The
+whole return and the API answer"; proofs `lean/UsTax/Proofs/Calculator.lean`, plausible tests run
+first in `lean/UsTax/Calculator/Props.lean`). They are about `Calculator.calculator` (the Lean port
+of `catala/calculator.catala_en`) and `ApiCalculator.apiCalculator` (`catala/api_calculator.catala_en`
+on the typed request `Api.Request`), which the server runs. Not added to `lean/comparator.json`: the
+human decides which of them become main theorems.
+
+| theorem | says | property (`UsTax/Spec/*.lean`) |
+|---|---|---|
+| `calculator_refund_balanceDue_consistent` | on the whole return, refund (line 34) and amount owed (line 37) are nonnegative, exclusive, and their difference is line 33 − line 24 (#65) | `RefundOrBalanceDue` |
+| `calculator_credits_within_liability` | line 22 = `max 0 (line 18 − line 21)`, line 21 = lines 19 + 20: the nonrefundable credits used never exceed the tax (#66) | `CreditsWithinLiability` |
+| `calculator_totalTax_nonneg` | line 24 ≥ 0 | none |
+| `calculator_credits_le_tax` | CDCC + Schedule R + Saver's ≤ line 18 of the tax pass (line 17 included): the per-credit limits of `NonrefundableCredits/Lemmas.lean` composed in the calculator's wiring (#66) | `CreditsWithinTax` (new, `Spec/Calculator.lean`) |
+| `calculator_unsupported_iff` | `unsupported` (every module's own flag, `/flowIsKnockedOut`) holds exactly when the knockout table lists a reason | none |
+| `apiCalculator_supported_iff` | `supported = false` exactly when `reasons ≠ []` | `KnockoutSound` (new) |
+| `apiCalculator_outcome_refund_iff` | `outcome = refund` exactly when `lines.overpayment > 0` (an unsupported return: `even`, lines zero) | `RefundOutcome` (new) |
+| `calculateRequest_ne_fault` | `Api.calculateRequest` never returns `fault` (HTTP 500) on a valid request | none |
+
+None has a hypothesis except `calculateRequest_ne_fault` (`r.Valid`, which `Api.parseRequest_sound`
+gives every parsed request); each is instantiated on a return of the Catala tests in
+`Proofs/Calculator.lean`. The new properties each have a satisfiable example and rejected bad outputs
+(`Spec/Calculator.lean`: a 422 with no reason, a supported return with a stray reason, `refund` with
+nothing overpaid, each credit limited by the full tax). Axioms of all eight: `propext`,
+`Classical.choice`, `Quot.sound`.
+
+`#spec_surface` (constants, then `UsTax` declarations including fields and constructors):
+
+| theorem | constants | `UsTax` | spec definitions |
+|---|---|---|---|
+| `calculator_refund_balanceDue_consistent` | 3,096 | 2,403 | `RefundOrBalanceDue` |
+| `calculator_credits_within_liability` | 3,095 | 2,402 | `CreditsWithinLiability` |
+| `calculator_totalTax_nonneg` | 3,092 | 2,399 | none |
+| `calculator_credits_le_tax` | 3,096 | 2,403 | `CreditsWithinTax` |
+| `calculator_unsupported_iff` | 3,093 | 2,400 | none |
+| `apiCalculator_supported_iff` | 3,841 | 3,105 | `KnockoutSound` |
+| `apiCalculator_outcome_refund_iff` | 3,842 | 3,106 | `RefundOutcome` |
+| `calculateRequest_ne_fault` | 3,966 | 3,204 | none |
+
+Review. The surface is the whole calculator (every merged module, `KnockoutsIncome`,
+`KnockoutsHousehold`, `Calculator`: about 485 of the `UsTax` names) and, for the API statements,
+the typed request and its mapping (`Api.Types`, `Api.Bridge.toCalculatorInput`, `ApiCalculator`)
+and, for `calculateRequest_ne_fault`, the JSON reader and validator. That is the code that runs;
+what a reviewer reads is the property (a line each) and which outputs it is applied to. Choices to
+confirm:
+
+1. `calculator_credits_le_tax` is about the three credits whose limits chain on line 18
+   (Form 2441 line 10, Schedule R line 3, Form 8880 line 11). The child tax credit (Schedule 8812
+   Credit Limit Worksheet A) is rounded to the dollar after its limit, so "all four ≤ line 18" holds
+   only to the dollar; it is not claimed. What the return guarantees for all credits is
+   `calculator_credits_within_liability` (line 22 is floored at zero).
+2. `calculator_unsupported_iff` rests on each module's `unsupported` being the disjunction of the
+   `ko_` outputs the knockout tables list (true by definition, checked by `rfl` in the proof). A
+   module knockout that is not passed to `KnockoutsIncome` / `KnockoutsHousehold` would make the
+   theorem fail to prove: that is the point of it.

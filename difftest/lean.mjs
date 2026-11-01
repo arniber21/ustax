@@ -19,8 +19,11 @@
 //   knownDivergence  C differs from D and the mapping lists it (law vs Direct File): L must equal C
 //   FAIL          anything else. Counted separately as lean!=catala or catala!=oracle.
 // Outputs listed in the mapping's `extraOutputs` have no oracle fact; only L = C is checked.
-// Knocked-out scenarios (oracle /flowIsKnockedOut = true) and scenarios a mapping excludes (`appliesTo`)
-// are skipped and listed.
+// Knocked-out scenarios (oracle /flowIsKnockedOut = true; run anyway if the mapping says `includeKnockedOut`)
+// and scenarios a mapping excludes (`appliesTo`) are skipped and listed. `placeholderFalse` and `invert`
+// outputs are read as in difftest/lib.mjs (a Placeholder `false` knockout flag is an expected `false`).
+// `leanInput` (optional) gives the Lean side its own text made from the same facts; dotted output names
+// (`lines.wages`) are fields of a struct output.
 //
 // Negative control: LEAN_DIFFTEST_PERTURB=1 adds one cent / 1 / negation to every Lean output; every
 // check must then fail (exit status 1).
@@ -76,18 +79,22 @@ for (const name of names) {
   for (const [scenario, sharedFacts] of oracle) {
     const facts = mappingFacts(sharedFacts); // private copy: a mapping may add derived rows
     if (only && scenario !== only) continue;
-    if (isKnockedOut(facts)) { knocked.push(scenario); continue; }
+    // A mapping with `includeKnockedOut: true` (knockout aggregation) also runs the knocked-out scenarios.
+    if (isKnockedOut(facts) && !mapping.includeKnockedOut) { knocked.push(scenario); continue; }
     const applies = mapping.appliesTo(facts);
     if (applies !== true) { outOfScope.push(`${scenario} (${applies})`); continue; }
     try {
       const file = join(outDir, `${scenario}.input.json`);
       writeFileSync(file, inputFileText(buildInput(mapping, facts)));
-      scen.push({ scenario, facts, file });
+      // `leanInput` (optional): the Lean side reads another text made from the same facts (the
+      // API-facing scope reads the raw API request the Catala input was decoded from).
+      const leanText = mapping.leanInput ? JSON.stringify(mapping.leanInput(facts)) : undefined;
+      scen.push({ scenario, facts, file, leanText });
     } catch (e) { inputErrors.push(`${scenario}: ${e.message}`); }
   }
 
   // Lean: one process, one JSON line per scenario, read back from the file the Catala runner reads.
-  const lin = scen.map((s) => JSON.stringify(JSON.parse(readFileSync(s.file, 'utf8')))).join('\n') + '\n';
+  const lin = scen.map((s) => s.leanText ?? JSON.stringify(JSON.parse(readFileSync(s.file, 'utf8')))).join('\n') + '\n';
   const t0 = Date.now();
   const lr = spawnSync(ustax, ['run', mapping.scope], { input: lin, encoding: 'utf8', maxBuffer: 1 << 30 });
   if (lr.status !== 0) {
@@ -113,19 +120,25 @@ for (const name of names) {
     if (lean.error !== undefined) {
       c.error++; scenBad.add(s.scenario); problems.push(`ERROR scenario=${s.scenario} lean: ${lean.error}`); return;
     }
+    // A dotted output name (`lines.wages`) is a field of a struct output: Catala prints it as such
+    // (parseCatalaResult), Lean as a nested JSON object.
+    const leanGet = (k) => k.split('.').reduce((v, p) => (v !== null && typeof v === 'object' && p in v ? v[p] : undefined), lean);
     for (const o of outs) {
       const path = o.oracle ?? `(catala ${o.catala})`;
-      if (!cat.has(o.catala) || !(o.catala in lean)) {
+      if (!cat.has(o.catala) || leanGet(o.catala) === undefined) {
         c.error++; scenBad.add(s.scenario);
-        problems.push(`ERROR scenario=${s.scenario} ${path}: missing output ${o.catala} (catala=${cat.get(o.catala) ?? '-'} lean=${lean[o.catala] ?? '-'})`);
+        problems.push(`ERROR scenario=${s.scenario} ${path}: missing output ${o.catala} (catala=${cat.get(o.catala) ?? '-'} lean=${leanGet(o.catala) ?? '-'})`);
         continue;
       }
       const C = parseCatalaValue(o.type, cat.get(o.catala));
-      let L = leanValue(o.type, lean[o.catala]);
+      let L = leanValue(o.type, leanGet(o.catala));
       if (perturb) L = perturbed(o.type, L);
       const row = o.oracle ? s.facts.get(o.oracle) : undefined;
-      const hasD = !!row && row.completeness === 'Complete';
-      const D = hasD ? parseOracleValue(o.type, row.value) : undefined;
+      // as difftest/lib.mjs compareOutputs: `placeholderFalse` (knockout flags) reads a Placeholder `false` as
+      // "not knocked out"; `invert` (bool) compares the negation of the oracle fact (`supported`).
+      const asFalse = o.placeholderFalse && row && row.completeness === 'Placeholder' && row.value === 'false';
+      const hasD = !!row && (row.completeness === 'Complete' || asFalse);
+      const D = hasD ? (o.invert ? !parseOracleValue(o.type, row.value) : parseOracleValue(o.type, row.value)) : undefined;
       const show = (v) => (v === undefined ? '-' : showValue(o.type, v));
       const line = `scenario=${s.scenario} ${path} oracle=${show(D)} catala=${show(C)} lean=${show(L)}`;
       const kd = hasD && C !== D && (mapping.knownDivergence || []).find((d) => d.scenario === s.scenario && d.path === o.oracle);
