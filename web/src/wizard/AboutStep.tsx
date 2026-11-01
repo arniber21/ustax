@@ -1,7 +1,7 @@
 import type { FilingStatus } from '../api';
-import { Callout, Card } from '../components';
+import { Callout } from '../components';
 import { useDraft, type FlagsDraft } from '../draft';
-import { Check, ChoiceCards, StepHeader, type CardOption } from './ui';
+import { Check, ChoiceCards, FormSection, StepHeader, type CardOption } from './ui';
 
 export const FILING_STATUS_OPTIONS: readonly CardOption<FilingStatus>[] = [
   {
@@ -40,12 +40,12 @@ export function AboutStep() {
     <>
       <StepHeader
         eyebrow="Step 1 of 5"
-        title="First, how will you be filing?"
-        intro="This sets your standard deduction, which is the chunk of income that is not taxed. Not sure? Pick the closest one; you can change it any time."
+        title="About you"
+        intro="Your filing status sets your standard deduction (the part of income that is not taxed) and your tax rates. You can change any answer later."
       />
-      <Card>
+      <FormSection title="Filing status">
         <ChoiceCards
-          legend="Your filing status"
+          legend="Which one applies to you?"
           value={draft.filingStatus}
           options={FILING_STATUS_OPTIONS}
           onChange={(filingStatus) => update({ filingStatus })}
@@ -57,11 +57,9 @@ export function AboutStep() {
             Single or Head of household is likely the right fit.
           </Callout>
         )}
-      </Card>
+      </FormSection>
 
-      <Card>
-        <h2>A few things about you</h2>
-        <p className="muted">Tick anything that is true on December 31, 2024. Each one can raise your standard deduction.</p>
+      <FormSection title="Age, sight and dependency" note="Select anything that was true on December 31, 2024. Each one can change your standard deduction.">
         <Check
           label="I am 65 or older"
           hint="You count as 65 if your 65th birthday is on or before January 1, 2025."
@@ -80,7 +78,7 @@ export function AboutStep() {
           checked={draft.primary.canBeClaimed}
           onChange={(canBeClaimed) => setPrimary({ canBeClaimed })}
         />
-      </Card>
+      </FormSection>
     </>
   );
 }

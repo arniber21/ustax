@@ -1,14 +1,14 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
 
 export interface TooltipProps {
-  /** Plain-language explanation shown on hover, focus or tap. */
+  /** Supplementary explanation shown on hover, focus or tap. Never put essential information only here. */
   content: ReactNode;
-  /** Visible trigger text, e.g. the jargon word being explained. */
+  /** Visible trigger text, e.g. the term being explained. */
   children: ReactNode;
 }
 
 /**
- * Explains jargon in place. The trigger is a real button (keyboard and touch friendly);
+ * Explains a term in place. The trigger is a real button (keyboard and touch friendly);
  * the bubble is wired with aria-describedby and closes on Escape.
  */
 export function Tooltip({ content, children }: TooltipProps) {
@@ -23,10 +23,10 @@ export function Tooltip({ content, children }: TooltipProps) {
   }, [open]);
 
   return (
-    <span className="tip" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+    <span className="relative inline-block" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
       <button
         type="button"
-        className="tip__trigger"
+        className="cursor-help border-0 border-b border-dotted border-current bg-transparent p-0 text-inherit"
         aria-describedby={id}
         aria-expanded={open}
         onClick={() => setOpen(true)}
@@ -35,7 +35,12 @@ export function Tooltip({ content, children }: TooltipProps) {
       >
         {children}
       </button>
-      <span role="tooltip" id={id} className="tip__bubble" hidden={!open}>
+      <span
+        role="tooltip"
+        id={id}
+        hidden={!open}
+        className="absolute bottom-[calc(100%+6px)] left-0 z-20 w-max max-w-[min(18rem,80vw)] rounded-md bg-foreground px-3 py-2 text-xs leading-snug text-background"
+      >
         {content}
       </span>
     </span>

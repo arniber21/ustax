@@ -1,25 +1,52 @@
 import { useId, type ReactNode } from 'react';
-import { Button, Select, Tooltip } from '../components';
+import { Plus, Trash2 } from 'lucide-react';
+import { Button, Select } from '../components';
+import { Checkbox } from '../components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import type { Role } from '../draft';
 import { useStepError } from './stepErrors';
+import { cn } from '@/lib/utils';
 
-/** Friendly page opening: small label, big question, short reassurance. */
+/** Step title block: "Step n of 5", the h1, a short plain intro. */
 export function StepHeader({ eyebrow, title, intro }: { eyebrow: string; title: string; intro?: ReactNode }) {
   return (
-    <header className="step-head">
-      <p className="eyebrow">{eyebrow}</p>
-      <h1>{title}</h1>
-      {intro && <p className="lead">{intro}</p>}
+    <header className="mb-8">
+      <p className="m-0 mb-2 hidden text-sm font-medium text-muted-foreground lg:block">{eyebrow}</p>
+      <h1 className="m-0 text-3xl leading-tight font-semibold tracking-tight">{title}</h1>
+      {intro && <p className="mt-3 mb-0 max-w-2xl text-base leading-relaxed text-muted-foreground">{intro}</p>}
     </header>
   );
 }
 
-/** "Where do I find this?" in one tap. */
-export function Where({ children }: { children: ReactNode }) {
+/** A group of related questions inside a step: a heading, an optional note, then fields. */
+export function FormSection({ title, note, children, ...rest }: { title: string; note?: ReactNode; children: ReactNode; 'aria-label'?: string }) {
   return (
-    <span className="where">
-      <Tooltip content={children}>Where do I find this?</Tooltip>
-    </span>
+    <section className="border-t py-8 first-of-type:border-t-0 first-of-type:pt-0" {...rest}>
+      <h2 className="m-0 text-lg font-semibold">{title}</h2>
+      {note && <p className="mt-1 mb-0 text-sm text-muted-foreground">{note}</p>}
+      <div className="mt-5 grid gap-6">{children}</div>
+    </section>
+  );
+}
+
+/** Where a number is printed on the form. Shown inline as muted help text, never hidden behind a tooltip. */
+export function Where({ children }: { children: ReactNode }) {
+  return <span className="where">Where to find it: {children}</span>;
+}
+
+function Legend({ children }: { children: ReactNode }) {
+  return <legend className="mb-1 p-0 text-[0.9375rem] font-semibold">{children}</legend>;
+}
+
+function Hint({ children }: { children: ReactNode }) {
+  return <p className="m-0 mb-3 max-w-prose text-sm text-muted-foreground">{children}</p>;
+}
+
+function ErrorText({ children }: { children: ReactNode }) {
+  return (
+    <p className="field-error m-0 mb-2 text-sm font-semibold text-destructive" role="alert" data-error>
+      {children}
+    </p>
   );
 }
 
@@ -30,21 +57,30 @@ interface YesNoProps {
   onChange: (v: boolean) => void;
 }
 
-/** A two-way question that reads like a sentence: big tappable Yes / No. */
+/** A yes/no question (shadcn/ui RadioGroup, arrow keys move between the two). */
 export function YesNo({ legend, hint, value, onChange }: YesNoProps) {
-  const name = useId();
+  const id = useId();
   return (
-    <fieldset className="ask">
-      <legend className="ask__legend">{legend}</legend>
-      {hint && <p className="field__hint">{hint}</p>}
-      <div className="chips">
-        {[true, false].map((v) => (
-          <label key={String(v)} className="chip">
-            <input type="radio" name={name} checked={value === v} onChange={() => onChange(v)} />
-            <span>{v ? 'Yes' : 'No'}</span>
-          </label>
+    <fieldset className="m-0 min-w-0 border-0 p-0">
+      <Legend>{legend}</Legend>
+      {hint ? <Hint>{hint}</Hint> : <div className="h-2" />}
+      <RadioGroup
+        className="flex gap-3"
+        value={value ? 'yes' : 'no'}
+        onValueChange={(v) => onChange(v === 'yes')}
+      >
+        {(['yes', 'no'] as const).map((v) => (
+          <div
+            key={v}
+            className="relative flex min-w-24 items-center gap-2.5 rounded-md border border-input/50 px-4 py-2.5 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-info-soft"
+          >
+            <RadioGroupItem value={v} id={`${id}-${v}`} />
+            <label htmlFor={`${id}-${v}`} className="cursor-pointer text-sm font-medium after:absolute after:inset-0">
+              {v === 'yes' ? 'Yes' : 'No'}
+            </label>
+          </div>
         ))}
-      </div>
+      </RadioGroup>
     </fieldset>
   );
 }
@@ -56,15 +92,29 @@ interface CheckProps {
   onChange: (v: boolean) => void;
 }
 
+/** A checkbox with its label and optional muted help (shadcn/ui Checkbox). */
 export function Check({ label, hint, checked, onChange }: CheckProps) {
+  const id = useId();
   return (
-    <label className="check">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span>
-        <span className="check__label">{label}</span>
-        {hint && <span className="check__hint">{hint}</span>}
-      </span>
-    </label>
+    <div className="flex items-start gap-3">
+      <Checkbox
+        id={id}
+        className="mt-0.5"
+        checked={checked}
+        onCheckedChange={(c) => onChange(c === true)}
+        aria-describedby={hint ? `${id}-hint` : undefined}
+      />
+      <div className="grid gap-0.5">
+        <label htmlFor={id} className="cursor-pointer text-[0.9375rem] leading-snug font-medium">
+          {label}
+        </label>
+        {hint && (
+          <span id={`${id}-hint`} className="text-sm text-muted-foreground">
+            {hint}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -74,7 +124,7 @@ export interface CardOption<V extends string> {
   desc: ReactNode;
 }
 
-/** Pick-one list where each option explains itself. */
+/** Pick-one list where each option explains itself: radio tiles with a description. */
 export function ChoiceCards<V extends string>({
   legend,
   value,
@@ -88,25 +138,31 @@ export function ChoiceCards<V extends string>({
   onChange: (v: V) => void;
   errorPath?: string;
 }) {
-  const name = useId();
+  const id = useId();
   const error = useStepError(errorPath);
   return (
-    <fieldset className="ask">
-      <legend className="ask__legend">{legend}</legend>
-      <div className="choices">
+    <fieldset
+      className={cn('m-0 min-w-0 border-0 p-0', error && 'border-l-4 border-solid border-destructive pl-3')}
+      data-path={errorPath}
+      data-invalid={error ? true : undefined}
+    >
+      <Legend>{legend}</Legend>
+      <div className="h-2" />
+      {error && <ErrorText>{error}</ErrorText>}
+      <RadioGroup value={value ?? ''} onValueChange={(v) => onChange(v as V)} className="gap-2">
         {options.map((o) => (
-          <label key={o.value} className={`choice${value === o.value ? ' is-picked' : ''}`}>
-            <input type="radio" name={name} checked={value === o.value} onChange={() => onChange(o.value)} />
-            <span className="choice__label">{o.label}</span>
-            <span className="choice__desc">{o.desc}</span>
-          </label>
+          <div
+            key={o.value}
+            className="relative flex items-start gap-3 rounded-md border border-input/40 px-4 py-3.5 transition-colors hover:border-input has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-info-soft"
+          >
+            <RadioGroupItem value={o.value} id={`${id}-${o.value}`} className="mt-0.5" aria-invalid={error ? true : undefined} />
+            <label htmlFor={`${id}-${o.value}`} className="grid cursor-pointer gap-0.5 after:absolute after:inset-0">
+              <span className="text-[0.9375rem] font-semibold">{o.label}</span>
+              <span className="text-sm text-muted-foreground">{o.desc}</span>
+            </label>
+          </div>
         ))}
-      </div>
-      {error && (
-        <p className="field__error" role="alert" data-error>
-          {error}
-        </p>
-      )}
+      </RadioGroup>
     </fieldset>
   );
 }
@@ -142,29 +198,44 @@ interface RepeaterProps<T extends { id: string }> {
 export function Repeater<T extends { id: string }>({ noun, items, max, onAdd, onRemove, render, empty, errorPath }: RepeaterProps<T>) {
   const error = useStepError(errorPath);
   return (
-    <div className="repeater">
-      {items.length === 0 && <p className="muted repeater__empty">{empty}</p>}
+    <div className="grid gap-4" data-path={errorPath} data-invalid={error ? true : undefined}>
+      {items.length === 0 && <p className="m-0 text-sm text-muted-foreground">{empty}</p>}
       {items.map((item, i) => (
-        <section key={item.id} className="doc" aria-label={`${noun} ${i + 1}`}>
-          <div className="doc__head">
-            <h3>
+        <section key={item.id} className="rounded-lg border bg-card" aria-label={`${noun} ${i + 1}`}>
+          <div className="flex items-center justify-between gap-3 border-b bg-muted px-4 py-2.5 sm:px-5">
+            <h3 className="m-0 text-sm font-semibold">
               {noun} #{i + 1}
             </h3>
-            <Button variant="ghost" aria-label={`Remove ${noun} ${i + 1}`} onClick={() => onRemove(item.id)}>
+            <Button variant="ghost" aria-label={`Remove ${noun} ${i + 1}`} onClick={() => onRemove(item.id)} className="h-8 px-2 text-muted-foreground">
+              <Trash2 aria-hidden="true" />
               Remove
             </Button>
           </div>
-          {render(item, i)}
+          <div className="grid gap-6 px-4 py-5 sm:px-5">{render(item, i)}</div>
         </section>
       ))}
-      {error && (
-        <p className="field__error" role="alert" data-error>
-          {error}
-        </p>
-      )}
-      <Button variant="secondary" disabled={items.length >= max} onClick={onAdd}>
-        {items.length === 0 ? `Add a ${noun}` : `Add another ${noun}`}
-      </Button>
+      {error && <ErrorText>{error}</ErrorText>}
+      <div>
+        <Button variant="secondary" disabled={items.length >= max} onClick={onAdd}>
+          <Plus aria-hidden="true" />
+          {items.length === 0 ? `Add a ${noun}` : `Add another ${noun}`}
+        </Button>
+      </div>
     </div>
+  );
+}
+
+/** Optional extra fields, collapsed by default (native <details>, keyboard accessible). */
+export function More({ summary, children }: { summary: string; children: ReactNode }) {
+  return (
+    <details className="group rounded-md border">
+      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-primary marker:hidden hover:underline [&::-webkit-details-marker]:hidden">
+        <span aria-hidden="true" className="mr-2 inline-block transition-transform group-open:rotate-90">
+          ›
+        </span>
+        {summary}
+      </summary>
+      <div className="grid gap-6 border-t px-4 py-5">{children}</div>
+    </details>
   );
 }

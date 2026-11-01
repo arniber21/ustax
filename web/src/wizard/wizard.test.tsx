@@ -72,7 +72,7 @@ describe('Household step', () => {
     seed({ filingStatus: 'Single' });
     at('/start/household');
     await userEvent.click(within(screen.getByRole('group', { name: /child or another relative/ })).getByRole('radio', { name: 'Yes' }));
-    expect(screen.getByText(/dependents aren’t in our math yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Dependents aren’t in our math yet/)).toBeInTheDocument();
   });
 });
 
@@ -150,7 +150,7 @@ describe('Income step', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/Box 1 is the heart/);
     await userEvent.type(screen.getByLabelText(/^Box 1:/), '0');
     await next('Adjustments');
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/shrinks your bill/);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Adjustments and payments');
   });
 
   it('caps each list at the contract limit', () => {
@@ -159,11 +159,21 @@ describe('Income step', () => {
     expect(screen.getByRole('button', { name: 'Add another SSA-1099' })).toBeDisabled();
   });
 
-  it('explains where to find a box', async () => {
+  it('explains where to find a box as visible help text tied to the field', () => {
     seed({ filingStatus: 'Single', w2s: [newW2()] });
     at('/start/income');
-    await userEvent.click(screen.getAllByRole('button', { name: 'Where do I find this?' })[0]!);
-    expect(screen.getByRole('tooltip', { hidden: false })).toHaveTextContent(/first dollar box/);
+    const wages = screen.getByLabelText(/^Box 1:/);
+    expect(wages).toHaveAccessibleDescription(/Where to find it: Box 1 is the first dollar box/);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('error summary links jump to the field', async () => {
+    seed({ filingStatus: 'Single', w2s: [newW2()] });
+    at('/start/income');
+    await next('Adjustments');
+    const summary = screen.getByRole('group', { name: 'There is a problem' });
+    await userEvent.click(within(summary).getByRole('link', { name: /Box 1 is the heart/ }));
+    expect(screen.getByLabelText(/^Box 1:/)).toHaveFocus();
   });
 });
 
@@ -232,8 +242,8 @@ describe('Review step', () => {
   it('sends you to the first problem instead of the results', async () => {
     seed({ filingStatus: 'Single', w2s: [newW2()] });
     at('/start/review');
-    await userEvent.click(screen.getByRole('button', { name: /See my result/ }));
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/What money came in/);
+    await userEvent.click(screen.getByRole('button', { name: /Calculate my return/ }));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Income');
   });
 
   it('start over clears the draft', async () => {

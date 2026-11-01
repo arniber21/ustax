@@ -14,7 +14,11 @@ The sections below say exactly which is which.
 
 > US Tax is a research and hackathon project. It does not file anything, and it is not tax advice.
 
-<!-- Screenshots: add docs/screenshots/*.png here when the redesign PR lands. Link only files that exist. -->
+| Home and verification status | Result with the Form 1040 table |
+| --- | --- |
+| ![US Tax home page: tagline, start button and verification status panel](docs/screenshots/home.png) | ![US Tax results: refund of $981.00, key figures and the Form 1040 line table](docs/screenshots/results-refund.png) |
+
+More screenshots (every wizard step, amount owed, unsupported return, verification page, phone width, dark mode) are in [`docs/screenshots/`](docs/screenshots/).
 
 ## Try it
 

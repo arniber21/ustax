@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { sumCents } from '../api';
-import { Button, Callout, Card, Select, Stat, StatGroup } from '../components';
+import { Plus, Trash2 } from 'lucide-react';
+import { Button, Callout, Select, Stat, StatGroup } from '../components';
 import {
   BOX12_CODES,
   CODES_1099R,
@@ -21,7 +22,7 @@ import {
 } from '../draft';
 import { MoneyField } from './fields';
 import { useStepError } from './stepErrors';
-import { Check, Repeater, StepHeader, Where, WhoSelect } from './ui';
+import { Check, FormSection, More, Repeater, StepHeader, Where, WhoSelect } from './ui';
 
 type ListKey = 'w2s' | 'interest' | 'unemployment' | 'retirement' | 'ssa';
 
@@ -39,11 +40,9 @@ const removeItem = (key: ListKey, id: string) => (d: Draft): Draft => ({
 
 function Section({ title, form, children }: { title: string; form: string; children: ReactNode }) {
   return (
-    <Card as="section" aria-label={title}>
-      <h2>{title}</h2>
-      <p className="muted">{form}</p>
+    <FormSection title={title} note={form} aria-label={title}>
       {children}
-    </Card>
+    </FormSection>
   );
 }
 
@@ -65,15 +64,17 @@ export function IncomeStep() {
     <>
       <StepHeader
         eyebrow="Step 3 of 5"
-        title="What money came in during 2024?"
-        intro="Grab your tax forms (the ones that arrived in the mail or your inbox) and add one for each. Skip any you did not get. Typing cents is fine; the IRS rounds each box to the nearest dollar, and so do we."
+        title="Income"
+        intro="Add one entry for each tax form you received for 2024. Skip any you did not get. You can type cents; each box is rounded to the nearest dollar, as on the paper form."
       />
 
+      <div className="mb-8">
       <StatGroup>
-        <Stat label="W-2 wages so far" cents={wages} showCents />
-        <Stat label="Interest so far" cents={interest} showCents />
-        <Stat label="Already withheld" cents={withheld} showCents note="Tax your employers and payers sent in for you" />
+        <Stat label="W-2 wages entered" cents={wages} showCents />
+        <Stat label="Interest entered" cents={interest} showCents />
+        <Stat label="Federal tax withheld" cents={withheld} showCents note="By employers and other payers" />
       </StatGroup>
+      </div>
 
       <Section title="Jobs (W-2)" form="Form W-2, “Wage and Tax Statement”. Your employer sends one for each job.">
         <Repeater
@@ -162,9 +163,9 @@ export function IncomeStep() {
         )}
       </Section>
 
-      <Callout tone="info" title="Something else, like a side business or stock sales?">
-        We can only handle the forms above for now. If you have other kinds of income we will tell you plainly instead of
-        guessing.
+      <Callout tone="info" title="Other kinds of income">
+        Only the forms above are supported. Self-employment, stock sales and other income are not, and entering them
+        elsewhere would give a wrong result.
       </Callout>
     </>
   );
@@ -206,8 +207,7 @@ function W2Form({ w, joint }: { w: W2Draft; joint: boolean }) {
         onChange={(withholding) => set({ withholding })}
       />
 
-      <details className="more">
-        <summary>More boxes: Social Security, Medicare, tips (optional)</summary>
+      <More summary="More boxes: Social Security, Medicare, tips (optional)">
         <MoneyField label="Box 3: Social Security wages" path={`${p}.ssWages`} value={w.ssWages} onChange={(ssWages) => set({ ssWages })} />
         <MoneyField label="Box 4: Social Security tax withheld" path={`${p}.ssTax`} value={w.ssTax} onChange={(ssTax) => set({ ssTax })} />
         <MoneyField label="Box 5: Medicare wages" path={`${p}.medicareWages`} value={w.medicareWages} onChange={(medicareWages) => set({ medicareWages })} />
@@ -215,16 +215,16 @@ function W2Form({ w, joint }: { w: W2Draft; joint: boolean }) {
         <MoneyField label="Box 8: allocated tips" path={`${p}.allocatedTips`} value={w.allocatedTips} onChange={(allocatedTips) => set({ allocatedTips })} />
         <MoneyField label="Box 10: dependent care benefits" path={`${p}.dependentCare`} value={w.dependentCare} onChange={(dependentCare) => set({ dependentCare })} />
         <MoneyField label="Box 11: nonqualified plans" path={`${p}.nonQualified`} value={w.nonQualified} onChange={(nonQualified) => set({ nonQualified })} />
-      </details>
+      </More>
 
-      <fieldset className="ask box12">
-        <legend className="ask__legend">Box 12: codes</legend>
-        <p className="field__hint">
+      <fieldset className="m-0 grid min-w-0 gap-3 border-0 p-0">
+        <legend className="mb-1 p-0 text-[0.9375rem] font-semibold">Box 12: codes</legend>
+        <p className="m-0 max-w-prose text-sm text-muted-foreground">
           Retirement savings and benefits show up here as a letter plus an amount, like “D 5,000”.{' '}
           <Where>Box 12 is on the right side of the W-2, in lettered rows 12a to 12d. Add one entry per row.</Where>
         </p>
         {w.box12.map((r, i) => (
-          <div className="box12__row" key={r.id} role="group" aria-label={`Box 12 entry ${i + 1}`}>
+          <div className="grid items-end gap-3 rounded-md border bg-muted p-3 sm:grid-cols-[minmax(0,1fr)_11rem_auto]" key={r.id} role="group" aria-label={`Box 12 entry ${i + 1}`}>
             <Box12Code
               path={`${p}.box12.${r.id}.code`}
               value={r.code}
@@ -236,14 +236,18 @@ function W2Form({ w, joint }: { w: W2Draft; joint: boolean }) {
               value={r.amount}
               onChange={(amount) => set({ box12: w.box12.map((x) => (x.id === r.id ? { ...x, amount } : x)) })}
             />
-            <Button variant="ghost" aria-label={`Remove box 12 entry ${i + 1}`} onClick={() => set({ box12: w.box12.filter((x) => x.id !== r.id) })}>
+            <Button variant="ghost" className="justify-self-start text-muted-foreground" aria-label={`Remove box 12 entry ${i + 1}`} onClick={() => set({ box12: w.box12.filter((x) => x.id !== r.id) })}>
+              <Trash2 aria-hidden="true" />
               Remove
             </Button>
           </div>
         ))}
-        <Button variant="secondary" onClick={() => set({ box12: [...w.box12, { id: newId(), code: '', amount: null }] })}>
-          Add a box 12 entry
-        </Button>
+        <div>
+          <Button variant="secondary" onClick={() => set({ box12: [...w.box12, { id: newId(), code: '', amount: null }] })}>
+            <Plus aria-hidden="true" />
+            Add a box 12 entry
+          </Button>
+        </div>
       </fieldset>
       {hasGov457 && (
         <Check
@@ -254,8 +258,8 @@ function W2Form({ w, joint }: { w: W2Draft; joint: boolean }) {
         />
       )}
 
-      <fieldset className="ask">
-        <legend className="ask__legend">Box 13: checkboxes</legend>
+      <fieldset className="m-0 grid min-w-0 gap-3 border-0 p-0">
+        <legend className="mb-1 p-0 text-[0.9375rem] font-semibold">Box 13: checkboxes</legend>
         <Check label="Statutory employee" checked={w.statutoryEmployee} onChange={(statutoryEmployee) => set({ statutoryEmployee })} />
         <Check label="Third-party sick pay" checked={w.thirdPartySickPay} onChange={(thirdPartySickPay) => set({ thirdPartySickPay })} />
       </fieldset>
@@ -268,6 +272,7 @@ function Box12Code({ value, onChange, path }: { value: string; onChange: (c: str
   return (
     <Select
       label="Code"
+      path={path}
       value={value}
       error={error}
       placeholder="Pick the letter"
@@ -292,14 +297,13 @@ function InterestForm({ i, joint }: { i: InterestDraft; joint: boolean }) {
         onChange={(interest) => set({ interest })}
       />
       <MoneyField label="Box 4: federal income tax withheld" path={`${p}.withheld`} value={i.withheld} onChange={(withheld) => set({ withheld })} />
-      <details className="more">
-        <summary>More boxes (optional)</summary>
+      <More summary="More boxes (optional)">
         <MoneyField label="Box 2: early withdrawal penalty" path={`${p}.earlyWithdrawalPenalty`} value={i.earlyWithdrawalPenalty} onChange={(earlyWithdrawalPenalty) => set({ earlyWithdrawalPenalty })} />
         <MoneyField label="Box 3: interest on U.S. savings bonds and Treasury obligations" path={`${p}.governmentBondInterest`} value={i.governmentBondInterest} onChange={(governmentBondInterest) => set({ governmentBondInterest })} />
         <MoneyField label="Box 6: foreign tax paid" path={`${p}.foreignTax`} value={i.foreignTax} onChange={(foreignTax) => set({ foreignTax })} />
         <MoneyField label="Box 8: tax-exempt interest" path={`${p}.taxExempt`} value={i.taxExempt} onChange={(taxExempt) => set({ taxExempt })} />
         <MoneyField label="Box 9: specified private activity bond interest" path={`${p}.privateActivityBond`} value={i.privateActivityBond} onChange={(privateActivityBond) => set({ privateActivityBond })} />
-      </details>
+      </More>
     </>
   );
 }
@@ -332,9 +336,9 @@ function RetirementForm({ r, joint }: { r: RetirementDraft; joint: boolean }) {
   return (
     <>
       <Who role={r.filer} joint={joint} onChange={(filer) => set({ filer })} />
-      <fieldset className="ask">
-        <legend className="ask__legend">Box 7: distribution code</legend>
-        <p className="field__hint">
+      <fieldset className="m-0 grid min-w-0 gap-3 border-0 p-0" data-path={`${p}.codes`} data-invalid={codesError ? true : undefined}>
+        <legend className="mb-1 p-0 text-[0.9375rem] font-semibold">Box 7: distribution code</legend>
+        <p className="m-0 max-w-prose text-sm text-muted-foreground">
           One to four codes tell the IRS why you took the money out. <Where>Box 7 is in the middle of the 1099-R, usually a number or a letter.</Where>
         </p>
         {CODES_1099R.map((c) => (
@@ -346,7 +350,7 @@ function RetirementForm({ r, joint }: { r: RetirementDraft; joint: boolean }) {
           />
         ))}
         {codesError && (
-          <p className="field__error" role="alert" data-error>
+          <p className="field-error m-0 text-sm font-semibold text-destructive" role="alert" data-error>
             {codesError}
           </p>
         )}

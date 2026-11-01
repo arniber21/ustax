@@ -37,12 +37,12 @@ const STATUS_WORDS: Record<FilingStatus, string> = {
 export const WALK: WalkGroup[] = [
   {
     id: 'income',
-    title: 'Money you made',
+    title: 'Income',
     blurb: 'Everything that counts as income this year.',
     lines: [
-      { key: 'wages', line: '1a', label: 'Pay from your job (W-2 box 1)' },
-      { key: 'employer_income_subtotal', line: '1z', label: 'All job income added up' },
-      { key: 'interest_income', line: '2b', label: 'Bank interest' },
+      { key: 'wages', line: '1a', label: 'Wages (W-2 box 1)' },
+      { key: 'employer_income_subtotal', line: '1z', label: 'Total wages and other employee income' },
+      { key: 'interest_income', line: '2b', label: 'Taxable interest' },
       {
         key: 'total_income',
         line: '9',
@@ -95,17 +95,17 @@ export const WALK: WalkGroup[] = [
   },
   {
     id: 'tax',
-    title: 'Your tax',
+    title: 'Tax',
     blurb: 'What the tax rules say that income costs.',
     lines: [
       {
         key: 'tentative_tax_from_taxable_income',
         line: '16',
-        label: 'Tax on your taxable income',
+        label: 'Tax on taxable income',
         explain: ({ lines }) =>
           `We looked up ${$(lines.taxable_income)} in the IRS’s 2024 tax tables for your filing status. The rate climbs in steps, so the first slice of income is taxed lightly and only the top slice at the highest rate. The result is ${$(lines.tentative_tax_from_taxable_income)}.`,
       },
-      { key: 'total_tentative_tax', line: '18', label: 'Tax before credits' },
+      { key: 'total_tentative_tax', line: '18', label: 'Tax before credits (lines 16 and 17)' },
     ],
   },
   {
@@ -113,7 +113,7 @@ export const WALK: WalkGroup[] = [
     title: 'Credits',
     blurb: 'Credits take money straight off your tax bill.',
     lines: [
-      { key: 'non_refundable_credits', line: '21', label: 'Credits applied' },
+      { key: 'non_refundable_credits', line: '21', label: 'Nonrefundable credits' },
       { key: 'tax_less_non_refundable_credits', line: '22', label: 'Tax after credits' },
       {
         key: 'total_tax',
@@ -126,20 +126,20 @@ export const WALK: WalkGroup[] = [
   },
   {
     id: 'payments',
-    title: 'What you already paid',
+    title: 'Payments',
     blurb: 'Money sent to the IRS on your behalf during the year.',
     lines: [
-      { key: 'total_withholding', line: '25d', label: 'Tax your employer held back' },
+      { key: 'total_withholding', line: '25d', label: 'Federal income tax withheld' },
       { key: 'total_other_payments_refundable_credits', line: '32', label: 'Other payments and refundable credits' },
-      { key: 'total_payments', line: '33', label: 'Total already paid' },
+      { key: 'total_payments', line: '33', label: 'Total payments' },
     ],
   },
   {
     id: 'result',
-    title: 'The result',
+    title: 'Refund or amount owed',
     blurb: 'Paid in versus tax owed.',
     lines: [
-      { key: 'overpayment', line: '34', label: 'Refund (you paid in too much)' },
+      { key: 'overpayment', line: '34', label: 'Overpayment (refund)' },
       { key: 'balance_due', line: '37', label: 'Amount you owe' },
     ],
   },

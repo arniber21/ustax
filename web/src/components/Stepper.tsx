@@ -1,3 +1,8 @@
+import { Check } from 'lucide-react';
+import { Link } from 'react-router';
+import { Progress } from './ui/progress';
+import { cn } from '@/lib/utils';
+
 export interface StepperStep {
   id: string;
   label: string;
@@ -7,39 +12,63 @@ export interface StepperProps {
   steps: readonly StepperStep[];
   /** Index of the current step. */
   current: number;
+  /** When given, completed steps link here so people can jump back. */
+  hrefFor?: (id: string) => string;
 }
 
-/** "Step 2 of 5" progress: a labelled list plus a filling bar. Completed steps get a check. */
-export function Stepper({ steps, current }: StepperProps) {
-  const pct = Math.round(((current + 1) / steps.length) * 100);
+/**
+ * Step list. On wide screens a vertical list (completed steps ticked, current one marked);
+ * on narrow screens "Step 2 of 5" plus a thin progress bar. One DOM, switched with CSS.
+ */
+export function Stepper({ steps, current, hrefFor }: StepperProps) {
   return (
-    <nav aria-label="Progress" className="stepper">
-      <p className="stepper__summary">
-        Step {current + 1} of {steps.length}: <strong>{steps[current]?.label}</strong>
+    <nav aria-label="Progress" className="grid gap-3">
+      <p className="m-0 text-sm text-muted-foreground lg:hidden">
+        Step {current + 1} of {steps.length}: <strong className="font-semibold text-foreground">{steps[current]?.label}</strong>
       </p>
-      <div
-        className="progress"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={steps.length}
-        aria-valuenow={current + 1}
+      <Progress
+        className="lg:hidden"
+        value={current + 1}
+        max={steps.length}
         aria-label="Progress through your return"
-      >
-        <div className="progress__fill" style={{ width: `${pct}%` }} />
-      </div>
-      <ol className="stepper__list">
-        {steps.map((s, i) => (
-          <li
-            key={s.id}
-            className={`stepper__item${i < current ? ' is-done' : ''}${i === current ? ' is-current' : ''}`}
-            aria-current={i === current ? 'step' : undefined}
-          >
-            <span className="stepper__dot" aria-hidden="true">
-              {i < current ? '✓' : i + 1}
-            </span>
-            <span className="stepper__label">{s.label}</span>
-          </li>
-        ))}
+      />
+      <ol className="m-0 hidden list-none gap-1 border-l p-0 lg:grid">
+        {steps.map((s, i) => {
+          const done = i < current;
+          const here = i === current;
+          const label = <span className="stepper-label">{s.label}</span>;
+          return (
+            <li
+              key={s.id}
+              aria-current={here ? 'step' : undefined}
+              className={cn(
+                '-ml-px flex items-center gap-3 border-l-2 border-transparent py-1.5 pl-4 text-sm',
+                here && 'border-primary font-semibold text-foreground',
+                !here && 'text-muted-foreground',
+              )}
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'grid size-6 shrink-0 place-items-center rounded-full border text-xs tabular-nums',
+                  done && 'border-primary bg-primary text-primary-foreground',
+                  here && 'border-primary text-primary',
+                  !done && !here && 'border-input/60',
+                )}
+              >
+                {done ? <Check className="size-3.5" strokeWidth={3} /> : i + 1}
+              </span>
+              {done && hrefFor ? (
+                <Link to={hrefFor(s.id)} className="text-foreground no-underline hover:underline">
+                  {label}
+                  <span className="sr-only"> (completed)</span>
+                </Link>
+              ) : (
+                label
+              )}
+            </li>
+          );
+        })}
       </ol>
     </nav>
   );
@@ -47,9 +76,5 @@ export function Stepper({ steps, current }: StepperProps) {
 
 /** Just the bar, for places that don't need the step list. */
 export function ProgressBar({ value, max, label }: { value: number; max: number; label: string }) {
-  return (
-    <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-label={label}>
-      <div className="progress__fill" style={{ width: `${Math.round((value / max) * 100)}%` }} />
-    </div>
-  );
+  return <Progress value={value} max={max} aria-label={label} />;
 }

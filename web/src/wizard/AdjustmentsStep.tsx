@@ -1,7 +1,7 @@
-import { Callout, Card } from '../components';
+import { Callout } from '../components';
 import { isJoint, useDraft } from '../draft';
 import { MoneyField } from './fields';
-import { Check, StepHeader, Where, YesNo } from './ui';
+import { Check, FormSection, StepHeader, Where, YesNo } from './ui';
 
 /** Step 4: deductions that come off your income before it is taxed, plus tax you already paid by hand. */
 export function AdjustmentsStep() {
@@ -15,13 +15,11 @@ export function AdjustmentsStep() {
     <>
       <StepHeader
         eyebrow="Step 4 of 5"
-        title="Anything that shrinks your bill?"
-        intro="These are small tax breaks many people miss. Say no to anything that doesn’t sound like you; it takes a second."
+        title="Adjustments and payments"
+        intro="Amounts that come off your income before it is taxed, and tax you paid to the IRS yourself. Answer No to anything that does not apply."
       />
 
-      <Card>
-        <h2>Teacher expenses</h2>
-        <p className="muted">Counts toward Schedule 1, line 11.</p>
+      <FormSection title="Teacher expenses" note="Schedule 1, line 11">
         <YesNo
           legend="Did you work as a K-12 teacher, counselor, principal or aide, and buy classroom supplies yourself?"
           hint="Up to $300 of what you paid out of pocket comes off your income."
@@ -54,11 +52,9 @@ export function AdjustmentsStep() {
             )}
           </>
         )}
-      </Card>
+      </FormSection>
 
-      <Card>
-        <h2>Student loan interest</h2>
-        <p className="muted">Counts toward Schedule 1, line 21.</p>
+      <FormSection title="Student loan interest" note="Schedule 1, line 21">
         <YesNo
           legend="Did you pay interest on a student loan in 2024?"
           hint="Your loan servicer sends Form 1098-E if you paid $600 or more."
@@ -86,11 +82,9 @@ export function AdjustmentsStep() {
             />
           </>
         )}
-      </Card>
+      </FormSection>
 
-      <Card>
-        <h2>Tax you paid on your own</h2>
-        <p className="muted">Counts toward Form 1040, line 26.</p>
+      <FormSection title="Tax you paid on your own" note="Form 1040, line 26">
         <YesNo
           legend="Did you send the IRS any tax payments during 2024, or apply last year’s refund to this year?"
           hint="People who freelance or have other income sometimes pay four times a year (“estimated taxes”)."
@@ -113,11 +107,11 @@ export function AdjustmentsStep() {
             />
           </>
         )}
-      </Card>
+      </FormSection>
 
-      <Callout tone="info" title="What about other credits?">
-        Health savings accounts, child and dependent care, the Earned Income Credit and the Saver’s Credit are not part of
-        our calculator yet. We will add questions for them as soon as the math is ready.
+      <Callout tone="info" title="Not asked yet">
+        Health savings accounts, child and dependent care, the earned income credit and the saver’s credit are not part of
+        the calculation yet, so there are no questions for them.
       </Callout>
     </>
   );

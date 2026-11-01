@@ -1,4 +1,6 @@
-# Sumsure web
+# US Tax web
+
+US Tax: a formally verified income tax calculator. The web app asks the questions and shows the result; it holds no tax logic.
 
 React + TypeScript + Vite frontend. Talks to the calculator through the typed client in `src/api` (see `src/api/README.md`).
 
@@ -16,18 +18,19 @@ Without `VITE_API_MOCK=1` the client calls `VITE_API_URL` (default `http://local
 | --- | --- | --- |
 | `/` | Welcome | shell |
 | `/start/:step` | Wizard: `about`, `household`, `income`, `adjustments`, `review` | `src/wizard/*Step.tsx` (#76 to #78), chosen by `pages/StepPage.tsx` |
-| `/results` | Hero with count-up, line-by-line 1040 walk, what-if slider, error/offline states (`src/results/`). Request comes from `useCurrentRequest` (the $50,000 example until the wizard lands) | #79 |
-| `/cant-do-yet` | Friendly knockout page (`src/knockout/`: per-code copy in `reasonCopy.ts`, a test fails if a code in `api/knockout-reasons.json` has none). Also shown inline on `/results` | #80 |
-| `/trust` | "Why you can trust this" stub | #82 |
+| `/results` | Result summary (refund or amount owed), Form 1040 line table, "How this was calculated" accordion, `warnings` alert, what-if slider, error/offline states (`src/results/`). Request comes from `useCurrentRequest` (the wizard draft) | #79 |
+| `/cant-do-yet` | Knockout page: alert plus a table of reasons by category (`src/knockout/`: per-code copy in `reasonCopy.ts`, a test fails if a code in `api/knockout-reasons.json` has none). Also shown inline on `/results` | #80 |
+| `/trust` | What is proven (theorem names), tested, trusted, not covered. Copy lives in `src/trust/claims.ts`; keep it within docs/spec-surface.md and docs/audit.md | #82 |
 
 Add a step body by routing `start/:step` children (see `src/App.tsx`); `WizardLayout` supplies progress and Back/Next from `src/layout/steps.ts`.
 
 ## Design system
 
-- Tokens: `src/styles/tokens.css` (color, type scale, spacing, radii). Dark mode follows the OS, or `<html data-theme="light|dark">` pins it (`ThemeToggle` persists it).
-- Use tokens, never raw hex, in new CSS. Focus rings are global (`:focus-visible`); do not remove outlines.
-- Fonts: Fraunces (display) and Nunito (body), bundled via `@fontsource-variable`.
-- Motion respects `prefers-reduced-motion`.
+- [shadcn/ui](https://ui.shadcn.com) (Radix primitives + Tailwind CSS v4), configured in `components.json`. Primitives are copied into `src/components/ui/` (button, input, label, card, alert, badge, table, accordion, separator, progress, checkbox, radio-group); edit them there. Selects stay native (styled like shadcn's NativeSelect) for phones and keyboard support.
+- Tokens: CSS variables in `src/index.css` (neutral slate, one blue accent `--primary`, `--success`/`--destructive` only for refund/owe and status). Dark mode follows the OS, or `<html data-theme="light|dark">` pins it (`ThemeToggle`, key `ustax-theme`).
+- Font: Inter, bundled with `@fontsource-variable/inter` (no CDN). Numbers use `tabular-nums`.
+- Focus rings are global (`:focus-visible`); do not remove outlines. No decorative motion; `prefers-reduced-motion` is honoured.
+- Help text is always visible under the label; never put essential information only in a tooltip.
 
 ## Components (`src/components`, import from `'../components'`)
 
@@ -35,8 +38,8 @@ Add a step body by routing `start/:step` children (see `src/App.tsx`); `WizardLa
 <Button variant="primary|secondary|ghost" size="md|lg" onClick={...}>Save</Button>
 <ButtonLink to="/results">See my result</ButtonLink>   {/* router link, same look */}
 
-<Field label="Name" hint="As on your ID" error={err}>
-  {(control) => <input {...control} className="input" />}   {/* spread control for a11y wiring */}
+<Field label="Name" hint="As on your ID" error={err} path="draft.path">
+  {(control) => <Input {...control} />}   {/* spread control for a11y wiring */}
 </Field>
 
 <MoneyInput label="Wages" hint="Box 1 of your W-2" value={cents} onChange={setCents} />
@@ -44,15 +47,18 @@ Add a step body by routing `start/:step` children (see `src/App.tsx`); `WizardLa
 
 <Select label="Filing status" value={v} options={[{ value: 'Single', label: 'Single' }]} onChange={setV} />
 
-<Stepper steps={[{ id, label }]} current={0} />   <ProgressBar value={1} max={4} label="..." />
-<Card tone="plain|sun|brand">...</Card>
-<Callout tone="info|good|warn" title="...">...</Callout>
+<Stepper steps={[{ id, label }]} current={0} hrefFor={(id) => ...} />   <ProgressBar value={1} max={4} label="..." />
+<Card tone="plain|muted">...</Card>
+<Callout tone="info|good|warn" title="...">...</Callout>   {/* shadcn Alert, role="note" */}
 <Badge tone="neutral|good|warn|sun">Proven</Badge>
-<Tooltip content="Plain-language meaning">jargon word</Tooltip>   {/* keyboard + touch friendly */}
 <StatGroup><Stat label="Taxable income" cents={3540000} /></StatGroup>   {/* formatCents */}
 ```
 
+Wizard pieces (`src/wizard/ui.tsx`): `StepHeader`, `FormSection`, `YesNo`, `Check`, `ChoiceCards`, `Repeater`, `More`, `Where`. `WizardLayout` shows a GOV.UK-style error summary (each message jumps to its field via `data-path`) when Next is pressed with problems.
+
 Other pieces: `useCalculation(request)` (hook around `calculate`, keeps the previous result while loading), `ResultsHero` (pages/), `src/examples.ts` (canned requests from `api/examples`).
+
+Screenshots: `docs/screenshots/`.
 
 ## Tests
 

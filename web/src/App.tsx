@@ -1,23 +1,21 @@
 import { Route, Routes } from 'react-router';
 import { DraftProvider } from './draft';
 import { AppShell } from './layout/AppShell';
+import { Page, PageHeader } from './layout/Page';
 import { WizardLayout } from './layout/WizardLayout';
 import { HomePage } from './pages/HomePage';
 import { StepPage } from './pages/StepPage';
 import { ResultsPage } from './pages/ResultsPage';
 import { UnsupportedPage } from './pages/UnsupportedPage';
 import { TrustPage } from './pages/TrustPage';
-import { ButtonLink, Card } from './components';
+import { ButtonLink } from './components';
 
 function NotFound() {
   return (
-    <div className="container narrow">
-      <Card>
-        <h1>That page wandered off.</h1>
-        <p>Let’s get you back on track.</p>
-        <ButtonLink to="/">Go home</ButtonLink>
-      </Card>
-    </div>
+    <Page narrow>
+      <PageHeader eyebrow="Error 404" title="Page not found" lead="The address may be mistyped, or the page may have moved." />
+      <ButtonLink to="/">Go to the home page</ButtonLink>
+    </Page>
   );
 }
 
@@ -25,18 +23,18 @@ function NotFound() {
 export function App() {
   return (
     <DraftProvider>
-    <Routes>
-      <Route element={<AppShell />}>
-        <Route index element={<HomePage />} />
-        <Route path="start/:step" element={<WizardLayout />}>
-          <Route index element={<StepPage />} />
+      <Routes>
+        <Route element={<AppShell />}>
+          <Route index element={<HomePage />} />
+          <Route path="start/:step" element={<WizardLayout />}>
+            <Route index element={<StepPage />} />
+          </Route>
+          <Route path="results" element={<ResultsPage />} />
+          <Route path="cant-do-yet" element={<UnsupportedPage />} />
+          <Route path="trust" element={<TrustPage />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
-        <Route path="results" element={<ResultsPage />} />
-        <Route path="cant-do-yet" element={<UnsupportedPage />} />
-        <Route path="trust" element={<TrustPage />} />
-        <Route path="*" element={<NotFound />} />
-      </Route>
-    </Routes>
+      </Routes>
     </DraftProvider>
   );
 }

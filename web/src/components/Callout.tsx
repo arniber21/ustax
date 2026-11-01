@@ -1,26 +1,27 @@
 import type { ReactNode } from 'react';
+import { CircleAlert, CircleCheck, Info } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 export type CalloutTone = 'info' | 'good' | 'warn';
 
-const icon: Record<CalloutTone, string> = { info: 'i', good: '✓', warn: '!' };
+const variant = { info: 'default', good: 'success', warn: 'warning' } as const;
+const Icon = { info: Info, good: CircleCheck, warn: CircleAlert };
 
 export interface CalloutProps {
   tone?: CalloutTone;
   title?: string;
   children: ReactNode;
+  className?: string;
 }
 
-/** A friendly aside. `warn` uses role="alert" semantics via role="note" for non-urgent notices. */
-export function Callout({ tone = 'info', title, children }: CalloutProps) {
+/** A non-urgent notice (shadcn/ui Alert with role="note"). Use `Alert` directly for urgent messages. */
+export function Callout({ tone = 'info', title, children, className }: CalloutProps) {
+  const I = Icon[tone];
   return (
-    <aside className={`callout callout--${tone}`} role="note">
-      <span className="callout__icon" aria-hidden="true">
-        {icon[tone]}
-      </span>
-      <div>
-        {title && <p className="callout__title">{title}</p>}
-        <div className="callout__body">{children}</div>
-      </div>
-    </aside>
+    <Alert variant={variant[tone]} role="note" className={className}>
+      <I aria-hidden="true" />
+      {title && <AlertTitle>{title}</AlertTitle>}
+      <AlertDescription>{children}</AlertDescription>
+    </Alert>
   );
 }

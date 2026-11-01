@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import type { CalculateRequest } from '../api';
@@ -9,7 +9,7 @@ import refundRes from '../../../api/examples/refund-single-w2-50k.response.json'
 import oweRes from '../../../api/examples/balance-due-single-w2-50k.response.json';
 import err500 from '../../../api/fixtures/error-500-internal.response.json';
 import { EXAMPLES } from '../examples';
-import { ResultsView } from './ResultsView';
+import { ResultsView, WarningsAlert } from './ResultsView';
 import { useLiveCalculation } from './useLiveCalculation';
 import { WALK } from './walkData';
 
@@ -25,6 +25,8 @@ const load = (rel: string) => Object.entries(files).find(([k]) => k.endsWith(`/a
 const view = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
 const reduceMotion = (reduce: boolean) =>
   vi.stubGlobal('matchMedia', (q: string) => ({ matches: reduce, media: q, addEventListener() {}, removeEventListener() {} }));
+/** The large result figure inside the summary named by its label ("Your refund", "Amount you owe"). */
+const figure = async (name: string | RegExp) => (await screen.findByRole('region', { name })).querySelector('.result-amount');
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
 describe('every calculate fixture renders', () => {
@@ -40,10 +42,11 @@ describe('every calculate fixture renders', () => {
     it(`${c.name} (${c.status})`, async () => {
       view(<ResultsView request={load(c.request) as CalculateRequest} />);
       if (c.status === 200) {
-        expect(await screen.findByRole('img', { name: /^\$[\d,]+\.\d\d$/ })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Walk me through it' })).toBeInTheDocument();
+        expect(await figure(/^(Your refund|Amount you owe|No refund and nothing owed)$/)).toHaveTextContent(/^\$[\d,]+\.\d\d$/);
+        expect(screen.getByRole('table', { name: /Form 1040/ })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /what is verified/i })).toHaveAttribute('href', '/trust');
       } else if (c.status === 422) {
-        expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(/beyond what we can do/);
+        expect(await screen.findByRole('heading', { level: 1, name: /can’t be calculated yet/ })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /Change my answers/ })).toBeInTheDocument();
         expect(screen.queryByText(/FlowKnockout|Knockout/)).toBeNull();
       } else {
@@ -53,10 +56,10 @@ describe('every calculate fixture renders', () => {
     });
   }
 
-  it('shows a balance due as "You’ll owe"', async () => {
+  it('shows a balance due as "Amount you owe"', async () => {
     view(<ResultsView request={EXAMPLES.owe} />);
-    expect(await screen.findByText(/You’ll owe/)).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: '$1,019.00' })).toBeInTheDocument();
+    expect(await figure('Amount you owe')).toHaveTextContent('$1,019.00');
+    expect(screen.queryByRole('region', { name: 'Your refund' })).toBeNull();
   });
 });
 
@@ -70,7 +73,7 @@ describe('error and offline states', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/Something went wrong on our end/);
     expect(screen.queryByText(/500|internal_error/)).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByText(/Your refund is/)).toBeInTheDocument();
+    expect(await figure('Your refund')).toHaveTextContent('$981.00');
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
@@ -83,20 +86,46 @@ describe('error and offline states', () => {
   });
 });
 
-describe('count-up and reduced motion', () => {
-  it('reduced motion shows the final amount immediately', async () => {
-    reduceMotion(true);
-    view(<ResultsView request={EXAMPLES.refund} />);
-    const hero = await screen.findByRole('img', { name: '$981.00' });
-    expect(hero).toHaveTextContent('$981.00');
+describe('no decorative motion', () => {
+  for (const reduce of [true, false]) {
+    it(`shows the exact final amount at once (prefers-reduced-motion: ${reduce})`, async () => {
+      reduceMotion(reduce);
+      view(<ResultsView request={EXAMPLES.refund} />);
+      expect(await figure('Your refund')).toHaveTextContent('$981.00');
+    });
+  }
+});
+
+describe('warnings', () => {
+  it('lists sections the calculator accepted but did not use', () => {
+    render(
+      <WarningsAlert
+        warnings={[
+          { code: 'section_not_used', path: '/form_1099g', message: 'Form 1099-G' },
+          { code: 'section_not_used', path: '/estimated_payments', message: 'Estimated tax payments' },
+          { code: 'something_new', path: '/x', message: 'A new kind of note.' },
+        ]}
+      />,
+    );
+    const note = screen.getByRole('note');
+    expect(note).toHaveTextContent(/not used in this result/);
+    expect(within(note).getByText('Unemployment (Form 1099-G)')).toBeInTheDocument();
+    expect(within(note).getByText('Estimated tax payments')).toBeInTheDocument();
+    expect(within(note).getByText('A new kind of note.')).toBeInTheDocument();
   });
 
-  it('otherwise counts up from zero and lands exactly on the amount', async () => {
-    reduceMotion(false);
+  it('appears on the results page when the response carries warnings', async () => {
+    const withWarn = { ...refundRes, warnings: [{ code: 'section_not_used', path: '/form_1099r', message: 'Form 1099-R' }] };
+    const fetchMock = vi.fn<typeof fetch>(async () => json(200, withWarn));
+    view(<ResultsView request={EXAMPLES.refund} client={{ fetch: fetchMock }} />);
+    await figure('Your refund');
+    expect(screen.getAllByRole('note')[0]).toHaveTextContent('Retirement distributions (Form 1099-R)');
+  });
+
+  it('is absent when every section was used', async () => {
     view(<ResultsView request={EXAMPLES.refund} />);
-    const hero = await screen.findByRole('img', { name: '$981.00' });
-    expect(hero).not.toHaveTextContent('$981.00');
-    await waitFor(() => expect(hero).toHaveTextContent('$981.00'), { timeout: 3000 });
+    await figure('Your refund');
+    expect(screen.queryByText(/not used in this result/)).toBeNull();
   });
 });
 
@@ -153,24 +182,27 @@ describe('useLiveCalculation', () => {
   });
 });
 
-describe('line walk', () => {
+describe('Form 1040 table and explanations', () => {
   it('lists every Form 1040 line from the API catalog exactly once', () => {
     const keys = WALK.flatMap((g) => g.lines.map((l) => l.key));
     expect([...keys].sort()).toEqual(catalog.lines.map((l) => l.key).sort());
     for (const g of WALK) for (const l of g.lines) expect(l.line).toBe(catalog.lines.find((c) => c.key === l.key)!.line);
   });
 
-  it('expands, and explains key lines', async () => {
+  it('shows every line in a grouped table, and explains key lines on demand', async () => {
     view(<ResultsView request={EXAMPLES.refund} />);
-    await screen.findByText(/Your refund is/);
-    await userEvent.click(screen.getByRole('button', { name: 'Walk me through it' }));
-    for (const title of ['Money you made', 'Adjustments', 'Deductions', 'Your tax', 'Credits', 'What you already paid', 'The result']) {
-      expect(screen.getByRole('heading', { name: title })).toBeVisible();
+    await figure('Your refund');
+    const table = screen.getByRole('table', { name: /Form 1040/ });
+    for (const title of ['Income', 'Adjustments', 'Deductions', 'Tax', 'Credits', 'Payments', 'Refund or amount owed']) {
+      expect(within(table).getByRole('columnheader', { name: title })).toBeInTheDocument();
     }
-    expect(screen.getByText('Line 11')).toBeVisible();
-    const why = screen.getAllByRole('button', { name: 'How did we get this?' });
+    const rows = within(table).getAllByRole('row');
+    expect(rows).toHaveLength(1 + WALK.length + catalog.lines.length); // header, group rows, one row per line
+    expect(within(table).getByRole('row', { name: /^34 Overpayment \(refund\)/ })).toHaveTextContent('$981.00');
+    const why = screen.getAllByRole('button', { name: /^Line \d+/ });
     expect(why.length).toBeGreaterThanOrEqual(5);
-    await userEvent.click(why[1]!); // AGI
+    expect(screen.queryByText(/AGI is your total income/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /^Line 11 Adjusted gross income/ }));
     expect(screen.getByText(/AGI is your total income/)).toBeVisible();
   });
 });
@@ -187,24 +219,24 @@ describe('what-if (mock mode)', () => {
 
   it('recomputes when a fixture exists for the scenario', async () => {
     view(<ResultsView request={EXAMPLES.refund} />);
-    await screen.findByText(/Your refund is/);
+    await figure('Your refund');
     slide(-2000);
     expect(await screen.findByText(/You’d owe \$1,019/)).toBeInTheDocument();
   });
 
   it('degrades gracefully when there is no fixture', async () => {
     view(<ResultsView request={EXAMPLES.refund} />);
-    await screen.findByText(/Your refund is/);
+    await figure('Your refund');
     slide(1000);
     expect(await screen.findByText(/only has a few ready-made scenarios/)).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: '$981.00' })).toBeInTheDocument(); // the real result is untouched
+    expect(await figure('Your refund')).toHaveTextContent('$981.00'); // the real result is untouched
   });
 
   it('is replaced by a hint when there is no W-2 to shift', async () => {
     const noW2 = { ...EXAMPLES.refund, w2s: [] } as CalculateRequest;
     const fetchMock = vi.fn<typeof fetch>(async () => json(200, refundRes));
     view(<ResultsView request={noW2} client={{ fetch: fetchMock }} />);
-    await screen.findByText(/Your refund is/);
+    await figure('Your refund');
     expect(screen.queryByRole('slider')).toBeNull();
     expect(screen.getByText(/Add a W-2/)).toBeInTheDocument();
   });
