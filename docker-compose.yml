@@ -1,0 +1,27 @@
+# ustax: Lean API + static web app. `make docker-run` (docs/deploy.md).
+#   server: plain HTTP :8080 (the Lean calculator)
+#   web:    http://localhost:8081  static app, proxies /calculate /health /version to server
+# HTTPS (optional): `SITE_ADDRESS=localhost docker compose up` then open https://localhost:8443
+services:
+  server:
+    build: { context: ., target: server }
+    image: ustax-server
+    environment:
+      ALLOW_ORIGIN: ${ALLOW_ORIGIN:-http://localhost:8081,https://localhost:8443}
+    ports:
+      - "127.0.0.1:8080:8080"   # drop this line to keep the API reachable only through `web`
+    restart: unless-stopped
+  web:
+    build: { context: ., target: web }
+    image: ustax-web
+    depends_on: [server]
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "8081:80"
+      - "8443:443"
+    volumes:
+      - caddy-data:/data   # keeps Caddy's CA / certificates across restarts
+    restart: unless-stopped
+volumes:
+  caddy-data:

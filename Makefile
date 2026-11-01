@@ -87,6 +87,17 @@ tls-trust: ## one-time: trust Caddy's local CA so browsers/curl accept the dev c
 tls-check: ## validate deploy/Caddyfile syntax
 	caddy validate --config deploy/Caddyfile --adapter caddyfile
 
+# --- Docker (see docs/deploy.md): Dockerfile targets `server` (Lean API :8080) and `web` (Caddy + static app) ---
+# DOCKER=docker (default) or DOCKER=container (Apple's CLI; it has no compose, so docker-run needs docker).
+DOCKER ?= docker
+.PHONY: docker-build docker-run
+docker-build: ## build the ustax-server and ustax-web images (checks the pinned toolchain matches)
+	@grep -q "$$(cat lean/lean-toolchain)" Dockerfile || { echo "Dockerfile LEAN_TOOLCHAIN differs from lean/lean-toolchain" >&2; exit 1; }
+	$(DOCKER) build --target server -t ustax-server .
+	$(DOCKER) build --target web -t ustax-web .
+docker-run:   ## build and start API (127.0.0.1:8080) and web (http://localhost:8081) with docker compose
+	$(DOCKER) compose up --build
+
 # Proof audit (see docs/audit.md): source scan, axiom audit, forensics smells. Fails on sorry/axiom/etc.
 .PHONY: audit
 audit:     ## fail on sorry, admit, native_decide, new axioms, vacuous theorems (SKIP_FORENSICS=1 skips step 3)

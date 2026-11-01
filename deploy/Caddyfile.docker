@@ -1,0 +1,25 @@
+# Static web app + same-origin API proxy for the container image (issue #58, docs/deploy.md).
+# Default: plain HTTP on :80. For HTTPS set SITE_ADDRESS to a host name (docs/tls.md):
+#   SITE_ADDRESS=localhost            -> Caddy local CA, https on 443
+#   SITE_ADDRESS=tax.example.com      -> public ACME certificate
+# UPSTREAM is the Lean server (default server:8080 on the compose network).
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
+	header {
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+	request_body {
+		max_size 1MB
+	}
+	# The browser calls these on its own origin, so no CORS is involved.
+	@api path /calculate /health /version
+	handle @api {
+		reverse_proxy {$UPSTREAM:server:8080}
+	}
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

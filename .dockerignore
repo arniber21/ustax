@@ -1,0 +1,12 @@
+.git
+.claude
+**/.lake
+**/node_modules
+web/dist
+_build
+_opam
+.forensics-tool
+sources
+catala
+oracle
+difftest
