@@ -51,7 +51,7 @@ export function HomePage() {
           <DotGlobe />
         </div>
         <section className="relative z-10 grid items-start gap-10 py-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:gap-16 lg:py-20">
-          <div className="max-w-xl [text-shadow:0_0_5px_var(--background),0_0_12px_var(--background),0_0_22px_var(--background)] [&_a]:[text-shadow:none]">
+          <div className="max-w-[40rem] [text-shadow:0_0_5px_var(--background),0_0_12px_var(--background),0_0_22px_var(--background)] [&_a]:[text-shadow:none]">
             <p className="m-0 inline-flex items-center gap-2 rounded-full border bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground shadow-xs backdrop-blur [text-shadow:none]">
               <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
               Tax year 2024 · Federal income tax
@@ -71,7 +71,7 @@ export function HomePage() {
                 <ButtonLink size="lg" variant="secondary" to="/trust">
                   What is verified
                 </ButtonLink>
-                <ButtonLink size="lg" variant="ghost" to="/docs">
+                <ButtonLink size="lg" variant="secondary" to="/docs">
                   Go to docs
                 </ButtonLink>
               </div>
