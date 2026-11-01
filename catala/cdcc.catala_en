@@ -1,0 +1,1132 @@
+> Module Cdcc
+
+> Using Types
+> Using Params_2024 as P
+> Using Rounding as R
+> Using Filers as F
+> Using Qualifying_child as Q
+> Using Qualifying_relative as QR
+> Using Dependents_benefit_split as B
+
+# Child and dependent care credit: IRC 21, IRC 129, Form 2441
+
+Direct File ("DF" below) module `cdcc.xml` (4,152 lines) under
+`../direct-file/direct-file/backend/src/main/resources/tax/`, with the
+per-person facts of `familyAndHousehold.xml` and `filers.xml` and the earned
+income facts of `income.xml`. Issue #28, scope.md section 6.3. Law:
+`sources/statute/irc-21.html`, `irc-129.html`, `sources/regs/cfr-1.21-1.xml`
+to `-3.xml`, `sources/forms-instructions/f2441--2024.pdf` and
+`i2441--2024.pdf`, `sources/pubs/p503--2024.pdf`.
+
+Two scopes follow Form 2441. `Form2441PartIII` (Part III, dependent care
+benefits, lines 12 to 31) needs no AGI; its output `taxable_benefits` is Form
+1040 line 1e. `Form2441` adds Part II (lines 3 to 11) and takes the AGI and the
+tax liability limit as inputs. Both take the same household inputs, so the
+caller runs `Form2441PartIII` first to fill the Form 1040 slot
+`taxable_dependent_care` (line 1e), then `Form2441` once the AGI is known.
+
+Inputs are complete (CONVENTIONS section 3). Wiring (not done here): see the
+PR body.
+
+Not modelled, each a knockout (`unsupported`): Worksheet A prior-year
+expenses, household employees, benefits from a sole proprietorship or
+partnership, both spouses claiming deemed student/disabled income in the same
+return, and a taxable-benefit split DF itself refuses. The care provider list
+of Part I does not change any amount; its effect (no credit for payments to a
+spouse, a parent of the child, a dependent or a child under 19, IRC 21(e)(6))
+is carried by the answer `expenses_paid_to_qualifying_provider`.
+
+Divergences from DF, all statute-first (CONVENTIONS section 8):
+
+- `DF-BUG(28-a)`: DF lets a non-parent (a grandparent or foster parent) take
+  CDCC for a child through the Form 8332 benefit split. IRC 21(e)(5) gives
+  the child to the custodial parent only. Status: candidate. Changes
+  `hoh-cdcc-multiple-careproviders`.
+- `DF-BUG(28-b)`: DF gives a 0 decimal amount when AGI is zero or less; the
+  statute gives 35 percent.
+- `DF-BUG(28-c)`: DF tests "a qualifying person lived with you" and "you paid
+  over half the upkeep" on two possibly different persons for the married
+  filing separately exception; IRC 21(e)(4) is about one household.
+  Candidate.
+- `DF-BUG(28-d)`: DF takes the spouse's earned income on line 19 for a
+  qualifying surviving spouse (it reads the empty secondary filer, so line 19
+  is $0). The form says "All others, enter the amount from line 18".
+- `DF-BUG(28-e)`: DF ignores forfeited amounts (line 14) unless box 10 of a
+  W-2 is positive; line 14 covers amounts on line 13 as well. Candidate.
+- `DF-BUG(28-f)`: DF requires the filer to have chosen to claim a dependent
+  child; IRC 21(b)(1)(A) and i2441 p 1 ask whether the child "can" be
+  claimed. Candidate.
+
+## Declarations
+
+```catala-metadata
+## The `Writable` answers DF keeps per household member that only the CDCC
+## reads (`familyAndHousehold.xml`).
+declaration structure CdccAnswers:
+  # DF: /familyAndHousehold/*/unableToCareForSelf
+  data unable_to_care_for_self content boolean
+  # DF: /familyAndHousehold/*/cdccHasDependentCareExpenses
+  data has_dependent_care_expenses content boolean
+  # DF: /familyAndHousehold/*/cdccHadExpensesPaidToQualifyingProvider
+  data expenses_paid_to_qualifying_provider content boolean
+  # DF: /familyAndHousehold/*/writableCdccQualifyingExpenseAmount
+  data writable_qualifying_expense_amount content money
+  # DF: /familyAndHousehold/*/tpPaidMostOfHomeUpkeep
+  data tp_paid_most_of_home_upkeep content boolean
+
+## One member of DF /familyAndHousehold.
+declaration structure CdccMember:
+  data member content QR.Member
+  data cdcc content CdccAnswers
+
+## The per-filer inputs (primary or secondary filer).
+declaration structure CdccFiler:
+  # DF: income.xml /primaryFilerEmployerIncomeSubtotalBase
+  # (Form 1040 lines 1a to 1d, 1f to 1h of this filer, without line 1e)
+  data employer_income_subtotal_base content money
+  # DF: formW2s.xml /primaryFilerCombatPay (box 12 code Q)
+  data nontaxable_combat_pay content money
+  # Form 2441 instructions, lines 4 and 5: the election to include
+  # nontaxable combat pay in earned income for the credit
+  data elect_combat_pay_for_credit content boolean
+  # i2441 p 5, line 18: the same election for Part III
+  data elect_combat_pay_for_benefits content boolean
+  # DF: formW2s.xml /primaryFilerDependentCareBenefits (box 10, unrounded sum)
+  data dependent_care_benefits content money
+  # DF: /writablePrimaryFilerDependentCarePlanMaximum
+  data dependent_care_plan_maximum content money
+  # DF: /filers/*/isDisabled (physically or mentally incapable of self care)
+  data is_disabled content boolean
+  # IRC 21(d)(2): one element per calendar month in which this filer was
+  # incapable of self care or a full-time student (a student needs at least
+  # five such months, IRC 21(e)(7)); the element is the filer's actual earned
+  # income in that month. Empty if none. No DF fact (DF knocks these out).
+  data deemed_income_month_earnings content list of money
+  # DF: /filers/*/cdccHasDependentCareExpenses (only if disabled)
+  data has_dependent_care_expenses content boolean
+  # DF: /filers/*/cdccHadExpensesPaidToQualifyingProvider
+  data expenses_paid_to_qualifying_provider content boolean
+  # DF: /filers/*/writableCdccQualifyingExpenseAmount
+  data writable_qualifying_expense_amount content money
+
+## IRC 21(d)(2): the amount by which the deemed income of the listed months
+## exceeds the actual income, summed. Each month counts the higher of the
+## deemed amount and the actual income (i2441 p 4).
+declaration deemed_income_uplift content money
+  depends on
+    months content list of money,
+    deemed content money
+  equals
+    Money.sum of (map each a among months to Money.positive of (deemed - a))
+```
+
+## One person: qualifying person
+
+IRC 21(b)(1): "The term "qualifying individual" means— (A) a dependent of the
+taxpayer (as defined in section 152(a)(1)) who has not attained age 13, (B) a
+dependent of the taxpayer (as defined in section 152, determined without
+regard to subsections (b)(1), (b)(2), and (d)(1)(B)) who is physically or
+mentally incapable of caring for himself or herself and who has the same
+principal place of abode as the taxpayer for more than one-half of such
+taxable year, or (C) the spouse of the taxpayer, if the spouse is physically
+or mentally incapable of caring for himself or herself and who has the same
+principal place of abode as the taxpayer for more than one-half of such
+taxable year."
+
+i2441 p 1: "1. A qualifying child under age 13 whom you can claim as a
+dependent. If the child turned 13 during the year, the child is a qualifying
+person for the part of the year they were under age 13." "3. Any disabled
+person who wasn't physically or mentally able to care for themselves who lived
+with you for more than half of the year and whom you can claim as a dependent
+or could claim as a dependent except: a. The disabled person had gross income
+of $5,050 or more, b. The disabled person filed a joint return, or c. You (or
+your spouse if filing jointly) could be claimed as a dependent on another
+taxpayer's 2024 tax return."
+
+IRC 21(e)(10): "No credit shall be allowed under this section with respect to
+any qualifying individual unless the TIN of such individual is included on the
+return claiming the credit." (`Qualifying_relative` requires a TIN of every
+eligible dependent.)
+
+IRC 21(e)(5): "If— (A) section 152(e) applies to any child with respect to
+any calendar year, and (B) such child is under the age of 13 or is physically
+or mentally incapable of caring for himself, ... such child shall be treated
+as a qualifying individual described in subparagraph (A) or (B) of subsection
+(b)(1) (whichever is appropriate) with respect to the custodial parent (as
+defined in section 152(e)(4)(A)), and shall not be treated as a qualifying
+individual with respect to the noncustodial parent." i2441 p 1: "Even if you
+can't claim your child as a dependent, they are treated as your qualifying
+person if: ... You were the child's custodial parent."
+
+DF `/familyAndHousehold/*/cdccQualifyingPerson` (line 1170) and
+`cdccNonDependentQualifyingPerson` (line 867) follow the same three paths. DF
+also gives the credit to a non-parent who reaches the Form 8332 benefit split
+(`tpCanClaimSplitBenefitsHohEitcCdcc`, `reachedNonParentalBenefitSplit`). A
+grandparent or foster parent is not a "custodial parent" (IRC 152(e)(4)(A):
+"the parent having custody"), and the child is not their dependent, so we do
+not (`DF-BUG(28-a)`).
+
+The age in IRC 21(b)(1)(A) is "age 13" and a child who turns 13 during the
+year is a qualifying person for the earlier part (i2441 p 1; Pub. 503 p 3).
+DF: `cdccTurnedThirteenAfterJanFirst`, age 13 at year end and not born on
+January 1.
+
+```catala-metadata
+declaration scope CdccPersonTest:
+  # One member of DF /familyAndHousehold
+  input cdcc_member content CdccMember
+  # DF: filers.xml /minimumFilerDateOfBirth (Filers.minimum_filer_date_of_birth)
+  input minimum_filer_date_of_birth content date
+  # DF: filers.xml /treatFilersAsDependents
+  input treat_filers_as_dependents content boolean
+  # DF: filers.xml /eitherFilerUSCitizenOrNational
+  input either_filer_us_citizen_or_national content boolean
+  # DF: filingStatus.xml /treatAsMFJ
+  input treat_as_mfj content boolean
+
+  # The dependent tests for the same person (issues #16, #17, #18)
+  output dependent content QR.DependentTest
+  # DF: /familyAndHousehold/*/isBornOnJanFirst
+  output born_on_january_first condition
+  # DF: /familyAndHousehold/*/ageOnJanFirst
+  output age_on_january_first content integer
+  # The person was under 13 for at least part of the year
+  output under_13_for_part_of_year condition
+  # DF: /familyAndHousehold/*/cdccTurnedThirteenAfterJanFirst
+  output turned_thirteen_after_january_first condition
+  # IRC 21(b)(1)(A)
+  output qualifying_child_under_13 condition
+  # IRC 21(b)(1)(B)
+  output incapable_dependent condition
+  # IRC 21(e)(5)
+  output custodial_parent_release condition
+  # DF: /familyAndHousehold/*/cdccQualifyingPerson
+  output cdcc_qualifying_person condition
+  # DF: /familyAndHousehold/*/cdccHasQualifyingExpenses
+  output has_qualifying_expenses condition
+  # DF: /familyAndHousehold/*/cdccQualifyingExpenseAmount
+  output qualifying_expense_amount content money
+  # IRC 21(e)(4), Form 2441 line A: this person's home tests
+  output home_tests_for_married_separate condition
+```
+
+```catala
+scope CdccPersonTest:
+  definition dependent equals
+    output of QR.DependentTest with {
+      -- member: cdcc_member.member
+      -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
+      -- treat_filers_as_dependents: treat_filers_as_dependents
+      -- either_filer_us_citizen_or_national:
+           either_filer_us_citizen_or_national
+      -- treat_as_mfj: treat_as_mfj }
+
+  # DF: /familyAndHousehold/*/isBornOnJanFirst
+  rule born_on_january_first under condition
+    Date.get_month of cdcc_member.member.person.date_of_birth = 1
+    and Date.get_day of cdcc_member.member.person.date_of_birth = 1
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/ageOnJanFirst
+  definition age_on_january_first equals
+    if born_on_january_first then dependent.qc.age
+    else dependent.qc.age - 1
+
+  rule under_13_for_part_of_year under condition
+    age_on_january_first < P.cdcc_qualifying_child_age_limit
+  consequence fulfilled
+
+  rule turned_thirteen_after_january_first under condition
+    under_13_for_part_of_year
+    and dependent.qc.age >= P.cdcc_qualifying_child_age_limit
+  consequence fulfilled
+
+  # IRC 21(b)(1)(A); IRC 152(a)(1) (a qualifying child). DF-BUG(28-f): the
+  # statute asks whether the child is the taxpayer's dependent, not whether
+  # the taxpayer elected to claim; `eligible_dependent`, not
+  # `is_claimed_dependent`. DF: first branch of /cdccQualifyingPerson.
+  rule qualifying_child_under_13 under condition
+    dependent.eligible_dependent
+    and dependent.qualifying_child
+    and under_13_for_part_of_year
+  consequence fulfilled
+
+  # IRC 21(b)(1)(B): a dependent "determined without regard to subsections
+  # (b)(1), (b)(2), and (d)(1)(B)" of section 152 (dependent of another,
+  # joint return, gross income), incapable of self care, same abode for more
+  # than half the year. DF: /familyAndHousehold/*/cdccNonDependentQualifyingPerson,
+  # third branch, and the second branch of /cdccQualifyingPerson. A child
+  # whom IRC 152(e) assigns to another parent, or who is the benefit-split
+  # child (handled below), is not this filer's dependent.
+  rule incapable_dependent under condition
+    cdcc_member.cdcc.unable_to_care_for_self
+    and dependent.qc.residency_test
+    and dependent.citizen_or_resident_test
+    and cdcc_member.member.answers.tin_type != QR.TinType.NoTin
+    and ((dependent.qc.qc_relationship_test and dependent.qc.age_test
+          and dependent.qc.qc_support_test)
+         or (dependent.not_qualifying_child_test
+             and dependent.relationship_member_of_household_test
+             and dependent.qr_support_test))
+    and not dependent.split.disqualified_due_to_parental_custody
+    and not dependent.split.tp_can_claim_split_benefits_hoh_eitc_cdcc
+  consequence fulfilled
+
+  # IRC 21(e)(5): the custodial parent who released the claim keeps the
+  # credit. The parent path of DF /tpCanClaimSplitBenefitsHohEitcCdcc
+  # (`tp_is_parent`); the non-parent path is DF-BUG(28-a).
+  rule custodial_parent_release under condition
+    dependent.split.tp_can_claim_split_benefits_hoh_eitc_cdcc
+    and dependent.split.tp_is_parent
+    and dependent.citizen_or_resident_test
+    and cdcc_member.member.answers.tin_type != QR.TinType.NoTin
+    and ((dependent.qualifying_child and under_13_for_part_of_year)
+         or (dependent.qc.residency_test
+             and cdcc_member.cdcc.unable_to_care_for_self))
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/cdccQualifyingPerson
+  rule cdcc_qualifying_person under condition
+    qualifying_child_under_13 or incapable_dependent or custodial_parent_release
+  consequence fulfilled
+
+  # DF: /familyAndHousehold/*/cdccHasQualifyingExpenses
+  rule has_qualifying_expenses under condition
+    cdcc_member.cdcc.has_dependent_care_expenses
+    and cdcc_member.cdcc.expenses_paid_to_qualifying_provider
+  consequence fulfilled
+
+  # Form 2441 line 2 column (d). DF: /familyAndHousehold/*/cdccQualifyingExpenseAmount
+  definition qualifying_expense_amount equals
+    if cdcc_qualifying_person and has_qualifying_expenses
+    then R.round_dollar of cdcc_member.cdcc.writable_qualifying_expense_amount
+    else $0
+
+  # IRC 21(e)(4)(A)(i)-(ii): the home is this person's abode for more than
+  # half the year and the filer pays over half its cost.
+  rule home_tests_for_married_separate under condition
+    cdcc_qualifying_person
+    and dependent.qc.residency_test
+    and cdcc_member.cdcc.tp_paid_most_of_home_upkeep
+  consequence fulfilled
+```
+
+## Part III: dependent care benefits (Form 2441 lines 12 to 31)
+
+IRC 129(a)(2)(A): "The amount which may be excluded under paragraph (1) for
+dependent care assistance with respect to dependent care services provided
+during a taxable year shall not exceed $5,000 ($2,500 in the case of a
+separate return by a married individual)." IRC 129(b)(1): the exclusion "shall
+not exceed— (A) in the case of an employee who is not married at the close of
+such taxable year, the earned income of such employee for such taxable year,
+or (B) ... the lesser of— (i) the earned income of such employee ..., or (ii)
+the earned income of the spouse of such employee". IRC 129(b)(2): the
+section 21(d)(2) deemed income applies to a student or incapable spouse. IRC
+21(c): the dollar limit "shall be reduced by the aggregate amount excludable
+from gross income under section 129".
+
+```catala-metadata
+declaration scope Form2441PartIII:
+  # DF: /filingStatus
+  input filing_status content Types.FilingStatus
+  # DF: /familyAndHousehold
+  input household content list of CdccMember
+  # DF: filers.xml /minimumFilerDateOfBirth
+  input minimum_filer_date_of_birth content date
+  # DF: filers.xml /treatFilersAsDependents
+  input treat_filers_as_dependents content boolean
+  # DF: filers.xml /eitherFilerUSCitizenOrNational
+  input either_filer_us_citizen_or_national content boolean
+  # DF: filingStatus.xml /treatAsMFJ
+  input treat_as_mfj content boolean
+  # DF: filers.xml /livedApartLastSixMonths (Filers.lived_apart_last_six_months)
+  input lived_apart_last_six_months condition
+  # DF: filers.xml /livedTogetherAllYearWithSpouse, or /spouseLivedTogetherMonths
+  # = livedTogetherMoreThanSixMonths
+  input spouse_same_abode_more_than_half_year condition
+  # DF: /filers (primary and, if any, secondary)
+  input primary_filer content CdccFiler
+  input secondary_filer content CdccFiler
+  # DF: income.xml /hasMfjSpouseEarnedIncome, /writableMfsSpouseEarnedIncome
+  input has_mfs_spouse_earned_income condition
+  input writable_mfs_spouse_earned_income content money
+  # DF: /writableCdccTotalQualifiedDependentCareExpenses (line 16)
+  input writable_total_qualified_dependent_care_expenses content money
+  # DF: /writableCdccCarryoverAmountFromPriorTaxYear (line 13; $0 if none)
+  input writable_carryover_amount content money
+  # DF: /writableCdccForfeitedCredits (line 14; $0 if none)
+  input writable_forfeited_amount content money
+  # DF: /cdccHasCreditForPriorYearExpenses, /cdccClaimedCreditForPriorYearExpenses,
+  # /cdccClaimedMaxCreditForPriorTaxYear
+  input has_credit_for_prior_year_expenses condition
+  input claimed_credit_for_prior_year_expenses condition
+  input claimed_max_credit_for_prior_tax_year condition
+  # DF: /flowKnockoutHouseholdEmployee
+  input has_household_employee condition
+  # Form 2441 line 22 "Yes"
+  input benefits_from_sole_proprietorship_or_partnership condition
+
+  output results content list of CdccPersonTest
+  internal is_mfj condition
+  internal is_mfs condition
+  # DF: /cdccQualifyingNonFilersCount
+  output non_filer_qualifying_person_count content integer
+  # DF: /filers/*/cdccQualifyingPerson
+  output primary_filer_is_qualifying_person condition
+  output secondary_filer_is_qualifying_person condition
+  # DF: /cdccCountOfQualifyingPersons
+  output count_of_qualifying_persons content integer
+  # DF: /cdccHasQualifyingPersons
+  output has_qualifying_persons condition
+  # DF: /mfsButEligibleForCdcc, Form 2441 line A
+  output mfs_but_eligible_for_cdcc condition
+  # IRC 21(e)(2)
+  output married_separate_not_allowed condition
+  # DF: /cdccUncappedQualifyingExpenses
+  output uncapped_qualifying_expenses content money
+  # Form 2441 line 27. DF: /cdccQualifyingExpenseCap
+  output qualifying_expense_cap content money
+
+  # Form 2441 lines 12 to 15
+  output primary_dependent_care_benefits content money
+  output secondary_dependent_care_benefits content money
+  # DF: /cdccDependentCareBenefitsAmount (line 12)
+  output line12_dependent_care_benefits content money
+  # DF: /cdccCarryoverAmountFromPriorTaxYear (line 13)
+  output line13_carryover content money
+  # DF: /cdccForfeitedCredits (line 14)
+  output line14_forfeited content money
+  # DF: /cdccAdjustedDependentCareBenefitsAmount (line 15)
+  output line15_adjusted_benefits content money
+  # DF: /hasReportedDependentCareBenefits, /isFillingForm2441PartIII
+  output has_reported_primary_benefits condition
+  output has_reported_secondary_benefits condition
+  output has_reported_carryover condition
+  output is_filling_part_iii condition
+  # DF: /cdccTotalQualifiedDependentCareExpenses (line 16)
+  output line16_expenses content money
+  # DF: /cdccLesserOfAdjustBenefitsAndQualifiedExpenses (line 17)
+  output line17_lesser content money
+
+  # Deemed income (IRC 21(d)(2)) for each filer, if married filing jointly
+  output deemed_monthly_income content money
+  output primary_deemed_uplift content money
+  output secondary_deemed_uplift content money
+  # DF: /cdccEarnedIncomePrimaryFilerLine18 (line 18)
+  output line18_earned_income content money
+  # DF: /cdccEarnedIncomeLine19 (line 19)
+  output line19_earned_income content money
+  # DF: /cdccTentativeExclusionAmount (line 20)
+  output line20_tentative_exclusion content money
+  # DF: /cdccMaximumExclusion
+  output maximum_exclusion content money
+  # DF: /cdccShouldBeAskedAboutMaxExclusion
+  output asked_about_max_exclusion condition
+  # DF: /cdccSpecifiedExclusionAmount (line 21)
+  output line21_specified_exclusion content money
+  # Line 22 (out of scope)
+  output line22_sole_proprietorship_benefits content money
+  # DF: /cdccExclusionAmountNotFromSoleProprietorshipOrPartnership (line 23)
+  output line23 content money
+  # DF: /cdccDeductibleBenefitsAmount (line 24)
+  output line24_deductible_benefits content money
+  # DF: /cdccExcludedBenefitsAmount (line 25)
+  output line25_excluded_benefits content money
+  # DF: /cdccTaxableBenefits (line 26; Form 1040 line 1e)
+  output taxable_benefits content money
+  # Line 28, 29, 30, 31. DF: /cdccSumOfDeductibleAndExcludedBenefitsAmount,
+  # /cdccNetAllowableAmount, /cdccUncappedQualifyingExpenses,
+  # /cdccSmallerOfTotalQualifyingExpensesAmount
+  output line28 content money
+  output line29_net_allowable content money
+  output line31 content money
+  # DF: /cdccPotentialCdccIsZeroOrLessDueToExclusionBenefits
+  output potential_cdcc_is_zero_due_to_exclusion condition
+
+  # Knockouts
+  output ko_knockout_cdcc_worksheet_a condition
+  output ko_knockout_household_employee condition
+  output ko_sole_proprietorship_benefits condition
+  output ko_both_spouses_deemed_income condition
+  output unsupported condition
+```
+
+```catala
+scope Form2441PartIII:
+  definition is_mfj equals filing_status = Types.FilingStatus.MarriedFilingJointly
+  definition is_mfs equals
+    filing_status = Types.FilingStatus.MarriedFilingSeparately
+
+  definition results equals
+    map each m among household to
+      (output of CdccPersonTest with {
+         -- cdcc_member: m
+         -- minimum_filer_date_of_birth: minimum_filer_date_of_birth
+         -- treat_filers_as_dependents: treat_filers_as_dependents
+         -- either_filer_us_citizen_or_national:
+              either_filer_us_citizen_or_national
+         -- treat_as_mfj: treat_as_mfj })
+
+  definition non_filer_qualifying_person_count equals
+    number of (list of r among results such that r.cdcc_qualifying_person)
+
+  # IRC 21(b)(1)(C): the spouse, "physically or mentally incapable of caring
+  # for himself or herself" with the same abode over half the year. DF
+  # applies it to either spouse of a joint return.
+  # DF: /filers/*/cdccQualifyingPerson
+  rule primary_filer_is_qualifying_person under condition
+    primary_filer.is_disabled and treat_as_mfj
+    and spouse_same_abode_more_than_half_year
+  consequence fulfilled
+  rule secondary_filer_is_qualifying_person under condition
+    secondary_filer.is_disabled and treat_as_mfj
+    and spouse_same_abode_more_than_half_year
+  consequence fulfilled
+
+  definition count_of_qualifying_persons equals
+    non_filer_qualifying_person_count
+    + (if primary_filer_is_qualifying_person then 1 else 0)
+    + (if secondary_filer_is_qualifying_person then 1 else 0)
+
+  rule has_qualifying_persons under condition count_of_qualifying_persons > 0
+  consequence fulfilled
+
+  # IRC 21(e)(4), Form 2441 line A. See DF-BUG(28-c): one person must pass
+  # both home tests.
+  # DF: filers.xml /mfsButEligibleForCdcc
+  rule mfs_but_eligible_for_cdcc under condition
+    is_mfs and lived_apart_last_six_months
+    and exists r among results such that r.home_tests_for_married_separate
+  consequence fulfilled
+
+  # IRC 21(e)(2): "If the taxpayer is married at the close of the taxable
+  # year, the credit shall be allowed under subsection (a) only if the
+  # taxpayer and his spouse file a joint return."
+  rule married_separate_not_allowed under condition
+    is_mfs and not mfs_but_eligible_for_cdcc
+  consequence fulfilled
+
+  # DF: /cdccUncappedQualifyingExpenses (line 30 in Part III)
+  definition uncapped_qualifying_expenses equals
+    Money.sum of (map each r among results to r.qualifying_expense_amount)
+    + (if primary_filer_is_qualifying_person
+          and primary_filer.has_dependent_care_expenses
+          and primary_filer.expenses_paid_to_qualifying_provider
+       then R.round_dollar of primary_filer.writable_qualifying_expense_amount
+       else $0)
+    + (if secondary_filer_is_qualifying_person
+          and secondary_filer.has_dependent_care_expenses
+          and secondary_filer.expenses_paid_to_qualifying_provider
+       then R.round_dollar of secondary_filer.writable_qualifying_expense_amount
+       else $0)
+
+  # IRC 21(c)(1)-(2). DF: /cdccQualifyingExpenseCap
+  definition qualifying_expense_cap equals
+    if count_of_qualifying_persons > 1 then P.cdcc_expense_cap_two_or_more
+    else if count_of_qualifying_persons = 1 then P.cdcc_expense_cap_one_person
+    else $0
+```
+
+### Lines 12 to 15
+
+Form 2441 line 12: "Enter the total amount of dependent care benefits you
+received in 2024. Amounts you received as an employee should be shown in box
+10 of your Form(s) W-2." Line 13: the amount carried over from 2023 and used
+in 2024. Line 14: "If you forfeited or carried over to 2025 any of the
+amounts reported on line 12 or 13, enter the amount." Line 15: "Combine lines
+12 through 14." DF rounds each (`Round`). `DF-BUG(28-e)`: DF counts a
+forfeited amount only if box 10 is positive.
+
+```catala
+scope Form2441PartIII:
+  definition primary_dependent_care_benefits equals
+    primary_filer.dependent_care_benefits
+  definition secondary_dependent_care_benefits equals
+    if is_mfj then secondary_filer.dependent_care_benefits else $0
+
+  # DF: /hasReportedPrimaryFilerDependentCareBenefits (unrounded sum > 0)
+  rule has_reported_primary_benefits under condition
+    primary_dependent_care_benefits > $0
+  consequence fulfilled
+  rule has_reported_secondary_benefits under condition
+    secondary_dependent_care_benefits > $0
+  consequence fulfilled
+
+  # DF: /cdccDependentCareBenefitsAmount
+  definition line12_dependent_care_benefits equals
+    R.round_dollar of primary_dependent_care_benefits
+    + (if is_mfj
+       then R.round_dollar of secondary_dependent_care_benefits else $0)
+
+  definition line13_carryover equals
+    R.round_dollar of writable_carryover_amount
+
+  rule has_reported_carryover under condition line13_carryover > $0
+  consequence fulfilled
+
+  # DF-BUG(28-e)
+  definition line14_forfeited equals
+    R.round_dollar of writable_forfeited_amount
+
+  # DF: /cdccAdjustedDependentCareBenefitsAmount
+  definition line15_adjusted_benefits equals
+    line12_dependent_care_benefits + line13_carryover - line14_forfeited
+
+  # DF: /hasReportedDependentCareBenefits and /isFillingForm2441PartIII
+  rule is_filling_part_iii under condition
+    has_reported_primary_benefits or has_reported_secondary_benefits
+    or has_reported_carryover
+  consequence fulfilled
+
+  # Line 16. DF: /cdccTotalQualifiedDependentCareExpenses
+  definition line16_expenses equals
+    if has_qualifying_persons
+    then R.round_dollar of writable_total_qualified_dependent_care_expenses
+    else $0
+
+  # Line 17. DF: /cdccLesserOfAdjustBenefitsAndQualifiedExpenses
+  definition line17_lesser equals
+    Money.min of line15_adjusted_benefits, line16_expenses
+```
+
+### Lines 18 to 21: earned income and the exclusion limit
+
+i2441 p 5, line 18: "Earned income for figuring the amount of dependent care
+benefits you are able to exclude or deduct from your income is determined in
+the same way as earned income for figuring the credit is determined ...;
+however, for purposes of lines 18 and 19, earned income doesn't include any
+dependent care benefits shown on line 12." Line 19: "If your filing status is
+married filing separately ... Are you considered unmarried under that rule?
+Yes. Enter your earned income (from line 18) on line 19. No. Enter your
+spouse's earned income on line 19." The form for all others: "enter the amount
+from line 18" (`DF-BUG(28-d)`).
+
+Earned income of a student or incapable spouse: IRC 21(d)(2) quoted above; Reg.
+1.21-2(b)(4)(iii): "Earned income may be attributed under this paragraph
+(b)(4), in the case of any husband and wife, to only one spouse in any month."
+We apply the rule only to a married filing jointly return (the statute says
+"a spouse") and make a return where both spouses list deemed months
+unsupported.
+
+```catala
+scope Form2441PartIII:
+  # IRC 21(d)(2)(A)-(B)
+  definition deemed_monthly_income equals
+    if count_of_qualifying_persons > 1
+    then P.cdcc_deemed_monthly_income_two_or_more
+    else if count_of_qualifying_persons = 1
+    then P.cdcc_deemed_monthly_income_one_person
+    else $0
+
+  definition primary_deemed_uplift equals
+    if is_mfj
+    then deemed_income_uplift of primary_filer.deemed_income_month_earnings,
+                                 deemed_monthly_income
+    else $0
+  definition secondary_deemed_uplift equals
+    if is_mfj
+    then deemed_income_uplift of secondary_filer.deemed_income_month_earnings,
+                                 deemed_monthly_income
+    else $0
+
+  # DF: /cdccEarnedIncomePrimaryFilerLine18
+  definition line18_earned_income equals
+    R.round_dollar of
+      (primary_filer.employer_income_subtotal_base
+       + (if primary_filer.elect_combat_pay_for_benefits
+          then primary_filer.nontaxable_combat_pay else $0)
+       + primary_deemed_uplift)
+
+  # DF: /cdccEarnedIncomeLine19 and /cdccEarnedIncomeSecondaryFilerPartIII
+  definition line19_earned_income equals
+    if is_mfj
+    then R.round_dollar of
+      (secondary_filer.employer_income_subtotal_base
+       + (if secondary_filer.elect_combat_pay_for_benefits
+          then secondary_filer.nontaxable_combat_pay else $0)
+       + secondary_deemed_uplift)
+    else if married_separate_not_allowed
+    then (if has_mfs_spouse_earned_income
+          then R.round_dollar of writable_mfs_spouse_earned_income else $0)
+    else line18_earned_income
+
+  # Line 20. DF: /cdccTentativeExclusionAmount
+  definition line20_tentative_exclusion equals
+    if line17_lesser > $0
+    then Money.min of line17_lesser,
+           (Money.min of line18_earned_income, line19_earned_income)
+    else $0
+
+  # IRC 129(a)(2)(A). DF: /cdccMaximumExclusion
+  definition maximum_exclusion equals
+    if married_separate_not_allowed
+    then P.dependent_care_exclusion_cap_married_separate
+    else P.dependent_care_exclusion_cap
+
+  # DF: /cdccShouldBeAskedAboutMaxExclusion
+  rule asked_about_max_exclusion under condition
+    is_filling_part_iii and has_qualifying_persons
+  consequence fulfilled
+
+  # Line 21. DF: /cdccSpecifiedExclusionAmount (the plan maxima are read only
+  # for a filer who has benefits, /cdccPrimaryFilerDependentCarePlanMaximum)
+  definition line21_specified_exclusion equals
+    if not asked_about_max_exclusion then $0
+    else if (is_mfj or is_mfs) and not mfs_but_eligible_for_cdcc
+    then Money.min of maximum_exclusion,
+      ((if has_reported_primary_benefits or has_reported_carryover
+        then R.round_dollar of primary_filer.dependent_care_plan_maximum
+        else $0)
+       + (if has_reported_secondary_benefits
+          then R.round_dollar of secondary_filer.dependent_care_plan_maximum
+          else $0))
+    else Money.min of maximum_exclusion,
+      (if has_reported_primary_benefits or has_reported_carryover
+       then R.round_dollar of primary_filer.dependent_care_plan_maximum
+       else $0)
+
+  # OUT OF SCOPE: line 22, benefits from a sole proprietorship or
+  # partnership; the filer is sent away by ko_sole_proprietorship_benefits.
+  definition line22_sole_proprietorship_benefits equals $0
+
+  definition line23 equals line15_adjusted_benefits - line22_sole_proprietorship_benefits
+
+  # Line 24. DF: /cdccDeductibleBenefitsAmount
+  definition line24_deductible_benefits equals
+    Money.min of line20_tentative_exclusion,
+      (Money.min of line21_specified_exclusion,
+                    line22_sole_proprietorship_benefits)
+
+  # Line 25, the "No" branch of line 22. DF: /cdccExcludedBenefitsAmount
+  definition line25_excluded_benefits equals
+    Money.min of line21_specified_exclusion, line20_tentative_exclusion
+
+  # Line 26. DF: /cdccTaxableBenefits
+  definition taxable_benefits equals
+    if is_filling_part_iii
+    then Money.positive of (line23 - line25_excluded_benefits)
+    else $0
+```
+
+### Lines 27 to 31
+
+Line 27: "Enter $3,000 ($6,000 if two or more qualifying persons)". Line 28: "Add
+lines 24 and 25." Line 29: "Subtract line 28 from line 27. If zero or less,
+stop. You can't take the credit." Line 30: "Complete line 2 on page 1 of
+this form. Don't include in column (d) any benefits shown on line 28 above.
+Then, add the amounts in column (d) and enter the total here." Line 31:
+"Enter the smaller of line 29 or 30."
+
+```catala
+scope Form2441PartIII:
+  definition line28 equals line24_deductible_benefits + line25_excluded_benefits
+  definition line29_net_allowable equals qualifying_expense_cap - line28
+  definition line31 equals Money.min of line29_net_allowable, uncapped_qualifying_expenses
+
+  rule potential_cdcc_is_zero_due_to_exclusion under condition
+    is_filling_part_iii and line29_net_allowable <= $0
+  consequence fulfilled
+```
+
+### Knockouts
+
+```catala
+scope Form2441PartIII:
+  # DF: /knockoutCdccWorksheetA (flow.xml line 116)
+  rule ko_knockout_cdcc_worksheet_a under condition
+    has_credit_for_prior_year_expenses
+    and (not claimed_credit_for_prior_year_expenses
+         or not claimed_max_credit_for_prior_tax_year)
+  consequence fulfilled
+
+  # DF: /flowKnockoutHouseholdEmployee (flow.xml line 117)
+  rule ko_knockout_household_employee under condition has_household_employee
+  consequence fulfilled
+
+  rule ko_sole_proprietorship_benefits under condition
+    benefits_from_sole_proprietorship_or_partnership
+  consequence fulfilled
+
+  # Reg. 1.21-2(b)(4)(iii): deemed income for one spouse per month. We cannot
+  # check the months, so a return with deemed months for both is refused.
+  rule ko_both_spouses_deemed_income under condition
+    is_mfj
+    and (exists a among primary_filer.deemed_income_month_earnings such that true)
+    and (exists b among secondary_filer.deemed_income_month_earnings such that true)
+  consequence fulfilled
+
+  rule unsupported under condition
+    ko_knockout_cdcc_worksheet_a or ko_knockout_household_employee
+    or ko_sole_proprietorship_benefits or ko_both_spouses_deemed_income
+  consequence fulfilled
+```
+
+## Part II: the credit (Form 2441 lines 3 to 11)
+
+IRC 21(a)(1): "there shall be allowed as a credit against the tax imposed by
+this chapter for the taxable year an amount equal to the applicable
+percentage of the employment-related expenses ... paid by such individual
+during the taxable year." IRC 21(a)(2): "the term "applicable percentage"
+means 35 percent reduced (but not below 20 percent) by 1 percentage point for
+each $2,000 (or fraction thereof) by which the taxpayer's adjusted gross
+income for the taxable year exceeds $15,000." IRC 21(d)(1): the expenses
+"shall not exceed— (A) in the case of an individual who is not married at the
+close of such year, such individual's earned income for such year, or (B) in
+the case of an individual who is married at the close of such year, the
+lesser of such individual's earned income or the earned income of his spouse".
+Form 2441: line 3 "Add the amounts in column (d) of line 2. Don't enter more
+than $3,000 if you had one qualifying person or $6,000 if you had two or more
+persons. If you completed Part III, enter the amount from line 31." Line 6
+"Enter the smallest of line 3, 4, or 5." Line 7 AGI; line 8 the decimal
+amount; line 9a "Multiply line 6 by the decimal amount on line 8"; line 10
+"Tax liability limit"; line 11 "Enter the smaller of line 9c or line 10".
+
+Earned income (i2441 p 3, lines 4 and 5): "The amount shown on Form 1040,
+1040-SR, or 1040-NR, line 1z" and "Nontaxable combat pay if you elect to
+include it in earned income", each spouse separately, so line 1e (taxable
+dependent care benefits) is part of one spouse's earned income. The form does
+not say whose; DF allocates the amount below.
+
+`DF-BUG(28-b)`: AGI zero or less gives 35 percent here; DF gives 0.
+
+```catala-metadata
+declaration scope Form2441:
+  input filing_status content Types.FilingStatus
+  input household content list of CdccMember
+  input minimum_filer_date_of_birth content date
+  input treat_filers_as_dependents content boolean
+  input either_filer_us_citizen_or_national content boolean
+  input treat_as_mfj content boolean
+  input lived_apart_last_six_months condition
+  input spouse_same_abode_more_than_half_year condition
+  input primary_filer content CdccFiler
+  input secondary_filer content CdccFiler
+  input has_mfs_spouse_earned_income condition
+  input writable_mfs_spouse_earned_income content money
+  input writable_total_qualified_dependent_care_expenses content money
+  input writable_carryover_amount content money
+  input writable_forfeited_amount content money
+  input has_credit_for_prior_year_expenses condition
+  input claimed_credit_for_prior_year_expenses condition
+  input claimed_max_credit_for_prior_tax_year condition
+  input has_household_employee condition
+  input benefits_from_sole_proprietorship_or_partnership condition
+  # Form 2441 line 7: Form 1040 line 11. DF: /agi
+  input agi content money
+  # Credit Limit Worksheet line 1: Form 1040 line 18. Line 2 (Schedule 3 line 1,
+  # foreign tax credit) is $0: DF does not support it. DF: /totalTentativeTax
+  input total_tentative_tax content money
+
+  output benefits scope Form2441PartIII
+
+  # Part III results again at the top level (Form 1040 line 1e and the
+  # flat list the differential test reads)
+  output taxable_benefits content money
+  output count_of_qualifying_persons content integer
+  output has_qualifying_persons condition
+  output has_more_than_three_qualifying_persons condition
+  output mfs_but_eligible_for_cdcc condition
+  output line12_dependent_care_benefits content money
+  output line13_carryover content money
+  output line14_forfeited content money
+  output line15_adjusted_benefits content money
+  output line17_lesser content money
+  output line20_tentative_exclusion content money
+  output line21_specified_exclusion content money
+  output line24_deductible_benefits content money
+  output line25_excluded_benefits content money
+  output line28 content money
+  output line29_net_allowable content money
+  output line31 content money
+
+  # Line 3. DF: /cdccQualifyingExpenses
+  output line3 content money
+  # DF: income.xml /cdccPrimaryEarnedIncomeWithCombatPayForCredits
+  output primary_earned_income_before_benefits content money
+  output secondary_earned_income_before_benefits content money
+  # Allocation of taxable benefits (QUIRK, see below)
+  output primary_adjustment content money
+  output secondary_adjustment content money
+  output allocate_all_to_primary condition
+  output allocate_all_to_secondary condition
+  output primary_taxable_benefits content money
+  output secondary_taxable_benefits content money
+  # DF: /cdccEarnedIncomePrimaryFilerLine4 (line 4)
+  output line4_earned_income content money
+  # DF: /cdccEarnedIncomeLine5 (line 5)
+  output line5_earned_income content money
+  # DF: /lowerOfCdccEarnedIncome
+  output lower_of_earned_income content money
+  # DF: /cdccLowerOfEarnedIncomeAndExpenses (line 6)
+  output line6 content money
+  # Line 8. DF: /xmlCdccCareExpensesDecimalAmount
+  output applicable_percentage content decimal
+  output line8_decimal_amount content money
+  # DF: /cdccTentativeExpenseAmount (line 9a)
+  output line9a content money
+  # DF: /cdccCreditForPriorYearExpenses (line 9b; out of scope)
+  output line9b content money
+  # DF: /cdccTotalEligibleCDCCAmount (line 9c)
+  output line9c content money
+  # DF: /cdccCreditLimit (line 10)
+  output line10_tax_liability_limit content money
+  # DF: /cdccHasQualifyingExpenses
+  output has_qualifying_expenses condition
+  # DF: /cdccTotalCredit (line 11; Schedule 3 line 2)
+  output cdcc_total_credit content money
+  # DF: /isReceivingCdccCredit
+  output is_receiving_cdcc_credit condition
+  # DF: /shouldSubmitForm2441
+  output should_submit_form_2441 condition
+  # DF: /flowKnockoutBenefitsDistribution
+  output ko_flow_knockout_benefits_distribution condition
+  output unsupported condition
+```
+
+```catala
+scope Form2441:
+  definition benefits.filing_status equals filing_status
+  definition benefits.household equals household
+  definition benefits.minimum_filer_date_of_birth equals
+    minimum_filer_date_of_birth
+  definition benefits.treat_filers_as_dependents equals treat_filers_as_dependents
+  definition benefits.either_filer_us_citizen_or_national equals
+    either_filer_us_citizen_or_national
+  definition benefits.treat_as_mfj equals treat_as_mfj
+  definition benefits.lived_apart_last_six_months equals lived_apart_last_six_months
+  definition benefits.spouse_same_abode_more_than_half_year equals
+    spouse_same_abode_more_than_half_year
+  definition benefits.primary_filer equals primary_filer
+  definition benefits.secondary_filer equals secondary_filer
+  definition benefits.has_mfs_spouse_earned_income equals has_mfs_spouse_earned_income
+  definition benefits.writable_mfs_spouse_earned_income equals
+    writable_mfs_spouse_earned_income
+  definition benefits.writable_total_qualified_dependent_care_expenses equals
+    writable_total_qualified_dependent_care_expenses
+  definition benefits.writable_carryover_amount equals writable_carryover_amount
+  definition benefits.writable_forfeited_amount equals writable_forfeited_amount
+  definition benefits.has_credit_for_prior_year_expenses equals
+    has_credit_for_prior_year_expenses
+  definition benefits.claimed_credit_for_prior_year_expenses equals
+    claimed_credit_for_prior_year_expenses
+  definition benefits.claimed_max_credit_for_prior_tax_year equals
+    claimed_max_credit_for_prior_tax_year
+  definition benefits.has_household_employee equals has_household_employee
+  definition benefits.benefits_from_sole_proprietorship_or_partnership equals
+    benefits_from_sole_proprietorship_or_partnership
+
+  definition taxable_benefits equals benefits.taxable_benefits
+  definition count_of_qualifying_persons equals
+    benefits.count_of_qualifying_persons
+  rule has_qualifying_persons under condition benefits.has_qualifying_persons
+  consequence fulfilled
+  rule has_more_than_three_qualifying_persons under condition
+    benefits.count_of_qualifying_persons > 3
+  consequence fulfilled
+  rule mfs_but_eligible_for_cdcc under condition
+    benefits.mfs_but_eligible_for_cdcc
+  consequence fulfilled
+  definition line12_dependent_care_benefits equals
+    benefits.line12_dependent_care_benefits
+  definition line13_carryover equals benefits.line13_carryover
+  definition line14_forfeited equals benefits.line14_forfeited
+  definition line15_adjusted_benefits equals benefits.line15_adjusted_benefits
+  definition line17_lesser equals benefits.line17_lesser
+  definition line20_tentative_exclusion equals benefits.line20_tentative_exclusion
+  definition line21_specified_exclusion equals benefits.line21_specified_exclusion
+  definition line24_deductible_benefits equals benefits.line24_deductible_benefits
+  definition line25_excluded_benefits equals benefits.line25_excluded_benefits
+  definition line28 equals benefits.line28
+  definition line29_net_allowable equals benefits.line29_net_allowable
+  definition line31 equals benefits.line31
+
+  # Line 3. DF: /cdccQualifyingExpenses
+  definition line3 equals
+    if benefits.is_filling_part_iii then benefits.line31
+    else Money.min of benefits.uncapped_qualifying_expenses,
+                      benefits.qualifying_expense_cap
+
+  rule has_qualifying_expenses under condition
+    benefits.uncapped_qualifying_expenses > $0
+  consequence fulfilled
+
+  # DF: income.xml /cdccPrimaryEarnedIncomeWithCombatPayForCredits
+  definition primary_earned_income_before_benefits equals
+    primary_filer.employer_income_subtotal_base
+    + (if primary_filer.elect_combat_pay_for_credit
+       then primary_filer.nontaxable_combat_pay else $0)
+    + benefits.primary_deemed_uplift
+  definition secondary_earned_income_before_benefits equals
+    if filing_status = Types.FilingStatus.MarriedFilingJointly
+    then secondary_filer.employer_income_subtotal_base
+         + (if secondary_filer.elect_combat_pay_for_credit
+            then secondary_filer.nontaxable_combat_pay else $0)
+         + benefits.secondary_deemed_uplift
+    else $0
+```
+
+### Whose earned income holds the taxable benefits
+
+Line 26 is one amount for the return; Form 2441 does not say which spouse's
+earned income it adds to. DF chooses so as to give the larger credit, with
+the rule below, and knocks the return out when the best choice would need a
+calculation it does not do. The statute is silent, so it is reproduced.
+
+```catala
+scope Form2441:
+  # DF: income.xml /cdccPrimaryFilerMaximumEarnedIncomeAdjustmentFromTaxableBenefits
+  definition primary_adjustment equals
+    Money.min of benefits.taxable_benefits, benefits.primary_dependent_care_benefits
+  definition secondary_adjustment equals
+    Money.min of benefits.taxable_benefits, benefits.secondary_dependent_care_benefits
+
+  # QUIRK(Q12): proposed, new. DF /cdccAllTaxableDependentCareBenefitsShouldBeAddedtoPrimaryEarnedIncome
+  # compares the other spouse's earned income MINUS this spouse's (the
+  # "ToMatch" fact) with this spouse's earned income PLUS the adjustment in its
+  # second alternative, which looks like a slip. Reproduced; the allocation is
+  # not a rule of law.
+  rule allocate_all_to_primary under condition
+    benefits.has_reported_primary_benefits
+    and (not (filing_status = Types.FilingStatus.MarriedFilingJointly
+              and benefits.has_reported_secondary_benefits)
+         or (secondary_earned_income_before_benefits
+             - primary_earned_income_before_benefits
+             >= primary_earned_income_before_benefits + primary_adjustment)
+         or (primary_earned_income_before_benefits
+             <= secondary_earned_income_before_benefits
+             and (Money.min of secondary_earned_income_before_benefits,
+                    (primary_earned_income_before_benefits + primary_adjustment))
+                 >= benefits.line31
+             and not (secondary_earned_income_before_benefits
+                      < primary_earned_income_before_benefits
+                        + primary_adjustment)))
+  consequence fulfilled
+
+  rule allocate_all_to_secondary under condition
+    benefits.has_reported_secondary_benefits
+    and (not benefits.has_reported_primary_benefits
+         or (primary_earned_income_before_benefits
+             - secondary_earned_income_before_benefits
+             >= secondary_earned_income_before_benefits + secondary_adjustment)
+         or (secondary_earned_income_before_benefits
+             < primary_earned_income_before_benefits
+             and (Money.min of primary_earned_income_before_benefits,
+                    (secondary_earned_income_before_benefits
+                     + secondary_adjustment))
+                 >= benefits.line31
+             and not (primary_earned_income_before_benefits
+                      < secondary_earned_income_before_benefits
+                        + secondary_adjustment)))
+  consequence fulfilled
+
+  # DF: income.xml /cdccPrimaryFilerTaxableBenefits
+  definition primary_taxable_benefits equals
+    if allocate_all_to_primary then primary_adjustment
+    else if benefits.taxable_benefits > secondary_adjustment
+    then Money.min of primary_adjustment,
+                      (benefits.taxable_benefits - secondary_adjustment)
+    else $0
+  definition secondary_taxable_benefits equals
+    if allocate_all_to_secondary then secondary_adjustment
+    else if benefits.taxable_benefits > primary_adjustment
+    then Money.min of secondary_adjustment,
+                      (benefits.taxable_benefits - primary_adjustment)
+    else $0
+
+  # Line 4. DF: /cdccEarnedIncomePrimaryFilerLine4
+  definition line4_earned_income equals
+    R.round_dollar of
+      (primary_earned_income_before_benefits + primary_taxable_benefits)
+  # Line 5. DF: /cdccEarnedIncomeLine5
+  definition line5_earned_income equals
+    if filing_status = Types.FilingStatus.MarriedFilingJointly
+    then R.round_dollar of
+      (secondary_earned_income_before_benefits + secondary_taxable_benefits)
+    else line4_earned_income
+
+  # DF: /lowerOfCdccEarnedIncome
+  definition lower_of_earned_income equals
+    if filing_status = Types.FilingStatus.MarriedFilingJointly
+    then Money.min of line4_earned_income, line5_earned_income
+    else line4_earned_income
+
+  # Line 6. DF: /cdccLowerOfEarnedIncomeAndExpenses
+  definition line6 equals Money.min of line3, lower_of_earned_income
+
+  # DF: /flowKnockoutBenefitsDistribution (flow.xml line 115)
+  rule ko_flow_knockout_benefits_distribution under condition
+    filing_status = Types.FilingStatus.MarriedFilingJointly
+    and (benefits.has_reported_carryover
+         or (benefits.has_reported_primary_benefits
+             and benefits.has_reported_secondary_benefits))
+    and benefits.taxable_benefits > $0
+    and (primary_earned_income_before_benefits < benefits.line31
+         or secondary_earned_income_before_benefits < benefits.line31)
+    and not (allocate_all_to_primary or allocate_all_to_secondary)
+  consequence fulfilled
+```
+
+### Lines 7 to 11
+
+Line 8's table (f2441--2024.pdf p 1): ".35" for AGI up to $15,000, ".34" over
+$15,000 to $17,000, and so on by .01 per $2,000, ".20" over $43,000. It is
+IRC 21(a)(2) read as "(or fraction thereof)": one point for each started
+$2,000 over $15,000.
+
+```catala
+scope Form2441:
+  # IRC 21(a)(2). DF: /cdccCareExpensesDecimalAmount (DF-BUG(28-b) at AGI <= 0)
+  definition applicable_percentage equals
+    if agi <= P.cdcc_percentage_reduction_threshold
+    then P.cdcc_maximum_percentage
+    else
+      let steps equals
+        (agi - P.cdcc_percentage_reduction_threshold)
+        / P.cdcc_percentage_step_income
+      in
+      let whole_steps equals Decimal.truncate of steps in
+      let started_steps equals
+        if steps > whole_steps then whole_steps + 1.0 else whole_steps
+      in
+      let reduced equals
+        P.cdcc_maximum_percentage - P.cdcc_percentage_step * started_steps
+      in
+      if reduced < P.cdcc_minimum_percentage
+      then P.cdcc_minimum_percentage else reduced
+
+  # For the oracle, which holds the decimal amount as a Dollar
+  definition line8_decimal_amount equals $1 * applicable_percentage
+
+  # Line 9a. DF: /cdccTentativeExpenseAmount
+  definition line9a equals R.round_dollar of (line6 * applicable_percentage)
+
+  # OUT OF SCOPE: line 9b, Worksheet A (ko_knockout_cdcc_worksheet_a unless the
+  # filer already claimed the maximum, when the worksheet gives $0).
+  definition line9b equals $0
+
+  definition line9c equals line9a + line9b
+
+  # Credit Limit Worksheet line 3. DF: /cdccCreditLimit
+  definition line10_tax_liability_limit equals total_tentative_tax
+
+  # Line 11; IRC 21(e)(2), IRC 26. DF: /cdccTotalCredit
+  definition cdcc_total_credit equals
+    if not benefits.potential_cdcc_is_zero_due_to_exclusion
+       and not benefits.married_separate_not_allowed
+       and has_qualifying_expenses
+       and line6 > $0
+    then Money.min of line9c, (Money.positive of line10_tax_liability_limit)
+    else $0
+
+  rule is_receiving_cdcc_credit under condition cdcc_total_credit > $0
+  consequence fulfilled
+
+  # DF: /shouldSubmitForm2441
+  rule should_submit_form_2441 under condition
+    is_receiving_cdcc_credit or benefits.is_filling_part_iii
+  consequence fulfilled
+
+  rule unsupported under condition
+    benefits.unsupported or ko_flow_knockout_benefits_distribution
+  consequence fulfilled
+```
