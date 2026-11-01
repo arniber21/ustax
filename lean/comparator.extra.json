@@ -1,0 +1,35 @@
+{
+  "challenge_module": "UsTax.Comparator.Extra",
+  "solution_module": "UsTax.Proofs.Extra",
+  "theorem_names": [
+    "UsTax.Extra.standardDeduction_eq_spec",
+    "UsTax.Extra.additionalItems_range",
+    "UsTax.Extra.requiresScheduleB_eq_spec",
+    "UsTax.Extra.interestIncome_eq_spec",
+    "UsTax.Extra.wages_eq_spec",
+    "UsTax.Extra.formW2Withholding_eq_spec",
+    "UsTax.Extra.medicareKnockout_eq_spec",
+    "UsTax.Extra.oasdiKnockout_eq_spec",
+    "UsTax.Extra.line6b_eq_spec",
+    "UsTax.Extra.line6b_bounds",
+    "UsTax.Extra.line6b_mono_otherIncome",
+    "UsTax.Extra.educatorAdjustment_eq_spec",
+    "UsTax.Extra.educatorAdjustment_bounds",
+    "UsTax.Extra.studentLoanAdjustment_eq_spec",
+    "UsTax.Extra.studentLoanAdjustment_bounds",
+    "UsTax.Extra.studentLoanAdjustment_zero_of_magi_ge_end",
+    "UsTax.Extra.studentLoanAdjustment_antitone",
+    "UsTax.Extra.estimatedPayments_eq_spec",
+    "UsTax.Extra.agi_eq",
+    "UsTax.Extra.taxableIncome_eq",
+    "UsTax.Extra.totalPayments_eq",
+    "UsTax.Extra.totalPayments_eq_full",
+    "UsTax.Extra.totalTax_mono_addW2"
+  ],
+  "definition_names": [],
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ]
+}

@@ -3,7 +3,8 @@
 # `lake comparator` on the Lean project inside a Linux container.
 # See docs/comparator.md.
 #
-# Usage: scripts/comparator.sh [all|check|comparator]
+# Usage: scripts/comparator.sh [all|check|comparator|extra]
+#   extra: `lake comparator` against lean/comparator.extra.json (module specs)
 #
 # Environment:
 #   LEAN_DIR      Lean project to check (default: <repo>/lean). Point it at a
@@ -25,8 +26,8 @@ CACHE_VOLUME="${CACHE_VOLUME:-ustax-comparator-lake}"
 MEMORY="${MEMORY:-8g}"
 CPUS="${CPUS:-8}"
 
-case "$MODE" in all|check|comparator) ;; *)
-  echo "usage: $0 [all|check|comparator]" >&2; exit 2 ;;
+case "$MODE" in all|check|comparator|extra) ;; *)
+  echo "usage: $0 [all|check|comparator|extra]" >&2; exit 2 ;;
 esac
 
 if [ "$RUNTIME" = container ] && ! container system status >/dev/null 2>&1; then

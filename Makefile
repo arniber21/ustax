@@ -56,6 +56,11 @@ MODE ?= all
 comparator:  ## kernel-replay lean/ and judge it against lean/comparator.json, sandboxed
 	./scripts/comparator.sh $(MODE)
 
+# Second challenge: the module specs (lean/UsTax/Comparator/Extra.lean), not the main theorems.
+.PHONY: comparator-extra
+comparator-extra:  ## judge lean/ against lean/comparator.extra.json (module specs), sandboxed
+	./scripts/comparator.sh extra
+
 # Oracle: dump Direct File reference-engine values for its backend scenarios (see oracle/README.md).
 # Needs node >= 18 and a direct-file checkout: set DIRECT_FILE=<path to direct-file/direct-file>.
 .PHONY: oracle
