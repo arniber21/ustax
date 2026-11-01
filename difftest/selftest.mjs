@@ -61,3 +61,19 @@ test('shared oracle is read-only; a mapping edits a private copy (cross-mapping 
   assert.equal(shared.size, 1);
   assert.equal(mine.size, 2);
 });
+
+test('catala result block: a struct output is flattened to name.field', () => {
+  const t = '┌─[RESULT]─ S ─\n│ supported = true\n│ lines =\n│   ApiLines {\n│     -- wages: $50,000.00\n│     -- agi: $49,000.00\n│   }\n│ reasons = []\n└─\n';
+  const r = parseCatalaResult(t);
+  assert.equal(r.get('lines.wages'), '$50,000.00');
+  assert.equal(r.get('lines.agi'), '$49,000.00');
+  assert.equal(r.get('reasons'), '[]');
+});
+
+test('compare: invert (supported is the negation of /flowIsKnockedOut)', () => {
+  const m = { outputs: [{ oracle: '/flowIsKnockedOut', catala: 'supported', type: 'bool', placeholderFalse: true, invert: true }] };
+  const f = (v, c) => new Map([['/flowIsKnockedOut', { value: v, completeness: c }]]);
+  assert.equal(compareOutputs(m, f('false', 'Placeholder'), new Map([['supported', 'true']]))[0].status, 'pass');
+  assert.equal(compareOutputs(m, f('false', 'Placeholder'), new Map([['supported', 'false']]))[0].status, 'fail');
+  assert.equal(compareOutputs(m, f('true', 'Complete'), new Map([['supported', 'false']]))[0].status, 'pass');
+});

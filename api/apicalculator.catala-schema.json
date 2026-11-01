@@ -1,0 +1,1364 @@
+[
+  {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Scope ApiCalculator input",
+    "description": "Input structure of scope ApiCalculator",
+    "$ref": "#/definitions/ApiCalculator_in",
+    "definitions": {
+      "ApiAdjustments": {
+        "type": "object",
+        "properties": {
+          "educator_expenses": { "$ref": "#/definitions/ApiEducator" },
+          "student_loan_interest": { "$ref": "#/definitions/ApiStudentLoan" },
+          "hsa": { "$ref": "#/definitions/Calculator.HsaInput" }
+        },
+        "required": [ "hsa", "student_loan_interest", "educator_expenses" ],
+        "additionalProperties": false
+      },
+      "ApiBox12": {
+        "type": "object",
+        "properties": {
+          "code_a": { "$ref": "#/definitions/money" },
+          "code_b": { "$ref": "#/definitions/money" },
+          "code_c": { "$ref": "#/definitions/money" },
+          "code_d": { "$ref": "#/definitions/money" },
+          "code_e": { "$ref": "#/definitions/money" },
+          "code_f": { "$ref": "#/definitions/money" },
+          "code_g": { "$ref": "#/definitions/money" },
+          "code_h": { "$ref": "#/definitions/money" },
+          "code_j": { "$ref": "#/definitions/money" },
+          "code_k": { "$ref": "#/definitions/money" },
+          "code_l": { "$ref": "#/definitions/money" },
+          "code_m": { "$ref": "#/definitions/money" },
+          "code_n": { "$ref": "#/definitions/money" },
+          "code_p": { "$ref": "#/definitions/money" },
+          "code_q": { "$ref": "#/definitions/money" },
+          "code_r": { "$ref": "#/definitions/money" },
+          "code_s": { "$ref": "#/definitions/money" },
+          "code_t": { "$ref": "#/definitions/money" },
+          "code_v": { "$ref": "#/definitions/money" },
+          "code_w": { "$ref": "#/definitions/money" },
+          "code_y": { "$ref": "#/definitions/money" },
+          "code_z": { "$ref": "#/definitions/money" },
+          "code_aa": { "$ref": "#/definitions/money" },
+          "code_bb": { "$ref": "#/definitions/money" },
+          "code_dd": { "$ref": "#/definitions/money" },
+          "code_ee": { "$ref": "#/definitions/money" },
+          "code_ff": { "$ref": "#/definitions/money" },
+          "code_gg": { "$ref": "#/definitions/money" },
+          "code_hh": { "$ref": "#/definitions/money" },
+          "code_ii": { "$ref": "#/definitions/money" }
+        },
+        "required": [
+          "code_ii", "code_hh", "code_gg", "code_ff", "code_ee", "code_dd",
+          "code_bb", "code_aa", "code_z", "code_y", "code_w", "code_v",
+          "code_t", "code_s", "code_r", "code_q", "code_p", "code_n",
+          "code_m", "code_l", "code_k", "code_j", "code_h", "code_g",
+          "code_f", "code_e", "code_d", "code_c", "code_b", "code_a"
+        ],
+        "additionalProperties": false
+      },
+      "ApiCalculator_in": {
+        "type": "object",
+        "properties": { "request": { "$ref": "#/definitions/ApiRequest" } },
+        "required": [ "request" ],
+        "additionalProperties": false
+      },
+      "ApiDependent": {
+        "type": "object",
+        "properties": {
+          "relationship": {
+            "$ref": "#/definitions/Qualifying_child.Relationship"
+          },
+          "date_of_birth": { "$ref": "#/definitions/date" },
+          "full_time_student": { "type": "boolean" },
+          "permanent_total_disability": { "type": "boolean" },
+          "residency_duration": {
+            "$ref": "#/definitions/Qualifying_child.ResidencyDuration"
+          },
+          "own_support": { "type": "boolean" },
+          "married": { "type": "boolean" },
+          "joint_return": { "type": "boolean" },
+          "required_to_file": { "type": "boolean" },
+          "filing_only_for_refund": { "type": "boolean" },
+          "could_be_qualifying_child_of_another": { "type": "boolean" },
+          "potential_claimer_must_file": { "type": "boolean" },
+          "potential_claimer_did_file": { "type": "boolean" },
+          "potential_claimer_filed_only_for_refund": { "type": "boolean" },
+          "gross_income": { "$ref": "#/definitions/money" },
+          "qr_support_test": { "type": "boolean" },
+          "tin_type": { "$ref": "#/definitions/Qualifying_relative.TinType" },
+          "is_us_citizen_full_year": { "type": "boolean" },
+          "us_resident": { "type": "boolean" },
+          "us_national": { "type": "boolean" },
+          "canada_mexico_resident": { "type": "boolean" },
+          "tp_claims": { "type": "boolean" },
+          "custody": {
+            "$ref": "#/definitions/Dependents_benefit_split.BenefitSplitAnswers"
+          },
+          "tp_paid_most_of_home_upkeep": { "type": "boolean" },
+          "tp_paid_most_of_parent_home_upkeep": { "type": "boolean" },
+          "ssn_employment_validity": {
+            "$ref": "#/definitions/Ctc_odc.SsnEmploymentValidity"
+          },
+          "ssn_only_for_federally_funded_benefit": { "type": "boolean" },
+          "months_lived_with_tp_in_us": { "$ref": "#/definitions/integer" },
+          "cdcc": { "$ref": "#/definitions/Calculator.CdccMemberAnswers" }
+        },
+        "required": [
+          "cdcc", "months_lived_with_tp_in_us",
+          "ssn_only_for_federally_funded_benefit", "ssn_employment_validity",
+          "tp_paid_most_of_parent_home_upkeep",
+          "tp_paid_most_of_home_upkeep", "custody", "tp_claims",
+          "canada_mexico_resident", "us_national", "us_resident",
+          "is_us_citizen_full_year", "tin_type", "qr_support_test",
+          "gross_income", "potential_claimer_filed_only_for_refund",
+          "potential_claimer_did_file", "potential_claimer_must_file",
+          "could_be_qualifying_child_of_another", "filing_only_for_refund",
+          "required_to_file", "joint_return", "married", "own_support",
+          "residency_duration", "permanent_total_disability",
+          "full_time_student", "date_of_birth", "relationship"
+        ],
+        "additionalProperties": false
+      },
+      "ApiEducator": {
+        "type": "object",
+        "properties": {
+          "was_k12_educators": {
+            "$ref": "#/definitions/Educator_adjustment.K12EducatorOptions"
+          },
+          "primary_expenses": { "$ref": "#/definitions/money" },
+          "secondary_expenses": { "$ref": "#/definitions/money" }
+        },
+        "required": [
+          "secondary_expenses", "primary_expenses", "was_k12_educators"
+        ],
+        "additionalProperties": false
+      },
+      "ApiEstimatedPayments": {
+        "type": "object",
+        "properties": {
+          "paid_estimated_taxes_or_from_last_year": { "type": "boolean" },
+          "amount": { "$ref": "#/definitions/money" },
+          "paid_under_different_name": { "type": "boolean" },
+          "paid_with_former_spouse": {
+            "$ref": "#/definitions/Estimated_payments.PaidWithFormerSpouse"
+          }
+        },
+        "required": [
+          "paid_with_former_spouse", "paid_under_different_name", "amount",
+          "paid_estimated_taxes_or_from_last_year"
+        ],
+        "additionalProperties": false
+      },
+      "ApiFiler": {
+        "type": "object",
+        "properties": {
+          "is_blind": { "type": "boolean" },
+          "age65_or_older": { "type": "boolean" },
+          "can_be_claimed_as_dependent": { "type": "boolean" },
+          "date_of_birth_given": { "type": "boolean" },
+          "date_of_birth": { "$ref": "#/definitions/date" },
+          "will_be_claimed": { "type": "boolean" },
+          "potential_claimer_must_file": { "type": "boolean" },
+          "potential_claimer_did_file": { "type": "boolean" },
+          "is_us_citizen_full_year": { "type": "boolean" },
+          "citizen_at_end_of_tax_year": { "type": "boolean" },
+          "noncitizen_resident_full_year": { "type": "boolean" },
+          "is_national": { "type": "boolean" },
+          "is_student": { "type": "boolean" },
+          "tin": { "$ref": "#/definitions/Calculator.FilerTin" },
+          "disability": {
+            "$ref": "#/definitions/Elderly_and_disabled.DisabilityAnswers"
+          },
+          "hsa": { "$ref": "#/definitions/Hsa.HsaFilerAnswers" },
+          "cdcc": { "$ref": "#/definitions/Calculator.CdccFilerAnswers" }
+        },
+        "required": [
+          "cdcc", "hsa", "disability", "tin", "is_student", "is_national",
+          "noncitizen_resident_full_year", "citizen_at_end_of_tax_year",
+          "is_us_citizen_full_year", "potential_claimer_did_file",
+          "potential_claimer_must_file", "will_be_claimed", "date_of_birth",
+          "date_of_birth_given", "can_be_claimed_as_dependent",
+          "age65_or_older", "is_blind"
+        ],
+        "additionalProperties": false
+      },
+      "ApiFilers": {
+        "type": "object",
+        "properties": {
+          "primary": { "$ref": "#/definitions/ApiFiler" },
+          "secondary": { "$ref": "#/definitions/ApiFiler" }
+        },
+        "required": [ "secondary", "primary" ],
+        "additionalProperties": false
+      },
+      "ApiFilingAnswers": {
+        "type": "object",
+        "properties": {
+          "marital_status": { "$ref": "#/definitions/ApiMaritalStatus" },
+          "year_of_spouse_death": {
+            "$ref": "#/definitions/ApiYearOfSpouseDeath"
+          },
+          "secondary_filer_date_of_death": { "$ref": "#/definitions/date" },
+          "primary_filer_potential_claimer_filed_only_for_refund": {
+            "type": "boolean"
+          },
+          "mfj_required_to_file": { "type": "boolean" },
+          "mfj_dependents_filing_for_credits": { "type": "boolean" },
+          "lived_together_all_year_with_spouse": { "type": "boolean" },
+          "spouse_lived_together_months": {
+            "$ref": "#/definitions/Filers.SpouseLivedTogetherMonths"
+          },
+          "lived_apart_last_six_months": { "type": "boolean" },
+          "separation_agreement": { "type": "boolean" },
+          "can_file_jointly_year_of_spouse_death": { "type": "boolean" },
+          "in_registered_domestic_partnership": { "type": "boolean" },
+          "residence_state": { "$ref": "#/definitions/Types.ScopedState" },
+          "spouse_itemizes": { "type": "boolean" },
+          "mfs_living_spouse_filing_return": { "type": "boolean" },
+          "mfs_deceased_spouse_filing_return": { "type": "boolean" },
+          "mfs_spouse_has_gross_income": { "type": "boolean" }
+        },
+        "required": [
+          "mfs_spouse_has_gross_income", "mfs_deceased_spouse_filing_return",
+          "mfs_living_spouse_filing_return", "spouse_itemizes",
+          "residence_state", "in_registered_domestic_partnership",
+          "can_file_jointly_year_of_spouse_death", "separation_agreement",
+          "lived_apart_last_six_months", "spouse_lived_together_months",
+          "lived_together_all_year_with_spouse",
+          "mfj_dependents_filing_for_credits", "mfj_required_to_file",
+          "primary_filer_potential_claimer_filed_only_for_refund",
+          "secondary_filer_date_of_death", "year_of_spouse_death",
+          "marital_status"
+        ],
+        "additionalProperties": false
+      },
+      "ApiFilingDetails": {
+        "type": "object",
+        "properties": {
+          "treat_as_mfs": { "type": "boolean" },
+          "is_widowed_in_tax_year": { "type": "boolean" },
+          "mfj_deceased_spouse_reached_age65": { "type": "boolean" },
+          "mfs_spouse_65_or_older": { "type": "boolean" },
+          "mfs_spouse_provides_no_benefits": { "type": "boolean" },
+          "treat_filers_as_dependents": { "type": "boolean" },
+          "has_foreign_accounts_or_trusts": { "type": "boolean" },
+          "combat_pay_election": {
+            "$ref": "#/definitions/Form_w2s.CombatPayElection"
+          },
+          "combat_pay_election_made": { "type": "boolean" }
+        },
+        "required": [
+          "combat_pay_election_made", "combat_pay_election",
+          "has_foreign_accounts_or_trusts", "treat_filers_as_dependents",
+          "mfs_spouse_provides_no_benefits", "mfs_spouse_65_or_older",
+          "mfj_deceased_spouse_reached_age65", "is_widowed_in_tax_year",
+          "treat_as_mfs"
+        ],
+        "additionalProperties": false
+      },
+      "ApiForm1099G": {
+        "type": "object",
+        "properties": {
+          "filer": { "$ref": "#/definitions/Types.FilerRole" },
+          "unemployment_compensation": { "$ref": "#/definitions/money" },
+          "repaid_this_year_for_this_year": { "$ref": "#/definitions/money" },
+          "repaid_this_year_for_earlier_year": {
+            "$ref": "#/definitions/money"
+          },
+          "federal_tax_withheld": { "$ref": "#/definitions/money" },
+          "state_is_different": { "type": "boolean" }
+        },
+        "required": [
+          "state_is_different", "federal_tax_withheld",
+          "repaid_this_year_for_earlier_year",
+          "repaid_this_year_for_this_year", "unemployment_compensation",
+          "filer"
+        ],
+        "additionalProperties": false
+      },
+      "ApiForm1099Misc": {
+        "type": "object",
+        "properties": {
+          "filer": { "$ref": "#/definitions/Types.FilerRole" },
+          "is_alaska_pfd": { "type": "boolean" },
+          "other_income": { "$ref": "#/definitions/money" },
+          "federal_withholding": { "$ref": "#/definitions/money" }
+        },
+        "required": [
+          "federal_withholding", "other_income", "is_alaska_pfd", "filer"
+        ],
+        "additionalProperties": false
+      },
+      "ApiForm1099R": {
+        "type": "object",
+        "properties": {
+          "filer": { "$ref": "#/definitions/Types.FilerRole" },
+          "distribution_code": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/Form1099_rs.CodeChar" }
+          },
+          "gross_distribution": { "$ref": "#/definitions/money" },
+          "taxable_amount": { "$ref": "#/definitions/money" },
+          "taxable_amount_blank": { "type": "boolean" },
+          "taxable_amount_not_determined": { "type": "boolean" },
+          "total_distribution": { "type": "boolean" },
+          "capital_gain": { "$ref": "#/definitions/money" },
+          "federal_withholding": { "$ref": "#/definitions/money" },
+          "net_appreciation": { "$ref": "#/definitions/money" },
+          "ira_sep_simple": { "type": "boolean" },
+          "other_dollar": { "$ref": "#/definitions/money" },
+          "other_percentage_nonzero": { "type": "boolean" },
+          "percentage_total_distribution_nonzero": { "type": "boolean" },
+          "amount_allocable_to_irr": { "$ref": "#/definitions/money" },
+          "facta_filing_requirement": { "type": "boolean" },
+          "state_tax_withheld": { "$ref": "#/definitions/money" },
+          "payer_state_is_different": { "type": "boolean" },
+          "has_death_benefit_payment_date": { "type": "boolean" },
+          "is_indirect_rollover": { "type": "boolean" },
+          "is_distribution_from_military_retirement_plan": {
+            "type": "boolean"
+          },
+          "qualified_disaster_distribution": { "type": "boolean" },
+          "public_safety_officer": { "type": "boolean" },
+          "public_safety_officer_premiums": { "type": "boolean" },
+          "recipient_date_of_birth_given": { "type": "boolean" },
+          "recipient_date_of_birth": { "$ref": "#/definitions/date" }
+        },
+        "required": [
+          "recipient_date_of_birth", "recipient_date_of_birth_given",
+          "public_safety_officer_premiums", "public_safety_officer",
+          "qualified_disaster_distribution",
+          "is_distribution_from_military_retirement_plan",
+          "is_indirect_rollover", "has_death_benefit_payment_date",
+          "payer_state_is_different", "state_tax_withheld",
+          "facta_filing_requirement", "amount_allocable_to_irr",
+          "percentage_total_distribution_nonzero",
+          "other_percentage_nonzero", "other_dollar", "ira_sep_simple",
+          "net_appreciation", "federal_withholding", "capital_gain",
+          "total_distribution", "taxable_amount_not_determined",
+          "taxable_amount_blank", "taxable_amount", "gross_distribution",
+          "distribution_code", "filer"
+        ],
+        "additionalProperties": false
+      },
+      "ApiInterest": {
+        "type": "object",
+        "properties": {
+          "filer": { "$ref": "#/definitions/Types.FilerRole" },
+          "has_1099": { "type": "boolean" },
+          "no_1099_amount": { "$ref": "#/definitions/money" },
+          "interest_income": { "$ref": "#/definitions/money" },
+          "early_withdrawal_penalty": { "$ref": "#/definitions/money" },
+          "government_bond_interest": { "$ref": "#/definitions/money" },
+          "federal_tax_withheld": { "$ref": "#/definitions/money" },
+          "foreign_tax_paid": { "$ref": "#/definitions/money" },
+          "tax_exempt_interest": { "$ref": "#/definitions/money" },
+          "private_activity_bond_interest": { "$ref": "#/definitions/money" },
+          "market_discount": { "$ref": "#/definitions/money" },
+          "bond_premium": { "$ref": "#/definitions/money" },
+          "bond_premium_treasury": { "$ref": "#/definitions/money" },
+          "bond_premium_tax_exempt": { "$ref": "#/definitions/money" },
+          "state_is_different": { "type": "boolean" },
+          "state_tax_withheld": { "$ref": "#/definitions/money" },
+          "facta_filing_required": { "type": "boolean" }
+        },
+        "required": [
+          "facta_filing_required", "state_tax_withheld",
+          "state_is_different", "bond_premium_tax_exempt",
+          "bond_premium_treasury", "bond_premium", "market_discount",
+          "private_activity_bond_interest", "tax_exempt_interest",
+          "foreign_tax_paid", "federal_tax_withheld",
+          "government_bond_interest", "early_withdrawal_penalty",
+          "interest_income", "no_1099_amount", "has_1099", "filer"
+        ],
+        "additionalProperties": false
+      },
+      "ApiMaritalStatus": {
+        "type": "string",
+        "enum": [
+          "Unspecified", "NeverMarried", "Married", "Divorced", "Widowed"
+        ]
+      },
+      "ApiRequest": {
+        "type": "object",
+        "properties": {
+          "filing_status": { "$ref": "#/definitions/Types.FilingStatus" },
+          "filers": { "$ref": "#/definitions/ApiFilers" },
+          "filing_details": { "$ref": "#/definitions/ApiFilingDetails" },
+          "filing_answers": { "$ref": "#/definitions/ApiFilingAnswers" },
+          "dependents": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/ApiDependent" }
+          },
+          "w2s": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/ApiW2" }
+          },
+          "interest_reports": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/ApiInterest" }
+          },
+          "form_1099g": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/ApiForm1099G" }
+          },
+          "form_1099misc": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/ApiForm1099Misc" }
+          },
+          "form_1099r": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/ApiForm1099R" }
+          },
+          "social_security": { "$ref": "#/definitions/ApiSocialSecurity" },
+          "adjustments": { "$ref": "#/definitions/ApiAdjustments" },
+          "estimated_payments": {
+            "$ref": "#/definitions/ApiEstimatedPayments"
+          },
+          "credits": { "$ref": "#/definitions/Calculator.CreditAnswers" },
+          "cdcc": { "$ref": "#/definitions/Calculator.CdccInput" },
+          "premium_tax_credit": {
+            "$ref": "#/definitions/Calculator.PtcInput"
+          },
+          "screening": {
+            "$ref": "#/definitions/Calculator.ScreeningAnswers"
+          }
+        },
+        "required": [
+          "screening", "premium_tax_credit", "cdcc", "credits",
+          "estimated_payments", "adjustments", "social_security",
+          "form_1099r", "form_1099misc", "form_1099g", "interest_reports",
+          "w2s", "dependents", "filing_answers", "filing_details", "filers",
+          "filing_status"
+        ],
+        "additionalProperties": false
+      },
+      "ApiSocialSecurity": {
+        "type": "object",
+        "properties": {
+          "net_benefits": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/money" }
+          },
+          "federal_tax_withheld": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/money" }
+          },
+          "lived_apart_all_year": { "type": "boolean" }
+        },
+        "required": [
+          "lived_apart_all_year", "federal_tax_withheld", "net_benefits"
+        ],
+        "additionalProperties": false
+      },
+      "ApiStudentLoan": {
+        "type": "object",
+        "properties": {
+          "had_payments": { "type": "boolean" },
+          "loans_qualify": { "type": "boolean" },
+          "interest_amount": { "$ref": "#/definitions/money" }
+        },
+        "required": [ "interest_amount", "loans_qualify", "had_payments" ],
+        "additionalProperties": false
+      },
+      "ApiW2": {
+        "type": "object",
+        "properties": {
+          "filer": { "$ref": "#/definitions/Types.FilerRole" },
+          "wages": { "$ref": "#/definitions/money" },
+          "federal_withholding": { "$ref": "#/definitions/money" },
+          "oasdi_wages": { "$ref": "#/definitions/money" },
+          "oasdi_withholding": { "$ref": "#/definitions/money" },
+          "medicare_wages": { "$ref": "#/definitions/money" },
+          "medicare_withholding": { "$ref": "#/definitions/money" },
+          "allocated_tips": { "$ref": "#/definitions/money" },
+          "dependent_care_benefits": { "$ref": "#/definitions/money" },
+          "non_qualified_plans": { "$ref": "#/definitions/money" },
+          "plan_457b_is_governmental": { "type": "boolean" },
+          "statutory_employee": { "type": "boolean" },
+          "third_party_sick_pay": { "type": "boolean" },
+          "box12": { "$ref": "#/definitions/ApiBox12" }
+        },
+        "required": [
+          "box12", "third_party_sick_pay", "statutory_employee",
+          "plan_457b_is_governmental", "non_qualified_plans",
+          "dependent_care_benefits", "allocated_tips",
+          "medicare_withholding", "medicare_wages", "oasdi_withholding",
+          "oasdi_wages", "federal_withholding", "wages", "filer"
+        ],
+        "additionalProperties": false
+      },
+      "ApiYearOfSpouseDeath": {
+        "type": "string",
+        "enum": [
+          "Unspecified", "DiedInTaxYear", "DiedTaxYearMinusOne",
+          "DiedTaxYearMinusTwo", "DiedBeforeTaxYearMinusTwo"
+        ]
+      },
+      "Calculator.CdccFilerAnswers": {
+        "type": "object",
+        "properties": {
+          "elect_combat_pay_for_credit": { "type": "boolean" },
+          "elect_combat_pay_for_benefits": { "type": "boolean" },
+          "dependent_care_plan_maximum": { "$ref": "#/definitions/money" },
+          "is_disabled": { "type": "boolean" },
+          "deemed_income_month_earnings": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/money" }
+          },
+          "has_dependent_care_expenses": { "type": "boolean" },
+          "expenses_paid_to_qualifying_provider": { "type": "boolean" },
+          "writable_qualifying_expense_amount": {
+            "$ref": "#/definitions/money"
+          }
+        },
+        "required": [
+          "writable_qualifying_expense_amount",
+          "expenses_paid_to_qualifying_provider",
+          "has_dependent_care_expenses", "deemed_income_month_earnings",
+          "is_disabled", "dependent_care_plan_maximum",
+          "elect_combat_pay_for_benefits", "elect_combat_pay_for_credit"
+        ],
+        "additionalProperties": false
+      },
+      "Calculator.CdccInput": {
+        "type": "object",
+        "properties": {
+          "has_mfs_spouse_earned_income": { "type": "boolean" },
+          "writable_mfs_spouse_earned_income": {
+            "$ref": "#/definitions/money"
+          },
+          "writable_total_qualified_dependent_care_expenses": {
+            "$ref": "#/definitions/money"
+          },
+          "writable_carryover_amount": { "$ref": "#/definitions/money" },
+          "writable_forfeited_amount": { "$ref": "#/definitions/money" },
+          "has_credit_for_prior_year_expenses": { "type": "boolean" },
+          "claimed_credit_for_prior_year_expenses": { "type": "boolean" },
+          "claimed_max_credit_for_prior_tax_year": { "type": "boolean" },
+          "has_household_employee": { "type": "boolean" },
+          "benefits_from_sole_proprietorship_or_partnership": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "benefits_from_sole_proprietorship_or_partnership",
+          "has_household_employee", "claimed_max_credit_for_prior_tax_year",
+          "claimed_credit_for_prior_year_expenses",
+          "has_credit_for_prior_year_expenses", "writable_forfeited_amount",
+          "writable_carryover_amount",
+          "writable_total_qualified_dependent_care_expenses",
+          "writable_mfs_spouse_earned_income", "has_mfs_spouse_earned_income"
+        ],
+        "additionalProperties": false
+      },
+      "Calculator.CdccMemberAnswers": {
+        "type": "object",
+        "properties": {
+          "unable_to_care_for_self": { "type": "boolean" },
+          "has_dependent_care_expenses": { "type": "boolean" },
+          "expenses_paid_to_qualifying_provider": { "type": "boolean" },
+          "writable_qualifying_expense_amount": {
+            "$ref": "#/definitions/money"
+          }
+        },
+        "required": [
+          "writable_qualifying_expense_amount",
+          "expenses_paid_to_qualifying_provider",
+          "has_dependent_care_expenses", "unable_to_care_for_self"
+        ],
+        "additionalProperties": false
+      },
+      "Calculator.CreditAnswers": {
+        "type": "object",
+        "properties": {
+          "eitc_qc_of_another": { "type": "boolean" },
+          "eitc_qc_of_another_required_to_file": { "type": "boolean" },
+          "eitc_qc_of_another_is_filing": { "type": "boolean" },
+          "eitc_qc_of_another_is_filing_refund_only": { "type": "boolean" },
+          "eitc_had_improper_claims": { "type": "boolean" },
+          "eitc_improper_claims_due_to_qc": { "type": "boolean" },
+          "eitc_improper_claim_taken_since_disallowal": { "type": "boolean" },
+          "eitc_received_improper_claims_notice": {
+            "$ref": "#/definitions/Eitc.ImproperClaimsNotice"
+          },
+          "eitc_improper_claims_notice_expired": { "type": "boolean" },
+          "received_improper_claims": { "type": "boolean" },
+          "received_improper_claims_notice": {
+            "$ref": "#/definitions/Eitc.ImproperClaimsNotice"
+          },
+          "improper_claims_notice_expired": { "type": "boolean" },
+          "has_filed_ctc_odc_since_notice_expired": { "type": "boolean" },
+          "has_distributions_in_last_three_years": { "type": "boolean" },
+          "has_current_year_distributions": { "type": "boolean" },
+          "has_self_reported_contributions": { "type": "boolean" },
+          "has_self_reported_non_taxable_payments": { "type": "boolean" },
+          "self_reported_non_taxable_payment_amount": {
+            "$ref": "#/definitions/money"
+          }
+        },
+        "required": [
+          "self_reported_non_taxable_payment_amount",
+          "has_self_reported_non_taxable_payments",
+          "has_self_reported_contributions",
+          "has_current_year_distributions",
+          "has_distributions_in_last_three_years",
+          "has_filed_ctc_odc_since_notice_expired",
+          "improper_claims_notice_expired",
+          "received_improper_claims_notice", "received_improper_claims",
+          "eitc_improper_claims_notice_expired",
+          "eitc_received_improper_claims_notice",
+          "eitc_improper_claim_taken_since_disallowal",
+          "eitc_improper_claims_due_to_qc", "eitc_had_improper_claims",
+          "eitc_qc_of_another_is_filing_refund_only",
+          "eitc_qc_of_another_is_filing",
+          "eitc_qc_of_another_required_to_file", "eitc_qc_of_another"
+        ],
+        "additionalProperties": false
+      },
+      "Calculator.FilerSsnEmploymentValidity": {
+        "type": "string",
+        "enum": [ "Neither", "NotValid", "ValidOnlyWithDhsAuthorization" ]
+      },
+      "Calculator.FilerTin": {
+        "type": "object",
+        "properties": {
+          "tin_is_ssn": { "type": "boolean" },
+          "ssn_employment_validity": {
+            "$ref": "#/definitions/Calculator.FilerSsnEmploymentValidity"
+          },
+          "has_ssn_only_for_benefits": { "type": "boolean" }
+        },
+        "required": [
+          "has_ssn_only_for_benefits", "ssn_employment_validity",
+          "tin_is_ssn"
+        ],
+        "additionalProperties": false
+      },
+      "Calculator.HsaInput": {
+        "type": "object",
+        "properties": {
+          "some_filer_had_non_w2_hsa_activity": { "type": "boolean" },
+          "writable_primary_filer_had_non_w2_hsa_activity": {
+            "type": "boolean"
+          },
+          "writable_secondary_filer_had_non_w2_hsa_activity": {
+            "type": "boolean"
+          },
+          "has_hsa_medical_savings_account_type": { "type": "boolean" },
+          "writable_has_hsa_excess_contributions_previous_year": {
+            "type": "boolean"
+          },
+          "writable_has_hsa_withdrawn_excess_contributions_yes_no": {
+            "type": "boolean"
+          },
+          "some_filers_made_testing_period_contribution": {
+            "type": "boolean"
+          },
+          "some_filers_have_testing_period_additional_income": {
+            "type": "boolean"
+          },
+          "hsa_distributions": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/Hsa.HsaDistribution" }
+          }
+        },
+        "required": [
+          "hsa_distributions",
+          "some_filers_have_testing_period_additional_income",
+          "some_filers_made_testing_period_contribution",
+          "writable_has_hsa_withdrawn_excess_contributions_yes_no",
+          "writable_has_hsa_excess_contributions_previous_year",
+          "has_hsa_medical_savings_account_type",
+          "writable_secondary_filer_had_non_w2_hsa_activity",
+          "writable_primary_filer_had_non_w2_hsa_activity",
+          "some_filer_had_non_w2_hsa_activity"
+        ],
+        "additionalProperties": false
+      },
+      "Calculator.PtcInput": {
+        "type": "object",
+        "properties": {
+          "form1095_as": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/Ptc_allowed.Form1095A" }
+          },
+          "writable_has_ptc_qualifying_plan": { "type": "boolean" },
+          "writable_has_advanced_ptc": { "type": "boolean" },
+          "dependent_tp_self_enrolled": { "type": "boolean" },
+          "dependent_tp_enrolled_someone_else": { "type": "boolean" },
+          "writable_dependent_tp_other_members_are_part_of_different_tax_family": {
+            "type": "boolean"
+          },
+          "writable_has_mfs_exception": { "type": "boolean" },
+          "writable_claiming_mfs_exception_for_fourth_straight_year": {
+            "type": "boolean"
+          },
+          "writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status": {
+            "type": "boolean"
+          },
+          "writable_has_employer_sponsored_plan": { "type": "boolean" },
+          "writable_dependents_required_to_file": { "type": "boolean" },
+          "writable_self_reported_has_multiple1095_as": { "type": "boolean" },
+          "writable_is_additional_person_in_enrollment_family": {
+            "type": "boolean"
+          },
+          "writable_is_additional_person_partof_different_tax_family": {
+            "type": "boolean"
+          },
+          "writable_is_enrolled_with_other_family": { "type": "boolean" },
+          "writable_has_immigration_status_not_eligible_for_marketplace": {
+            "type": "boolean"
+          },
+          "writable_wants_to_use_alt_calculations": { "type": "boolean" }
+        },
+        "required": [
+          "writable_wants_to_use_alt_calculations",
+          "writable_has_immigration_status_not_eligible_for_marketplace",
+          "writable_is_enrolled_with_other_family",
+          "writable_is_additional_person_partof_different_tax_family",
+          "writable_is_additional_person_in_enrollment_family",
+          "writable_self_reported_has_multiple1095_as",
+          "writable_dependents_required_to_file",
+          "writable_has_employer_sponsored_plan",
+          "writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status",
+          "writable_claiming_mfs_exception_for_fourth_straight_year",
+          "writable_has_mfs_exception",
+          "writable_dependent_tp_other_members_are_part_of_different_tax_family",
+          "dependent_tp_enrolled_someone_else", "dependent_tp_self_enrolled",
+          "writable_has_advanced_ptc", "writable_has_ptc_qualifying_plan",
+          "form1095_as"
+        ],
+        "additionalProperties": false
+      },
+      "Calculator.ScreeningAnswers": {
+        "type": "object",
+        "properties": {
+          "income_sources_supported": { "type": "boolean" },
+          "received_digital_assets": { "type": "boolean" },
+          "disposed_digital_assets": { "type": "boolean" },
+          "has_foreign_accounts": { "type": "boolean" },
+          "is_foreign_trusts_grantor": { "type": "boolean" },
+          "has_foreign_trusts_transactions": { "type": "boolean" },
+          "made_ira_contributions": { "type": "boolean" },
+          "w2_box15_income_from_different_state": { "type": "boolean" },
+          "w2_has_box14_nyrrta_knockout_code": { "type": "boolean" },
+          "w2_has_rrta_codes_in_box14": { "type": "boolean" },
+          "lived_in_ny": { "type": "boolean" },
+          "w2_paid_yonkers_taxes": { "type": "boolean" },
+          "part_year_yonkers_resident": { "type": "boolean" },
+          "primary_filer_forms_another_state": { "type": "boolean" },
+          "received_alaska_pfd": { "type": "boolean" },
+          "spouse_received_alaska_pfd": { "type": "boolean" },
+          "spouse_lives_in_other_or_multiple_states": { "type": "boolean" },
+          "spouse_forms_another_state": { "type": "boolean" },
+          "is_after_tax_day_and_not_resubmitting": { "type": "boolean" },
+          "is_after_resubmission_deadline": { "type": "boolean" }
+        },
+        "required": [
+          "is_after_resubmission_deadline",
+          "is_after_tax_day_and_not_resubmitting",
+          "spouse_forms_another_state",
+          "spouse_lives_in_other_or_multiple_states",
+          "spouse_received_alaska_pfd", "received_alaska_pfd",
+          "primary_filer_forms_another_state", "part_year_yonkers_resident",
+          "w2_paid_yonkers_taxes", "lived_in_ny",
+          "w2_has_rrta_codes_in_box14", "w2_has_box14_nyrrta_knockout_code",
+          "w2_box15_income_from_different_state", "made_ira_contributions",
+          "has_foreign_trusts_transactions", "is_foreign_trusts_grantor",
+          "has_foreign_accounts", "disposed_digital_assets",
+          "received_digital_assets", "income_sources_supported"
+        ],
+        "additionalProperties": false
+      },
+      "Ctc_odc.SsnEmploymentValidity": {
+        "type": "string",
+        "enum": [
+          "Neither", "NotValid", "ValidOnlyWithDhsAuthorizationInEffect",
+          "ValidOnlyWithDhsAuthorizationExpired"
+        ]
+      },
+      "Dependents_benefit_split.BenefitSplitAnswers": {
+        "type": "object",
+        "properties": {
+          "has_other_biological_or_adoptive_parent": { "type": "boolean" },
+          "non_parental_some_parent_not_claiming": { "type": "boolean" },
+          "which_parent_not_claiming": {
+            "$ref": "#/definitions/Dependents_benefit_split.WrittenDeclaration"
+          },
+          "in_parents_custody": { "type": "boolean" },
+          "lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months": {
+            "type": "boolean"
+          },
+          "biological_or_adoptive_parents_living": { "type": "boolean" },
+          "nights_with_tp_vs_other_parent": {
+            "$ref": "#/definitions/Dependents_benefit_split.NightsComparison"
+          },
+          "tp_agi_higher_than_other_parent": { "type": "boolean" },
+          "parents_meet_reqs_rule_for_children_of_divorced_parents": {
+            "type": "boolean"
+          },
+          "special_rule_child_used_by_custodial_parent_as_qp": {
+            "type": "boolean"
+          },
+          "special_rule_agi_test": { "type": "boolean" },
+          "parental_situation": {
+            "$ref": "#/definitions/Dependents_benefit_split.ParentalSituation"
+          },
+          "parental_support": { "type": "boolean" },
+          "multiple_support_agreement": { "type": "boolean" }
+        },
+        "required": [
+          "multiple_support_agreement", "parental_support",
+          "parental_situation", "special_rule_agi_test",
+          "special_rule_child_used_by_custodial_parent_as_qp",
+          "parents_meet_reqs_rule_for_children_of_divorced_parents",
+          "tp_agi_higher_than_other_parent",
+          "nights_with_tp_vs_other_parent",
+          "biological_or_adoptive_parents_living",
+          "lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months",
+          "in_parents_custody", "which_parent_not_claiming",
+          "non_parental_some_parent_not_claiming",
+          "has_other_biological_or_adoptive_parent"
+        ],
+        "additionalProperties": false
+      },
+      "Dependents_benefit_split.NightsComparison": {
+        "type": "string",
+        "enum": [ "More", "Less", "Equal" ]
+      },
+      "Dependents_benefit_split.ParentalSituation": {
+        "type": "string",
+        "enum": [ "DivorcedOrSeparated", "LivedApartLastSixMonths", "Other" ]
+      },
+      "Dependents_benefit_split.WrittenDeclaration": {
+        "type": "string",
+        "enum": [ "IDid", "TheyDid", "NobodyDid" ]
+      },
+      "Educator_adjustment.K12EducatorOptions": {
+        "type": "string",
+        "enum": [ "TpDid", "SpouseDid", "BothDid", "Neither" ]
+      },
+      "Eitc.ImproperClaimsNotice": {
+        "type": "string",
+        "enum": [ "TwoYears", "TenYears", "ZeroYears", "NotAnswered" ]
+      },
+      "Elderly_and_disabled.DisabilityAnswers": {
+        "type": "object",
+        "properties": {
+          "is_retired_on_perm_or_total_disability": { "type": "boolean" },
+          "employer_has_mandatory_retirement_age": { "type": "boolean" },
+          "has_met_employer_mandatory_retirement_age": { "type": "boolean" },
+          "are_payments_taxable_disability_income": { "type": "boolean" },
+          "writable_total_taxable_disability_amount": {
+            "$ref": "#/definitions/money"
+          },
+          "has_w2_wages": { "type": "boolean" }
+        },
+        "required": [
+          "has_w2_wages", "writable_total_taxable_disability_amount",
+          "are_payments_taxable_disability_income",
+          "has_met_employer_mandatory_retirement_age",
+          "employer_has_mandatory_retirement_age",
+          "is_retired_on_perm_or_total_disability"
+        ],
+        "additionalProperties": false
+      },
+      "Estimated_payments.PaidWithFormerSpouse": {
+        "type": "string",
+        "enum": [ "SpouseDid", "BothDid", "TpDid", "Neither" ]
+      },
+      "Filers.SpouseLivedTogetherMonths": {
+        "type": "string",
+        "enum": [
+          "LivedApartAllYear", "LivedTogetherSixMonthsOrLess",
+          "LivedTogetherMoreThanSixMonths"
+        ]
+      },
+      "Form1099_rs.CodeChar": {
+        "type": "string",
+        "enum": [
+          "Code2", "Code4", "Code7", "CodeB", "CodeG", "CodeH", "OtherCode"
+        ]
+      },
+      "Form_w2s.CombatPayElection": {
+        "type": "string",
+        "enum": [
+          "NoCombatPay", "UsePrimaryCombatPay", "UseSpouseCombatPay",
+          "UseBothCombatPay", "UsePrimaryNotSpouseCombatPay",
+          "UseSpouseNotPrimaryCombatPay"
+        ]
+      },
+      "Hsa.HdhpCoverageStatus": {
+        "type": "string",
+        "enum": [ "HdhpAllYear", "HdhpPartOfYear", "HdhpNoneOfYear" ]
+      },
+      "Hsa.HsaDistribution": {
+        "type": "object",
+        "properties": {
+          "filer": { "$ref": "#/definitions/Types.FilerRole" },
+          "writable_distributions_rollover_bool": { "type": "boolean" },
+          "writable_distributions_rollover_amount": {
+            "$ref": "#/definitions/money"
+          },
+          "writable_gross_distribution": { "$ref": "#/definitions/money" },
+          "has_withdrawn_excess_contributions": { "type": "boolean" },
+          "writable_withdrawn_excess_contributions_amount": {
+            "$ref": "#/definitions/money"
+          },
+          "writable_earnings_on_excess_contributions": {
+            "$ref": "#/definitions/money"
+          },
+          "hsa_distribution_code": {
+            "$ref": "#/definitions/Hsa.HsaDistributionCode"
+          },
+          "writable_fmv_on_date_of_death": { "$ref": "#/definitions/money" },
+          "writable_qualified_med_expenses": {
+            "$ref": "#/definitions/money"
+          }
+        },
+        "required": [
+          "writable_qualified_med_expenses", "writable_fmv_on_date_of_death",
+          "hsa_distribution_code",
+          "writable_earnings_on_excess_contributions",
+          "writable_withdrawn_excess_contributions_amount",
+          "has_withdrawn_excess_contributions",
+          "writable_gross_distribution",
+          "writable_distributions_rollover_amount",
+          "writable_distributions_rollover_bool", "filer"
+        ],
+        "additionalProperties": false
+      },
+      "Hsa.HsaDistributionCode": {
+        "type": "string",
+        "enum": [
+          "NormalDistribution", "ExcessContributions", "Disability",
+          "DeathOtherThanCode6", "ProhibitedTransaction",
+          "DeathDistributionAfterYear"
+        ]
+      },
+      "Hsa.HsaFilerAnswers": {
+        "type": "object",
+        "properties": {
+          "writable_primary_filer_has_made_contributions_to_hsa": {
+            "type": "boolean"
+          },
+          "writable_secondary_filer_has_made_contributions_to_hsa": {
+            "type": "boolean"
+          },
+          "enrolled_in_medicare": {
+            "$ref": "#/definitions/Hsa.MedicareEnrollment"
+          },
+          "hsa_hdhp_coverage_status": {
+            "$ref": "#/definitions/Hsa.HdhpCoverageStatus"
+          },
+          "type_of_hdhp": { "$ref": "#/definitions/Hsa.TypeOfHdhp" },
+          "had_other_coverage_ineligible_for_hsa": {
+            "$ref": "#/definitions/Hsa.OtherCoverageIneligible"
+          },
+          "writable_mfs_line6_check": { "type": "boolean" },
+          "writable_change_in_marital_status_during_tax_year": {
+            "$ref": "#/definitions/Hsa.MaritalStatusChange"
+          },
+          "writable_marital_change_affect_contribution_limit_bool": {
+            "type": "boolean"
+          },
+          "has_made_qualified_hsa_funding_distribution": {
+            "type": "boolean"
+          },
+          "writable_hsa_nonemployer_contributions_tax_year": {
+            "$ref": "#/definitions/money"
+          },
+          "writable_hsa_nonemployer_contributions_tax_year_plus_one": {
+            "$ref": "#/definitions/money"
+          }
+        },
+        "required": [
+          "writable_hsa_nonemployer_contributions_tax_year_plus_one",
+          "writable_hsa_nonemployer_contributions_tax_year",
+          "has_made_qualified_hsa_funding_distribution",
+          "writable_marital_change_affect_contribution_limit_bool",
+          "writable_change_in_marital_status_during_tax_year",
+          "writable_mfs_line6_check",
+          "had_other_coverage_ineligible_for_hsa", "type_of_hdhp",
+          "hsa_hdhp_coverage_status", "enrolled_in_medicare",
+          "writable_secondary_filer_has_made_contributions_to_hsa",
+          "writable_primary_filer_has_made_contributions_to_hsa"
+        ],
+        "additionalProperties": false
+      },
+      "Hsa.MaritalStatusChange": {
+        "type": "string",
+        "enum": [
+          "WasMarriedOrDivorcedThisYear", "WasNotMarriedNorDivorcedThisYear"
+        ]
+      },
+      "Hsa.MedicareEnrollment": {
+        "type": "string",
+        "enum": [
+          "MedicareAllYear", "MedicarePartOfYear", "MedicareNoneOfYear"
+        ]
+      },
+      "Hsa.OtherCoverageIneligible": {
+        "type": "string",
+        "enum": [
+          "OtherCoverageWholeYear", "OtherCoveragePartOfYear",
+          "OtherCoverageNoneOfYear"
+        ]
+      },
+      "Hsa.TypeOfHdhp": {
+        "type": "string",
+        "enum": [ "SelfOnly", "Family", "BothSelfAndFamily" ]
+      },
+      "Ptc_allowed.Form1095A": {
+        "type": "object",
+        "properties": {
+          "writable_policy_start_date": { "$ref": "#/definitions/date" },
+          "writable_policy_end_date": { "$ref": "#/definitions/date" },
+          "writable_special_policy_modification_in_starting_month": {
+            "type": "boolean"
+          },
+          "writable_has_policy_date_exception": { "type": "boolean" },
+          "has_coverage_months": { "type": "boolean" },
+          "coverage_months": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/integer" }
+          },
+          "writable_premiums_or_slcsp_change": { "type": "boolean" },
+          "has_change_in_circumstance": { "type": "boolean" },
+          "writable_ptc_annual_premium": { "$ref": "#/definitions/money" },
+          "writable_slcsp_annual_premium": { "$ref": "#/definitions/money" },
+          "writable_aptc_annual_amount": { "$ref": "#/definitions/money" },
+          "writable_ptc_monthly_premium": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/money" }
+          },
+          "writable_ptc_monthly_slcsp_premium": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/money" }
+          },
+          "writable_ptc_monthly_aptc_premium": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/money" }
+          }
+        },
+        "required": [
+          "writable_ptc_monthly_aptc_premium",
+          "writable_ptc_monthly_slcsp_premium",
+          "writable_ptc_monthly_premium", "writable_aptc_annual_amount",
+          "writable_slcsp_annual_premium", "writable_ptc_annual_premium",
+          "has_change_in_circumstance", "writable_premiums_or_slcsp_change",
+          "coverage_months", "has_coverage_months",
+          "writable_has_policy_date_exception",
+          "writable_special_policy_modification_in_starting_month",
+          "writable_policy_end_date", "writable_policy_start_date"
+        ],
+        "additionalProperties": false
+      },
+      "Qualifying_child.Relationship": {
+        "type": "string",
+        "enum": [
+          "BiologicalChild", "AdoptedChild", "StepChild", "FosterChild",
+          "GrandChildOrOtherDescendantOfChild", "ChildInLaw", "Sibling",
+          "ChildOfSibling", "HalfSibling", "ChildOfHalfSibling",
+          "StepSibling", "ChildOfStepSibling", "OtherDescendantOfSibling",
+          "OtherDescendantOfHalfSibling", "OtherDescendantOfStepSibling",
+          "SiblingsSpouse", "SiblingInLaw", "Parent", "FosterParent",
+          "SiblingOfParent", "GrandParent", "OtherAncestorOfParent",
+          "StepParent", "ParentInLaw", "NoneOfTheAbove"
+        ]
+      },
+      "Qualifying_child.ResidencyDuration": {
+        "type": "string",
+        "enum": [ "AllYear", "SixToElevenMonths", "LessThanSixMonths" ]
+      },
+      "Qualifying_relative.TinType": {
+        "type": "string",
+        "enum": [ "Ssn", "Itin", "Atin", "NoTin" ]
+      },
+      "Types.FilerRole": {
+        "type": "string",
+        "enum": [ "PrimaryFiler", "SecondaryFiler" ]
+      },
+      "Types.FilingStatus": {
+        "type": "string",
+        "enum": [
+          "Single", "MarriedFilingJointly", "MarriedFilingSeparately",
+          "HeadOfHousehold", "QualifyingSurvivingSpouse"
+        ]
+      },
+      "Types.ScopedState": {
+        "type": "string",
+        "enum": [
+          "MoreThanOne", "AK", "AZ", "CA", "CT", "FL", "ID", "IL", "KS",
+          "ME", "MD", "MA", "NV", "NH", "NJ", "NM", "NY", "NC", "OR", "PA",
+          "SD", "TN", "TX", "WA", "WI", "WY", "NoneOfThese"
+        ]
+      },
+      "date": {
+        "title": "Catala date",
+        "oneOf": [
+          {
+            "description": "Accepts strings with the following format: YYYY-MM-DD, e.g., \"1970-01-31\"",
+            "type": "string"
+          },
+          {
+            "description": "Accepts date objects: {\"year\":<int>, \"month\":<int>, \"day\":<int>}",
+            "type": "object",
+            "properties": {
+              "year": {
+                "type": "integer",
+                "minimum": 0.0,
+                "maximum": 9999.0
+              },
+              "month": { "type": "integer", "minimum": 1.0, "maximum": 12.0 },
+              "day": { "type": "integer", "minimum": 1.0, "maximum": 31.0 }
+            },
+            "required": [ "day", "month", "year" ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "integer": {
+        "title": "Catala Integer",
+        "oneOf": [
+          {
+            "type": "integer",
+            "minimum": -9007199254740992.0,
+            "maximum": 9007199254740992.0
+          },
+          { "type": "string" }
+        ]
+      },
+      "money": {
+        "title": "Catala Money",
+        "oneOf": [
+          {
+            "type": "integer",
+            "minimum": -9007199254740992.0,
+            "maximum": 9007199254740992.0
+          },
+          { "type": "number" },
+          { "type": "string" }
+        ]
+      }
+    }
+  },
+  {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Scope ApiCalculator output",
+    "description": "Output structure of scope ApiCalculator",
+    "$ref": "#/definitions/ApiCalculator",
+    "definitions": {
+      "ApiCalculator": {
+        "type": "object",
+        "properties": {
+          "supported": { "type": "boolean" },
+          "outcome": { "$ref": "#/definitions/ApiOutcome" },
+          "reasons": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/ApiReason" }
+          },
+          "lines": { "$ref": "#/definitions/ApiLines" }
+        },
+        "required": [ "lines", "reasons", "outcome", "supported" ],
+        "additionalProperties": false
+      },
+      "ApiLines": {
+        "type": "object",
+        "properties": {
+          "wages": { "$ref": "#/definitions/money" },
+          "employer_income_subtotal": { "$ref": "#/definitions/money" },
+          "interest_income": { "$ref": "#/definitions/money" },
+          "total_income": { "$ref": "#/definitions/money" },
+          "adjustments_to_income": { "$ref": "#/definitions/money" },
+          "agi": { "$ref": "#/definitions/money" },
+          "standard_or_itemized_deductions": {
+            "$ref": "#/definitions/money"
+          },
+          "total_deductions": { "$ref": "#/definitions/money" },
+          "taxable_income": { "$ref": "#/definitions/money" },
+          "tentative_tax_from_taxable_income": {
+            "$ref": "#/definitions/money"
+          },
+          "total_tentative_tax": { "$ref": "#/definitions/money" },
+          "non_refundable_credits": { "$ref": "#/definitions/money" },
+          "tax_less_non_refundable_credits": {
+            "$ref": "#/definitions/money"
+          },
+          "total_tax": { "$ref": "#/definitions/money" },
+          "total_withholding": { "$ref": "#/definitions/money" },
+          "total_other_payments_refundable_credits": {
+            "$ref": "#/definitions/money"
+          },
+          "total_payments": { "$ref": "#/definitions/money" },
+          "overpayment": { "$ref": "#/definitions/money" },
+          "balance_due": { "$ref": "#/definitions/money" }
+        },
+        "required": [
+          "balance_due", "overpayment", "total_payments",
+          "total_other_payments_refundable_credits", "total_withholding",
+          "total_tax", "tax_less_non_refundable_credits",
+          "non_refundable_credits", "total_tentative_tax",
+          "tentative_tax_from_taxable_income", "taxable_income",
+          "total_deductions", "standard_or_itemized_deductions", "agi",
+          "adjustments_to_income", "total_income", "interest_income",
+          "employer_income_subtotal", "wages"
+        ],
+        "additionalProperties": false
+      },
+      "ApiOutcome": {
+        "type": "string",
+        "enum": [ "Refund", "BalanceDue", "Even" ]
+      },
+      "ApiReason": {
+        "type": "object",
+        "properties": {
+          "code": { "$ref": "#/definitions/Calculator.CalculatorKnockout" },
+          "category": {
+            "$ref": "#/definitions/Api_reasons.ApiReasonCategory"
+          }
+        },
+        "required": [ "category", "code" ],
+        "additionalProperties": false
+      },
+      "Api_reasons.ApiReasonCategory": {
+        "type": "string",
+        "enum": [
+          "Credits", "EstimatedPayments", "Filers", "HealthCoverage",
+          "Household", "Hsa", "Income", "Interest", "Process", "Retirement",
+          "SocialSecurity", "State", "Unemployment", "W2"
+        ]
+      },
+      "Calculator.CalculatorKnockout": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "IncomeOrHsa": {
+                "$ref": "#/definitions/Knockouts_income.KnockoutReason"
+              }
+            },
+            "required": [ "IncomeOrHsa" ],
+            "additionalProperties": false
+          },
+          {
+            "type": "string",
+            "enum": [ "FlowKnockoutFilerAgeYoungerThan16" ]
+          },
+          { "type": "string", "enum": [ "SpouseItemizesKnockout" ] },
+          { "type": "string", "enum": [ "PrimaryFilerResidencyKnockout" ] },
+          {
+            "type": "string",
+            "enum": [
+              "FlowKnockoutHasApplicableRegisteredDomesticPartnership"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [ "KnockoutSubjectToCommunityPropertyLaws" ]
+          },
+          { "type": "string", "enum": [ "QualifyingChildTieBreaker" ] },
+          { "type": "string", "enum": [ "KnockedOutByContradictory8832" ] },
+          {
+            "type": "string",
+            "enum": [ "KnockedOutByNonCustodialParentBenefitSplit" ]
+          },
+          { "type": "string", "enum": [ "KnockoutHohQpHasNoTin" ] },
+          {
+            "type": "string",
+            "enum": [ "ClaimedSpouseCombatPayWithoutMfj" ]
+          },
+          { "type": "string", "enum": [ "SaversCreditKnockouts" ] },
+          { "type": "string", "enum": [ "FilingStatusNotEligible" ] },
+          {
+            "type": "string",
+            "enum": [ "FlowKnockoutBenefitsDistribution" ]
+          },
+          { "type": "string", "enum": [ "PtcKnockouts" ] }
+        ]
+      },
+      "Knockouts_income.KnockoutReason": {
+        "type": "string",
+        "enum": [
+          "HasRequiredFactaFilings", "FlowKnockoutHasEarlyWithdrawlPenalty",
+          "FlowKnockoutHasBonds", "FlowKnockoutHasForeignTaxPaid",
+          "FlowKnockoutWithholdingUnsupportedState",
+          "FlowKnockoutStateTaxWithheld",
+          "HasInterestIncomeAndAgiAboveThresholdForMfs",
+          "HasInterestIncomeAndAgiAboveThresholdForMfjOrQss",
+          "HasInterestIncomeAndAgiAboveThresholdForSingleOrHoh",
+          "FlowKnockoutTaxExemptInterest", "KnockoutForBox12Value",
+          "KnockoutForBox12Dependency", "FlowKnockoutAllocatedTips",
+          "FlowKnockoutStatutoryEmployee", "FlowKnockoutThirdPartySickPay",
+          "FlowKnockoutNonQualifiedPlans", "KnockoutMedicareWages",
+          "AnyFilerExceedsMaxOasdiWages", "FlowKnockout1099GRepayTooHigh",
+          "FlowKnockoutUnemploymentCompensationUnsupportedState",
+          "ExtraNonPfd1099Misc",
+          "FlowKnockoutRetirementTaxableAmountNotDetermined",
+          "FlowKnockoutRetirementTaxableAmountBlank",
+          "FlowKnockoutRetirementTotalDistribution",
+          "KnockoutForForm1099RBox8Value",
+          "KnockoutForForm1099RBox8Percentage",
+          "KnockoutForForm1099RBox9aPercentage",
+          "FlowKnockoutRetirementCapitalGain",
+          "FlowKnockoutRetirementNetUnrealizedAppreciation",
+          "FlowKnockoutRetirementAmountAllocableToIRR",
+          "FlowKnockoutRetirementFactaFilingRequirement",
+          "FlowKnockoutForRollover",
+          "FlowKnockoutForDeathBenefitPaymentDate",
+          "FlowKnockoutRetirementQualifiedDisasterDistribution",
+          "FlowKnockoutRetirementPublicSafetyOfficer",
+          "FlowKnockoutForPreTaxToPostTaxRollover", "FlowKnockoutBox15",
+          "KnockoutForForm1099RDistributionCode", "KnockoutIraSepSimple",
+          "KnockoutTaxablePensionRollover", "KnockoutIndirectRollover",
+          "KnockoutTaxableAmountNotDetermined",
+          "SocialSecurityBenefitsAreLossGreaterThan3k",
+          "KnockoutPaidEstimatedTaxesUnderDifferentLastName",
+          "KnockoutNoPaymentsHsaDistribution",
+          "FlowKnockoutHsaMedicalSavingsAccountType",
+          "FlowKnockoutHsaDistributionCode",
+          "FlowKnockoutOtherCoveragePartOfYear",
+          "FlowKnockoutOtherCoverageWholeYear",
+          "FlowKnockoutEarningsOnExcessContributions",
+          "FlowKnockoutHsaTestingPeriodAdditionalIncomeYes",
+          "FlowKnockoutHsaUnqualifiedDistributions",
+          "FlowKnockoutHsaDistributionFMV",
+          "FlowKnockoutMaritalChangeAffectsContributionLimit",
+          "FlowKnockoutMFSLine6Check",
+          "FlowHsaContributionsOverLimitKnockout",
+          "FlowKnockoutHsaExcessContributions",
+          "FlowKnockoutContributionSummaryNoneAllowed",
+          "FlowKnockoutHdhpCoverageStatusNotNeeded",
+          "FlowKnockoutNotEnrolledInHdhp",
+          "FlowKnockoutMadeQualifiedHsaFundingDistribution",
+          "FlowKnockoutHsaCoverage",
+          "FlowKnockoutFilerIsDependentAndContributesToHsa",
+          "ExtraHsaDistributionsWithoutActivity",
+          "ExtraHsaDistributionsSecondaryFilerWithoutMfj",
+          "IncomeSourcesNotSupported", "NotDigitalAssets",
+          "HasForeignAccountsOrTrusts", "MadeIraContributions",
+          "FlowKnockoutBox15IncomeFromDifferentState",
+          "HasABox14NYRRTAValueWeKnockout",
+          "FlowKnockoutHasRRTACodesInBox14NotInNY",
+          "KnockoutYonkersPartYear", "FlowKnockoutUnsupportedState",
+          "IsTooLateToFileOrResubmit", "KnockoutHasNoPaymentsOrCredits"
+        ]
+      },
+      "money": {
+        "title": "Catala Money",
+        "oneOf": [
+          {
+            "type": "integer",
+            "minimum": -9007199254740992.0,
+            "maximum": 9007199254740992.0
+          },
+          { "type": "number" },
+          { "type": "string" }
+        ]
+      }
+    }
+  }
+]

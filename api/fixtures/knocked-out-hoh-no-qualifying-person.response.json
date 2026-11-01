@@ -1,0 +1,12 @@
+{
+  "api_version": 1,
+  "tax_year": 2024,
+  "supported": false,
+  "reasons": [
+    {
+      "code": "ExtraFilingStatusNotEligible",
+      "category": "household",
+      "message": "Extra Filing Status Not Eligible"
+    }
+  ]
+}

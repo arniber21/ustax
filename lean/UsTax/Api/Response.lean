@@ -118,7 +118,7 @@ def healthResponse : J := J.obj [("status", .str "ok")]
 
 /-- `GET /version` body. -/
 def versionResponse (calculatorVersion : String) : J :=
-  J.obj [("api_version", .int 1), ("schema_version", .str "1.1.0"), ("tax_year", .int 2024),
+  J.obj [("api_version", .int 1), ("schema_version", .str "1.2.0"), ("tax_year", .int 2024),
     ("calculator_version", .str calculatorVersion)]
 
 /-- A success response never has both an overpayment and a balance due when the

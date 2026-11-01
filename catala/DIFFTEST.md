@@ -117,3 +117,14 @@ The premium tax credit (#32 to #34) is wired in: Form 8962 lines 1 to 29 feed Fo
 writables and the `/1095As` collection are mapped as in `ptc_allowed.mjs`). Result: 157/157 scenarios, 5360/5360 fact
 checks over 39 paths, 9 known divergences (DF-BUG-3, DF-BUG(23), and `mfs-4300-none`, whose own DF
 `/isFilingStatusValid` is false), 4 knocked out (DF-BUG-8).
+
+## Whole return through the API (issue #38)
+
+`api_calculator` (scope `ApiCalculator`, `catala/api_calculator.catala_en`) runs every scenario as the API would see it:
+`scripts/oracle_to_api_request.mjs` (test-only) turns the oracle facts into a `CalculateRequest` (schema 1.2.0, cents,
+defaults dropped), `scripts/api_decode.mjs` decodes it (defaults, cents to dollars), and the 19 `lines` and `supported`
+are compared with the oracle. Struct outputs are read as `lines.<field>`; the `invert` option compares `supported` with
+`/flowIsKnockedOut`. A scenario the API cannot express (schema or semantic validation fails) is skipped and listed.
+Result: 157/157 scenarios, 3105/3105 fact checks, 0 inexpressible scenarios, 35 known divergences (the `calculator`
+ones, plus all lines of `qss_35K_1 dependent-signed` and `mfs-4300-none`, where Catala knocks out and the API returns
+no lines by design), 4 knocked out (DF-BUG-8). Mapping: `docs/api-mapping.md`.

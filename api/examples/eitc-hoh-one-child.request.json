@@ -1,0 +1,18 @@
+{
+  "api_version": 1,
+  "tax_year": 2024,
+  "filing_status": "HeadOfHousehold",
+  "filers": { "primary": { "date_of_birth": "1990-06-15" } },
+  "filing_answers": { "marital_status": "NeverMarried" },
+  "dependents": [
+    {
+      "relationship": "BiologicalChild",
+      "date_of_birth": "2014-09-10",
+      "tin_type": "Ssn",
+      "tp_paid_most_of_home_upkeep": true
+    }
+  ],
+  "w2s": [
+    { "filer": "PrimaryFiler", "wages": 4000000, "federal_withholding": 200000 }
+  ]
+}

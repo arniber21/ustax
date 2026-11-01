@@ -1,0 +1,28 @@
+{
+  "api_version": 1,
+  "tax_year": 2024,
+  "supported": true,
+  "reasons": [],
+  "outcome": "refund",
+  "lines": {
+    "wages": 8000000,
+    "employer_income_subtotal": 8000000,
+    "interest_income": 0,
+    "total_income": 8000000,
+    "adjustments_to_income": 0,
+    "agi": 8000000,
+    "standard_or_itemized_deductions": 2920000,
+    "total_deductions": 2920000,
+    "taxable_income": 5080000,
+    "tentative_tax_from_taxable_income": 563500,
+    "total_tentative_tax": 563500,
+    "non_refundable_credits": 400000,
+    "tax_less_non_refundable_credits": 163500,
+    "total_tax": 163500,
+    "total_withholding": 300000,
+    "total_other_payments_refundable_credits": 0,
+    "total_payments": 300000,
+    "overpayment": 136500,
+    "balance_due": 0
+  }
+}

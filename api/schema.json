@@ -42,13 +42,26 @@
       "enum": ["NoCombatPay", "UsePrimaryCombatPay", "UseSpouseCombatPay", "UseBothCombatPay", "UsePrimaryNotSpouseCombatPay", "UseSpouseNotPrimaryCombatPay"]
     },
     "FilerFlags": {
-      "description": "Per-filer answers the standard deduction needs (Catala Form1040 inputs primary_filer_*, secondary_filer_*).",
+      "description": "Per-filer answers (Catala ApiFiler, catala/api_calculator.catala_en; docs/api-mapping.md). The first three are the 1.0 fields. date_of_birth (1.2.0) replaces age65_or_older when given; absent, the filer is born 1950-06-15 if age65_or_older, else 1985-06-15.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "is_blind": { "type": "boolean", "default": false },
         "age65_or_older": { "type": "boolean", "default": false },
-        "can_be_claimed_as_dependent": { "type": "boolean", "default": false }
+        "can_be_claimed_as_dependent": { "type": "boolean", "default": false },
+        "date_of_birth": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "ISO date YYYY-MM-DD" },
+        "will_be_claimed": { "type": "boolean", "default": false, "description": "Another taxpayer will claim this filer (Direct File /filers/*/willBeClaimed)" },
+        "potential_claimer_must_file": { "type": "boolean", "default": false, "description": "The person who could claim this filer must file a return" },
+        "potential_claimer_did_file": { "type": "boolean", "default": false, "description": "The person who could claim this filer did file" },
+        "is_us_citizen_full_year": { "type": "boolean", "default": true, "description": "A US citizen for the whole year" },
+        "citizen_at_end_of_tax_year": { "type": "boolean", "default": false },
+        "noncitizen_resident_full_year": { "type": "boolean", "default": false },
+        "is_national": { "type": "boolean", "default": false },
+        "is_student": { "type": "boolean", "default": false, "description": "Full-time student (Saver's credit, IRC 25B(c)(2)(B))" },
+        "tin": { "$ref": "#/$defs/FilerTin" },
+        "disability": { "$ref": "#/$defs/DisabilityAnswers" },
+        "hsa": { "$ref": "#/$defs/HsaFilerAnswers" },
+        "cdcc": { "$ref": "#/$defs/CdccFilerAnswers" }
       }
     },
     "Filers": {
@@ -60,7 +73,7 @@
       }
     },
     "FilingDetails": {
-      "description": "Filing-status answers (Catala Form1040 inputs). Omitted keys default to false; treat_as_mfs defaults to filing_status = MarriedFilingSeparately. These move into the calculator when the filers module (#15) is wired.",
+      "description": "Filing-status answers. Schema 1.0 fields (Catala Form1040 inputs); the calculator derives most of them, see the table in docs/api-mapping.md: treat_as_mfs is ignored (it is filing_status), is_widowed_in_tax_year / mfj_deceased_spouse_reached_age65 / mfs_spouse_provides_no_benefits / treat_filers_as_dependents fill the matching filers and filing_answers facts when those are not given. Omitted keys default to false.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -71,7 +84,12 @@
         "mfs_spouse_provides_no_benefits": { "type": "boolean", "default": false },
         "treat_filers_as_dependents": { "type": "boolean", "default": false },
         "has_foreign_accounts_or_trusts": { "type": "boolean", "default": false },
-        "combat_pay_election": { "$ref": "#/$defs/CombatPayElection", "default": "NoCombatPay" }
+        "combat_pay_election": { "$ref": "#/$defs/CombatPayElection", "default": "NoCombatPay" },
+        "combat_pay_election_made": {
+          "type": "boolean",
+          "default": false,
+          "description": "1.2.0. The combat pay election question was answered (true when combat_pay_election is not NoCombatPay)"
+        }
       }
     },
     "W2Box12": {
@@ -213,7 +231,13 @@
       "required": ["net_benefits"],
       "properties": {
         "net_benefits": { "type": "array", "maxItems": 4, "items": { "$ref": "#/$defs/Money" } },
-        "lived_apart_all_year": { "type": "boolean", "default": false }
+        "lived_apart_all_year": { "type": "boolean", "default": false },
+        "federal_tax_withheld": {
+          "type": "array",
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/NonNegMoney" },
+          "description": "1.2.0. Box 6 of each form, same order as net_benefits; a shorter list is padded with $0, a longer one is invalid."
+        }
       }
     },
     "EducatorExpenses": {
@@ -243,7 +267,8 @@
       "additionalProperties": false,
       "properties": {
         "educator_expenses": { "$ref": "#/$defs/EducatorExpenses" },
-        "student_loan_interest": { "$ref": "#/$defs/StudentLoanInterest" }
+        "student_loan_interest": { "$ref": "#/$defs/StudentLoanInterest" },
+        "hsa": { "$ref": "#/$defs/HsaInput" }
       }
     },
     "EstimatedPayments": {
@@ -255,11 +280,11 @@
         "paid_estimated_taxes_or_from_last_year": { "type": "boolean" },
         "amount": { "$ref": "#/$defs/NonNegMoney" },
         "paid_under_different_name": { "type": "boolean" },
-        "paid_with_former_spouse": { "enum": ["SpouseDid", "BothDid", "TpDid", "Neither"] }
+        "paid_with_former_spouse": { "enum": ["SpouseDid", "BothDid", "TpDid", "Neither"], "default": "Neither" }
       }
     },
     "CalculateRequest": {
-      "description": "POST /calculate body. Inputs are the writable facts the Catala Form1040 scope reads; sections are added in later minor versions (see docs/api.md, coverage table). Unknown properties are rejected with 400 unknown_field.",
+      "description": "POST /calculate body. Inputs are the writable facts the Catala ApiCalculator scope reads (catala/api_calculator.catala_en; field-by-field mapping in docs/api-mapping.md). Schema 1.2.0 added filing_answers, dependents, credits, cdcc, premium_tax_credit, screening, adjustments.hsa and richer filers. Unknown properties are rejected with 400 unknown_field.",
       "type": "object",
       "additionalProperties": false,
       "required": ["api_version", "tax_year", "filing_status"],
@@ -276,7 +301,394 @@
         "form_1099r": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/Form1099R" } },
         "social_security": { "$ref": "#/$defs/SocialSecurity" },
         "adjustments": { "$ref": "#/$defs/Adjustments" },
-        "estimated_payments": { "$ref": "#/$defs/EstimatedPayments" }
+        "estimated_payments": { "$ref": "#/$defs/EstimatedPayments" },
+        "filing_answers": { "$ref": "#/$defs/FilingAnswers" },
+        "dependents": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/Dependent" } },
+        "credits": { "$ref": "#/$defs/CreditAnswers" },
+        "cdcc": { "$ref": "#/$defs/CdccInput" },
+        "premium_tax_credit": { "$ref": "#/$defs/PtcInput" },
+        "screening": { "$ref": "#/$defs/ScreeningAnswers" }
+      }
+    },
+    "FilingAnswers": {
+      "description": "1.2.0. The marital and residence answers Direct File asks (filers.xml), Catala ApiFilingAnswers. Absent marital_status / year_of_spouse_death are derived from filing_status: Single and HeadOfHousehold are NeverMarried, MarriedFilingJointly and MarriedFilingSeparately Married, QualifyingSurvivingSpouse Widowed, died in 2023 (is_widowed_in_tax_year true: Widowed, died in 2024).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "marital_status": { "enum": ["NeverMarried", "Married", "Divorced", "Widowed"] },
+        "year_of_spouse_death": { "enum": ["DiedInTaxYear", "DiedTaxYearMinusOne", "DiedTaxYearMinusTwo", "DiedBeforeTaxYearMinusTwo"] },
+        "secondary_filer_date_of_death": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "ISO date YYYY-MM-DD", "default": "2024-12-31" },
+        "primary_filer_potential_claimer_filed_only_for_refund": { "type": "boolean", "default": false },
+        "mfj_required_to_file": { "type": "boolean", "default": false },
+        "mfj_dependents_filing_for_credits": { "type": "boolean", "default": false },
+        "lived_together_all_year_with_spouse": { "type": "boolean", "default": true },
+        "spouse_lived_together_months": { "enum": ["LivedApartAllYear", "LivedTogetherSixMonthsOrLess", "LivedTogetherMoreThanSixMonths"], "default": "LivedApartAllYear" },
+        "lived_apart_last_six_months": { "type": "boolean", "default": false },
+        "separation_agreement": { "type": "boolean", "default": false },
+        "can_file_jointly_year_of_spouse_death": { "type": "boolean", "default": false, "description": "True is implied for QualifyingSurvivingSpouse" },
+        "in_registered_domestic_partnership": { "type": "boolean", "default": false },
+        "residence_state": {
+          "enum": [
+            "MoreThanOne",
+            "AK",
+            "AZ",
+            "CA",
+            "CT",
+            "FL",
+            "ID",
+            "IL",
+            "KS",
+            "ME",
+            "MD",
+            "MA",
+            "NV",
+            "NH",
+            "NJ",
+            "NM",
+            "NY",
+            "NC",
+            "OR",
+            "PA",
+            "SD",
+            "TN",
+            "TX",
+            "WA",
+            "WI",
+            "WY",
+            "NoneOfThese"
+          ],
+          "default": "FL"
+        },
+        "spouse_itemizes": { "type": "boolean", "default": false },
+        "mfs_living_spouse_filing_return": { "type": "boolean", "default": false },
+        "mfs_deceased_spouse_filing_return": { "type": "boolean", "default": false },
+        "mfs_spouse_has_gross_income": { "type": "boolean", "default": false }
+      }
+    },
+    "Dependent": {
+      "description": "1.2.0. One household member with the Direct File per-person facts (/familyAndHousehold/*), Catala ApiDependent. Required: relationship, date_of_birth, tin_type. Everything else defaults to the value shown; send the real answer whenever the person is claimed for a credit. The household, not the form, is the unit: a child who is also a qualifying relative is one entry.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relationship", "date_of_birth", "tin_type"],
+      "properties": {
+        "relationship": {
+          "enum": [
+            "BiologicalChild",
+            "AdoptedChild",
+            "StepChild",
+            "FosterChild",
+            "GrandChildOrOtherDescendantOfChild",
+            "ChildInLaw",
+            "Sibling",
+            "ChildOfSibling",
+            "HalfSibling",
+            "ChildOfHalfSibling",
+            "StepSibling",
+            "ChildOfStepSibling",
+            "OtherDescendantOfSibling",
+            "OtherDescendantOfHalfSibling",
+            "OtherDescendantOfStepSibling",
+            "SiblingsSpouse",
+            "SiblingInLaw",
+            "Parent",
+            "FosterParent",
+            "SiblingOfParent",
+            "GrandParent",
+            "OtherAncestorOfParent",
+            "StepParent",
+            "ParentInLaw",
+            "NoneOfTheAbove"
+          ]
+        },
+        "date_of_birth": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "ISO date YYYY-MM-DD" },
+        "full_time_student": { "type": "boolean", "default": false },
+        "permanent_total_disability": { "type": "boolean", "default": false },
+        "residency_duration": { "enum": ["AllYear", "SixToElevenMonths", "LessThanSixMonths"], "default": "AllYear" },
+        "own_support": { "type": "boolean", "default": false, "description": "The person provided over half of their own support" },
+        "married": { "type": "boolean", "default": false },
+        "joint_return": { "type": "boolean", "default": false, "description": "Files a joint return (other than to claim a refund)" },
+        "required_to_file": { "type": "boolean", "default": false },
+        "filing_only_for_refund": { "type": "boolean", "default": false },
+        "could_be_qualifying_child_of_another": { "type": "boolean", "default": false },
+        "potential_claimer_must_file": { "type": "boolean", "default": false },
+        "potential_claimer_did_file": { "type": "boolean", "default": false },
+        "potential_claimer_filed_only_for_refund": { "type": "boolean", "default": false },
+        "gross_income": { "$ref": "#/$defs/NonNegMoney", "default": 0 },
+        "qr_support_test": { "type": "boolean", "default": false, "description": "Qualifying relative support test (the filer provided over half the support)" },
+        "tin_type": { "enum": ["Ssn", "Itin", "Atin", "NoTin"], "default": "Ssn" },
+        "is_us_citizen_full_year": { "type": "boolean", "default": true },
+        "us_resident": { "type": "boolean", "default": false },
+        "us_national": { "type": "boolean", "default": false },
+        "canada_mexico_resident": { "type": "boolean", "default": false },
+        "tp_claims": { "type": "boolean", "default": true, "description": "The filer chooses to claim this person" },
+        "deceased": { "type": "boolean", "default": false, "description": "The person died during the tax year (with date_of_birth and tin_type NoTin: the born-and-died knockout)" },
+        "custody": { "$ref": "#/$defs/BenefitSplitAnswers" },
+        "tp_paid_most_of_home_upkeep": { "type": "boolean", "default": false, "description": "Head of household: the filer paid over half the cost of keeping up the home" },
+        "tp_paid_most_of_parent_home_upkeep": { "type": "boolean", "default": false },
+        "ssn_employment_validity": { "enum": ["Neither", "NotValid", "ValidOnlyWithDhsAuthorizationInEffect", "ValidOnlyWithDhsAuthorizationExpired"], "default": "Neither" },
+        "ssn_only_for_federally_funded_benefit": { "type": "boolean", "default": false },
+        "months_lived_with_tp_in_us": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 12,
+          "default": 12,
+          "description": "Months the person lived with the filer in the US (6 to 12); 0 when not asked"
+        },
+        "cdcc": { "$ref": "#/$defs/CdccMemberAnswers" }
+      }
+    },
+    "FilerTin": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tin_is_ssn": { "type": "boolean", "default": true },
+        "ssn_employment_validity": { "enum": ["Neither", "NotValid", "ValidOnlyWithDhsAuthorization"], "default": "Neither" },
+        "has_ssn_only_for_benefits": { "type": "boolean" }
+      }
+    },
+    "DisabilityAnswers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "is_retired_on_perm_or_total_disability": { "type": "boolean" },
+        "employer_has_mandatory_retirement_age": { "type": "boolean" },
+        "has_met_employer_mandatory_retirement_age": { "type": "boolean" },
+        "are_payments_taxable_disability_income": { "type": "boolean" },
+        "writable_total_taxable_disability_amount": { "$ref": "#/$defs/NonNegMoney" },
+        "has_w2_wages": { "type": "boolean", "description": "Ignored: recomputed from the W-2s (Schedule R line 13a)." }
+      }
+    },
+    "HsaFilerAnswers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "writable_primary_filer_has_made_contributions_to_hsa": { "type": "boolean" },
+        "writable_secondary_filer_has_made_contributions_to_hsa": { "type": "boolean" },
+        "enrolled_in_medicare": { "enum": ["MedicareAllYear", "MedicarePartOfYear", "MedicareNoneOfYear"], "default": "MedicareNoneOfYear" },
+        "hsa_hdhp_coverage_status": { "enum": ["HdhpAllYear", "HdhpPartOfYear", "HdhpNoneOfYear"], "default": "HdhpAllYear" },
+        "type_of_hdhp": { "enum": ["SelfOnly", "Family", "BothSelfAndFamily"], "default": "SelfOnly" },
+        "had_other_coverage_ineligible_for_hsa": { "enum": ["OtherCoverageWholeYear", "OtherCoveragePartOfYear", "OtherCoverageNoneOfYear"], "default": "OtherCoverageNoneOfYear" },
+        "writable_mfs_line6_check": { "type": "boolean" },
+        "writable_change_in_marital_status_during_tax_year": { "enum": ["WasMarriedOrDivorcedThisYear", "WasNotMarriedNorDivorcedThisYear"], "default": "WasNotMarriedNorDivorcedThisYear" },
+        "writable_marital_change_affect_contribution_limit_bool": { "type": "boolean" },
+        "has_made_qualified_hsa_funding_distribution": { "type": "boolean" },
+        "writable_hsa_nonemployer_contributions_tax_year": { "$ref": "#/$defs/NonNegMoney" },
+        "writable_hsa_nonemployer_contributions_tax_year_plus_one": { "$ref": "#/$defs/NonNegMoney" }
+      }
+    },
+    "CdccFilerAnswers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "elect_combat_pay_for_credit": { "type": "boolean" },
+        "elect_combat_pay_for_benefits": { "type": "boolean" },
+        "dependent_care_plan_maximum": { "$ref": "#/$defs/NonNegMoney" },
+        "is_disabled": { "type": "boolean" },
+        "deemed_income_month_earnings": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/NonNegMoney" } },
+        "has_dependent_care_expenses": { "type": "boolean" },
+        "expenses_paid_to_qualifying_provider": { "type": "boolean" },
+        "writable_qualifying_expense_amount": { "$ref": "#/$defs/NonNegMoney" }
+      }
+    },
+    "CdccMemberAnswers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "unable_to_care_for_self": { "type": "boolean" },
+        "has_dependent_care_expenses": { "type": "boolean" },
+        "expenses_paid_to_qualifying_provider": { "type": "boolean" },
+        "writable_qualifying_expense_amount": { "$ref": "#/$defs/NonNegMoney" }
+      }
+    },
+    "HsaInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "some_filer_had_non_w2_hsa_activity": { "type": "boolean" },
+        "writable_primary_filer_had_non_w2_hsa_activity": { "type": "boolean" },
+        "writable_secondary_filer_had_non_w2_hsa_activity": { "type": "boolean" },
+        "has_hsa_medical_savings_account_type": { "type": "boolean" },
+        "writable_has_hsa_excess_contributions_previous_year": { "type": "boolean" },
+        "writable_has_hsa_withdrawn_excess_contributions_yes_no": { "type": "boolean" },
+        "some_filers_made_testing_period_contribution": { "type": "boolean" },
+        "some_filers_have_testing_period_additional_income": { "type": "boolean" },
+        "hsa_distributions": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/HsaDistribution" } }
+      }
+    },
+    "HsaDistribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "filer",
+        "writable_distributions_rollover_bool",
+        "writable_distributions_rollover_amount",
+        "writable_gross_distribution",
+        "has_withdrawn_excess_contributions",
+        "writable_withdrawn_excess_contributions_amount",
+        "writable_earnings_on_excess_contributions",
+        "hsa_distribution_code",
+        "writable_fmv_on_date_of_death",
+        "writable_qualified_med_expenses"
+      ],
+      "properties": {
+        "filer": { "$ref": "#/$defs/FilerRole" },
+        "writable_distributions_rollover_bool": { "type": "boolean" },
+        "writable_distributions_rollover_amount": { "$ref": "#/$defs/NonNegMoney" },
+        "writable_gross_distribution": { "$ref": "#/$defs/NonNegMoney" },
+        "has_withdrawn_excess_contributions": { "type": "boolean" },
+        "writable_withdrawn_excess_contributions_amount": { "$ref": "#/$defs/NonNegMoney" },
+        "writable_earnings_on_excess_contributions": { "$ref": "#/$defs/NonNegMoney" },
+        "hsa_distribution_code": {
+          "enum": ["NormalDistribution", "ExcessContributions", "Disability", "DeathOtherThanCode6", "ProhibitedTransaction", "DeathDistributionAfterYear"],
+          "default": "NormalDistribution"
+        },
+        "writable_fmv_on_date_of_death": { "$ref": "#/$defs/NonNegMoney" },
+        "writable_qualified_med_expenses": { "$ref": "#/$defs/NonNegMoney" }
+      }
+    },
+    "CreditAnswers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "eitc_qc_of_another": { "type": "boolean" },
+        "eitc_qc_of_another_required_to_file": { "type": "boolean" },
+        "eitc_qc_of_another_is_filing": { "type": "boolean" },
+        "eitc_qc_of_another_is_filing_refund_only": { "type": "boolean" },
+        "eitc_had_improper_claims": { "type": "boolean" },
+        "eitc_improper_claims_due_to_qc": { "type": "boolean" },
+        "eitc_improper_claim_taken_since_disallowal": { "type": "boolean" },
+        "eitc_received_improper_claims_notice": { "enum": ["TwoYears", "TenYears", "ZeroYears", "NotAnswered"], "default": "NotAnswered" },
+        "eitc_improper_claims_notice_expired": { "type": "boolean" },
+        "received_improper_claims": { "type": "boolean" },
+        "received_improper_claims_notice": { "enum": ["TwoYears", "TenYears", "ZeroYears", "NotAnswered"], "default": "NotAnswered" },
+        "improper_claims_notice_expired": { "type": "boolean" },
+        "has_filed_ctc_odc_since_notice_expired": { "type": "boolean" },
+        "has_distributions_in_last_three_years": { "type": "boolean" },
+        "has_current_year_distributions": { "type": "boolean" },
+        "has_self_reported_contributions": { "type": "boolean" },
+        "has_self_reported_non_taxable_payments": { "type": "boolean" },
+        "self_reported_non_taxable_payment_amount": { "$ref": "#/$defs/NonNegMoney" }
+      }
+    },
+    "CdccInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "has_mfs_spouse_earned_income": { "type": "boolean" },
+        "writable_mfs_spouse_earned_income": { "$ref": "#/$defs/NonNegMoney" },
+        "writable_total_qualified_dependent_care_expenses": { "$ref": "#/$defs/NonNegMoney" },
+        "writable_carryover_amount": { "$ref": "#/$defs/NonNegMoney" },
+        "writable_forfeited_amount": { "$ref": "#/$defs/NonNegMoney" },
+        "has_credit_for_prior_year_expenses": { "type": "boolean" },
+        "claimed_credit_for_prior_year_expenses": { "type": "boolean" },
+        "claimed_max_credit_for_prior_tax_year": { "type": "boolean" },
+        "has_household_employee": { "type": "boolean" },
+        "benefits_from_sole_proprietorship_or_partnership": { "type": "boolean" }
+      }
+    },
+    "PtcInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "form1095_as": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/Form1095A" } },
+        "writable_has_ptc_qualifying_plan": { "type": "boolean" },
+        "writable_has_advanced_ptc": { "type": "boolean" },
+        "dependent_tp_self_enrolled": { "type": "boolean" },
+        "dependent_tp_enrolled_someone_else": { "type": "boolean" },
+        "writable_dependent_tp_other_members_are_part_of_different_tax_family": { "type": "boolean" },
+        "writable_has_mfs_exception": { "type": "boolean" },
+        "writable_claiming_mfs_exception_for_fourth_straight_year": { "type": "boolean" },
+        "writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status": { "type": "boolean" },
+        "writable_has_employer_sponsored_plan": { "type": "boolean" },
+        "writable_dependents_required_to_file": { "type": "boolean" },
+        "writable_self_reported_has_multiple1095_as": { "type": "boolean" },
+        "writable_is_additional_person_in_enrollment_family": { "type": "boolean" },
+        "writable_is_additional_person_partof_different_tax_family": { "type": "boolean" },
+        "writable_is_enrolled_with_other_family": { "type": "boolean" },
+        "writable_has_immigration_status_not_eligible_for_marketplace": { "type": "boolean" },
+        "writable_wants_to_use_alt_calculations": { "type": "boolean" }
+      }
+    },
+    "Form1095A": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "writable_policy_start_date",
+        "writable_policy_end_date",
+        "writable_special_policy_modification_in_starting_month",
+        "writable_has_policy_date_exception",
+        "has_coverage_months",
+        "coverage_months",
+        "writable_premiums_or_slcsp_change",
+        "has_change_in_circumstance",
+        "writable_ptc_annual_premium",
+        "writable_slcsp_annual_premium",
+        "writable_aptc_annual_amount",
+        "writable_ptc_monthly_premium",
+        "writable_ptc_monthly_slcsp_premium",
+        "writable_ptc_monthly_aptc_premium"
+      ],
+      "properties": {
+        "writable_policy_start_date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "ISO date YYYY-MM-DD" },
+        "writable_policy_end_date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "ISO date YYYY-MM-DD" },
+        "writable_special_policy_modification_in_starting_month": { "type": "boolean" },
+        "writable_has_policy_date_exception": { "type": "boolean" },
+        "has_coverage_months": { "type": "boolean" },
+        "coverage_months": { "type": "array", "maxItems": 12, "items": { "type": "integer", "minimum": 1, "maximum": 12 } },
+        "writable_premiums_or_slcsp_change": { "type": "boolean" },
+        "has_change_in_circumstance": { "type": "boolean" },
+        "writable_ptc_annual_premium": { "$ref": "#/$defs/NonNegMoney" },
+        "writable_slcsp_annual_premium": { "$ref": "#/$defs/NonNegMoney" },
+        "writable_aptc_annual_amount": { "$ref": "#/$defs/NonNegMoney" },
+        "writable_ptc_monthly_premium": { "type": "array", "maxItems": 12, "items": { "$ref": "#/$defs/NonNegMoney" } },
+        "writable_ptc_monthly_slcsp_premium": { "type": "array", "maxItems": 12, "items": { "$ref": "#/$defs/NonNegMoney" } },
+        "writable_ptc_monthly_aptc_premium": { "type": "array", "maxItems": 12, "items": { "$ref": "#/$defs/NonNegMoney" } }
+      }
+    },
+    "ScreeningAnswers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "income_sources_supported": { "type": "boolean", "default": true },
+        "received_digital_assets": { "type": "boolean" },
+        "disposed_digital_assets": { "type": "boolean" },
+        "has_foreign_accounts": { "type": "boolean" },
+        "is_foreign_trusts_grantor": { "type": "boolean" },
+        "has_foreign_trusts_transactions": { "type": "boolean" },
+        "made_ira_contributions": { "type": "boolean" },
+        "w2_box15_income_from_different_state": { "type": "boolean" },
+        "w2_has_box14_nyrrta_knockout_code": { "type": "boolean" },
+        "w2_has_rrta_codes_in_box14": { "type": "boolean" },
+        "lived_in_ny": { "type": "boolean" },
+        "w2_paid_yonkers_taxes": { "type": "boolean" },
+        "part_year_yonkers_resident": { "type": "boolean" },
+        "primary_filer_forms_another_state": { "type": "boolean" },
+        "received_alaska_pfd": { "type": "boolean" },
+        "spouse_received_alaska_pfd": { "type": "boolean" },
+        "spouse_lives_in_other_or_multiple_states": { "type": "boolean" },
+        "spouse_forms_another_state": { "type": "boolean" },
+        "is_after_tax_day_and_not_resubmitting": { "type": "boolean" },
+        "is_after_resubmission_deadline": { "type": "boolean" }
+      }
+    },
+    "BenefitSplitAnswers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "has_other_biological_or_adoptive_parent": { "type": "boolean" },
+        "non_parental_some_parent_not_claiming": { "type": "boolean" },
+        "which_parent_not_claiming": { "enum": ["IDid", "TheyDid", "NobodyDid"], "default": "NobodyDid" },
+        "in_parents_custody": { "type": "boolean" },
+        "lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months": { "type": "boolean" },
+        "biological_or_adoptive_parents_living": { "type": "boolean" },
+        "nights_with_tp_vs_other_parent": { "enum": ["More", "Less", "Equal"], "default": "Less" },
+        "tp_agi_higher_than_other_parent": { "type": "boolean" },
+        "parents_meet_reqs_rule_for_children_of_divorced_parents": { "type": "boolean" },
+        "special_rule_child_used_by_custodial_parent_as_qp": { "type": "boolean" },
+        "special_rule_agi_test": { "type": "boolean" },
+        "parental_situation": { "enum": ["DivorcedOrSeparated", "LivedApartLastSixMonths", "Other"], "default": "Other" },
+        "parental_support": { "type": "boolean" },
+        "multiple_support_agreement": { "type": "boolean" }
       }
     },
     "Lines": {
@@ -326,7 +738,7 @@
       }
     },
     "Warning": {
-      "description": "A non-fatal note on a 200 response. code is stable: section_not_used = a request section is valid but its Lean module is not wired into the calculator yet, so its values are ignored. New codes are additive.",
+      "description": "A non-fatal note on a 200 response. code is stable: section_not_used = a request section is valid but its Lean module is not wired into the calculator yet, so its values are ignored (none since schema 1.2.0: every section is read); field_superseded (1.2.0) = a schema 1.0 filing_details field that the calculator now derives itself (docs/api-mapping.md), so the value is not used. New codes are additive.",
       "type": "object",
       "additionalProperties": false,
       "required": ["code", "path", "message"],
