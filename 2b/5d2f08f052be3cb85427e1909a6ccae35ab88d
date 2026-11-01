@@ -2,6 +2,7 @@ lean/UsTax.lean
   s_3031b504518be3::t_d308054baffb88 56-64
 lean/UsTax/Cli.lean
   s_3031b504518be3::t_a82a7594223514 24-26,1179-1494,1516,1520-1525
+  s_3031b504518be3::t_9d9afdc35ea91c 1519
 lean/UsTax/Comparator/Pending.lean
   s_3031b504518be3::t_a8ea4c121a1fc2 15-17
 lean/UsTax/Eitc/Props.lean
