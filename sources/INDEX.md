@@ -28,7 +28,7 @@ URL prefix for `--2024` files: `https://www.irs.gov/pub/irs-prior/<name>--2024.p
 | `f8862--2024.pdf`, `i8862--2024.pdf` | irs-prior/f8862--2024.pdf, i8862--2024.pdf | Form 8862 (disallowed EIC/CTC/etc.), knockout reasoning | #26, #27, #37 |
 | `f8332.pdf` | https://www.irs.gov/pub/irs-pdf/f8332.pdf | Form 8332, release of claim to exemption. **Revision December 2025, not a 2024 revision.** The prior-year file `f8332--2024.pdf` does not exist on irs.gov. The substance (custodial parent release) is unchanged but check the text before quoting | #18 |
 | `f8959--2024.pdf`, `i8959--2024.pdf` | irs-prior/f8959--2024.pdf, i8959--2024.pdf | Form 8959 (Additional Medicare Tax): thresholds 125k/200k/250k, for W-2 knockout | #12, #36 |
-| `derived-tax-table-2024.csv` | **derived by us**, not an IRS file | Machine-readable copy of the 2,060 Tax Table rows (`i1040gi` pp 64-75), parsed with `pdftotext -layout`. Columns: at_least, but_less_than, single, mfj, mfs, hoh. Use as a golden test for #10. Checked: 8,240 values reproduced exactly by the rate schedules plus the midpoint method | #10, #6, #7 |
+| `derived-tax-table-2024.csv` | **derived by us**, not an IRS file | Machine-readable copy of the 2,062 Tax Table rows (`i1040gi` pp 64-75), parsed with `pdftotext -layout`. Columns: at_least, but_less_than, single, mfj, mfs, hoh. Use as a golden test for #10. Checked: 8,248 values reproduced exactly by the rate schedules plus the midpoint method | #10, #6, #7 |
 
 ## pubs/
 

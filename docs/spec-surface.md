@@ -204,11 +204,11 @@ Each moves into `Challenge.lean` and `comparator.json` when proved.
    agreement above $100,000 is `TaxRates.tentativeTaxFor_eq_taxSpec` (proved,
    `TaxRates/Spec.lean`), not in the comparator set because `taxSpec` would add
    about ten definitions to the trusted surface. Add it?
-2. **The table data has no row for [$5, $25)**: the CSV skips the printed rows
-   [$5, $15) ($1) and [$15, $25) ($2). Proved as a fact about the data
-   (`Proofs.rows_layout`); for those incomes (5) says nothing. The calculator
-   gives $1 and $2 there (`roundedTaxableIncomeOf` tests). Fixing the CSV is a
-   data change outside this issue.
+2. **The table data covers every cent below $100,000.** An earlier version
+   of the CSV lacked the printed rows [$5, $15) ($1) and [$15, $25) ($2); fixed.
+   `Proofs.rows_chain` (kernel) shows the 2,062 rows tile $0 to $100,000 with no
+   gap or overlap, and `Proofs.rows_cover` that every cent below $100,000 is in
+   a row, so (5) constrains line 16 for all of them.
 3. **Credits (3a) are stated at line 22 given line 21**, not per credit. Line
    21 is today an input slot; the per-credit statement is pending (3c).
 4. **(3b) is `0 ≤ totalTax` with line 23 not added** (QUIRK(Q3) in

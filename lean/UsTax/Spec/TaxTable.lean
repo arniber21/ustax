@@ -10,7 +10,7 @@ Main theorem 5 (`UsTax.Main.line16_matches_tax_table`, stated in
 
 The reference is the Tax Table printed in the Form 1040 instructions
 (`sources/forms-instructions/i1040gi--2024.pdf` pp 64 to 75), not Direct File
-and not the rate schedules. Its 2,060 rows are the generated data
+and not the rate schedules. Its 2,062 rows are the generated data
 `UsTax.TaxRates.TaxTable.rows` (`UsTax/TaxRates/TaxTableData.lean`, from
 `sources/forms-instructions/derived-tax-table-2024.csv`). That data is part of
 this spec: a wrong row would make the theorem say the wrong thing.
