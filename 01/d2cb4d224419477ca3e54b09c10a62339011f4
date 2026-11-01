@@ -1,0 +1,43 @@
+web/src/draft/draft.test.ts
+  s_3031b504518be3::t_794780a44b9cf5 4-5
+web/src/lib/lazyRoute.tsx
+  s_3031b504518be3::t_702631c6a9d173 1-23
+web/src/App.tsx
+  s_3031b504518be3::t_b84905f542f540 8
+  s_3031b504518be3::t_e5a128cf6cfc9f 1,9,11-22,47-55
+web/src/docs/docs.test.tsx
+  s_3031b504518be3::t_f1168906303960 3,7-9
+web/src/api/client.test.ts
+  s_3031b504518be3::t_794780a44b9cf5 4-6
+web/src/api/client.ts
+  s_3031b504518be3::t_794780a44b9cf5 2-6,71,75,81
+web/src/layout/AppShell.tsx
+  s_3031b504518be3::t_b84905f542f540 5-6
+web/src/App.test.tsx
+  s_3031b504518be3::t_f1168906303960 5-7
+web/src/components/ui/date-picker.tsx
+  s_3031b504518be3::t_280f15c891fe47 6-7,123,141
+web/src/pages/HomePage.tsx
+  s_3031b504518be3::t_b84905f542f540 3
+web/src/components/ui/date-picker.test.tsx
+  s_3031b504518be3::t_8cc4be102602da 38-42
+web/src/wizard/wizard.test.tsx
+  s_3031b504518be3::t_794780a44b9cf5 10
+  s_3031b504518be3::t_f1168906303960 1,7-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01d2cb4d224419477ca3e54b09c10a62339011f4",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
