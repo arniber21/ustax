@@ -34,5 +34,7 @@ Credit: discovered by the ustax formal verification project (Arnab Ghosh).
 | DF-BUG-26 | candidate | `cdcc.xml` (QSS) | Qualifying surviving spouse's line 19 comes out as $0 | Statute | Statute; no oracle effect | #28 |
 | DF-BUG-27 | candidate | `cdcc.xml` | Forfeited benefits ignored unless W-2 box 10 is positive | Form 2441 Part III | Statute; no oracle effect | #28 |
 | DF-BUG-28 | candidate | `cdcc.xml` | Requires the filer to have chosen to claim the child | Law requires only that the child be a qualifying person | Statute; no oracle effect | #28 |
+| DF-BUG-29 | candidate | `eitc.xml` / `familyAndHousehold.xml` (EITC qualifying child) | Requires the child to be *claimed* by the filer | IRC 32(c)(3): requires only that the filer be entitled to claim the child | Statute; no oracle value changes | #48 |
+| DF-BUG-30 | candidate | `eitc.xml` (EITC child test) | Second claimed-vs-entitled gate in the child test | IRC 32(c)(3) | Statute; no oracle value changes | #48 |
 
 Add rows as modules find more; keep one row per distinct defect.
