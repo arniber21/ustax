@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
 
 /*
  * US Tax design tokens (shadcn/ui CSS-variable convention).

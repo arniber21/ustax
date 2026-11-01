@@ -100,7 +100,7 @@ export function WizardLayout() {
       <div className="min-w-0 max-w-2xl">
         {showSummary && <ErrorSummary key={attempt?.n} errors={errors} />}
         <StepErrorsContext.Provider value={{ errors, attempted }}>
-          <div key={step}>
+          <div key={step} className="animate-in fade-in-0 duration-300">
             <Outlet />
           </div>
         </StepErrorsContext.Provider>

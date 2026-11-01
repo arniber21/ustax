@@ -11,11 +11,11 @@ export const SheetClose = SheetPrimitive.Close;
 export function SheetContent({ className, children, ...props }: React.ComponentProps<typeof SheetPrimitive.Content>) {
   return (
     <SheetPrimitive.Portal>
-      <SheetPrimitive.Overlay data-slot="sheet-overlay" className="prov-overlay fixed inset-0 z-50 bg-black/50" />
+      <SheetPrimitive.Overlay data-slot="sheet-overlay" className="prov-overlay fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          'prov-sheet fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col gap-0 border-l bg-background shadow-lg outline-none sm:max-w-2xl',
+          'prov-sheet data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col gap-0 border-l bg-background shadow-lg outline-none sm:max-w-2xl',
           className,
         )}
         {...props}

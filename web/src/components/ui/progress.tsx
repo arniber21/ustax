@@ -14,7 +14,7 @@ export function Progress({ className, value, max = 100, ...props }: React.Compon
     >
       <ProgressPrimitive.Indicator
         data-slot="progress-indicator"
-        className="h-full w-full flex-1 bg-primary transition-transform"
+        className="h-full w-full flex-1 bg-primary transition-all"
         style={{ transform: `translateX(-${100 - pct}%)` }}
       />
     </ProgressPrimitive.Root>

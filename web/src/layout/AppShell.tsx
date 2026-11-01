@@ -62,7 +62,9 @@ export function AppShell() {
         </div>
       </header>
       <main id="main" tabIndex={-1} className="flex-1 outline-none">
-        <Outlet />
+        <div key={pathname.split('/')[1] ?? ''} className="animate-in fade-in-0 duration-300">
+          <Outlet />
+        </div>
       </main>
       <footer className="mt-16 border-t bg-muted">
         <div className="mx-auto grid max-w-6xl gap-2 px-4 py-8 text-sm text-muted-foreground sm:px-6">
