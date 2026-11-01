@@ -141,8 +141,10 @@ changed only on purpose:
    definitions are part of the spec, so they must be identical, which the
    transitive comparison already enforces.
 
-Today's file holds three placeholder theorems from the money library (#39) so
-the pipeline runs end to end; #63 replaces them with the main tax theorems.
+Since #63 the file holds the main tax theorems (six statements, solution
+module `UsTax.Proofs.Main`); `docs/spec-surface.md` lists what each depends on.
+Main theorems not yet proved are templates in `UsTax/Comparator/Pending.lean`
+and are not in `comparator.json`.
 Workflow for a new main theorem: write the statement in `Challenge.lean`,
 review it, add its name to `theorem_names`, then prove it in the library. A
 proof that quietly weakens the statement fails with `Challenge and solution

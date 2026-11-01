@@ -1,10 +1,13 @@
 {
   "challenge_module": "UsTax.Comparator.Challenge",
-  "solution_module": "UsTax.Money.Lemmas",
+  "solution_module": "UsTax.Proofs.Main",
   "theorem_names": [
-    "UsTax.Money.roundDollar_eq",
-    "UsTax.Money.roundDollar_mono",
-    "UsTax.Money.mulRate_le_self"
+    "UsTax.Main.tentativeTax_nonneg_monotone",
+    "UsTax.Main.refund_balanceDue_consistent",
+    "UsTax.Main.credits_within_liability",
+    "UsTax.Main.totalTax_nonneg",
+    "UsTax.Main.tentativeTax_matches_tax_table",
+    "UsTax.Main.line16_matches_tax_table"
   ],
   "definition_names": [],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
