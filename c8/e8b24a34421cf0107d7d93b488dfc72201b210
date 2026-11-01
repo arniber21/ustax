@@ -1,0 +1,21 @@
+catala/CONVENTIONS.md
+  s_3031b504518be3::t_96dcb03924f9e1 302
+docs/direct-file-bugs.md
+  s_3031b504518be3::t_23fb129d90766f 27,31-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c8e8b24a34421cf0107d7d93b488dfc72201b210",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "unknown"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
