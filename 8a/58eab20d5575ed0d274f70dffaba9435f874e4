@@ -1,0 +1,63 @@
+web/src/wizard/HouseholdStep.tsx
+  s_3031b504518be3::t_ec47cc2932747e 1,25,59,87,111,121,135
+web/src/results/MoneyFlow.tsx
+  s_3031b504518be3::t_859d3944c04504 1-99
+web/src/wizard/DependentsStep.tsx
+  s_3031b504518be3::t_ec47cc2932747e 1,54,72,81-83
+web/src/wizard/fields.tsx
+  s_3031b504518be3::t_ec47cc2932747e 2,18-21
+  s_3031b504518be3::t_f273c18ab3a303 22-23
+web/src/components/components.test.tsx
+  s_3031b504518be3::t_f55a5cf21c6dfa 80,165,168,171
+web/src/components/Select.tsx
+  s_3031b504518be3::t_b3f2a11d5eb732 151
+web/src/wizard/wizard.test.tsx
+  s_3031b504518be3::t_28334e8dbef55d 328
+  s_3031b504518be3::t_f55a5cf21c6dfa 119-121,326-327,329-330,340,347
+web/src/provenance/status.ts
+  s_3031b504518be3::t_44615f46df43fe 1-26
+web/src/wizard/AboutStep.tsx
+  s_3031b504518be3::t_ec47cc2932747e 2,48,64,68
+web/src/wizard/CreditsStep.tsx
+  s_3031b504518be3::t_ec47cc2932747e 2,141,166,186
+web/src/components/brand/DotGlobe.tsx
+  s_3031b504518be3::t_fc7585671a8292 2,33-34,98-101,107
+web/src/provenance/ProvenanceProvider.tsx
+  s_3031b504518be3::t_d6b4e1298bca20 1-2,5,7-8,10-15,18,20,23,25-34,37,40-57,61-84,88,90-98,100-102
+web/src/wizard/PersonDetails.tsx
+  s_3031b504518be3::t_ec47cc2932747e 2,32,37-39
+web/src/wizard/W2Help.tsx
+  s_3031b504518be3::t_393634ce651ad8 1-91
+web/src/test/setup.ts
+  s_3031b504518be3::t_5892a5fe426d8a 6-16
+web/src/forms/DraftForm.tsx
+  s_3031b504518be3::t_225d502deea96d 18
+web/src/components/index.ts
+  s_3031b504518be3::t_ec47cc2932747e 4
+web/src/results/LineWalk.tsx
+  s_3031b504518be3::t_c11d7805e98cf1 5,11-20,22,24-42,44-53,55-58,61-66,68-69,72-73,75-92,97-98,113-114,126
+web/src/pages/ResultsHero.tsx
+  s_3031b504518be3::t_15e6f5c207f643 1,5,13-14,22,31-32,34,44,49-52,54-81,91,94,100
+web/src/wizard/IncomeStep.tsx
+  s_3031b504518be3::t_65617c46d6ce9b 3-4,26,42,44,72,80-81,84,88,95,98,109,112,123,126,137,140,197,280,286
+web/src/wizard/AdjustmentsStep.tsx
+  s_3031b504518be3::t_ec47cc2932747e 1,22,57,87
+web/src/components/ComboboxList.tsx
+  s_3031b504518be3::t_ce9b90f1765de2 21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8a58eab20d5575ed0d274f70dffaba9435f874e4",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
