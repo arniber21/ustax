@@ -1,0 +1,551 @@
+# Tests for the Filing_status module
+
+Run with `clerk test`. Each named scope is one concrete return, worked by hand
+from IRC 1(c), 2(a), 2(b), 6013(a), 7703 and Pub. 501 (2024) pp 6-11 as quoted
+in `catala/filing_status.catala_en`. Every scope sets satisfiable inputs (answers
+a real filer could give), asserts the expected eligibility, and asserts that a
+known-bad output is rejected (an ineligible chosen status is knocked out). The
+oracle comparison is `make difftest SCOPE=filing_status` and
+`make difftest-filing-status-graphs`.
+
+> Using Types
+> Using Filers as F
+> Using Qualifying_child as Q
+> Using Qualifying_relative as R
+> Using Dependents_benefit_split as B
+> Using Hoh_qss_persons as H
+> Using Filing_status as S
+
+## Helper: one return, with default answers
+
+The default return: an unmarried filer (never married) born 1985-06-15, a US
+citizen, not claimed by anyone, living in Florida, filing single, with no
+household members. A second filer entry carries plain citizen answers (read
+only when the marital status makes it the spouse). The optional household
+member is the filer's biological son, born 2016-05-01 (8), unmarried, a US
+citizen with an SSN, who lived with the filer all year, had no gross income,
+did not provide over half of his own support, is nobody else's qualifying
+child, and is claimed; the filer paid more than half the cost of keeping up
+the home. A test overrides only what it tests.
+
+```catala
+declaration scope Case:
+  context filing_status content Types.FilingStatus
+  context marital_status content F.MaritalStatus
+  context year_of_spouse_death content F.YearOfSpouseDeath
+  context secondary_is_citizen content boolean
+  context secondary_is_resident content boolean
+  context lived_together_all_year content boolean
+  context lived_together_months content F.SpouseLivedTogetherMonths
+  context can_file_jointly_year_of_spouse_death content boolean
+  context has_child content boolean
+  context child_residency content Q.ResidencyDuration
+  context upkeep content boolean
+  internal child content H.Member
+  output r content S.FilingStatusReturn
+
+scope Case:
+  definition filing_status equals Single
+  definition marital_status equals NeverMarried
+  definition year_of_spouse_death equals DiedBeforeTaxYearMinusTwo
+  definition secondary_is_citizen equals true
+  definition secondary_is_resident equals false
+  definition lived_together_all_year equals true
+  definition lived_together_months equals LivedTogetherMoreThanSixMonths
+  definition can_file_jointly_year_of_spouse_death equals false
+  definition has_child equals false
+  definition child_residency equals Q.ResidencyDuration.AllYear
+  definition upkeep equals true
+  definition child equals H.Member {
+    -- dependent: R.Member {
+      -- person: Q.Person {
+           -- relationship: Q.Relationship.BiologicalChild
+           -- date_of_birth: |2016-05-01|
+           -- full_time_student: false
+           -- permanent_total_disability: false
+           -- residency_duration: child_residency
+           -- own_support: false
+           -- married: false
+           -- writable_joint_return: false
+           -- writable_required_to_file: false
+           -- writable_filing_only_for_refund: false
+           -- writable_could_be_qualifying_child_of_another: false
+           -- writable_potential_claimer_must_file: false
+           -- writable_potential_claimer_did_file: false
+           -- writable_potential_claimer_filed_only_for_refund: false }
+      -- answers: R.DependentAnswers {
+           -- gross_income: $0
+           -- writable_qr_support_test: true
+           -- tin_type: R.TinType.Ssn
+           -- is_us_citizen_full_year: true
+           -- writable_us_resident: false
+           -- writable_us_national: false
+           -- writable_canada_mexico_resident: false
+           -- tp_claims: true }
+      -- split: B.BenefitSplitAnswers {
+           -- has_other_biological_or_adoptive_parent: false
+           -- non_parental_some_parent_not_claiming: false
+           -- which_parent_not_claiming: B.WrittenDeclaration.NobodyDid
+           -- in_parents_custody: false
+           -- lived_with_tp_or_other_biological_or_adoptive_parent_more_than_six_months:
+                false
+           -- biological_or_adoptive_parents_living: false
+           -- nights_with_tp_vs_other_parent: B.NightsComparison.Less
+           -- tp_agi_higher_than_other_parent: false
+           -- parents_meet_reqs_rule_for_children_of_divorced_parents: false
+           -- special_rule_child_used_by_custodial_parent_as_qp: false
+           -- special_rule_agi_test: false
+           -- parental_situation: B.ParentalSituation.Other
+           -- parental_support: false
+           -- multiple_support_agreement: false } }
+    -- upkeep: H.UpkeepAnswers {
+         -- tp_paid_most_of_home_upkeep: upkeep
+         -- tp_paid_most_of_parent_home_upkeep: false } }
+  definition r equals
+    output of S.FilingStatusReturn with {
+      -- filing_status: filing_status
+      -- marital_status: marital_status
+      -- year_of_spouse_death: year_of_spouse_death
+      -- primary_filer: F.FilerAnswers {
+           -- date_of_birth: |1985-06-15|
+           -- is_blind: false
+           -- can_be_claimed: false
+           -- will_be_claimed: false
+           -- potential_claimer_must_file: false
+           -- potential_claimer_did_file: false
+           -- is_us_citizen_full_year: true
+           -- writable_citizen_at_end_of_tax_year: false
+           -- writable_is_noncitizen_resident_full_year: false
+           -- writable_is_national: false }
+      -- secondary_filer: F.FilerAnswers {
+           -- date_of_birth: |1986-02-20|
+           -- is_blind: false
+           -- can_be_claimed: false
+           -- will_be_claimed: false
+           -- potential_claimer_must_file: false
+           -- potential_claimer_did_file: false
+           -- is_us_citizen_full_year: secondary_is_citizen
+           -- writable_citizen_at_end_of_tax_year: false
+           -- writable_is_noncitizen_resident_full_year: secondary_is_resident
+           -- writable_is_national: false }
+      -- secondary_filer_date_of_death: |2022-03-01|
+      -- primary_filer_potential_claimer_filed_only_for_refund: false
+      -- mfj_required_to_file: true
+      -- mfj_dependents_filing_for_credits: false
+      -- lived_together_all_year_with_spouse: lived_together_all_year
+      -- spouse_lived_together_months: lived_together_months
+      -- writable_lived_apart_last_six_months: false
+      -- writable_separation_agreement: false
+      -- can_file_jointly_year_of_spouse_death: can_file_jointly_year_of_spouse_death
+      -- in_registered_domestic_partnership: false
+      -- filer_residence_and_income_state: FL
+      -- spouse_itemizes: false
+      -- mfs_living_spouse_filing_return: false
+      -- mfs_deceased_spouse_filing_return: false
+      -- mfs_spouse_has_gross_income: false
+      -- members: if has_child then [child] else [] }
+```
+
+## The cases of issue #20
+
+### Married, spouse a nonresident alien: no joint return
+
+IRC 6013(a)(1): "no joint return shall be made if either the husband or wife
+at any time during the taxable year is a nonresident alien". The spouse is
+neither a citizen nor a resident (no 6013(g) election). The filer may file
+separately; with no qualifying person, not as head of household. With the
+son living with the filer, IRC 2(b)(2)(B) ("considered as not married ... if
+at any time during the taxable year his spouse is a nonresident alien") makes
+the filer a head of household (Pub. 501 p 9, Nonresident alien spouse).
+Known-bad output rejected: choosing MFJ is knocked out.
+
+```catala
+#[test]
+declaration scope TestMarriedNraSpouse:
+  alone scope Case
+  with_child scope Case
+  chose_mfj scope Case
+
+scope TestMarriedNraSpouse:
+  definition alone.marital_status equals Married
+  definition alone.secondary_is_citizen equals false
+  definition alone.filing_status equals MarriedFilingSeparately
+  definition with_child.marital_status equals Married
+  definition with_child.secondary_is_citizen equals false
+  definition with_child.filing_status equals HeadOfHousehold
+  definition with_child.has_child equals true
+  definition chose_mfj.marital_status equals Married
+  definition chose_mfj.secondary_is_citizen equals false
+  definition chose_mfj.filing_status equals MarriedFilingJointly
+  assertion not alone.r.eligible_for_mfj
+  assertion alone.r.eligible_for_mfs
+  assertion not alone.r.eligible_for_single
+  assertion not alone.r.eligible_for_hoh
+  assertion not alone.r.eligible_for_qss
+  assertion alone.r.is_filing_status_valid
+  assertion not alone.r.unsupported
+  assertion alone.r.recommended_filing_status = MarriedFilingSeparately
+  assertion not with_child.r.eligible_for_mfj
+  assertion with_child.r.filer_could_qualify_for_hoh
+  assertion with_child.r.eligible_for_hoh
+  assertion with_child.r.eligible_for_mfs
+  assertion with_child.r.is_filing_status_valid
+  assertion not with_child.r.unsupported
+  assertion with_child.r.recommended_filing_status = HeadOfHousehold
+  # Known-bad: a joint return with a nonresident alien spouse
+  assertion not chose_mfj.r.is_filing_status_valid
+  assertion chose_mfj.r.ko_filing_status_not_eligible
+  assertion chose_mfj.r.unsupported
+```
+
+### Married, lived apart the last six months, with a child: head of household
+
+IRC 2(c) and 7703(b): a married filer who files separately, keeps up a home
+for more than half the year for a child the filer can claim, and whose
+spouse was not a member of the household during the last 6 months, "shall
+not be considered as married" (Pub. 501 p 8, Considered Unmarried). The
+spouses lived apart all year; the son lived with the filer all year. MFJ and
+MFS stay eligible (Pub. 501 p 7). Known-bad outputs rejected: the same filer
+living with the spouse all year is not a head of household, and choosing HoH
+is then knocked out; the filer is married, so single is never eligible.
+
+```catala
+#[test]
+declaration scope TestMarriedLivedApartWithChild:
+  c scope Case
+  together scope Case
+  chose_single scope Case
+
+scope TestMarriedLivedApartWithChild:
+  definition c.marital_status equals Married
+  definition c.lived_together_all_year equals false
+  definition c.lived_together_months equals LivedApartAllYear
+  definition c.has_child equals true
+  definition c.filing_status equals HeadOfHousehold
+  definition together.marital_status equals Married
+  definition together.has_child equals true
+  definition together.filing_status equals HeadOfHousehold
+  definition chose_single.marital_status equals Married
+  definition chose_single.lived_together_all_year equals false
+  definition chose_single.lived_together_months equals LivedApartAllYear
+  definition chose_single.has_child equals true
+  definition chose_single.filing_status equals Single
+  assertion c.r.eligible_for_mfj
+  assertion c.r.eligible_for_mfs
+  assertion c.r.filer_could_qualify_for_hoh
+  assertion c.r.hoh_qualifying_people_count = 1
+  assertion c.r.eligible_for_hoh
+  assertion not c.r.eligible_for_single
+  assertion not c.r.eligible_for_qss
+  assertion c.r.has_multiple_eligible_filing_statuses
+  assertion c.r.is_filing_status_valid
+  assertion not c.r.unsupported
+  assertion c.r.treat_as_hoh
+  # DF: chose HoH, so not "wants a separate return": the recommendation is MFJ
+  assertion c.r.recommended_filing_status = MarriedFilingJointly
+  # Known-bad: living together, no HoH
+  assertion not together.r.filer_could_qualify_for_hoh
+  assertion not together.r.eligible_for_hoh
+  assertion not together.r.is_filing_status_valid
+  assertion together.r.unsupported
+  # Known-bad: a married filer cannot file single
+  assertion not chose_single.r.eligible_for_single
+  assertion chose_single.r.ko_filing_status_not_eligible
+```
+
+### Widowed in 2023 with a dependent child: qualifying surviving spouse, not head of household
+
+IRC 2(a)(1): the spouse "died during either of his two taxable years
+immediately preceding the taxable year", the filer keeps up a home that is
+the principal place of abode of a son whom the filer can claim, and a joint
+return could have been made for 2023 (2(a)(2)(B)). IRC 2(b)(1): a head of
+household "is not a surviving spouse". Known-bad outputs rejected: choosing
+HoH is knocked out; without the joint-return answer the filer is not a
+surviving spouse and becomes a head of household. Choosing single stays
+valid (an unmarried filer may choose the less favourable status; decision of
+issue #20), but QSS is recommended.
+
+```catala
+#[test]
+declaration scope TestWidowedYearMinusOneWithChild:
+  c scope Case
+  chose_hoh scope Case
+  chose_single scope Case
+  no_joint scope Case
+
+scope TestWidowedYearMinusOneWithChild:
+  definition c.marital_status equals Widowed
+  definition c.year_of_spouse_death equals DiedTaxYearMinusOne
+  definition c.can_file_jointly_year_of_spouse_death equals true
+  definition c.has_child equals true
+  definition c.filing_status equals QualifyingSurvivingSpouse
+  definition chose_hoh.marital_status equals Widowed
+  definition chose_hoh.year_of_spouse_death equals DiedTaxYearMinusOne
+  definition chose_hoh.can_file_jointly_year_of_spouse_death equals true
+  definition chose_hoh.has_child equals true
+  definition chose_hoh.filing_status equals HeadOfHousehold
+  definition chose_single.marital_status equals Widowed
+  definition chose_single.year_of_spouse_death equals DiedTaxYearMinusOne
+  definition chose_single.can_file_jointly_year_of_spouse_death equals true
+  definition chose_single.has_child equals true
+  definition chose_single.filing_status equals Single
+  definition no_joint.marital_status equals Widowed
+  definition no_joint.year_of_spouse_death equals DiedTaxYearMinusOne
+  definition no_joint.has_child equals true
+  definition no_joint.filing_status equals HeadOfHousehold
+  assertion c.r.filer_could_qualify_for_qss
+  assertion c.r.qss_qualifying_people_count = 1
+  assertion c.r.eligible_for_qss
+  assertion c.r.hoh_qualifying_people_count = 1
+  assertion not c.r.eligible_for_hoh
+  assertion c.r.eligible_for_single
+  assertion not c.r.eligible_for_mfj
+  assertion not c.r.eligible_for_mfs
+  assertion c.r.has_multiple_eligible_filing_statuses
+  assertion c.r.is_filing_status_valid
+  assertion not c.r.unsupported
+  assertion c.r.recommended_filing_status = QualifyingSurvivingSpouse
+  # Known-bad: QSS preempts HoH
+  assertion chose_hoh.r.ko_filing_status_not_eligible
+  assertion chose_hoh.r.unsupported
+  # Single stays selectable, but QSS is recommended
+  assertion chose_single.r.is_filing_status_valid
+  assertion not chose_single.r.unsupported
+  assertion chose_single.r.recommended_filing_status = QualifyingSurvivingSpouse
+  # Without 2(a)(2)(B), not a surviving spouse: head of household instead
+  assertion not no_joint.r.eligible_for_qss
+  assertion no_joint.r.eligible_for_hoh
+  assertion no_joint.r.is_filing_status_valid
+  assertion no_joint.r.recommended_filing_status = HeadOfHousehold
+```
+
+### Divorced, no dependents: single only
+
+IRC 7703(a)(2): "an individual legally separated from his spouse under a
+decree of divorce ... shall not be considered as married". With no
+qualifying person the filer is neither a head of household nor a surviving
+spouse, so single is the only status (Pub. 501 p 6). Known-bad outputs
+rejected: HoH, MFS and MFJ are each knocked out.
+
+```catala
+#[test]
+declaration scope TestDivorcedNoDependents:
+  c scope Case
+  chose_hoh scope Case
+  chose_mfs scope Case
+  chose_mfj scope Case
+
+scope TestDivorcedNoDependents:
+  definition c.marital_status equals Divorced
+  definition chose_hoh.marital_status equals Divorced
+  definition chose_hoh.filing_status equals HeadOfHousehold
+  definition chose_mfs.marital_status equals Divorced
+  definition chose_mfs.filing_status equals MarriedFilingSeparately
+  definition chose_mfj.marital_status equals Divorced
+  definition chose_mfj.filing_status equals MarriedFilingJointly
+  assertion c.r.eligible_for_single
+  assertion not c.r.eligible_for_mfj
+  assertion not c.r.eligible_for_mfs
+  assertion not c.r.eligible_for_hoh
+  assertion not c.r.eligible_for_qss
+  assertion c.r.eligibility.eligible_filing_status_count = 1
+  assertion not c.r.has_multiple_eligible_filing_statuses
+  assertion c.r.is_filing_status_valid
+  assertion not c.r.unsupported
+  assertion c.r.recommended_filing_status = Single
+  # Known-bad: every other status
+  assertion chose_hoh.r.ko_filing_status_not_eligible
+  assertion chose_mfs.r.ko_filing_status_not_eligible
+  assertion chose_mfj.r.ko_filing_status_not_eligible
+```
+
+## Further cases
+
+### Unmarried with a qualifying child: head of household recommended, single still allowed
+
+IRC 1(c) taxes as single "every individual (other than a surviving spouse ...
+or the head of a household as defined in section 2(b)) who is not a married
+individual"; Pub. 501 p 6: "Your filing status is single if you are
+considered unmarried and you don't qualify for another filing status." HoH
+is recommended; single stays a permitted choice (decision of issue #20: the
+less favourable status costs only the filer). Known-bad output rejected: the
+recommendation is not single. Without the upkeep (2(b)(1), "over half of the
+cost of maintaining the household") there is no qualifying person and single
+is the only status.
+
+```catala
+#[test]
+declaration scope TestUnmarriedWithChild:
+  c scope Case
+  chose_single scope Case
+  no_upkeep scope Case
+
+scope TestUnmarriedWithChild:
+  definition c.has_child equals true
+  definition c.filing_status equals HeadOfHousehold
+  definition chose_single.has_child equals true
+  definition no_upkeep.has_child equals true
+  definition no_upkeep.upkeep equals false
+  assertion c.r.eligible_for_hoh
+  assertion c.r.eligible_for_single
+  assertion c.r.has_multiple_eligible_filing_statuses
+  assertion c.r.is_filing_status_valid
+  assertion c.r.recommended_filing_status = HeadOfHousehold
+  # Single chosen: valid, not knocked out, HoH still recommended
+  assertion chose_single.r.is_filing_status_valid
+  assertion not chose_single.r.unsupported
+  assertion chose_single.r.recommended_filing_status = HeadOfHousehold
+  # Known-bad: single is not recommended to a head of household
+  assertion c.r.recommended_filing_status != Single
+  # No upkeep: single only
+  assertion not no_upkeep.r.eligible_for_hoh
+  assertion no_upkeep.r.eligible_for_single
+  assertion no_upkeep.r.is_filing_status_valid
+```
+
+### Married living together: the recommendation follows the chosen separate return
+
+DF `/recommendedFilingStatus`: MFJ unless the filer chose a separate return,
+then HoH if eligible, else MFS. A couple living together all year, no
+children: MFJ and MFS eligible. The same filer living apart with the son and
+choosing MFS is recommended HoH (Pub. 501 p 7: "If you qualify to file as
+head of household, instead of as married filing separately, your tax may be
+lower").
+
+```catala
+#[test]
+declaration scope TestRecommendationMarried:
+  mfj scope Case
+  mfs scope Case
+  apart_mfs scope Case
+
+scope TestRecommendationMarried:
+  definition mfj.marital_status equals Married
+  definition mfj.filing_status equals MarriedFilingJointly
+  definition mfs.marital_status equals Married
+  definition mfs.filing_status equals MarriedFilingSeparately
+  definition apart_mfs.marital_status equals Married
+  definition apart_mfs.lived_together_all_year equals false
+  definition apart_mfs.lived_together_months equals LivedApartAllYear
+  definition apart_mfs.has_child equals true
+  definition apart_mfs.filing_status equals MarriedFilingSeparately
+  assertion mfj.r.eligible_for_mfj and mfj.r.eligible_for_mfs
+  assertion mfj.r.eligibility.eligible_filing_status_count = 2
+  assertion mfj.r.treat_as_mfj
+  assertion mfj.r.recommended_filing_status = MarriedFilingJointly
+  assertion mfs.r.treat_as_mfs
+  assertion mfs.r.is_filing_status_valid
+  assertion mfs.r.recommended_filing_status = MarriedFilingSeparately
+  assertion apart_mfs.r.eligible_for_hoh
+  assertion apart_mfs.r.is_filing_status_valid
+  assertion apart_mfs.r.recommended_filing_status = HeadOfHousehold
+  # Known-bad: MFJ is not recommended to a filer who chose to file separately
+  assertion mfs.r.recommended_filing_status != MarriedFilingJointly
+```
+
+### The recommendation is always an eligible status
+
+`FilingStatusEligibility` on every combination of its stage-1 and stage-2
+inputs that a return can produce (a filer is married, widowed in the tax
+year, or neither; MFJ needs "married"; HoH and QSS need their filer-side
+answer and a qualifying person; QSS needs "not married"), for each chosen
+status: the recommendation is eligible, and the chosen status is valid
+exactly when it is not knocked out.
+
+```catala
+declaration scope Elig:
+  context filing_status content Types.FilingStatus
+  context married content boolean
+  context mfj content boolean
+  context could_hoh content boolean
+  context could_qss content boolean
+  context hoh_count content integer
+  context qss_count content integer
+  output e content S.FilingStatusEligibility
+  output recommendation_is_eligible condition
+
+scope Elig:
+  definition filing_status equals Single
+  definition married equals false
+  definition mfj equals false
+  definition could_hoh equals false
+  definition could_qss equals false
+  definition hoh_count equals 0
+  definition qss_count equals 0
+  definition e equals
+    output of S.FilingStatusEligibility with {
+      -- filing_status: filing_status
+      -- marital_status_allows_filing_married: married
+      -- eligible_for_mfj: mfj
+      -- filer_could_qualify_for_hoh: could_hoh
+      -- filer_could_qualify_for_qss: could_qss
+      -- hoh_qualifying_people_count: hoh_count
+      -- qss_qualifying_people_count: qss_count }
+  rule recommendation_is_eligible under condition
+    match e.recommended_filing_status with pattern
+    -- Single: e.eligible_for_single
+    -- MarriedFilingJointly: mfj
+    -- MarriedFilingSeparately: e.eligible_for_mfs
+    -- HeadOfHousehold: e.eligible_for_hoh
+    -- QualifyingSurvivingSpouse: e.eligible_for_qss
+  consequence fulfilled
+
+#[test]
+declaration scope TestRecommendationEligible:
+  single_none scope Elig
+  single_hoh scope Elig
+  widow_qss_and_hoh scope Elig
+  married_together scope Elig
+  married_apart_hoh_chose_mfs scope Elig
+  nra_spouse_hoh scope Elig
+  nra_spouse_alone scope Elig
+  none_chose_hoh scope Elig
+
+scope TestRecommendationEligible:
+  definition single_hoh.could_hoh equals true
+  definition single_hoh.hoh_count equals 2
+  definition widow_qss_and_hoh.could_hoh equals true
+  definition widow_qss_and_hoh.could_qss equals true
+  definition widow_qss_and_hoh.hoh_count equals 1
+  definition widow_qss_and_hoh.qss_count equals 1
+  definition widow_qss_and_hoh.filing_status equals QualifyingSurvivingSpouse
+  definition married_together.married equals true
+  definition married_together.mfj equals true
+  definition married_together.filing_status equals MarriedFilingJointly
+  definition married_apart_hoh_chose_mfs.married equals true
+  definition married_apart_hoh_chose_mfs.mfj equals true
+  definition married_apart_hoh_chose_mfs.could_hoh equals true
+  definition married_apart_hoh_chose_mfs.hoh_count equals 1
+  definition married_apart_hoh_chose_mfs.filing_status equals
+    MarriedFilingSeparately
+  definition nra_spouse_hoh.married equals true
+  definition nra_spouse_hoh.could_hoh equals true
+  definition nra_spouse_hoh.hoh_count equals 1
+  definition nra_spouse_hoh.filing_status equals HeadOfHousehold
+  definition nra_spouse_alone.married equals true
+  definition nra_spouse_alone.could_hoh equals true
+  definition nra_spouse_alone.filing_status equals MarriedFilingSeparately
+  definition none_chose_hoh.filing_status equals HeadOfHousehold
+  assertion single_none.recommendation_is_eligible
+  assertion single_hoh.recommendation_is_eligible
+  assertion widow_qss_and_hoh.recommendation_is_eligible
+  assertion married_together.recommendation_is_eligible
+  assertion married_apart_hoh_chose_mfs.recommendation_is_eligible
+  assertion nra_spouse_hoh.recommendation_is_eligible
+  assertion nra_spouse_alone.recommendation_is_eligible
+  assertion single_none.e.recommended_filing_status = Single
+  assertion single_hoh.e.recommended_filing_status = HeadOfHousehold
+  assertion widow_qss_and_hoh.e.recommended_filing_status = QualifyingSurvivingSpouse
+  assertion not widow_qss_and_hoh.e.eligible_for_hoh
+  assertion married_together.e.recommended_filing_status = MarriedFilingJointly
+  assertion married_apart_hoh_chose_mfs.e.recommended_filing_status = HeadOfHousehold
+  assertion nra_spouse_hoh.e.recommended_filing_status = HeadOfHousehold
+  assertion nra_spouse_alone.e.recommended_filing_status = MarriedFilingSeparately
+  # Valid exactly when not knocked out
+  assertion not single_hoh.e.ko_filing_status_not_eligible
+  assertion none_chose_hoh.recommendation_is_eligible
+  assertion none_chose_hoh.e.ko_filing_status_not_eligible
+  assertion not single_none.e.ko_filing_status_not_eligible
+  assertion not nra_spouse_hoh.e.ko_filing_status_not_eligible
+  assertion not widow_qss_and_hoh.e.unsupported
+```

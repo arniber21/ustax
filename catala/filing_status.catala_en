@@ -1,0 +1,600 @@
+> Module Filing_status
+
+> Using Types
+> Using Filers as F
+> Using Hoh_qss_persons as H
+
+# Filing status: eligibility, validity of the chosen status, recommendation
+
+Direct File module `filingStatus.xml` ("DF" below,
+`../direct-file/direct-file/backend/src/main/resources/tax/filingStatus.xml`,
+1,116 lines). Issue #20, scope.md sections 4.1 and 5.4, CONVENTIONS section
+7 (stage 3). Tests: `catala/tests/test_filing_status.catala_en`. Oracle
+comparison: `difftest/mappings/filing_status.mjs` (`make difftest
+SCOPE=filing_status`, over `oracle/facts.csv`, and `make
+difftest-filing-status-graphs`, over the 27 filing-status fact graphs of
+`direct-file/docs/testing/fact-graphs`, `oracle/fact_graphs.csv`).
+
+Already elsewhere, and read here:
+
+- `Filers` (#15, `filers.xml` plus the marital part of `filingStatus.xml`):
+  `/maritalStatusAllowsFilingMarried` (`eligible_for_mfs`),
+  `/eligibleForMFJ`, `/filerCouldQualifyForHoh`, `/filerCouldQualifyForQss`,
+  `/treatAsMFJ`, `/treatAsMFS`.
+- `Hoh_qss_persons` (#19): the household counts of HoH and QSS qualifying
+  persons, `Count(/familyAndHousehold/*/hohQualifyingPerson)` and
+  `Count(/familyAndHousehold/*/qssQualifyingPerson)`.
+
+**The filing status is an input** (`/filingStatus` is a `Writable`,
+`filingStatus.xml` line 338; CONVENTIONS section 7). There is no cycle: the
+person tests read the chosen status only through `/treatAsMFJ`, which needs
+only marital facts, and this module reads the counts. DF's UI offers only the
+eligible statuses (`/filingStatusOptions`, line 5); here an ineligible choice
+is the knockout `ko_filing_status_not_eligible` so that the function stays
+total, and `is_filing_status_valid` (DF `/isFilingStatusValid`, line 916)
+says the chosen status is among the eligible ones.
+
+Not modelled (CONVENTIONS section 2): the questionnaire facts
+(`/filingStatusChoice`, `/filingStatusInitialOptions`, `/wantsJointReturn`
+before the status is chosen, `/tpSelectedStatusInSpouseSection...`,
+`/statusSelectedInSpouseSection`, `/flowShowFilingStatusChoiceA/B`, the
+`/show...FilingStatusScreen` facts, `/hasValid...` and `/hasInvalid...`
+screen switches), the capitalised display copies, `/isFilingStatusComplete`
+(inputs are complete), and the PDF and MeF helpers (`/xmlQualifyingHOHPerson`,
+`/mfsSpouseOrQSSAndHOHNotDependentChild`,
+`/marriedAndLivedApartSecondaryFilerResidencyEligible`, `/pdfSpouseTin`).
+
+Where DF disagrees with the statute, the statute wins (CONVENTIONS section
+8). This module adds no new divergence: `eligible_for_single` follows DF by
+decision (section on IRC 1 below). DF-BUG-19 (issue #19) reaches this module
+through the HoH count.
+
+## Declarations: the eligibility check (stage 3)
+
+`FilingStatusEligibility` is the decision itself, with the stage-1 and
+stage-2 results as plain inputs. It is small on purpose: it is the part the
+Lean side states its filing-status lemma about (scope.md section 5.4:
+`unsupported = false` implies the chosen status is eligible).
+
+```catala-metadata
+declaration scope FilingStatusEligibility:
+  # DF: /filingStatus (Writable; CONVENTIONS section 7)
+  input filing_status content Types.FilingStatus
+  # DF: /maritalStatusAllowsFilingMarried (Filers.eligible_for_mfs)
+  input marital_status_allows_filing_married content boolean
+  # DF: /eligibleForMFJ (Filers.eligible_for_mfj)
+  input eligible_for_mfj content boolean
+  # DF: filers.xml /filerCouldQualifyForHoh (Filers.filer_could_qualify_for_hoh)
+  input filer_could_qualify_for_hoh content boolean
+  # DF: filers.xml /filerCouldQualifyForQss (Filers.filer_could_qualify_for_qss)
+  input filer_could_qualify_for_qss content boolean
+  # DF: Count(/familyAndHousehold/*/hohQualifyingPerson)
+  # (Hoh_qss_persons.HohQssPersons.hoh_qualifying_people_count)
+  input hoh_qualifying_people_count content integer
+  # DF: Count(/familyAndHousehold/*/qssQualifyingPerson)
+  # (Hoh_qss_persons.HohQssPersons.qss_qualifying_people_count)
+  input qss_qualifying_people_count content integer
+
+  # DF: /eligibleForMFS
+  output eligible_for_mfs condition
+  # DF: /eligibleForQss
+  output eligible_for_qss condition
+  # DF: /eligibleForHoh
+  output eligible_for_hoh condition
+  # DF: /eligibleForSingle (single stays selectable; see IRC 1 below)
+  output eligible_for_single condition
+
+  # DF: /isFilingStatusSingle, /isFilingStatusMFJ, /isFilingStatusMFS,
+  # /isFilingStatusHOH, /isFilingStatusQSS
+  output is_filing_status_single condition
+  output is_filing_status_mfj condition
+  output is_filing_status_mfs condition
+  output is_filing_status_hoh condition
+  output is_filing_status_qss condition
+  # DF: /treatAsHoh (the filing status is complete, so the first branch)
+  output treat_as_hoh condition
+  # DF: /wantsSeparateReturn (the filing status is complete, so
+  # /isFilingStatusMFS)
+  internal wants_separate_return condition
+
+  # DF: EnumOptionsSize(/filingStatusOptions)
+  output eligible_filing_status_count content integer
+  # DF: /hasMultipleEligibleFilingStatuses
+  output has_multiple_eligible_filing_statuses condition
+  # DF: /isFilingStatusValid: the chosen status is among the eligible ones
+  output is_filing_status_valid condition
+  # DF: /recommendedFilingStatus
+  output recommended_filing_status content Types.FilingStatus
+
+  # CONVENTIONS section 7, stage 3: the chosen status is not eligible. No DF
+  # fact (DF's UI never offers an ineligible status).
+  output ko_filing_status_not_eligible condition
+  # CONVENTIONS section 6: every ko_ of this scope
+  output unsupported condition
+```
+
+```catala
+scope FilingStatusEligibility:
+  # DF: /isFilingStatusSingle
+  definition is_filing_status_single equals filing_status = Single
+  # DF: /isFilingStatusMFJ
+  definition is_filing_status_mfj equals filing_status = MarriedFilingJointly
+  # DF: /isFilingStatusMFS
+  definition is_filing_status_mfs equals filing_status = MarriedFilingSeparately
+  # DF: /isFilingStatusHOH
+  definition is_filing_status_hoh equals filing_status = HeadOfHousehold
+  # DF: /isFilingStatusQSS
+  definition is_filing_status_qss equals
+    filing_status = QualifyingSurvivingSpouse
+  # DF: /treatAsHoh
+  definition treat_as_hoh equals is_filing_status_hoh
+  # DF: /wantsSeparateReturn
+  definition wants_separate_return equals is_filing_status_mfs
+```
+
+## 26 U.S.C. § 6013 Joint returns of income tax by husband and wife; § 7703 Determination of marital status
+
+### Married filing jointly and separately
+
+IRC 6013(a) (`sources/statute/irc-6013.html`): "A husband and wife may make a
+single return jointly of income taxes under subtitle A, even though one of
+the spouses has neither gross income nor deductions, except as provided
+below: (1) no joint return shall be made if either the husband or wife at any
+time during the taxable year is a nonresident alien". IRC 7703(a)
+(`sources/statute/irc-7703.html`): "(1) the determination of whether an
+individual is married shall be made as of the close of his taxable year;
+except that if his spouse dies during his taxable year such determination
+shall be made as of the time of such death; and (2) an individual legally
+separated from his spouse under a decree of divorce or of separate
+maintenance shall not be considered as married." Treas. Reg. § 1.7703-1(a)
+(`sources/regs/cfr-1.7703-1.xml`): "an individual shall be considered as
+married even though living apart from his spouse unless legally separated
+under a decree of divorce or separate maintenance."
+
+Pub. 501 (2024), `sources/pubs/p501--2024.pdf` p 6: "Spouse died during the
+year. If your spouse died during the year, you are considered married for the
+whole year for filing status purposes. If you didn't remarry before the end
+of the tax year, you can file a joint return for yourself and your deceased
+spouse." p 7: "You can choose married filing separately as your filing status
+if you are married."
+
+These are `Filers` (#15): `/eligibleForMFJ` is "married or widowed in the tax
+year" (`/maritalStatusAllowsFilingMarried`, `filingStatus.xml` line 902) and
+the spouse's residency (`/secondaryFilerResidencyEligibleForMFJ`, which
+includes the 6013(g) election); the filer's own residency is the knockout
+`/primaryFilerResidencyKnockout`. `/eligibleForMFS` (line 529) is
+`/maritalStatusAllowsFilingMarried`. Pub. 501 p 7 says a married person may
+also choose head of household when "considered unmarried", so MFS stays
+available next to HoH (IRC 1(d) taxes "every married individual (as defined
+in section 7703) who does not make a single return jointly").
+
+```catala
+scope FilingStatusEligibility:
+  # IRC 1(d), 7703(a); Pub 501 p 7. DF: /eligibleForMFS
+  definition eligible_for_mfs equals marital_status_allows_filing_married
+```
+
+## 26 U.S.C. § 2 Definitions and special rules
+
+### (a) Definition of surviving spouse
+
+IRC 2(a)(1) (`sources/statute/irc-2.html`): "For purposes of section 1, the
+term "surviving spouse" means a taxpayer— (A) whose spouse died during either
+of his two taxable years immediately preceding the taxable year, and (B) who
+maintains as his home a household which constitutes for the taxable year the
+principal place of abode (as a member of such household) of a dependent (i)
+who (within the meaning of section 152, determined without regard to
+subsections (b)(1), (b)(2), and (d)(1)(B) thereof) is a son, stepson,
+daughter, or stepdaughter of the taxpayer, and (ii) with respect to whom the
+taxpayer is entitled to a deduction for the taxable year under section 151."
+IRC 2(a)(2): "a taxpayer shall not be considered to be a surviving spouse—
+(A) if the taxpayer has remarried at any time before the close of the taxable
+year, or (B) unless, for the taxpayer's taxable year during which his spouse
+died, a joint return could have been made under the provisions of section
+6013 (without regard to subsection (a)(3) thereof)."
+
+The filer side, 2(a)(1)(A) and 2(a)(2), is `/filerCouldQualifyForQss`
+(`Filers`: widowed in 2022 or 2023, and could have filed jointly in the year
+of death; a remarried filer answers "married"). The dependent of 2(a)(1)(B)
+is `/familyAndHousehold/*/qssQualifyingPerson` (`Hoh_qss_persons`). DF
+`/eligibleForQss` (line 576) is both, with "the Count of
+`qssQualifyingPerson` is greater than 0".
+
+```catala
+scope FilingStatusEligibility:
+  # IRC 2(a)(1), (2); Pub 501 pp 10-11. DF: /eligibleForQss
+  rule eligible_for_qss under condition
+    filer_could_qualify_for_qss and qss_qualifying_people_count > 0
+  consequence fulfilled
+```
+
+### (b) Definition of head of household
+
+IRC 2(b)(1): "an individual shall be considered a head of a household if,
+and only if, such individual is not married at the close of his taxable
+year, is not a surviving spouse (as defined in subsection (a)), and either—
+(A) maintains as his home a household which constitutes for more than
+one-half of such taxable year the principal place of abode, as a member of
+such household, of— (i) a qualifying child of the individual ... or (ii) any
+other person who is a dependent of the taxpayer ..., or (B) maintains a
+household which constitutes for such taxable year the principal place of
+abode of the father or mother of the taxpayer". IRC 2(b)(2): "(A) an
+individual who is legally separated from his spouse under a decree of divorce
+or of separate maintenance shall not be considered as married; (B) a taxpayer
+shall be considered as not married at the close of his taxable year if at
+any time during the taxable year his spouse is a nonresident alien; and (C) a
+taxpayer shall be considered as married at the close of his taxable year if
+his spouse (other than a spouse described in subparagraph (B)) died during
+the taxable year." IRC 2(c): "For purposes of this part, an individual shall
+be treated as not married at the close of the taxable year if such individual
+is so treated under the provisions of section 7703(b)." IRC 7703(b): a married
+individual who files a separate return, keeps up a home for a child, and
+"(3) during the last 6 months of the taxable year, such individual's spouse
+is not a member of such household, such individual shall not be considered
+as married."
+
+"Not married at the close" is `/filerCouldQualifyForHoh` (`Filers`): not
+eligible for a joint return (unmarried, divorced, widowed before the tax
+year, or married to a nonresident alien, 2(b)(2)(B)), or eligible for a
+joint return and living apart from the spouse the last six months
+(7703(b)(3); the child tests of 7703(b)(1)-(2) are applied per person by
+`Hoh_qss_persons`, `considered_unmarried_child`). The qualifying person is
+`/familyAndHousehold/*/hohQualifyingPerson`. "Is not a surviving spouse":
+DF `/eligibleForHoh` (line 549) ANDs in `not /eligibleForQss`, with the XML
+comment "Filers who are eligible for QSS are not eligible for HOH, preventing
+them from taking a less advantageous refund 26 U.S.C. § 2(b)(1)". Treas. Reg.
+§ 1.2-2(a)(3) (`sources/regs/cfr-1.2-2.xml`): "If the taxpayer does not
+qualify as a surviving spouse he may nevertheless qualify as a head of a
+household". So QSS preempts HoH, as in DF.
+
+IRC 2(b)(3)(A) (a filer who is a nonresident alien at any time) is the
+knockout `/primaryFilerResidencyKnockout` (`Filers`).
+
+A spouse who died during the tax year: 2(b)(2)(C) makes the filer married.
+DF treats such a filer like a married one (eligible for a joint return; head
+of household only through `/livedApartLastSixMonths`), which this module
+reads as given (open question in the PR of #20).
+
+```catala
+scope FilingStatusEligibility:
+  # IRC 2(b)(1), (2), 2(c), 7703(b); Treas. Reg. 1.2-2(a)(3), (b)(1); Pub 501
+  # pp 8-10. DF: /eligibleForHoh
+  rule eligible_for_hoh under condition
+    hoh_qualifying_people_count > 0
+    and filer_could_qualify_for_hoh
+    and not eligible_for_qss
+  consequence fulfilled
+```
+
+## 26 U.S.C. § 1 Tax imposed: who may use the single rates
+
+IRC 1(c) (`sources/statute/irc-1.html`), "Unmarried individuals (other than
+surviving spouses and heads of households)": "There is hereby imposed on the
+taxable income of every individual (other than a surviving spouse as defined
+in section 2(a) or the head of a household as defined in section 2(b)) who is
+not a married individual (as defined in section 7703) a tax determined in
+accordance with the following table". IRC 2(b)(1) defines the head of a
+household "if, and only if" its conditions hold: there is no election. Pub.
+501 (2024) p 6, Single: "Your filing status is single if you are considered
+unmarried and you don't qualify for another filing status." And p 6: "Head
+of household or qualifying surviving spouse. If you are considered
+unmarried, you may be able to file as head of household or as a qualifying
+surviving spouse."
+
+DF `/eligibleForSingle` (line 538) is `not
+/maritalStatusAllowsFilingMarried`, so DF offers "single" to an unmarried
+filer who is also a head of household or a surviving spouse, next to HoH or
+QSS. Read strictly, 1(c) does not tax such a filer at the single rates.
+
+**Decision (orchestrator and human, issue #20): single stays a permitted
+choice for every unmarried filer, as in DF.** Reasons: the single rates and
+standard deduction are never more favourable than HoH or QSS, so choosing
+single costs only the filer; the IRS processes such returns and does not
+reject them; and the filing status is the filer's answer (CONVENTIONS section
+7), not something this spec overrides. So `eligible_for_single` is DF's
+definition, a return that chooses single while eligible for HoH or QSS is
+valid and not knocked out, and the recommendation (below) still names the
+better status: QSS or HoH before single, as Pub. 501 p 6 directs ("you don't
+qualify for another filing status"). No DF-BUG is recorded here.
+
+```catala
+scope FilingStatusEligibility:
+  # Single stays selectable for an unmarried filer even when HoH or QSS is
+  # also eligible (decision above): the recommendation names the better
+  # status, but a filer may choose the less favourable one. IRC 1(c),
+  # 7703(a); Pub 501 p 6. DF: /eligibleForSingle
+  definition eligible_for_single equals not marital_status_allows_filing_married
+```
+
+## The chosen status and the recommendation
+
+### Validity of the chosen status
+
+DF `/isFilingStatusValid` (line 916): the chosen status is MFJ and
+`/eligibleForMFJ`, or MFS and `/eligibleForMFS`, or single and
+`/eligibleForSingle`, or HoH and `/eligibleForHoh`, or QSS and
+`/eligibleForQss`. `/filingStatusOptions` (line 5) lists the same five
+pairs, and `/hasMultipleEligibleFilingStatuses` (line 742) is "more than one
+option". CONVENTIONS section 7, stage 3: an ineligible choice is the
+knockout `ko_filing_status_not_eligible`.
+
+```catala
+scope FilingStatusEligibility:
+  # DF: /isFilingStatusValid
+  rule is_filing_status_valid under condition
+    (is_filing_status_mfj and eligible_for_mfj)
+    or (is_filing_status_mfs and eligible_for_mfs)
+    or (is_filing_status_single and eligible_for_single)
+    or (is_filing_status_hoh and eligible_for_hoh)
+    or (is_filing_status_qss and eligible_for_qss)
+  consequence fulfilled
+
+  # DF: EnumOptionsSize(/filingStatusOptions)
+  definition eligible_filing_status_count equals
+    (if eligible_for_mfj then 1 else 0)
+    + (if eligible_for_mfs then 1 else 0)
+    + (if eligible_for_single then 1 else 0)
+    + (if eligible_for_hoh then 1 else 0)
+    + (if eligible_for_qss then 1 else 0)
+
+  # DF: /hasMultipleEligibleFilingStatuses
+  rule has_multiple_eligible_filing_statuses under condition
+    eligible_filing_status_count > 1
+  consequence fulfilled
+
+  # CONVENTIONS section 7, stage 3
+  rule ko_filing_status_not_eligible under condition
+    not is_filing_status_valid
+  consequence fulfilled
+
+  # CONVENTIONS section 6
+  rule unsupported under condition ko_filing_status_not_eligible
+  consequence fulfilled
+```
+
+### The recommended status
+
+DF `/recommendedFilingStatus` (line 234), "The most advantageous filing status
+for the taxpayer.": for a filer eligible for a joint return, MFJ unless the
+filer wants a separate return, then HoH if eligible, otherwise MFS; for
+everyone else, the first eligible of QSS, HoH, MFS, single. No statute
+defines a recommendation; this is DF's rule, reproduced as is. Outside the
+joint-return branch the order is the one the law imposes or that always
+favours the filer: QSS preempts HoH (2(b)(1)), HoH and QSS come before single
+(1(c), Pub. 501 p 6; single stays selectable but is never recommended over
+them), and
+MFS and single never overlap (`eligible_for_mfs` is "married",
+`eligible_for_single` is "not married"). For a married filer who may also
+file separately or as HoH, DF picks MFJ without comparing taxes; Pub. 501 p 6
+suggests figuring "your tax both on a joint return and on separate returns",
+which needs the whole return under each status (left to the caller, PR of
+#20).
+
+The recommendation is always eligible: each branch tests the eligibility of
+the status it returns, and the last branch is reached only when the filer is
+not married (`eligible_for_mfs` false), which is `eligible_for_single`. The test file checks this on every status.
+
+```catala
+scope FilingStatusEligibility:
+  # Pub 501 p 6 (no statute). DF: /recommendedFilingStatus
+  definition recommended_filing_status equals
+    if eligible_for_mfj then
+      (if not wants_separate_return then MarriedFilingJointly
+       else if eligible_for_hoh then HeadOfHousehold
+       else MarriedFilingSeparately)
+    else if eligible_for_qss then QualifyingSurvivingSpouse
+    else if eligible_for_hoh then HeadOfHousehold
+    else if eligible_for_mfs then MarriedFilingSeparately
+    else Single
+```
+
+## The three stages in one scope
+
+`FilingStatusReturn` runs the stages of CONVENTIONS section 7 in order on the
+user's answers: `Filers` (stage 1), `Hoh_qss_persons.HohQssPersons` over the
+household (stage 2), then `FilingStatusEligibility` (stage 3). It is what the
+issue's test cases and the oracle comparison run, and what the return scope
+uses to replace its plain filing-status inputs (PR of #20, wiring list).
+
+`Filers` takes `/eligibleForHoh` as an input for one knockout only
+(`/knockoutSubjectToCommunityPropertyLaws`). Every other output of `Filers`
+does not read it, so `Filers` runs twice: once with `eligible_for_hoh` false,
+whose outputs feed stages 2 and 3, and once with the stage-3
+`eligible_for_hoh`, read only for `unsupported`. Both calls are pure; there is
+no fixed point (CONVENTIONS section 7).
+
+```catala-metadata
+declaration scope FilingStatusReturn:
+  # DF: /filingStatus (Writable)
+  input filing_status content Types.FilingStatus
+  # The inputs of Filers.Filers (filers.xml), except /eligibleForHoh, which is
+  # computed here
+  input marital_status content F.MaritalStatus
+  input year_of_spouse_death content F.YearOfSpouseDeath
+  input primary_filer content F.FilerAnswers
+  input secondary_filer content F.FilerAnswers
+  input secondary_filer_date_of_death content date
+  input primary_filer_potential_claimer_filed_only_for_refund content boolean
+  input mfj_required_to_file content boolean
+  input mfj_dependents_filing_for_credits content boolean
+  input lived_together_all_year_with_spouse content boolean
+  input spouse_lived_together_months content F.SpouseLivedTogetherMonths
+  input writable_lived_apart_last_six_months content boolean
+  input writable_separation_agreement content boolean
+  input can_file_jointly_year_of_spouse_death content boolean
+  input in_registered_domestic_partnership content boolean
+  input filer_residence_and_income_state content Types.ScopedState
+  input spouse_itemizes content boolean
+  input mfs_living_spouse_filing_return content boolean
+  input mfs_deceased_spouse_filing_return content boolean
+  input mfs_spouse_has_gross_income content boolean
+  # DF: /familyAndHousehold
+  input members content list of H.Member
+
+  # Stage 1 (Filers), with eligible_for_hoh false; see above
+  output filers content F.Filers
+  # Stage 2: the household
+  output household content H.HohQssPersons
+  # Stage 3
+  output eligibility content FilingStatusEligibility
+  # Filers again, with the stage-3 eligible_for_hoh, for its knockouts only
+  internal filers_knockouts content F.Filers
+
+  # Scalar copies of the results, for the oracle comparison and the return
+  # scope. DF paths in the comments.
+  # DF: /maritalStatusAllowsFilingMarried
+  output marital_status_allows_filing_married condition
+  # DF: /eligibleForMFJ
+  output eligible_for_mfj condition
+  # DF: /eligibleForMFS
+  output eligible_for_mfs condition
+  # DF: /eligibleForSingle
+  output eligible_for_single condition
+  # DF: /eligibleForHoh
+  output eligible_for_hoh condition
+  # DF: /eligibleForQss
+  output eligible_for_qss condition
+  # DF: filers.xml /filerCouldQualifyForHoh
+  output filer_could_qualify_for_hoh condition
+  # DF: filers.xml /filerCouldQualifyForQss
+  output filer_could_qualify_for_qss condition
+  # DF: Count(/familyAndHousehold/*/hohQualifyingPerson)
+  output hoh_qualifying_people_count content integer
+  # DF: Count(/familyAndHousehold/*/qssQualifyingPerson)
+  output qss_qualifying_people_count content integer
+  # DF: /isFilingStatusValid
+  output is_filing_status_valid condition
+  # DF: /hasMultipleEligibleFilingStatuses
+  output has_multiple_eligible_filing_statuses condition
+  # DF: /recommendedFilingStatus
+  output recommended_filing_status content Types.FilingStatus
+  # The same, as five flags (the oracle comparison reads scalars only)
+  output recommended_is_single condition
+  output recommended_is_mfj condition
+  output recommended_is_mfs condition
+  output recommended_is_hoh condition
+  output recommended_is_qss condition
+  # DF: /treatAsMFJ, /treatAsMFS, /treatAsHoh
+  output treat_as_mfj condition
+  output treat_as_mfs condition
+  output treat_as_hoh condition
+  # Stage 3 knockout
+  output ko_filing_status_not_eligible condition
+  # CONVENTIONS section 6: this scope's knockout and the sub-scopes'
+  output unsupported condition
+```
+
+```catala
+scope FilingStatusReturn:
+  definition filers equals
+    output of F.Filers with {
+      -- filing_status: filing_status
+      -- marital_status: marital_status
+      -- year_of_spouse_death: year_of_spouse_death
+      -- primary_filer: primary_filer
+      -- secondary_filer: secondary_filer
+      -- secondary_filer_date_of_death: secondary_filer_date_of_death
+      -- primary_filer_potential_claimer_filed_only_for_refund:
+           primary_filer_potential_claimer_filed_only_for_refund
+      -- mfj_required_to_file: mfj_required_to_file
+      -- mfj_dependents_filing_for_credits: mfj_dependents_filing_for_credits
+      -- lived_together_all_year_with_spouse: lived_together_all_year_with_spouse
+      -- spouse_lived_together_months: spouse_lived_together_months
+      -- writable_lived_apart_last_six_months: writable_lived_apart_last_six_months
+      -- writable_separation_agreement: writable_separation_agreement
+      -- can_file_jointly_year_of_spouse_death: can_file_jointly_year_of_spouse_death
+      -- in_registered_domestic_partnership: in_registered_domestic_partnership
+      -- filer_residence_and_income_state: filer_residence_and_income_state
+      -- spouse_itemizes: spouse_itemizes
+      -- mfs_living_spouse_filing_return: mfs_living_spouse_filing_return
+      -- mfs_deceased_spouse_filing_return: mfs_deceased_spouse_filing_return
+      -- mfs_spouse_has_gross_income: mfs_spouse_has_gross_income
+      # Read only by the community-property knockout; see above
+      -- eligible_for_hoh: false }
+
+  definition household equals
+    output of H.HohQssPersons with {
+      -- members: members
+      -- minimum_filer_date_of_birth: filers.minimum_filer_date_of_birth
+      -- treat_filers_as_dependents: filers.treat_filers_as_dependents
+      -- either_filer_us_citizen_or_national:
+           filers.either_filer_us_citizen_or_national
+      -- treat_as_mfj: filers.treat_as_mfj
+      -- eligible_for_mfj: filers.eligible_for_mfj
+      -- filer_could_qualify_for_hoh: filers.filer_could_qualify_for_hoh
+      -- filer_could_qualify_for_qss: filers.filer_could_qualify_for_qss
+      -- filing_status: filing_status }
+
+  definition eligibility equals
+    output of FilingStatusEligibility with {
+      -- filing_status: filing_status
+      -- marital_status_allows_filing_married: filers.eligible_for_mfs
+      -- eligible_for_mfj: filers.eligible_for_mfj
+      -- filer_could_qualify_for_hoh: filers.filer_could_qualify_for_hoh
+      -- filer_could_qualify_for_qss: filers.filer_could_qualify_for_qss
+      -- hoh_qualifying_people_count: household.hoh_qualifying_people_count
+      -- qss_qualifying_people_count: household.qss_qualifying_people_count }
+
+  definition filers_knockouts equals
+    output of F.Filers with {
+      -- filing_status: filing_status
+      -- marital_status: marital_status
+      -- year_of_spouse_death: year_of_spouse_death
+      -- primary_filer: primary_filer
+      -- secondary_filer: secondary_filer
+      -- secondary_filer_date_of_death: secondary_filer_date_of_death
+      -- primary_filer_potential_claimer_filed_only_for_refund:
+           primary_filer_potential_claimer_filed_only_for_refund
+      -- mfj_required_to_file: mfj_required_to_file
+      -- mfj_dependents_filing_for_credits: mfj_dependents_filing_for_credits
+      -- lived_together_all_year_with_spouse: lived_together_all_year_with_spouse
+      -- spouse_lived_together_months: spouse_lived_together_months
+      -- writable_lived_apart_last_six_months: writable_lived_apart_last_six_months
+      -- writable_separation_agreement: writable_separation_agreement
+      -- can_file_jointly_year_of_spouse_death: can_file_jointly_year_of_spouse_death
+      -- in_registered_domestic_partnership: in_registered_domestic_partnership
+      -- filer_residence_and_income_state: filer_residence_and_income_state
+      -- spouse_itemizes: spouse_itemizes
+      -- mfs_living_spouse_filing_return: mfs_living_spouse_filing_return
+      -- mfs_deceased_spouse_filing_return: mfs_deceased_spouse_filing_return
+      -- mfs_spouse_has_gross_income: mfs_spouse_has_gross_income
+      -- eligible_for_hoh: eligibility.eligible_for_hoh }
+
+  definition marital_status_allows_filing_married equals filers.eligible_for_mfs
+  definition eligible_for_mfj equals filers.eligible_for_mfj
+  definition eligible_for_mfs equals eligibility.eligible_for_mfs
+  definition eligible_for_single equals eligibility.eligible_for_single
+  definition eligible_for_hoh equals eligibility.eligible_for_hoh
+  definition eligible_for_qss equals eligibility.eligible_for_qss
+  definition filer_could_qualify_for_hoh equals filers.filer_could_qualify_for_hoh
+  definition filer_could_qualify_for_qss equals filers.filer_could_qualify_for_qss
+  definition hoh_qualifying_people_count equals
+    household.hoh_qualifying_people_count
+  definition qss_qualifying_people_count equals
+    household.qss_qualifying_people_count
+  definition is_filing_status_valid equals eligibility.is_filing_status_valid
+  definition has_multiple_eligible_filing_statuses equals
+    eligibility.has_multiple_eligible_filing_statuses
+  definition recommended_filing_status equals eligibility.recommended_filing_status
+  definition recommended_is_single equals recommended_filing_status = Single
+  definition recommended_is_mfj equals
+    recommended_filing_status = MarriedFilingJointly
+  definition recommended_is_mfs equals
+    recommended_filing_status = MarriedFilingSeparately
+  definition recommended_is_hoh equals recommended_filing_status = HeadOfHousehold
+  definition recommended_is_qss equals
+    recommended_filing_status = QualifyingSurvivingSpouse
+  definition treat_as_mfj equals filers.treat_as_mfj
+  definition treat_as_mfs equals filers.treat_as_mfs
+  definition treat_as_hoh equals eligibility.treat_as_hoh
+  definition ko_filing_status_not_eligible equals
+    eligibility.ko_filing_status_not_eligible
+
+  # CONVENTIONS section 6: this scope's knockout, Filers' knockouts (with the
+  # stage-3 eligible_for_hoh) and the household's
+  rule unsupported under condition
+    ko_filing_status_not_eligible
+    or filers_knockouts.unsupported
+    or household.unsupported
+  consequence fulfilled
+```

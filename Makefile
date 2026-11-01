@@ -70,6 +70,14 @@ difftest-persons:  ## qualifying-child, dependent, benefit-split, CTC/ODC and Ho
 	node difftest/run.mjs --scope qualifying_child,qualifying_relative,dependents_benefit_split,ctc_odc_person,hoh_qss_persons --oracle oracle/persons.csv $(ARGS)
 oracle-persons:  ## regenerate oracle/persons.csv (needs DIRECT_FILE, as for `make oracle`)
 	cd oracle && npm ci --ignore-scripts --no-audit --no-fund && node generate_persons.mjs
+# Filing-status fact graphs (issue #20): the 27 graphs of direct-file/docs/testing/fact-graphs, oracle/fact_graphs.csv.
+# DF_DOCS defaults to the docs/ directory next to $(DIRECT_FILE).
+.PHONY: difftest-filing-status-graphs oracle-fact-graphs
+difftest-filing-status-graphs:  ## filing-status scope vs the Direct File filing-status fact graphs (oracle/fact_graphs.csv)
+	node difftest/run.mjs --scope filing_status --oracle oracle/fact_graphs.csv $(ARGS)
+oracle-fact-graphs:  ## regenerate oracle/fact_graphs.csv (needs DIRECT_FILE; graphs in $$DIRECT_FILE/../docs/testing/fact-graphs)
+	cd oracle && npm ci --ignore-scripts --no-audit --no-fund && node generate.mjs --out fact_graphs.csv \
+	  --scenario-dir "$${DF_DOCS:-$${DIRECT_FILE:-../../direct-file/direct-file}/../docs}/testing/fact-graphs"
 # Lean rate schedule vs Catala (clerk run) and vs the oracle (see lean/README.md).
 .PHONY: lean-difftest lean-difftest-rates
 lean-difftest:  ## Direct File / Catala / Lean three-way, per scenario/fact (SCOPE=<difftest/mappings name>)
