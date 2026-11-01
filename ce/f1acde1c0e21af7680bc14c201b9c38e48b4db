@@ -1,0 +1,75 @@
+lean/UsTax.lean
+  s_3031b504518be3::t_d308054baffb88 75-83
+lean/UsTax/Cli.lean
+  s_3031b504518be3::t_a82a7594223514 24-26,1179-1494,1516,1520-1525
+  s_3031b504518be3::t_9d9afdc35ea91c 1519
+lean/UsTax/Comparator/Pending.lean
+  s_3031b504518be3::t_a8ea4c121a1fc2 15-17
+lean/UsTax/Eitc/Props.lean
+  s_3031b504518be3::t_396a33a983cd85 1-22,27-76,78-98,101-110
+  s_3031b504518be3::t_4ef9b88d034720 23-26,77,99-100
+lean/UsTax/Eitc/Case.lean
+  s_3031b504518be3::t_4f8e76d12dd9ef 1-11,17-23,26-30
+  s_3031b504518be3::t_2874bd55b60d4d 12-16
+  s_3031b504518be3::t_487405da8bd3d0 24-25
+lean/UsTax/EitcCtcDifftest.lean
+  s_3031b504518be3::t_cb5b9e40b6ce63 1-155
+lean/UsTax/Proofs/Main.lean
+  s_3031b504518be3::t_39fd0a05a3e5fc 10,29,88-93,175-193,204,213
+docs/spec-surface.md
+  s_3031b504518be3::t_a0ac5f4ee0dd5e 49,59-60,128,202-223
+Makefile
+  s_3031b504518be3::t_31e92f508edc16 117
+lean/UsTax/Params2024/EitcCtc.lean
+  s_3031b504518be3::t_b7e1b6465171c2 105-107
+  s_3031b504518be3::t_2690b8c940a81e 1-104,108-109
+lean/UsTax/Eitc/EicTable.lean
+  s_3031b504518be3::t_f857b4f14726f6 1-58,61-66,68-72
+  s_3031b504518be3::t_d30b8667af8b8c 59-60
+  s_3031b504518be3::t_53550533982b76 67
+lean/UsTax/Proofs/Eitc.lean
+  s_3031b504518be3::t_c6a4fe2df7e8b6 49,96-101,104,200
+  s_3031b504518be3::t_487405da8bd3d0 25,146,161
+  s_3031b504518be3::t_61ec4796b942f7 131-133,139-140,152,154,156,159,170,174,178,184
+  s_3031b504518be3::t_db7ce2682ca709 169,173,177,182,194
+  s_3031b504518be3::t_56d4ba45e13173 186-191,196-199,201,203,205-206,208,210-212
+  s_3031b504518be3::t_2874bd55b60d4d 28-29,147,157-158,162,179-180,202,204,207,209
+  s_3031b504518be3::t_c456d65c283b94 1-24,26-27,30-48,50-95,102-103,105-130,134-138,141-145,148-151,153,155,160,163-168,171-172,175-176,181,183,185,192-193,195,213-214
+scripts/gen_lean_eic_table.py
+  s_3031b504518be3::t_b0d2cd8f6762ac 1-100
+lean/UsTax/Proofs/CtcOdc.lean
+  s_3031b504518be3::t_9ff341f64e7e2b 146-151,154-156
+  s_3031b504518be3::t_83ac2204ff19a3 1-145,152-153,157-278
+lean/UsTax/Eitc.lean
+  s_3031b504518be3::t_c93892413f8afe 408-409,414,541
+  s_3031b504518be3::t_3a57e9dd5a96fb 1-389,404-407,410-412,415-499,501-508,510-517,519-540,542-566,568-588,590-599,601-610,612-660
+  s_3031b504518be3::t_5577d6f1ff745b 390-403,413,500,567,611
+  s_3031b504518be3::t_5f050bac1c58fc 518,589,600
+  s_3031b504518be3::t_71254a9d65bf60 509
+lean/UsTax/Eitc/EicTableData.lean
+  s_3031b504518be3::t_7a7a61f81cd577 1-4469
+lean/UsTax/CtcOdc.lean
+  s_3031b504518be3::t_892d7c053584e5 1-555
+lean/UsTax/Comparator/Challenge.lean
+  s_3031b504518be3::t_39fd0a05a3e5fc 6-7,30,95-101
+  s_3031b504518be3::t_863238b2edebb0 103-104
+lean/README.md
+  s_3031b504518be3::t_516b4015f6cb52 262
+  s_3031b504518be3::t_46e439abfd51b9 290-318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cef1acde1c0e21af7680bc14c201b9c38e48b4db",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
