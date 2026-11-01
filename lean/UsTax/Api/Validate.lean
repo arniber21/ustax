@@ -14,11 +14,30 @@ namespace UsTax.Api
 
 open UsTax
 
+/-- Errors of a `NonNegMoney` value at exactly the path `q`. -/
+def nonNegAt (q : String) (n : Int) : List FieldError :=
+  if n < 0 then [⟨q, .range, "must be >= 0"⟩]
+  else if n > moneyCap then [⟨q, .range, "must be <= 10000000000000"⟩]
+  else []
+
 /-- Errors of one `NonNegMoney` property `k` of the object at `p`. -/
 def nonNegErrs (p : String) (kv : String × Int) : List FieldError :=
-  if kv.2 < 0 then [⟨child p kv.1, .range, "must be >= 0"⟩]
-  else if kv.2 > moneyCap then [⟨child p kv.1, .range, "must be <= 10000000000000"⟩]
+  nonNegAt (child p kv.1) kv.2
+
+/-- Errors of an integer that must lie in `lo .. hi`, at the path `q`. -/
+def rangeAt (lo hi : Int) (q : String) (n : Int) : List FieldError :=
+  if n < lo then [⟨q, .range, s!"must be >= {lo}"⟩]
+  else if n > hi then [⟨q, .range, s!"must be <= {hi}"⟩]
   else []
+
+/-- Errors of a date at the path `q`: it must exist in the calendar. -/
+def dateAt (q : String) (d : Date) : List FieldError :=
+  if d.Valid then [] else [⟨q, .invalidDate, "not a calendar date"⟩]
+
+/-- Errors of an optional value at the path `q`, with `f q x` run on the value if present. -/
+def optAt {α : Type} (q : String) (f : String → α → List FieldError) : Option α → List FieldError
+  | some x => f q x
+  | none => []
 
 /-- Errors of a record's `NonNegMoney` properties. -/
 def moneyErrs (p : String) (kvs : List (String × Int)) : List FieldError :=
@@ -60,19 +79,13 @@ def Form1099G.errs (st : FilingStatus) (p : String) (f : Form1099G) : List Field
 def Form1099Misc.errs (st : FilingStatus) (p : String) (f : Form1099Misc) : List FieldError :=
   moneyErrs p f.moneyFields ++ roleErrs st p f.filer
 
-/-- Errors of a date of birth. -/
-def dateErrs (p : String) : Option Date → List FieldError
-  | some d => if d.Valid then [] else [⟨child p "recipient_date_of_birth", .invalidDate,
-      "not a calendar date"⟩]
-  | none => []
-
 /-- 1099-R errors. -/
 def Form1099R.errs (st : FilingStatus) (p : String) (f : Form1099R) : List FieldError :=
   moneyErrs p f.moneyFields ++ roleErrs st p f.filer ++
   (if f.distributionCode.length ≤ maxCodeChars then []
    else [⟨child p "distribution_code", .tooManyItems,
      s!"must have at most {maxCodeChars} items"⟩]) ++
-  dateErrs p f.recipientDateOfBirth
+  optAt (child p "recipient_date_of_birth") dateAt f.recipientDateOfBirth
 
 /-- Errors of the signed `net_benefits` list. -/
 def netBenefitErrs (p : String) : Nat → List Int → List FieldError
@@ -85,17 +98,90 @@ def netBenefitErrs (p : String) : Nat → List Int → List FieldError
 /-- Social Security errors. -/
 def SocialSecurity.errs (p : String) (s : SocialSecurity) : List FieldError :=
   let q := child p "net_benefits"
+  let f := child p "federal_tax_withheld"
   (if s.netBenefits.length ≤ maxNetBenefits then []
    else [⟨q, .tooManyItems, s!"must have at most {maxNetBenefits} items"⟩]) ++
-  netBenefitErrs q 0 s.netBenefits
+  (netBenefitErrs q 0 s.netBenefits ++
+  (listErrs f maxNetBenefits s.federalTaxWithheld nonNegAt ++
+  (if s.federalTaxWithheld.length ≤ s.netBenefits.length then []
+   else [⟨f, .range, "must not have more items than net_benefits"⟩])))
 
 /-- Errors of an optional section, with `f` run on the value if present. -/
 def optErrs {α : Type} (f : α → List FieldError) : Option α → List FieldError
   | some x => f x
   | none => []
 
-/-- Every violation of `Request.Valid`, in document order. -/
-def Request.validate (r : Request) : List FieldError :=
+/-! ### Sections added in schema 1.2.0 (generated from `api/schema.json`, then checked in) -/
+
+/-- Errors of `DisabilityAnswers` at `p`. -/
+def DisabilityAnswers.errs (p : String) (s : DisabilityAnswers) : List FieldError :=
+  moneyErrs p s.moneyFields
+
+/-- Errors of `HsaFilerAnswers` at `p`. -/
+def HsaFilerAnswers.errs (p : String) (s : HsaFilerAnswers) : List FieldError :=
+  moneyErrs p s.moneyFields
+
+/-- Errors of `CdccFilerAnswers` at `p`. -/
+def CdccFilerAnswers.errs (p : String) (s : CdccFilerAnswers) : List FieldError :=
+  moneyErrs p s.moneyFields ++
+  (listErrs (child p "deemed_income_month_earnings") 20 s.deemedIncomeMonthEarnings nonNegAt)
+
+/-- Errors of `FilerFlags` at `p`. -/
+def FilerFlags.errs (p : String) (s : FilerFlags) : List FieldError :=
+  optAt (child p "date_of_birth") dateAt s.dateOfBirth ++
+  (optAt (child p "disability") DisabilityAnswers.errs s.disability ++
+  (optAt (child p "hsa") HsaFilerAnswers.errs s.hsa ++
+  (optAt (child p "cdcc") CdccFilerAnswers.errs s.cdcc)))
+
+/-- Errors of `FilingAnswers` at `p`. -/
+def FilingAnswers.errs (p : String) (s : FilingAnswers) : List FieldError :=
+  dateAt (child p "secondary_filer_date_of_death") s.secondaryFilerDateOfDeath
+
+/-- Errors of `CdccMemberAnswers` at `p`. -/
+def CdccMemberAnswers.errs (p : String) (s : CdccMemberAnswers) : List FieldError :=
+  moneyErrs p s.moneyFields
+
+/-- Errors of `Dependent` at `p`. -/
+def Dependent.errs (p : String) (s : Dependent) : List FieldError :=
+  moneyErrs p s.moneyFields ++
+  (dateAt (child p "date_of_birth") s.dateOfBirth ++
+  (rangeAt 0 12 (child p "months_lived_with_tp_in_us") s.monthsLivedWithTpInUs ++
+  (optAt (child p "cdcc") CdccMemberAnswers.errs s.cdcc)))
+
+/-- Errors of `HsaDistribution` at `p`. -/
+def HsaDistribution.errs (st : FilingStatus) (p : String) (s : HsaDistribution) : List FieldError :=
+  moneyErrs p s.moneyFields ++
+  (roleErrs st p s.filer)
+
+/-- Errors of `HsaInput` at `p`. -/
+def HsaInput.errs (st : FilingStatus) (p : String) (s : HsaInput) : List FieldError :=
+  listErrs (child p "hsa_distributions") 20 s.hsaDistributions (HsaDistribution.errs st)
+
+/-- Errors of `CreditAnswers` at `p`. -/
+def CreditAnswers.errs (p : String) (s : CreditAnswers) : List FieldError :=
+  moneyErrs p s.moneyFields
+
+/-- Errors of `CdccInput` at `p`. -/
+def CdccInput.errs (p : String) (s : CdccInput) : List FieldError :=
+  moneyErrs p s.moneyFields
+
+/-- Errors of `Form1095A` at `p`. -/
+def Form1095A.errs (p : String) (s : Form1095A) : List FieldError :=
+  moneyErrs p s.moneyFields ++
+  (dateAt (child p "writable_policy_start_date") s.writablePolicyStartDate ++
+  (dateAt (child p "writable_policy_end_date") s.writablePolicyEndDate ++
+  (listErrs (child p "coverage_months") 12 s.coverageMonths (rangeAt 1 12) ++
+  (listErrs (child p "writable_ptc_monthly_premium") 12 s.writablePtcMonthlyPremium nonNegAt ++
+  (listErrs (child p "writable_ptc_monthly_slcsp_premium") 12 s.writablePtcMonthlySlcspPremium nonNegAt ++
+  (listErrs (child p "writable_ptc_monthly_aptc_premium") 12 s.writablePtcMonthlyAptcPremium nonNegAt))))))
+
+/-- Errors of `PtcInput` at `p`. -/
+def PtcInput.errs (p : String) (s : PtcInput) : List FieldError :=
+  listErrs (child p "form1095_as") 20 s.form1095As (Form1095A.errs)
+
+
+/-- Every violation of `Request.ValidBase`, in document order. -/
+def Request.validateBase (r : Request) : List FieldError :=
   let st := r.filingStatus
   (if r.filers.secondary ≠ none ∧ st ≠ .marriedFilingJointly
    then [⟨"/filers/secondary", .filerNotAllowed,
@@ -112,5 +198,20 @@ def Request.validate (r : Request) : List FieldError :=
   optErrs (fun s => moneyErrs "/adjustments/student_loan_interest" s.moneyFields)
     r.adjustments.studentLoanInterest ++
   optErrs (fun e => moneyErrs "/estimated_payments" e.moneyFields) r.estimatedPayments
+
+/-- Every violation of `Request.ValidSections`, in document order. -/
+def Request.validateSections (r : Request) : List FieldError :=
+  optErrs (FilerFlags.errs "/filers/primary") r.filers.primary ++
+  optErrs (FilerFlags.errs "/filers/secondary") r.filers.secondary ++
+  optErrs (HsaInput.errs r.filingStatus "/adjustments/hsa") r.adjustments.hsa ++
+  optErrs (FilingAnswers.errs "/filing_answers") r.filingAnswers ++
+  listErrs "/dependents" maxForms r.dependents Dependent.errs ++
+  optErrs (CreditAnswers.errs "/credits") r.credits ++
+  optErrs (CdccInput.errs "/cdcc") r.cdcc ++
+  optErrs (PtcInput.errs "/premium_tax_credit") r.premiumTaxCredit
+
+/-- Every violation of `Request.Valid`, in document order. -/
+def Request.validate (r : Request) : List FieldError :=
+  r.validateBase ++ r.validateSections
 
 end UsTax.Api

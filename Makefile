@@ -72,7 +72,8 @@ oracle:    ## regenerate oracle/facts.csv from the Direct File scenarios
 .PHONY: api-check api-reasons api-conformance api-examples api-catala-schema
 api-check: ## validate JSON examples and mock fixtures against api/schema.json
 	cd api && npm ci --ignore-scripts --no-audit --no-fund && node scripts/check.mjs
-api-conformance: ## Lean request validator vs api/schema.json via ajv (examples + generated mutants)
+api-conformance: ## Lean request validator vs api/schema.json via ajv (examples + generated mutants); reason table vs api/knockout-reasons.json
+	python3 scripts/gen_lean_api_reasons.py --check
 	cd lean && lake build ustax
 	cd api && npm ci --ignore-scripts --no-audit --no-fund
 	node scripts/api_conformance.mjs

@@ -1,5 +1,6 @@
 import UsTax.Cli
 import UsTax.Api.Parse
+import UsTax.Api.Reasons
 
 /-!
 # `ustax`: run the Lean calculator from the command line
@@ -17,6 +18,9 @@ Build with `cd lean && lake build ustax`; the binary is `.lake/build/bin/ustax`.
   request was accepted (the body is the `Repr` of the typed request, so a
   test can see that no field was dropped); otherwise the body is the
   `ErrorResponse` JSON. Used by `scripts/api_conformance.mjs`.
+* `ustax api-reasons` prints the table of the 104 knockout reasons (code,
+  category, message) the 422 response can carry, as JSON; the conformance
+  script compares it with `api/knockout-reasons.json`.
 -/
 
 open UsTax Cli
@@ -25,6 +29,7 @@ open UsTax Cli
 def usage : String :=
   "usage: ustax tentative-tax <taxable income> <filing status>\n" ++
   "       ustax api-parse     (request bodies, one per line, on stdin)\n" ++
+  "       ustax api-reasons   (the 422 reason table as JSON)\n" ++
   "       ustax run <Scope>   (JSON lines on stdin; scopes: " ++
   ", ".intercalate (scopes.map (·.1)) ++ ")"
 
@@ -63,6 +68,9 @@ def main (args : List String) : IO UInt32 := do
       return 0
     | none, _ => IO.eprintln s!"bad taxable income {income.quote}"; return 2
     | _, none => IO.eprintln s!"bad filing status {status.quote}"; return 2
+  | ["api-reasons"] =>
+    IO.println Api.reasonTableJson
+    return 0
   | ["api-parse"] =>
     apiParseLines (← IO.getStdin) (← IO.getStdout)
     return 0

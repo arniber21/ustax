@@ -12,6 +12,8 @@
 // places where Lean is deliberately stricter (the schema cannot say these):
 //   - integer-valued float literals (100.0, 1e2) in a money box (ajv's `integer` admits them),
 //   - cross-field rules (SecondaryFiler on a non-joint return), impossible calendar dates.
+// The same holds for the schema 1.2.0 cross-field rules (withheld list no longer than net_benefits,
+// a secondary-filer HSA distribution on a non-joint return) and for bounded counts (months).
 // Those must be rejected by Lean with the right code and accepted by ajv. Also checked: the error
 // code and the first detail's path/code for each mutant, the 400 fixtures' bodies, and that every
 // distinct integer in the "full" instance appears in Lean's reading (no field silently dropped).
@@ -64,7 +66,7 @@ function build(node0, path, sites, opts) {
       return o;
     }
     case 'array': return [build(node.items, [...path, 0], sites, opts)];
-    case 'integer': return ++counter;
+    case 'integer': return node.maximum !== undefined && node.maximum < CAP ? node.maximum : ++counter; // bounded counts (months) take their maximum
     case 'boolean': return true;
     case 'const': return node.const;
     case 'enum': return opts.enumPick(path, node.enum);
@@ -112,16 +114,18 @@ for (const s of sites) {
     const k = s.kind;
     if (k === 'integer') {
       const signed = (s.node.minimum ?? 0) < 0;
+      const hi = s.node.maximum ?? CAP, lo = s.node.minimum ?? 0; // schema 1.2.0 has bounded counts (months 0..12, coverage months 1..12)
       const inv = (name, v, code, fcode) => reject(`${label}: ${name}`, mut(v), code ?? 'invalid_request', p, fcode);
-      inv('over cap', CAP + 1, 'invalid_request', 'range');
-      inv(signed ? 'below -cap' : 'negative', signed ? -CAP - 1 : -1, 'invalid_request', 'range');
+      inv(hi === CAP ? 'over cap' : `over max ${hi}`, hi + 1, 'invalid_request', 'range');
+      inv(signed ? 'below -cap' : hi === CAP ? 'negative' : `below min ${lo}`, signed ? -CAP - 1 : lo - 1, 'invalid_request', 'range');
+      if (hi !== CAP) add({ name: `${label}: at min ${lo}`, text: text(mut(lo)), expect: 'accept' });
       inv('string', '5', 'invalid_request', 'type');
       inv('null', null, 'invalid_request', 'type');
       inv('boolean', true, 'invalid_request', 'type');
       inv('decimal 1.5', raw('1.5'), 'invalid_request', 'not_integer');
-      add({ name: `${label}: at cap`, text: text(mut(CAP)), expect: 'accept' });
+      add({ name: `${label}: at ${hi === CAP ? 'cap' : 'max'}`, text: text(mut(hi)), expect: 'accept' });
       stricter(`${label}: 5.0`, mut(raw('5.0')), 'invalid_request', p, 'not_integer');
-      stricter(`${label}: 1e2`, mut(raw('1e2')), 'invalid_request', p, 'not_integer');
+      stricter(`${label}: ${hi === CAP ? '1e2' : hi + 'e0'}`, mut(raw(hi === CAP ? '1e2' : hi + 'e0')), 'invalid_request', p, 'not_integer');
     } else if (k === 'boolean') {
       reject(`${label}: 1 for boolean`, mut(1), 'invalid_request', p, 'type');
       reject(`${label}: "true"`, mut('true'), 'invalid_request', p, 'type');
@@ -140,7 +144,10 @@ for (const s of sites) {
       const n = (s.node.maxItems ?? 20) + 1;
       const items = Array.from({ length: n }, () => clone(getAt(full, s.path)[0]));
       reject(`${label}: ${n} items`, mut(items), 'invalid_request', p, 'too_many_items');
-      accept(`${label}: empty`, mut([]));
+      // cross-field rule (docs/api.md): federal_tax_withheld is no longer than net_benefits, so emptying
+      // net_benefits must empty it too to stay schema-valid.
+      if (p === '/social_security/net_benefits') accept(`${label}: empty`, delAt(mut([]), ['social_security', 'federal_tax_withheld']));
+      else accept(`${label}: empty`, mut([]));
     } else if (k === 'object') {
       reject(`${label}: object as array`, mut([]), 'invalid_request', p, 'type');
       const u = clone(getAt(full, s.path)); u.zz_unknown = 1;
@@ -164,6 +171,14 @@ stricter('api_version 1.0', { ...minimal(), api_version: raw('1.0') }, 'invalid_
 stricter('tax_year 2024.0', { ...minimal(), tax_year: raw('2024.0') }, 'invalid_request', '/tax_year', 'not_integer');
 // Cross-field: every role is SecondaryFiler in `full`; on a non-joint return Lean must refuse.
 stricter('secondary roles on Single', { ...full, filing_status: 'Single' }, 'invalid_request', undefined, 'filer_not_allowed');
+// Cross-field (schema 1.2.0): more withheld amounts than benefit amounts; and an HSA distribution of the
+// secondary filer on a return that is not joint.
+stricter('federal_tax_withheld longer than net_benefits', setAt(clone(full), ['social_security', 'federal_tax_withheld'], [1, 2]),
+  'invalid_request', '/social_security/federal_tax_withheld', 'range');
+stricter('SecondaryFiler HSA distribution on Single', { ...minimal(), adjustments: { hsa: { hsa_distributions: [getAt(full, ['adjustments', 'hsa', 'hsa_distributions', 0])] } } },
+  'invalid_request', '/adjustments/hsa/hsa_distributions/0/filer', 'filer_not_allowed');
+stricter('filers.secondary on Single', { ...minimal(), filers: { secondary: { date_of_birth: '1980-01-01' } } },
+  'invalid_request', '/filers/secondary', 'filer_not_allowed');
 const full_text = text(full);
 for (const n of [0, 1, 2, 5, 17, 100, 333, 1000, Math.floor(full_text.length / 2), full_text.length - 1]) {
   add({ name: `truncated at ${n}`, text: full_text.slice(0, n), expect: 'reject', code: 'invalid_json' });
@@ -186,6 +201,13 @@ for (const e of manifest) {
   if (e.status === 400) add({ name: `fixture ${e.name}`, text: reqText, expect: e.semantic_error ? 'stricter-fixture' : 'reject', fixture: resp, code: resp.error.code });
   else if (e.status === 200 || e.status === 422) add({ name: `fixture ${e.name}`, text: reqText, expect: 'accept' });
 }
+
+// ---- the 422 reason table of the binary vs api/knockout-reasons.json ---------------------------
+const reasonsRun = spawnSync(bin, ['api-reasons'], { encoding: 'utf8' });
+if (reasonsRun.status !== 0) { console.error(reasonsRun.stderr); process.exit(2); }
+const leanReasons = JSON.parse(reasonsRun.stdout);
+const jsonReasons = JSON.parse(readFileSync(join(root, 'api/knockout-reasons.json'), 'utf8')).reasons.map(({ code, category, message }) => ({ code, category, message }));
+const reasonSchema = schema.$defs.ReasonCategory.enum;
 
 // ---- run ------------------------------------------------------------------------------------
 const lines = cases.map((c) => { if (c.text.includes('\n')) throw new Error(`newline in case ${c.name}`); return c.text; });
@@ -243,7 +265,7 @@ cases.forEach((c, i) => {
   }
   if (c.name === 'full' && status === 200) {
     const seen = new Set(body.match(/-?\d+/g));
-    for (const s of sites) if (s.kind === 'integer') {
+    for (const s of sites) if (s.kind === 'integer' && !(s.node.maximum < CAP)) {
       const v = String(getAt(full, s.path));
       droppedChecks++;
       if (!seen.has(v)) fail(c, `field ${ptr(s.path)} (value ${v}) is missing from Lean's reading: silently dropped`);
@@ -256,6 +278,11 @@ function sortKeys(x) {
   return x;
 }
 counts['money boxes found in Lean output'] = droppedChecks;
+counts['knockout reasons in Lean table'] = leanReasons.length;
+if (JSON.stringify(leanReasons) !== JSON.stringify(jsonReasons)) {
+  failures.push(`Lean reason table (${leanReasons.length}) differs from api/knockout-reasons.json (${jsonReasons.length}): run python3 scripts/gen_lean_api_reasons.py and rebuild`);
+}
+for (const r of leanReasons) if (!reasonSchema.includes(r.category)) failures.push(`reason ${r.code}: category ${r.category} is not in schema ReasonCategory`);
 console.log(JSON.stringify(counts, null, 2));
 if (failures.length) {
   console.error(`\n${failures.length} FAILURE(S):`);
