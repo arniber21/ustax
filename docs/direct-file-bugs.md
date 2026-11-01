@@ -36,5 +36,8 @@ Credit: discovered by the ustax formal verification project (Arnab Ghosh).
 | DF-BUG-28 | candidate | `cdcc.xml` | Requires the filer to have chosen to claim the child | Law requires only that the child be a qualifying person | Statute; no oracle effect | #28 |
 | DF-BUG-29 | candidate | `eitc.xml` / `familyAndHousehold.xml` (EITC qualifying child) | Requires the child to be *claimed* by the filer | IRC 32(c)(3): requires only that the filer be entitled to claim the child | Statute; no oracle value changes | #48 |
 | DF-BUG-30 | candidate | `eitc.xml` (EITC child test) | Second claimed-vs-entitled gate in the child test | IRC 32(c)(3) | Statute; no oracle value changes | #48 |
+| DF-BUG-31 | candidate | `ptc.xml` (coverage months) | A policy starting December 1 never counts December as a coverage month; every other month allows a start on the 1st | Form 8962: a policy in effect on the 1st counts | Statute; no oracle value changes | #33 |
+| DF-BUG-32 | candidate | `ptc.xml` (annual vs monthly) | Uses annual totals (line 11) whenever the policy starts in January and ends in December, even with fewer than 12 coverage months (Jan 20 start: $6,000 DF, $5,500 here) | Form 8962 instructions: annual only if covered all 12 months | Statute; no oracle value changes | #33 |
+| DF-BUG-33 | candidate | `ptc.xml` | Uses annual totals if *any* 1095-A qualifies | Instructions: *each* | Statute; only matters with 2+ 1095-As, which DF blocks | #33 |
 
 Add rows as modules find more; keep one row per distinct defect.
