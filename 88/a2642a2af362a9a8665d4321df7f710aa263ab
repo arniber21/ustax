@@ -1,0 +1,19 @@
+web/src/pages/HomePage.tsx
+  s_3031b504518be3::t_bd4f4b9a25d99e 1-13,16-20,26-65,68-91,95-141,143-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88a2642a2af362a9a8665d4321df7f710aa263ab",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
