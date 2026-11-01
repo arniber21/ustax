@@ -39,7 +39,7 @@ Lean's kernel, with no `sorry` and no extra axioms.
   against a fixed file of statements.
 
 See [Spec surface](/docs/spec-surface) for the exact definitions each theorem depends on, and
-[Comparator and lake check](/docs/comparator) for how the checks run.
+[Comparator and lake check](../comparator.md) for how the checks run.
 
 ## Verified in Catala
 

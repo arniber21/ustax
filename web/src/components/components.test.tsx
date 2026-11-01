@@ -124,10 +124,11 @@ describe('Stepper / ProgressBar', () => {
     { id: 'b', label: 'Two' },
     { id: 'c', label: 'Three' },
   ];
-  it('links completed steps when given hrefFor', () => {
-    render(<MemoryRouter><Stepper steps={steps} current={2} hrefFor={(id) => `/s/${id}`} /></MemoryRouter>);
+  it('links every step except the current one when given hrefFor, so any step can be opened', () => {
+    render(<MemoryRouter><Stepper steps={steps} current={1} hrefFor={(id) => `/s/${id}`} /></MemoryRouter>);
     expect(screen.getByRole('link', { name: /One/ })).toHaveAttribute('href', '/s/a');
-    expect(screen.queryByRole('link', { name: /Three/ })).toBeNull();
+    expect(screen.getByRole('link', { name: /Three/ })).toHaveAttribute('href', '/s/c');
+    expect(screen.queryByRole('link', { name: /Two/ })).toBeNull();
   });
   it('marks the current step and exposes progress', () => {
     render(<Stepper steps={steps} current={1} />);

@@ -32,8 +32,8 @@ export function HomePage() {
           <p className="m-0 text-sm font-medium text-muted-foreground">Tax year 2024 · Federal income tax</p>
           <h1 className="mt-3 mb-0 text-4xl leading-[1.1] font-semibold tracking-tight sm:text-5xl">{TAGLINE}</h1>
           {/* translucent card: keeps the body text and buttons readable over the globe while it still shows through */}
-          <div className="mt-6 rounded-xl border border-border/60 bg-background/75 p-5 shadow-sm backdrop-blur-sm [text-shadow:none] sm:p-6">
-            <p className="m-0 text-lg leading-relaxed text-muted-foreground">
+          <div className="mt-6 rounded-xl border border-white/60 bg-white/20 p-5 shadow-lg ring-1 ring-black/5 backdrop-blur-[3px] [text-shadow:none] sm:p-6 dark:border-white/10 dark:bg-slate-900/40 dark:ring-white/5">
+            <p className="m-0 text-lg leading-relaxed font-medium text-foreground/85">
               Calculates your 2024 federal income tax. The arithmetic is checked by a machine-verified proof; here is exactly
               what is and is not covered.
             </p>
@@ -45,8 +45,11 @@ export function HomePage() {
               <ButtonLink size="lg" variant="secondary" to="/trust">
                 What is verified
               </ButtonLink>
+              <ButtonLink size="lg" variant="secondary" to="/docs">
+                Go to docs
+              </ButtonLink>
             </div>
-            <p className="mt-4 mb-0 text-sm text-muted-foreground">
+            <p className="mt-4 mb-0 text-sm font-medium text-foreground/75">
               Five short steps. Answers are saved in this browser only. Nothing is filed.
             </p>
           </div>

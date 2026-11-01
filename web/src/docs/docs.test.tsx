@@ -48,10 +48,7 @@ describe('_nav.json', () => {
       'docs/spec-surface.md',
       'docs/direct-file-bugs.md',
       'docs/catala-to-lean.md',
-      'docs/provenance.md',
       'docs/api.md',
-      'docs/audit.md',
-      'docs/comparator.md',
     ]) {
       expect(sources).toContain(s);
     }
@@ -146,7 +143,7 @@ describe('Markdown rendering', () => {
     '|---|---|',
     '| 1 | 2 |',
     '',
-    '[other](../audit.md) and [lean](../../lean/UsTax/Audit.lean)',
+    '[other](../catala-to-lean.md) and [lean](../../lean/UsTax/Audit.lean)',
     '',
     '```lean4',
     'theorem t : True := trivial',
@@ -177,7 +174,7 @@ describe('Markdown rendering', () => {
     expect(note).toHaveTextContent('Careful here.');
     expect(note).not.toHaveTextContent('[!WARNING]');
     expect(within(screen.getByRole('table')).getByRole('columnheader', { name: 'a' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'other' })).toHaveAttribute('href', '/docs/audit');
+    expect(screen.getByRole('link', { name: 'other' })).toHaveAttribute('href', '/docs/catala-to-lean');
     expect(screen.getByRole('link', { name: 'lean' })).toHaveAttribute('href', 'https://github.com/arniber21/ustax/blob/main/lean/UsTax/Audit.lean');
     expect(screen.getByText('theorem t : True := trivial').closest('pre')).toHaveAttribute('data-lang', 'lean4');
   });

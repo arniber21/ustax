@@ -12,7 +12,7 @@ export interface StepperProps {
   steps: readonly StepperStep[];
   /** Index of the current step. */
   current: number;
-  /** When given, completed steps link here so people can jump back. */
+  /** When given, every step except the current one links here, so people can jump to any step in any order. */
   hrefFor?: (id: string) => string;
 }
 
@@ -58,10 +58,10 @@ export function Stepper({ steps, current, hrefFor }: StepperProps) {
               >
                 {done ? <Check className="size-3.5" strokeWidth={3} /> : i + 1}
               </span>
-              {done && hrefFor ? (
-                <Link to={hrefFor(s.id)} className="text-foreground no-underline hover:underline">
+              {!here && hrefFor ? (
+                <Link to={hrefFor(s.id)} className={cn('no-underline hover:underline', done ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')}>
                   {label}
-                  <span className="sr-only"> (completed)</span>
+                  {done && <span className="sr-only"> (completed)</span>}
                 </Link>
               ) : (
                 label

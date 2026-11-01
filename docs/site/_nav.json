@@ -44,24 +44,6 @@
       "summary": "Log of places where the Direct File reference implementation disagrees with the law."
     },
     {
-      "title": "Comparator and lake check",
-      "slug": "comparator",
-      "source": "docs/comparator.md",
-      "summary": "How lake check and lake comparator are run in a Linux container."
-    },
-    {
-      "title": "Proof audit",
-      "slug": "audit",
-      "source": "docs/audit.md",
-      "summary": "What make audit checks, and how CI runs it."
-    },
-    {
-      "title": "Provenance index",
-      "slug": "provenance",
-      "source": "docs/provenance.md",
-      "summary": "The machine-readable trail from each result line to the law, Catala rule, Lean proofs and tests."
-    },
-    {
       "title": "JSON API contract",
       "slug": "api",
       "source": "docs/api.md",
