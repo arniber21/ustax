@@ -74,6 +74,14 @@ api-conformance: ## Lean request validator vs api/schema.json via ajv (examples 
 api-reasons: ## regenerate api/knockout-reasons.json from the Catala KnockoutReason enum
 	node api/scripts/gen-reasons.mjs
 
+# Provenance index (docs/provenance.md): api/provenance.json links each API line to Catala, law, Lean theorems and tests.
+.PHONY: provenance provenance-check
+provenance:       ## regenerate api/provenance.json from catala/, lean/ and sources/ (no network)
+	node scripts/gen_provenance.mjs
+provenance-check: ## fail if api/provenance.json is stale or does not match api/provenance.schema.json
+	cd api && npm ci --ignore-scripts --no-audit --no-fund
+	node scripts/gen_provenance.mjs --check
+
 # Differential tests: Catala scope outputs vs oracle/facts.csv (see catala/DIFFTEST.md).
 # `make difftest SCOPE=smoke` (default) or SCOPE=all; extra flags via ARGS=--verbose.
 SCOPE ?= smoke
