@@ -1,0 +1,1055 @@
+> Module Ptc_allowed
+
+> Using Types
+> Using Params_2024 as P
+
+# Premium tax credit, part 2: Forms 1095-A, annual and monthly PTC allowed (Form 8962 lines 9 to 25)
+
+Direct File ("DF" below) module `ptc.xml`
+(`../direct-file/direct-file/backend/src/main/resources/tax/ptc.xml`, 9,760
+lines): the `/1095As` collection (lines 1966 to 6453), the eligibility gates
+(`/hasPtcQualifyingPlan` line 489, `/potentiallyApplicableTaxPayer` line
+1781), the annual path (`/ptcCanReportAnnualTotals` line 6456 to
+`/annualPtcAllowed` line 6593), the monthly path (`/monthlyPtcPremiumFor<Month>`
+line 6893 to `/monthlyAptcPremiumFor<Month>` line 8405), the totals
+`/totalPtcAmountAllowed` (line 8705, Form 8962 line 24) and
+`/totalAptcAmountTaken` (line 8972, line 25), and the PTC knockouts of
+`flow.xml` lines 96 to 103. Issue #33, scope.md section 6.6. Law: 26 U.S.C.
+§ 36B(b), (c) (`sources/statute/irc-36B.html`), 26 CFR 1.36B-2 and 1.36B-3
+(`sources/regs/cfr-1.36B-2.xml`, `cfr-1.36B-3.xml`), Form 8962 (2024)
+(`sources/forms-instructions/f8962--2024.pdf` p 1) and its instructions
+(`sources/forms-instructions/i8962--2024.pdf`: married taxpayers and
+dependents p 6 to 7, line 10 p 12 to 13, line 11 p 13 to 14, lines 12 to 23
+p 14 to 15, lines 24 and 25 p 15). Tests: `catala/tests/test_ptc_allowed.catala_en`.
+Oracle comparison: `difftest/mappings/ptc_allowed.mjs` through the wrapper
+`catala/tests/difftest_ptc_allowed.catala_en`.
+
+## What this module computes, and how it plugs in
+
+- Inputs from part 1 (`Ptc_family.PtcFamily`, #32):
+  `household_income_as_percent` (line 5), `ptc_annual_contribution_amount`
+  (line 8a) and `ptc_monthly_contribution_amount` (line 8b).
+- Outputs for part 3 (#34): `total_ptc_amount_allowed` (Form 8962 line 24),
+  `total_aptc_amount_taken` (line 25), `needs_to_file_form8962`,
+  `has_advanced_ptc`, `qualified_for_ptc` and `unsupported`. Part 3 computes
+  the net PTC (line 26) and the repayment (lines 27 to 29).
+- One 1095-A is a `Form1095A` with the twelve monthly amounts of Form 1095-A
+  Part III, columns A, B and C, as three month-indexed lists (January first).
+  The per-form facts are computed by the scope `Form1095ACalculation`, applied
+  to each form; its twelve months are rows of a `Form1095AMonth` list. Form
+  8962 lines 12 to 23 are rows of a `PtcMonth` list.
+- The inputs are complete (CONVENTIONS section 3). A DF writable that DF only
+  reads under a condition (a `Switch` with no default) is an input here and
+  the condition is reproduced as a rule. An answer DF never asks is `false`.
+- OUT OF SCOPE (knocked out, see the last section): allocation of policy
+  amounts with another taxpayer (Form 8962 line 9, Part IV), the alternative
+  calculation for year of marriage (Part V), QSEHRA (line 11(e) note),
+  employer-sponsored plans, dependents required to file, immigration-status
+  exceptions and more than one Form 1095-A.
+
+## Declarations
+
+```catala-metadata
+## One Form 1095-A (Health Insurance Marketplace Statement), as entered in
+## Direct File. DF: ptc.xml /1095As/*. Month lists hold twelve amounts,
+## January first; a month DF does not ask is $0.
+declaration structure Form1095A:
+  # DF: /1095As/*/writablePolicyStartDate (Form 1095-A line 13 column B)
+  data writable_policy_start_date content date
+  # DF: /1095As/*/writablePolicyEndDate (Form 1095-A line 14 column C)
+  data writable_policy_end_date content date
+  # DF: /1095As/*/writableSpecialPolicyModificationInStartingMonth (birth,
+  # adoption, placement for adoption or foster care in the starting month)
+  data writable_special_policy_modification_in_starting_month content boolean
+  # DF: /1095As/*/writableHasPolicyDateException
+  data writable_has_policy_date_exception content boolean
+  # DF: /1095As/*/hasCoverageMonths
+  data has_coverage_months content boolean
+  # DF: /1095As/*/coverageMonths (MultiEnum jan..dec as month numbers 1..12)
+  data coverage_months content list of integer
+  # DF: /1095As/*/writablePremiumsOrSlcspChange
+  data writable_premiums_or_slcsp_change content boolean
+  # DF: /1095As/*/hasChangeInCircumstance
+  data has_change_in_circumstance content boolean
+  # Form 1095-A line 33 column A. DF: /1095As/*/writablePtcAnnualPremium
+  data writable_ptc_annual_premium content money
+  # Form 1095-A line 33 column B. DF: /1095As/*/writableSlcspAnnualPremium
+  data writable_slcsp_annual_premium content money
+  # Form 1095-A line 33 column C. DF: /1095As/*/writableAptcAnnualAmount
+  data writable_aptc_annual_amount content money
+  # Form 1095-A lines 21 to 32 column A. DF: /1095As/*/writablePtcMonthlyPremium<Month>
+  data writable_ptc_monthly_premium content list of money
+  # Form 1095-A lines 21 to 32 column B. DF: /1095As/*/writablePtcMonthlySlcspPremium<Month>
+  data writable_ptc_monthly_slcsp_premium content list of money
+  # Form 1095-A lines 21 to 32 column C. DF: /1095As/*/writablePtcMonthlyAptcPremium<Month>
+  data writable_ptc_monthly_aptc_premium content list of money
+
+## One month of one Form 1095-A, as DF reads it.
+declaration structure Form1095AMonth:
+  # 1 (January) to 12 (December)
+  data month_number content integer
+  # DF: /1095As/*/policyIsActiveIn<Month>
+  data policy_is_active content boolean
+  # DF: /1095As/*/has<Month>CoverageMonth
+  data is_coverage_month content boolean
+  # DF: /1095As/*/ptcMonthlyPremium<Month> (column A)
+  data premium content money
+  # DF: /1095As/*/ptcMonthlySlcspPremium<Month> (column B)
+  data slcsp_premium content money
+  # DF: /1095As/*/ptcMonthlyAptcPremium<Month> (column C)
+  data aptc content money
+
+## One of Form 8962 lines 12 to 23 (columns (a) to (f)).
+declaration structure PtcMonth:
+  # 1 (January, line 12) to 12 (December, line 23)
+  data month_number content integer
+  # DF: /hasActive1095APolicyIn<Month>
+  data has_active_policy content boolean
+  # (a) DF: /monthlyPtcPremiumFor<Month>
+  data enrollment_premium content money
+  # (b) DF: /monthlyPtcSlcspPremiumFor<Month>
+  data slcsp_premium content money
+  # (c) DF: /monthlyPtcContributionAmountFor<Month>
+  data contribution_amount content money
+  # (d) DF: /monthlyPtcMaxPremiumAssitanceFor<Month> (sic)
+  data max_premium_assistance content money
+  # (e) DF: /monthlyPtcAllowedFor<Month>
+  data ptc_allowed content money
+  # (f) DF: /monthlyAptcPremiumFor<Month>
+  data advance_payment content money
+
+## The amount for month `month_number` (1 to 12) of a twelve-amount list; $0 if
+## the list is shorter.
+declaration month_amount content money
+  depends on
+    amounts content list of money,
+    month_number content integer
+  equals
+    match (List.nth_element of amounts, month_number) with pattern
+    -- Present content a: a
+    -- Absent: $0
+
+declaration scope Form1095ACalculation:
+  input form content Form1095A
+  # DF: ptc.xml /potentiallyApplicableTaxPayer (scope PtcAllowed)
+  input potentially_applicable_tax_payer condition
+  # DF: ptc.xml /hasAdvancedPtc (scope PtcAllowed)
+  input has_advanced_ptc condition
+
+  internal start_month content integer
+  internal start_day content integer
+  internal end_month content integer
+  # DF: /1095As/*/hasPolicyDateException
+  output has_policy_date_exception condition
+  # DF: /1095As/*/eligibleForCoverageMonths
+  output eligible_for_coverage_months condition
+  # DF: /1095As/*/hasPolicyForAllMonths
+  output has_policy_for_all_months condition
+  # The coverage months (1 to 12)
+  output coverage_month_numbers content list of integer
+  # The twelve months, January first
+  output months content list of Form1095AMonth
+  # DF: /1095As/*/numberOfCoverageMonths
+  output number_of_coverage_months content integer
+  # DF: /1095As/*/hasZeroCoverageMonths
+  output has_zero_coverage_months condition
+  # DF: /1095As/*/hasAtLeastOneCoverageMonth
+  output has_at_least_one_coverage_month condition
+  # DF: /1095As/*/premiumsOrSlcspChange is asked (its Switch condition)
+  internal premiums_or_slcsp_change_is_asked condition
+  # DF: /1095As/*/ptcAnnualPremium is complete
+  output ptc_annual_premium_is_known condition
+  # DF: /1095As/*/noChangesAnd12MonthPolicy
+  output no_changes_and12_month_policy condition
+  # DF: /1095As/*/aptcAnnualAmount is complete
+  output aptc_annual_amount_is_known condition
+  # DF: /1095As/*/aptcAnnualAmount
+  output aptc_annual_amount content money
+  # DF: /1095As/*/hasCoverageMonthsOrAptc
+  output has_coverage_months_or_aptc condition
+  # This form allows Form 8962 line 11 (annual totals); DF: the filter of
+  # /ptcCanReportAnnualTotals
+  output can_report_annual_totals condition
+  # Line 11 column (a) contribution of this form (DF /1095As/*/ptcAnnualPremium, $0 if unknown)
+  output annual_premium content money
+  # Line 11 column (b) contribution of this form (DF /1095As/*/slcspAnnualPremium, $0 if unknown)
+  output annual_slcsp_premium content money
+
+declaration scope PtcAllowed:
+  # ---- From other modules (the orchestrator wires them) ----
+  # DF: filingStatus.xml /filingStatus (Filers / FilingStatus)
+  input filing_status content Types.FilingStatus
+  # DF: filers.xml /isMFJDependent (Filers.is_mfj_dependent)
+  input is_mfj_dependent condition
+  # DF: filers.xml
+  # /notMfjAndPrimaryFilerCouldBeDependentAndClaimerIsRequiredToFileOrFilingForCredits
+  # (Filers output of the same name): a "dependent taxpayer" in ptc.xml
+  input not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits condition
+  # DF: filers.xml /primaryFilerIsClaimedAsDependent (Filers)
+  input primary_filer_is_claimed_as_dependent condition
+  # DF: filers.xml /isMarried (Filers)
+  input is_married condition
+  # DF: filers.xml /secondaryFilerResidencyEligibleForMFJ (Filers)
+  input secondary_filer_residency_eligible_for_mfj condition
+  # DF: filers.xml /livedApartLastSixMonths (Filers)
+  input lived_apart_last_six_months condition
+  # DF: filers.xml /allEligibleFilersAreUSCitizensOrNationals (Filers)
+  input all_eligible_filers_are_us_citizens_or_nationals condition
+  # DF: familyAndHousehold.xml /claimedDependentsCount
+  input claimed_dependents_count content integer
+  # DF: formW2s.xml /hasQsehra (a W-2 box 12 code FF amount above $0)
+  input has_qsehra condition
+  # Form 8962 line 5. DF: ptc.xml /householdIncomeAsPercent (Ptc_family)
+  input household_income_as_percent content decimal
+  # Form 8962 line 8a. DF: ptc.xml /ptcAnnualContributionAmount (Ptc_family)
+  input ptc_annual_contribution_amount content money
+  # Form 8962 line 8b. DF: ptc.xml /ptcMontlyContributionAmount (Ptc_family)
+  input ptc_monthly_contribution_amount content money
+
+  # ---- ptc.xml writable facts ----
+  # DF: /1095As
+  input form1095_as content list of Form1095A
+  # DF: /writableHasPtcQualifyingPlan
+  input writable_has_ptc_qualifying_plan condition
+  # DF: /writableHasAdvancedPtc
+  input writable_has_advanced_ptc condition
+  # DF: /dependentTpSelfEnrolled
+  input dependent_tp_self_enrolled condition
+  # DF: /dependentTpEnrolledSomeoneElse
+  input dependent_tp_enrolled_someone_else condition
+  # DF: /writableDependentTpOtherMembersArePartOfDifferentTaxFamily
+  input writable_dependent_tp_other_members_are_part_of_different_tax_family condition
+  # DF: /writableHasMfsException
+  input writable_has_mfs_exception condition
+  # DF: /writableClaimingMfsExceptionForFourthStraightYear
+  input writable_claiming_mfs_exception_for_fourth_straight_year condition
+  # DF: /writableBelow100ThresholdAndNotEligibleForMedicaidBecauseOfImmigrationStatus
+  input writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status condition
+  # DF: /writableHasEmployerSponsoredPlan
+  input writable_has_employer_sponsored_plan condition
+  # DF: /writableDependentsRequiredToFile
+  input writable_dependents_required_to_file condition
+  # DF: /writableSelfReportedHasMultiple1095As
+  input writable_self_reported_has_multiple1095_as condition
+  # DF: /writableIsAdditionalPersonInEnrollmentFamily
+  input writable_is_additional_person_in_enrollment_family condition
+  # DF: /writableIsAdditionalPersonPartofDifferentTaxFamily
+  input writable_is_additional_person_partof_different_tax_family condition
+  # DF: /writableIsEnrolledWithOtherFamily
+  input writable_is_enrolled_with_other_family condition
+  # DF: /writableHasImmigrationStatusNotEligibleForMarketplace
+  input writable_has_immigration_status_not_eligible_for_marketplace condition
+  # DF: /writableWantsToUseAltCalculations
+  input writable_wants_to_use_alt_calculations condition
+
+  # ---- Who may claim the credit ----
+  # DF: /maybeEligibleForPtc
+  output maybe_eligible_for_ptc condition
+  # DF: /dependentTpOtherMembersArePartOfDifferentTaxFamily
+  internal dependent_tp_other_members_are_part_of_different_tax_family condition
+  # DF: /dependentTpNeedToCollectMoreInfo
+  internal dependent_tp_need_to_collect_more_info condition
+  # DF: /hasPtcQualifyingPlan
+  output has_ptc_qualifying_plan condition
+  # DF: /hasAdvancedPtc
+  output has_advanced_ptc condition
+  # DF: /isMFSAndCantBeClaimed
+  internal is_mfs_and_cant_be_claimed condition
+  # DF: /hasMfsException
+  internal has_mfs_exception condition
+  # DF: /claimingMfsExceptionForFourthStraightYear
+  internal claiming_mfs_exception_for_fourth_straight_year condition
+  # DF: /notPtcApplicableTaxPayerSoFar
+  internal not_ptc_applicable_tax_payer_so_far condition
+  # DF: /isBelow100PercentFederalPovertyLevel
+  output is_below100_percent_federal_poverty_level condition
+  # DF: /maybeApplicableTpAndNoAptcAndBelow100PovertyThreshold
+  internal maybe_applicable_tp_and_no_aptc_and_below100_poverty_threshold condition
+  # DF: /filerNotQualifiedForPtcBecauseOfStatusAndResidenceInfo
+  internal filer_not_qualified_for_ptc_because_of_status_and_residence_info condition
+  # DF: /notPtcApplicableTaxPayer
+  output not_ptc_applicable_tax_payer condition
+  # DF: /potentiallyApplicableTaxPayer
+  output potentially_applicable_tax_payer condition
+  # DF: /applicableTaxPayerOrHasAptc
+  internal applicable_tax_payer_or_has_aptc condition
+
+  # ---- The Forms 1095-A ----
+  internal forms content list of Form1095ACalculation
+  internal all_months content list of Form1095AMonth
+  # DF: /mayNeedToFileForm8962
+  output may_need_to_file_form8962 condition
+  # DF: /needsToFileForm8962
+  output needs_to_file_form8962 condition
+  # DF: /ptcHasZeroCoverageMonths
+  internal ptc_has_zero_coverage_months condition
+  # DF: /qualifiedForPtc
+  output qualified_for_ptc condition
+
+  # ---- Line 11: annual totals ----
+  # Form 8962 line 10 "Yes". DF: /ptcCanReportAnnualTotals
+  output ptc_can_report_annual_totals condition
+  # Line 11(a). DF: /totalPtcAnnualPremium
+  output total_ptc_annual_premium content money
+  # Line 11(b). DF: /totalAnnualSlcspPremium
+  output total_annual_slcsp_premium content money
+  # Line 11(f). DF: /totalAnnualAptcAmount
+  output total_annual_aptc_amount content money
+  # Line 11(d). DF: /annualMaxPremiumAssitance (sic)
+  output annual_max_premium_assistance content money
+  # Line 11(e). DF: /annualPtcAllowed
+  output annual_ptc_allowed content money
+
+  # ---- Lines 12 to 23: monthly calculation ----
+  # DF: /needsToFileForm8962Monthly
+  output needs_to_file_form8962_monthly condition
+  output ptc_months content list of PtcMonth
+
+  # ---- Lines 24 and 25 ----
+  # Line 24. DF: /totalPtcAmountAllowed
+  output total_ptc_amount_allowed content money
+  # Line 25. DF: /totalAptcAmountTaken
+  output total_aptc_amount_taken content money
+  # Line 24 minus line 25, for the alternative-calculation knockout only
+  # (part 3 owns line 26). DF: /netPtcAmount
+  internal net_ptc_amount content money
+
+  # ---- Knockouts (flow.xml lines 96 to 103) and blocked submissions ----
+  # DF: /dependentTpRequiresAllocations
+  output ko_dependent_tp_requires_allocations condition
+  # DF: /hasPtcQualifyingPlanAndQsehra
+  output ko_has_ptc_qualifying_plan_and_qsehra condition
+  # DF: /isAdditionalPersonInEnrollmentFamily
+  internal is_additional_person_in_enrollment_family condition
+  # DF: /isAdditionalPersonPartofDifferentTaxFamily
+  internal is_additional_person_partof_different_tax_family condition
+  # DF: /isEnrolledWithOtherFamily
+  internal is_enrolled_with_other_family condition
+  # DF: /needsAllocations
+  output ko_needs_allocations condition
+  # DF: /hasEmployerSponsoredPlan
+  output ko_has_employer_sponsored_plan condition
+  # DF: /dependentsRequiredToFile
+  output ko_dependents_required_to_file condition
+  # DF: /selfReportedHasMultiple1095As
+  output ko_self_reported_has_multiple1095_as condition
+  # DF: /mayPotentiallyHaveTaxFamilyWithNonEligibleImmigrationStatus
+  internal may_potentially_have_tax_family_with_non_eligible_immigration_status condition
+  # DF: /hasImmigrationStatusNotEligibleForMarketplace
+  output ko_has_immigration_status_not_eligible_for_marketplace condition
+  # DF: /wantsToUseAltCalculations
+  output ko_wants_to_use_alt_calculations condition
+  # DF: /tpNeedsToAdd1095A (BlockSubmissionOnTrue)
+  output ko_tp_needs_to_add1095_a condition
+  # DF: /tpNeedsToDelete1095A (BlockSubmissionOnTrue)
+  output ko_tp_needs_to_delete1095_a condition
+  output unsupported condition
+```
+
+## 26 U.S.C. § 36B(c)(1) Applicable taxpayer
+
+"(A) In general. The term "applicable taxpayer" means, with respect to any
+taxable year, a taxpayer whose household income for the taxable year equals
+or exceeds 100 percent but does not exceed 400 percent of an amount equal to
+the poverty line for a family of the size involved. (B) Special rule for
+certain individuals lawfully present in the United States. If (i) a taxpayer
+has a household income which is not greater than 100 percent of an amount
+equal to the poverty line for a family of the size involved, and (ii) the
+taxpayer is an alien lawfully present in the United States, but is not
+eligible for the medicaid program under title XIX of the Social Security Act
+by reason of such alien status, the taxpayer shall, for purposes of the credit
+under this section, be treated as an applicable taxpayer [...]. (C) Married
+couples must file joint return. If the taxpayer is married (within the meaning
+of section 7703) at the close of the taxable year, the taxpayer shall be
+treated as an applicable taxpayer only if the taxpayer and the taxpayer's
+spouse file a joint return for the taxable year. (D) Denial of credit to
+dependents. No credit shall be allowed under this section to any individual
+with respect to whom a deduction under section 151 is allowable to another
+taxpayer [...]. (E) Temporary rule for 2021 through 2025. In the case of a
+taxable year beginning after December 31, 2020, and before January 1, 2026,
+subparagraph (A) shall be applied without regard to "but does not exceed 400
+percent"."
+
+26 CFR 1.36B-2(b)(2)(ii): "a married taxpayer satisfies the joint filing
+requirement [...] if the taxpayer files a tax return using a filing status of
+married filing separately and the taxpayer (A) Is living apart from the
+taxpayer's spouse at the time the taxpayer files the tax return; (B) Is unable
+to file a joint return because the taxpayer is a victim of domestic abuse
+[...] or spousal abandonment [...]". (v) "Three-year rule. Paragraph
+(b)(2)(ii) of this section does not apply if the taxpayer met the
+requirements of paragraph (b)(2)(ii) of this section for each of the three
+preceding taxable years." 1.36B-2(b)(6) treats a taxpayer below 100 percent
+as an applicable taxpayer when "(C) Advance credit payments are authorized and
+paid for one or more months during the taxable year" (and the Exchange
+estimated an income of 100 to 400 percent).
+
+DF asks these as yes/no questions: the MFS exception (Exception 2,
+`i8962--2024.pdf` p 6 to 7) and its fourth straight year; for a taxpayer
+below 100 percent with no APTC, whether someone on the plan is not eligible
+for Medicaid because of immigration status (36B(c)(1)(B)); the dependent
+taxpayer questions (36B(c)(1)(D)). A married head of household whose spouse
+is not residency-eligible for a joint return and who did not live apart from
+the spouse for the last six months is treated as married (36B(c)(1)(C)). A
+fact DF leaves Incomplete here counts as "applicable", as in DF
+(`/potentiallyApplicableTaxPayer` is true when `/notPtcApplicableTaxPayer` is
+Incomplete).
+
+```catala
+scope PtcAllowed:
+  # DF: /maybeEligibleForPtc
+  definition maybe_eligible_for_ptc equals
+    not (filing_status = Types.FilingStatus.MarriedFilingJointly
+         and is_mfj_dependent)
+
+  # DF: /dependentTpOtherMembersArePartOfDifferentTaxFamily (asked only if
+  # the dependent taxpayer enrolled someone else)
+  definition dependent_tp_other_members_are_part_of_different_tax_family equals
+    dependent_tp_enrolled_someone_else
+    and writable_dependent_tp_other_members_are_part_of_different_tax_family
+
+  # DF: /dependentTpNeedToCollectMoreInfo
+  definition dependent_tp_need_to_collect_more_info equals
+    ((not primary_filer_is_claimed_as_dependent)
+     and dependent_tp_self_enrolled and (not dependent_tp_enrolled_someone_else))
+    or ((not dependent_tp_self_enrolled) and dependent_tp_enrolled_someone_else
+        and (not dependent_tp_other_members_are_part_of_different_tax_family))
+    or ((not primary_filer_is_claimed_as_dependent)
+        and dependent_tp_self_enrolled and dependent_tp_enrolled_someone_else
+        and (not dependent_tp_other_members_are_part_of_different_tax_family))
+
+  # DF: /hasPtcQualifyingPlan. Incomplete in DF when not maybe eligible,
+  # which DF reads as "no Form 8962"; false here.
+  rule has_ptc_qualifying_plan under condition
+    maybe_eligible_for_ptc
+    and (if not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits
+         then dependent_tp_need_to_collect_more_info
+         else writable_has_ptc_qualifying_plan)
+  consequence fulfilled
+
+  # DF: /hasAdvancedPtc (asked only with a qualifying plan)
+  rule has_advanced_ptc under condition
+    has_ptc_qualifying_plan and writable_has_advanced_ptc
+  consequence fulfilled
+
+  # IRC 36B(c)(1)(C), 26 CFR 1.36B-2(b)(2). DF: /isMFSAndCantBeClaimed
+  rule is_mfs_and_cant_be_claimed under condition
+    filing_status = Types.FilingStatus.MarriedFilingSeparately
+    and not not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits
+  consequence fulfilled
+
+  # 26 CFR 1.36B-2(b)(2)(ii). DF: /hasMfsException
+  rule has_mfs_exception under condition
+    is_mfs_and_cant_be_claimed and writable_has_mfs_exception
+  consequence fulfilled
+
+  # 26 CFR 1.36B-2(b)(2)(v). DF: /claimingMfsExceptionForFourthStraightYear
+  rule claiming_mfs_exception_for_fourth_straight_year under condition
+    has_mfs_exception and writable_claiming_mfs_exception_for_fourth_straight_year
+  consequence fulfilled
+
+  # IRC 36B(c)(1)(C) and (D). DF: /notPtcApplicableTaxPayerSoFar
+  rule not_ptc_applicable_tax_payer_so_far under condition
+    (is_mfs_and_cant_be_claimed
+     and ((not has_mfs_exception)
+          or claiming_mfs_exception_for_fourth_straight_year))
+    or not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits
+  consequence fulfilled
+
+  # IRC 36B(c)(1)(A), Form 8962 line 5 below 100.
+  # DF: /isBelow100PercentFederalPovertyLevel
+  rule is_below100_percent_federal_poverty_level under condition
+    household_income_as_percent < P.ptc_applicable_taxpayer_poverty_percent_floor
+  consequence fulfilled
+
+  # 26 CFR 1.36B-2(b)(6)(i)(C): with APTC paid, a household income below 100
+  # percent does not disqualify. DF:
+  # /maybeApplicableTpAndNoAptcAndBelow100PovertyThreshold
+  rule maybe_applicable_tp_and_no_aptc_and_below100_poverty_threshold under condition
+    (not not_ptc_applicable_tax_payer_so_far) and (not has_advanced_ptc)
+    and is_below100_percent_federal_poverty_level
+  consequence fulfilled
+
+  # IRC 36B(c)(1)(C) (married head of household treated as married) and
+  # (D) (dependent taxpayer with no APTC who enrolled self or own family).
+  # DF: /filerNotQualifiedForPtcBecauseOfStatusAndResidenceInfo. Its first
+  # branch asks IsComplete(/hasAdvancedPtc), which is
+  # /hasPtcQualifyingPlan.
+  rule filer_not_qualified_for_ptc_because_of_status_and_residence_info under condition
+    (has_ptc_qualifying_plan
+     and filing_status = Types.FilingStatus.HeadOfHousehold
+     and is_married
+     and (not secondary_filer_residency_eligible_for_mfj)
+     and (not lived_apart_last_six_months))
+    or ((not has_advanced_ptc)
+        and not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits
+        and (not primary_filer_is_claimed_as_dependent)
+        and (dependent_tp_self_enrolled
+             or (dependent_tp_enrolled_someone_else
+                 and not dependent_tp_other_members_are_part_of_different_tax_family)))
+  consequence fulfilled
+
+  # IRC 36B(c)(1). DF: /notPtcApplicableTaxPayer, where
+  # /below100ThresholdAndNotEligibleForMedicaidBecauseOfImmigrationStatus is
+  # the writable answer when asked (36B(c)(1)(B)) and Incomplete otherwise.
+  rule not_ptc_applicable_tax_payer under condition
+    not_ptc_applicable_tax_payer_so_far
+    or (maybe_applicable_tp_and_no_aptc_and_below100_poverty_threshold
+        and not writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status)
+    or filer_not_qualified_for_ptc_because_of_status_and_residence_info
+  consequence fulfilled
+
+  # DF: /potentiallyApplicableTaxPayer (/uniqueCircumstancesIsComplete is a
+  # UI completeness flag, true for complete inputs)
+  rule potentially_applicable_tax_payer under condition
+    not not_ptc_applicable_tax_payer
+  consequence fulfilled
+
+  # DF: /applicableTaxPayerOrHasAptc
+  rule applicable_tax_payer_or_has_aptc under condition
+    potentially_applicable_tax_payer or has_advanced_ptc
+  consequence fulfilled
+```
+
+## 26 U.S.C. § 36B(c)(2) Coverage month, per Form 1095-A
+
+"(A) In general. The term "coverage month" means, with respect to an
+applicable taxpayer, any month if (i) as of the first day of such month the
+taxpayer, the taxpayer's spouse, or any dependent of the taxpayer is covered
+by a qualified health plan [...] that was enrolled in through an Exchange
+[...], and (ii) the premium for coverage under such plan for such month is
+paid by the taxpayer (or through advance payment of the credit [...]). (B)
+Exception for minimum essential coverage. (i) In general. The term "coverage
+month" shall not include any month with respect to an individual if for such
+month the individual is eligible for minimum essential coverage other than
+[...] coverage in the individual market."
+
+26 CFR 1.36B-3(c)(2): "Certain individuals enrolled during a month. If an
+individual enrolls in a qualified health plan and the enrollment is effective
+on the date of the individual's birth, adoption, or placement for adoption or
+in foster care, or on the effective date of a court order, the individual is
+treated as enrolled as of the first day of that month".
+
+DF offers as possible coverage months the months covered on their first day
+(`/1095As/*/monthOptions`): the starting month if the policy starts on the 1st
+or the policy-date exception (1.36B-3(c)(2)) applies, and every later month up
+to the end month. The taxpayer then picks the coverage months among them
+(`coverageMonths`), which carries the premium-paid and minimum-essential-coverage
+tests of 36B(c)(2)(A)(ii) and (B). DF reads policy dates only for a
+potentially applicable taxpayer (`/1095As/*/policyStartDate`), so with no
+applicable taxpayer no month is active or a coverage month. The policy dates
+are 2024 dates and the end is not before the start (DF
+`/1095As/*/hasPolicyDateError`).
+
+DF-BUG(33-a): DF's December option (`ptc.xml` lines 3549 to 3574) is "the
+policy does not start in December and ends in December, or starts in
+December with the policy-date exception". It omits "starts on December 1",
+which every other month has, so a policy starting on December 1 never has
+December as a coverage month although the taxpayer is covered on December 1.
+The statute rule is used: the starting month counts when the policy starts on
+the 1st, December included.
+
+Form 1095-A amounts by month (DF `/1095As/*/ptcMonthlyPremium<Month>`,
+`ptcMonthlySlcspPremium<Month>`, `ptcMonthlyAptcPremium<Month>`): when DF
+asked the annual line 33 amount instead of the months (a full-year policy
+with no change), the month is one twelfth of it. The enrollment premium
+(column A) and the APTC (column C) count in every month the policy is active;
+the SLCSP premium (column B) only in coverage months.
+
+DF-BUG(33-b), first part: DF uses the annual SLCSP divided by 12 in every
+month, coverage month or not (`/1095As/*/ptcMonthlySlcspPremiumJan`, line
+5006). Only coverage months have a premium assistance amount
+(IRC 36B(b)(1)), so a non-coverage month has an SLCSP of $0 here. In DF this
+matters only when such a form reaches the monthly path (see the second part
+below).
+
+```catala
+scope Form1095ACalculation:
+  definition start_month equals Date.get_month of form.writable_policy_start_date
+  definition start_day equals Date.get_day of form.writable_policy_start_date
+  definition end_month equals Date.get_month of form.writable_policy_end_date
+
+  # 26 CFR 1.36B-3(c)(2). DF: /1095As/*/hasPolicyDateException and
+  # /1095As/*/maybeHasPolicyDateException
+  rule has_policy_date_exception under condition
+    potentially_applicable_tax_payer
+    and form.writable_special_policy_modification_in_starting_month
+    and start_day != 1
+    and form.writable_has_policy_date_exception
+  consequence fulfilled
+
+  # DF: /1095As/*/eligibleForCoverageMonths
+  rule eligible_for_coverage_months under condition
+    form.has_coverage_months and potentially_applicable_tax_payer
+  consequence fulfilled
+
+  # DF: /1095As/*/hasPolicyForAllMonths (starts in January, ends in December)
+  rule has_policy_for_all_months under condition
+    potentially_applicable_tax_payer and start_month = 1 and end_month = 12
+  consequence fulfilled
+
+  # IRC 36B(c)(2)(A)(i): covered as of the first day of the month
+  # (DF: /1095As/*/monthOptions), chosen by the taxpayer and eligible
+  # (DF: /1095As/*/has<Month>CoverageMonth).
+  # DF-BUG(33-a): the "starts on the 1st" case applies to December too.
+  definition coverage_month_numbers equals
+    list of m among (List.sequence of 1, 13) such that
+      ((start_month = m
+        and (start_day = 1 or has_policy_date_exception))
+       or (start_month < m and m <= end_month))
+      and (form.coverage_months contains m)
+      and eligible_for_coverage_months
+
+  definition months equals
+    map each m among (List.sequence of 1, 13) to
+      (let policy_is_active equals
+         potentially_applicable_tax_payer
+         and start_month <= m and m <= end_month
+       in
+       let is_coverage_month equals coverage_month_numbers contains m in
+       Form1095AMonth {
+         -- month_number: m
+         -- policy_is_active: policy_is_active
+         -- is_coverage_month: is_coverage_month
+         -- premium:
+              if not policy_is_active then $0
+              else if ptc_annual_premium_is_known
+              then form.writable_ptc_annual_premium * (1.0 / 12.0)
+              else month_amount of form.writable_ptc_monthly_premium, m
+         # DF-BUG(33-b): $0 outside coverage months
+         -- slcsp_premium:
+              if not is_coverage_month then $0
+              else if no_changes_and12_month_policy
+              then form.writable_slcsp_annual_premium * (1.0 / 12.0)
+              else month_amount of form.writable_ptc_monthly_slcsp_premium, m
+         -- aptc:
+              if aptc_annual_amount_is_known
+              then aptc_annual_amount * (1.0 / 12.0)
+              else if has_advanced_ptc and policy_is_active
+              then month_amount of form.writable_ptc_monthly_aptc_premium, m
+              else $0
+       })
+
+  # DF: /1095As/*/numberOfCoverageMonths
+  definition number_of_coverage_months equals
+    number of coverage_month_numbers
+
+  rule has_zero_coverage_months under condition
+    number_of_coverage_months = 0
+  consequence fulfilled
+
+  rule has_at_least_one_coverage_month under condition
+    number_of_coverage_months >= 1
+  consequence fulfilled
+
+  # DF: /1095As/*/premiumsOrSlcspChange is a Switch on these two facts
+  rule premiums_or_slcsp_change_is_asked under condition
+    has_at_least_one_coverage_month and has_policy_for_all_months
+  consequence fulfilled
+
+  # DF: /1095As/*/ptcAnnualPremium
+  rule ptc_annual_premium_is_known under condition
+    premiums_or_slcsp_change_is_asked
+    and not form.writable_premiums_or_slcsp_change
+  consequence fulfilled
+
+  # Form 8962 line 10, i8962 p 12: "You were enrolled in the qualified health
+  # plan for all 12 months during 2024. Your enrollment premium was the same
+  # for every month [...] Your SLCSP premium is the same for every month".
+  # DF: /1095As/*/noChangesAnd12MonthPolicy
+  rule no_changes_and12_month_policy under condition
+    premiums_or_slcsp_change_is_asked
+    and (not form.writable_premiums_or_slcsp_change)
+    and (not form.has_change_in_circumstance)
+  consequence fulfilled
+
+  # DF: /1095As/*/aptcAnnualAmount (DF asks line 33 column C for a
+  # full-year policy with no change or a form with no coverage month)
+  rule aptc_annual_amount_is_known under condition
+    no_changes_and12_month_policy or has_zero_coverage_months
+  consequence fulfilled
+
+  definition aptc_annual_amount equals
+    if has_advanced_ptc and aptc_annual_amount_is_known
+    then form.writable_aptc_annual_amount
+    else $0
+
+  # DF: /1095As/*/hasCoverageMonthsOrAptc
+  rule has_coverage_months_or_aptc under condition
+    has_at_least_one_coverage_month or has_advanced_ptc
+  consequence fulfilled
+
+  # DF-BUG(33-b): second part. Form 8962 line 10 (i8962 p 12): annual totals
+  # only if "You were enrolled in the qualified health plan for all 12 months
+  # during 2024", with the same premium and SLCSP every month. DF's filter is
+  # /noChangesAnd12MonthPolicy, which tests only that the policy starts in
+  # January and ends in December: a policy starting on January 20 without
+  # the policy-date exception (11 coverage months), or a taxpayer who
+  # deselected a month (minimum essential coverage, unpaid premium), still
+  # gets line 11, which allows the full-year SLCSP for a month that is not a
+  # coverage month (IRC 36B(b)(1)). Here line 11 needs 12 coverage months;
+  # otherwise the monthly path uses the twelfths in the coverage months only.
+  # The second branch is DF's: no coverage month but APTC paid, so line 11(f)
+  # reports the APTC to repay (i8962 p 14, "Not an applicable taxpayer").
+  rule can_report_annual_totals under condition
+    (no_changes_and12_month_policy and number_of_coverage_months = 12)
+    or (has_zero_coverage_months and has_advanced_ptc)
+  consequence fulfilled
+
+  # DF: /1095As/*/ptcAnnualPremium, as summed by /totalPtcAnnualPremium
+  definition annual_premium equals
+    if ptc_annual_premium_is_known then form.writable_ptc_annual_premium
+    else $0
+
+  # DF: /1095As/*/slcspAnnualPremium, as summed by /totalAnnualSlcspPremium
+  definition annual_slcsp_premium equals
+    if no_changes_and12_month_policy then form.writable_slcsp_annual_premium
+    else $0
+```
+
+## The Forms 1095-A of the return
+
+```catala
+scope PtcAllowed:
+  definition forms equals
+    map each f among form1095_as to
+      (output of Form1095ACalculation with {
+         -- form: f
+         -- potentially_applicable_tax_payer: potentially_applicable_tax_payer
+         -- has_advanced_ptc: has_advanced_ptc
+       })
+
+  definition all_months equals
+    combine all c among forms in acc initially [] with acc ++ c.months
+
+  # DF: /mayNeedToFileForm8962
+  rule may_need_to_file_form8962 under condition
+    (exists c among forms such that c.has_coverage_months_or_aptc)
+    and maybe_eligible_for_ptc and has_ptc_qualifying_plan
+    and applicable_tax_payer_or_has_aptc
+  consequence fulfilled
+
+  # DF: /needsToFileForm8962
+  rule needs_to_file_form8962 under condition may_need_to_file_form8962
+  consequence fulfilled
+
+  # DF: /ptcHasZeroCoverageMonths (Incomplete in DF, false here, when there
+  # is no form or no applicable taxpayer and no APTC)
+  rule ptc_has_zero_coverage_months under condition
+    applicable_tax_payer_or_has_aptc
+    and number of forms > 0
+    and (for all c among forms we have c.has_zero_coverage_months)
+  consequence fulfilled
+
+  # DF: /qualifiedForPtc
+  rule qualified_for_ptc under condition
+    has_ptc_qualifying_plan
+    and (not filer_not_qualified_for_ptc_because_of_status_and_residence_info)
+    and potentially_applicable_tax_payer
+    and number of forms > 0
+    and not ptc_has_zero_coverage_months
+  consequence fulfilled
+```
+
+## Form 8962 line 11: annual totals
+
+Line 10 (`i8962--2024.pdf` p 12): "Check "Yes" and continue to line 11 if
+all of the following apply for each qualified health plan you or a member of
+your tax family was enrolled in for 2024. Otherwise, check "No" and continue
+to lines 12 through 23."
+
+Line 11 (p 13 to 14): "Column (a). Enter the annual enrollment premiums from
+Form 1095-A, line 33, column A. If you have more than one Form 1095-A, add the
+amounts together [...]. Column (b). Enter the annual applicable SLCSP premium
+from Form 1095-A, line 33, column B. [...] Column (c). Enter the amount from
+line 8a of Form 8962. Column (d). Subtract the amount in column (c) from the
+amount in column (b). If the result is zero or less, enter -0-. Column (e).
+Enter the lesser of the amount in column (a) or the amount in column (d).
+[...] Column (f). Enter the APTC amount from Form 1095-A, line 33, column C.
+If you have more than one Form 1095-A, add the amounts together".
+
+DF-BUG(33-c): DF's `/ptcCanReportAnnualTotals` (line 6456) is true if *any*
+Form 1095-A allows annual totals; the instruction says "for each qualified
+health plan". DF's own comment marks it as a TODO. Every form is required
+here. It matters only with two or more forms, which DF blocks
+(`ko_tp_needs_to_delete1095_a`).
+
+DF rounds each column total to whole dollars (`Round` of the
+`CollectionSum`).
+
+```catala
+scope PtcAllowed:
+  # DF-BUG(33-c): every form, not any form.
+  rule ptc_can_report_annual_totals under condition
+    number of forms > 0
+    and (for all c among forms we have c.can_report_annual_totals)
+  consequence fulfilled
+
+  # Line 11(a). DF: /totalPtcAnnualPremium
+  definition total_ptc_annual_premium equals
+    round of (Money.sum of (map each c among forms to c.annual_premium))
+
+  # Line 11(b). DF: /totalAnnualSlcspPremium. With several forms the
+  # instruction enters one form's SLCSP per state; several forms are
+  # knocked out (ko_tp_needs_to_delete1095_a), and DF adds them.
+  definition total_annual_slcsp_premium equals
+    round of (Money.sum of (map each c among forms to c.annual_slcsp_premium))
+
+  # Line 11(f). DF: /totalAnnualAptcAmount
+  definition total_annual_aptc_amount equals
+    round of (Money.sum of (map each c among forms to c.aptc_annual_amount))
+
+  # Line 11(d), IRC 36B(b)(2)(B). DF: /annualMaxPremiumAssitance
+  definition annual_max_premium_assistance equals
+    Money.positive of (total_annual_slcsp_premium - ptc_annual_contribution_amount)
+
+  # Line 11(e), IRC 36B(b)(2). DF: /annualPtcAllowed
+  definition annual_ptc_allowed equals
+    Money.min of annual_max_premium_assistance, total_ptc_annual_premium
+```
+
+## Form 8962 lines 12 to 23: monthly calculation
+
+26 U.S.C. § 36B(b)(1): "The term "premium assistance credit amount" means,
+with respect to any taxable year, the sum of the premium assistance amounts
+determined under paragraph (2) with respect to all coverage months of the
+taxpayer occurring during the taxable year. (2) Premium assistance amount. The
+premium assistance amount determined under this subsection with respect to
+any coverage month is the amount equal to the lesser of (A) the monthly
+premiums for such month for 1 or more qualified health plans [...], or (B)
+the excess (if any) of (i) the adjusted monthly premium for such month for the
+applicable second lowest cost silver plan with respect to the taxpayer, over
+(ii) an amount equal to 1/12 of the product of the applicable percentage and
+the taxpayer's household income for the taxable year."
+
+Lines 12 to 23 (`i8962--2024.pdf` p 14 to 15): "Column (a). Enter [...] the
+amount of the monthly premiums reported on Form 1095-A, lines 21 through 32,
+column A, for the corresponding month. If you have more than one Form 1095-A
+affecting a particular month, add the amounts together for that month [...].
+Column (c). [...] enter on lines 12 through 23, column (c), your monthly
+contribution amount from line 8b. If columns (a) and (b) of any of lines 12
+through 23 are blank, leave column (c) of the corresponding line blank. [...]
+Column (d). Subtract the amount in column (c) from the amount in column (b).
+If the result is zero or less, enter -0-. Column (e). Enter for each month the
+lesser of the amount in column (a) or the amount in column (d) for that month.
+[...] Column (f). Enter on lines 12 through 23, column (f), the amount of the
+monthly APTC reported on Form 1095-A, lines 21 through 32, column C. If you
+have more than one Form 1095-A affecting a particular month, add the amounts
+together".
+
+DF fills a month only when some policy is active that month
+(`/hasActive1095APolicyIn<Month>`) and otherwise leaves it Incomplete, which
+its totals count as $0; here such a month is all $0. DF rounds each month's
+column sum to whole dollars.
+
+```catala
+scope PtcAllowed:
+  # DF: /needsToFileForm8962Monthly
+  rule needs_to_file_form8962_monthly under condition
+    may_need_to_file_form8962 and not ptc_can_report_annual_totals
+  consequence fulfilled
+
+  definition ptc_months equals
+    map each m among (List.sequence of 1, 13) to
+      (let rows equals list of r among all_months such that r.month_number = m in
+       let has_active_policy equals
+         exists r among rows such that r.policy_is_active
+       in
+       let filled equals needs_to_file_form8962_monthly and has_active_policy in
+       # (a) DF: /monthlyPtcPremiumFor<Month>
+       let enrollment_premium equals
+         if filled then round of (Money.sum of (map each r among rows to r.premium))
+         else $0
+       in
+       # (b) DF: /monthlyPtcSlcspPremiumFor<Month>
+       let slcsp_premium equals
+         if filled
+         then round of (Money.sum of (map each r among rows to r.slcsp_premium))
+         else $0
+       in
+       # (c) DF: /monthlyPtcContributionAmountFor<Month>
+       let contribution_amount equals
+         if filled then ptc_monthly_contribution_amount else $0
+       in
+       # (d) IRC 36B(b)(2)(B). DF: /monthlyPtcMaxPremiumAssitanceFor<Month>
+       let max_premium_assistance equals
+         Money.positive of (slcsp_premium - contribution_amount)
+       in
+       PtcMonth {
+         -- month_number: m
+         -- has_active_policy: has_active_policy
+         -- enrollment_premium: enrollment_premium
+         -- slcsp_premium: slcsp_premium
+         -- contribution_amount: contribution_amount
+         -- max_premium_assistance: max_premium_assistance
+         # (e) IRC 36B(b)(2). DF: /monthlyPtcAllowedFor<Month>
+         -- ptc_allowed: Money.min of max_premium_assistance, enrollment_premium
+         # (f) DF: /monthlyAptcPremiumFor<Month>
+         -- advance_payment:
+              if filled then round of (Money.sum of (map each r among rows to r.aptc))
+              else $0
+       })
+```
+
+## Form 8962 lines 24 and 25
+
+"Line 24. Enter the amount from line 11(e) or add lines 12(e) through 23(e)
+and enter the total. Line 25. Enter the amount from line 11(f) or add lines
+12(f) through 23(f) and enter the total." (`i8962--2024.pdf` p 15.)
+
+With no Form 8962 (`needs_to_file_form8962` false) both lines are $0; DF
+leaves them Incomplete on the monthly side and computes the annual side
+anyway, but reads neither without a Form 8962.
+
+```catala
+scope PtcAllowed:
+  # Line 24, IRC 36B(b)(1). DF: /totalPtcAmountAllowed
+  definition total_ptc_amount_allowed equals
+    if not may_need_to_file_form8962 then $0
+    else if ptc_can_report_annual_totals then annual_ptc_allowed
+    else Money.sum of (map each r among ptc_months to r.ptc_allowed)
+
+  # Line 25, IRC 36B(f). DF: /totalAptcAmountTaken
+  definition total_aptc_amount_taken equals
+    if not may_need_to_file_form8962 then $0
+    else if ptc_can_report_annual_totals then total_annual_aptc_amount
+    else Money.sum of (map each r among ptc_months to r.advance_payment)
+
+  # DF: /netPtcAmount (part 3 owns line 26)
+  definition net_ptc_amount equals
+    total_ptc_amount_allowed - total_aptc_amount_taken
+```
+
+## Knockouts and blocked submissions
+
+`flow.xml` lines 96 to 103 knock out a return when any of the following is
+true; the two `BlockSubmissionOnTrue` facts of `ptc.xml` (lines 1027 and
+1042) stop the filing too, and are knockouts here (CONVENTIONS section 6).
+Each is a case the module does not compute:
+
+- allocation of policy amounts with another taxpayer (Form 8962 line 9 and
+  Part IV, `i8962--2024.pdf` p 10 to 12): `ko_dependent_tp_requires_allocations`,
+  `ko_needs_allocations`;
+- a qualified small employer health reimbursement arrangement (line 11(e)
+  and 12(e) "Note. Do not follow this instruction if you were provided a
+  QSEHRA", p 14): `ko_has_ptc_qualifying_plan_and_qsehra`;
+- an offer of employer coverage (IRC 36B(c)(2)(C), affordability and minimum
+  value): `ko_has_employer_sponsored_plan`;
+- a dependent required to file, whose modified AGI joins the household income
+  (IRC 36B(d)(2)(A)(ii), Form 8962 line 2b): `ko_dependents_required_to_file`;
+- more than one Form 1095-A (several SLCSP rules, line 11(b) p 13 to 14):
+  `ko_self_reported_has_multiple1095_as`, `ko_tp_needs_to_delete1095_a`;
+- immigration-status rules (Pub. 974, "Individuals Not Lawfully Present"):
+  `ko_has_immigration_status_not_eligible_for_marketplace`;
+- the alternative calculation for year of marriage (line 9 and Part V):
+  `ko_wants_to_use_alt_calculations`;
+- a qualifying plan reported with no Form 1095-A: `ko_tp_needs_to_add1095_a`.
+
+```catala
+scope PtcAllowed:
+  # DF: /dependentTpRequiresAllocations
+  rule ko_dependent_tp_requires_allocations under condition
+    not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits
+    and dependent_tp_self_enrolled and dependent_tp_enrolled_someone_else
+    and ((primary_filer_is_claimed_as_dependent
+          and not dependent_tp_other_members_are_part_of_different_tax_family)
+         or ((not primary_filer_is_claimed_as_dependent)
+             and dependent_tp_other_members_are_part_of_different_tax_family))
+  consequence fulfilled
+
+  # DF: /hasPtcQualifyingPlanAndQsehra
+  rule ko_has_ptc_qualifying_plan_and_qsehra under condition
+    has_ptc_qualifying_plan and has_qsehra
+  consequence fulfilled
+
+  # DF: /isAdditionalPersonInEnrollmentFamily (asked with a qualifying plan,
+  # not of a dependent taxpayer)
+  rule is_additional_person_in_enrollment_family under condition
+    has_ptc_qualifying_plan
+    and (not not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits)
+    and writable_is_additional_person_in_enrollment_family
+  consequence fulfilled
+
+  # DF: /isAdditionalPersonPartofDifferentTaxFamily
+  rule is_additional_person_partof_different_tax_family under condition
+    is_additional_person_in_enrollment_family
+    and writable_is_additional_person_partof_different_tax_family
+  consequence fulfilled
+
+  # DF: /isEnrolledWithOtherFamily (asked when the previous answer is no)
+  rule is_enrolled_with_other_family under condition
+    (not is_additional_person_partof_different_tax_family)
+    and writable_is_enrolled_with_other_family
+  consequence fulfilled
+
+  # DF: /needsAllocations
+  rule ko_needs_allocations under condition
+    has_ptc_qualifying_plan
+    and (is_additional_person_partof_different_tax_family
+         or is_enrolled_with_other_family)
+  consequence fulfilled
+
+  # DF: /hasEmployerSponsoredPlan
+  rule ko_has_employer_sponsored_plan under condition
+    maybe_eligible_for_ptc and has_ptc_qualifying_plan
+    and writable_has_employer_sponsored_plan
+  consequence fulfilled
+
+  # DF: /dependentsRequiredToFile
+  rule ko_dependents_required_to_file under condition
+    has_ptc_qualifying_plan and claimed_dependents_count >= 1
+    and writable_dependents_required_to_file
+  consequence fulfilled
+
+  # DF: /selfReportedHasMultiple1095As
+  rule ko_self_reported_has_multiple1095_as under condition
+    has_ptc_qualifying_plan and writable_self_reported_has_multiple1095_as
+  consequence fulfilled
+
+  # DF: /mayPotentiallyHaveTaxFamilyWithNonEligibleImmigrationStatus
+  rule may_potentially_have_tax_family_with_non_eligible_immigration_status under condition
+    (is_additional_person_in_enrollment_family and not is_enrolled_with_other_family)
+    or (not all_eligible_filers_are_us_citizens_or_nationals)
+    or claimed_dependents_count >= 1
+  consequence fulfilled
+
+  # DF: /hasImmigrationStatusNotEligibleForMarketplace
+  rule ko_has_immigration_status_not_eligible_for_marketplace under condition
+    has_ptc_qualifying_plan
+    and may_potentially_have_tax_family_with_non_eligible_immigration_status
+    and writable_has_immigration_status_not_eligible_for_marketplace
+  consequence fulfilled
+
+  # DF: /wantsToUseAltCalculations, asked when
+  # /potentiallyEligibleForAltCalcBecauseMarriedThisYear: APTC, excess APTC
+  # (/netPtcAmountWhenNegative complete), married, filing jointly.
+  rule ko_wants_to_use_alt_calculations under condition
+    has_advanced_ptc and net_ptc_amount < $0 and is_married
+    and filing_status = Types.FilingStatus.MarriedFilingJointly
+    and writable_wants_to_use_alt_calculations
+  consequence fulfilled
+
+  # DF: /tpNeedsToAdd1095A (with /1095AsIsDone, true for complete inputs)
+  rule ko_tp_needs_to_add1095_a under condition
+    has_ptc_qualifying_plan and applicable_tax_payer_or_has_aptc
+    and number of form1095_as = 0
+  consequence fulfilled
+
+  # DF: /tpNeedsToDelete1095A ("we don't support more than 1")
+  rule ko_tp_needs_to_delete1095_a under condition
+    has_ptc_qualifying_plan and applicable_tax_payer_or_has_aptc
+    and number of form1095_as >= 2
+  consequence fulfilled
+
+  rule unsupported under condition
+    ko_dependent_tp_requires_allocations
+    or ko_has_ptc_qualifying_plan_and_qsehra
+    or ko_needs_allocations
+    or ko_has_employer_sponsored_plan
+    or ko_dependents_required_to_file
+    or ko_self_reported_has_multiple1095_as
+    or ko_has_immigration_status_not_eligible_for_marketplace
+    or ko_wants_to_use_alt_calculations
+    or ko_tp_needs_to_add1095_a
+    or ko_tp_needs_to_delete1095_a
+  consequence fulfilled
+```

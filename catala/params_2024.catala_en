@@ -432,3 +432,13 @@ declaration ptc_applicable_figure_at_300 content decimal equals 0.06
 declaration ptc_applicable_figure_per_point_high content decimal equals 0.00025
 declaration ptc_applicable_figure_max content decimal equals 0.085
 ```
+
+IRC 36B(c)(1)(A): an applicable taxpayer's household income "equals or
+exceeds 100 percent" of the poverty line (`sources/statute/irc-36B.html`);
+Form 8962 line 5 below 100 needs an exception (i8962--2024.pdf p 6, 26 CFR
+1.36B-2(b)(5), (6)). Not indexed. DF ptc.xml
+/isBelow100PercentFederalPovertyLevel. Issue #33.
+
+```catala-metadata
+declaration ptc_applicable_taxpayer_poverty_percent_floor content decimal equals 100.0
+```

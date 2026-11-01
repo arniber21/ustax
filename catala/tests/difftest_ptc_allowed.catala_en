@@ -1,0 +1,310 @@
+# Premium tax credit, part 2 (difftest scaffold)
+
+> Using Types
+> Using Ptc_allowed as A
+
+This scope exists for `make difftest SCOPE=ptc_allowed`
+(`difftest/mappings/ptc_allowed.mjs`, issue #33). It runs
+`Ptc_allowed.PtcAllowed` on the same inputs and exposes each month of Form 8962
+lines 12 to 23 as scalar outputs (`<month>_<column>`), because the runner
+compares scalar outputs only. Every input is passed through unchanged; keep
+the input list in step with `PtcAllowed`.
+
+```catala
+## Row `m` (1 to 12) of Form 8962 lines 12 to 23.
+declaration ptc_month content A.PtcMonth
+  depends on
+    rows content list of A.PtcMonth,
+    m content integer
+  equals
+    match (List.nth_element of rows, m) with pattern
+    -- Present content r: r
+    -- Absent: impossible
+
+declaration scope PtcAllowedDifftest:
+  input filing_status content Types.FilingStatus
+  input is_mfj_dependent condition
+  input not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits condition
+  input primary_filer_is_claimed_as_dependent condition
+  input is_married condition
+  input secondary_filer_residency_eligible_for_mfj condition
+  input lived_apart_last_six_months condition
+  input all_eligible_filers_are_us_citizens_or_nationals condition
+  input claimed_dependents_count content integer
+  input has_qsehra condition
+  input household_income_as_percent content decimal
+  input ptc_annual_contribution_amount content money
+  input ptc_monthly_contribution_amount content money
+  input form1095_as content list of A.Form1095A
+  input writable_has_ptc_qualifying_plan condition
+  input writable_has_advanced_ptc condition
+  input dependent_tp_self_enrolled condition
+  input dependent_tp_enrolled_someone_else condition
+  input writable_dependent_tp_other_members_are_part_of_different_tax_family condition
+  input writable_has_mfs_exception condition
+  input writable_claiming_mfs_exception_for_fourth_straight_year condition
+  input writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status condition
+  input writable_has_employer_sponsored_plan condition
+  input writable_dependents_required_to_file condition
+  input writable_self_reported_has_multiple1095_as condition
+  input writable_is_additional_person_in_enrollment_family condition
+  input writable_is_additional_person_partof_different_tax_family condition
+  input writable_is_enrolled_with_other_family condition
+  input writable_has_immigration_status_not_eligible_for_marketplace condition
+  input writable_wants_to_use_alt_calculations condition
+  a scope A.PtcAllowed
+  output maybe_eligible_for_ptc condition
+  output has_ptc_qualifying_plan condition
+  output has_advanced_ptc condition
+  output not_ptc_applicable_tax_payer condition
+  output potentially_applicable_tax_payer condition
+  output may_need_to_file_form8962 condition
+  output needs_to_file_form8962 condition
+  output needs_to_file_form8962_monthly condition
+  output ptc_can_report_annual_totals condition
+  output total_ptc_annual_premium content money
+  output total_annual_slcsp_premium content money
+  output total_annual_aptc_amount content money
+  output annual_max_premium_assistance content money
+  output annual_ptc_allowed content money
+  output total_ptc_amount_allowed content money
+  output total_aptc_amount_taken content money
+  output ko_dependent_tp_requires_allocations condition
+  output ko_has_ptc_qualifying_plan_and_qsehra condition
+  output ko_needs_allocations condition
+  output ko_has_employer_sponsored_plan condition
+  output ko_dependents_required_to_file condition
+  output ko_self_reported_has_multiple1095_as condition
+  output ko_has_immigration_status_not_eligible_for_marketplace condition
+  output ko_wants_to_use_alt_calculations condition
+  output ko_tp_needs_to_add1095_a condition
+  output ko_tp_needs_to_delete1095_a condition
+  output unsupported condition
+  output jan_has_active_policy content boolean
+  output jan_enrollment_premium content money
+  output jan_slcsp_premium content money
+  output jan_contribution_amount content money
+  output jan_max_premium_assistance content money
+  output jan_ptc_allowed content money
+  output jan_advance_payment content money
+  output feb_has_active_policy content boolean
+  output feb_enrollment_premium content money
+  output feb_slcsp_premium content money
+  output feb_contribution_amount content money
+  output feb_max_premium_assistance content money
+  output feb_ptc_allowed content money
+  output feb_advance_payment content money
+  output mar_has_active_policy content boolean
+  output mar_enrollment_premium content money
+  output mar_slcsp_premium content money
+  output mar_contribution_amount content money
+  output mar_max_premium_assistance content money
+  output mar_ptc_allowed content money
+  output mar_advance_payment content money
+  output apr_has_active_policy content boolean
+  output apr_enrollment_premium content money
+  output apr_slcsp_premium content money
+  output apr_contribution_amount content money
+  output apr_max_premium_assistance content money
+  output apr_ptc_allowed content money
+  output apr_advance_payment content money
+  output may_has_active_policy content boolean
+  output may_enrollment_premium content money
+  output may_slcsp_premium content money
+  output may_contribution_amount content money
+  output may_max_premium_assistance content money
+  output may_ptc_allowed content money
+  output may_advance_payment content money
+  output jun_has_active_policy content boolean
+  output jun_enrollment_premium content money
+  output jun_slcsp_premium content money
+  output jun_contribution_amount content money
+  output jun_max_premium_assistance content money
+  output jun_ptc_allowed content money
+  output jun_advance_payment content money
+  output jul_has_active_policy content boolean
+  output jul_enrollment_premium content money
+  output jul_slcsp_premium content money
+  output jul_contribution_amount content money
+  output jul_max_premium_assistance content money
+  output jul_ptc_allowed content money
+  output jul_advance_payment content money
+  output aug_has_active_policy content boolean
+  output aug_enrollment_premium content money
+  output aug_slcsp_premium content money
+  output aug_contribution_amount content money
+  output aug_max_premium_assistance content money
+  output aug_ptc_allowed content money
+  output aug_advance_payment content money
+  output sep_has_active_policy content boolean
+  output sep_enrollment_premium content money
+  output sep_slcsp_premium content money
+  output sep_contribution_amount content money
+  output sep_max_premium_assistance content money
+  output sep_ptc_allowed content money
+  output sep_advance_payment content money
+  output oct_has_active_policy content boolean
+  output oct_enrollment_premium content money
+  output oct_slcsp_premium content money
+  output oct_contribution_amount content money
+  output oct_max_premium_assistance content money
+  output oct_ptc_allowed content money
+  output oct_advance_payment content money
+  output nov_has_active_policy content boolean
+  output nov_enrollment_premium content money
+  output nov_slcsp_premium content money
+  output nov_contribution_amount content money
+  output nov_max_premium_assistance content money
+  output nov_ptc_allowed content money
+  output nov_advance_payment content money
+  output dec_has_active_policy content boolean
+  output dec_enrollment_premium content money
+  output dec_slcsp_premium content money
+  output dec_contribution_amount content money
+  output dec_max_premium_assistance content money
+  output dec_ptc_allowed content money
+  output dec_advance_payment content money
+
+scope PtcAllowedDifftest:
+  definition a.filing_status equals filing_status
+  definition a.is_mfj_dependent equals is_mfj_dependent
+  definition a.not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits equals not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits
+  definition a.primary_filer_is_claimed_as_dependent equals primary_filer_is_claimed_as_dependent
+  definition a.is_married equals is_married
+  definition a.secondary_filer_residency_eligible_for_mfj equals secondary_filer_residency_eligible_for_mfj
+  definition a.lived_apart_last_six_months equals lived_apart_last_six_months
+  definition a.all_eligible_filers_are_us_citizens_or_nationals equals all_eligible_filers_are_us_citizens_or_nationals
+  definition a.claimed_dependents_count equals claimed_dependents_count
+  definition a.has_qsehra equals has_qsehra
+  definition a.household_income_as_percent equals household_income_as_percent
+  definition a.ptc_annual_contribution_amount equals ptc_annual_contribution_amount
+  definition a.ptc_monthly_contribution_amount equals ptc_monthly_contribution_amount
+  definition a.form1095_as equals form1095_as
+  definition a.writable_has_ptc_qualifying_plan equals writable_has_ptc_qualifying_plan
+  definition a.writable_has_advanced_ptc equals writable_has_advanced_ptc
+  definition a.dependent_tp_self_enrolled equals dependent_tp_self_enrolled
+  definition a.dependent_tp_enrolled_someone_else equals dependent_tp_enrolled_someone_else
+  definition a.writable_dependent_tp_other_members_are_part_of_different_tax_family equals writable_dependent_tp_other_members_are_part_of_different_tax_family
+  definition a.writable_has_mfs_exception equals writable_has_mfs_exception
+  definition a.writable_claiming_mfs_exception_for_fourth_straight_year equals writable_claiming_mfs_exception_for_fourth_straight_year
+  definition a.writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status equals writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status
+  definition a.writable_has_employer_sponsored_plan equals writable_has_employer_sponsored_plan
+  definition a.writable_dependents_required_to_file equals writable_dependents_required_to_file
+  definition a.writable_self_reported_has_multiple1095_as equals writable_self_reported_has_multiple1095_as
+  definition a.writable_is_additional_person_in_enrollment_family equals writable_is_additional_person_in_enrollment_family
+  definition a.writable_is_additional_person_partof_different_tax_family equals writable_is_additional_person_partof_different_tax_family
+  definition a.writable_is_enrolled_with_other_family equals writable_is_enrolled_with_other_family
+  definition a.writable_has_immigration_status_not_eligible_for_marketplace equals writable_has_immigration_status_not_eligible_for_marketplace
+  definition a.writable_wants_to_use_alt_calculations equals writable_wants_to_use_alt_calculations
+  rule maybe_eligible_for_ptc under condition a.maybe_eligible_for_ptc consequence fulfilled
+  rule has_ptc_qualifying_plan under condition a.has_ptc_qualifying_plan consequence fulfilled
+  rule has_advanced_ptc under condition a.has_advanced_ptc consequence fulfilled
+  rule not_ptc_applicable_tax_payer under condition a.not_ptc_applicable_tax_payer consequence fulfilled
+  rule potentially_applicable_tax_payer under condition a.potentially_applicable_tax_payer consequence fulfilled
+  rule may_need_to_file_form8962 under condition a.may_need_to_file_form8962 consequence fulfilled
+  rule needs_to_file_form8962 under condition a.needs_to_file_form8962 consequence fulfilled
+  rule needs_to_file_form8962_monthly under condition a.needs_to_file_form8962_monthly consequence fulfilled
+  rule ptc_can_report_annual_totals under condition a.ptc_can_report_annual_totals consequence fulfilled
+  definition total_ptc_annual_premium equals a.total_ptc_annual_premium
+  definition total_annual_slcsp_premium equals a.total_annual_slcsp_premium
+  definition total_annual_aptc_amount equals a.total_annual_aptc_amount
+  definition annual_max_premium_assistance equals a.annual_max_premium_assistance
+  definition annual_ptc_allowed equals a.annual_ptc_allowed
+  definition total_ptc_amount_allowed equals a.total_ptc_amount_allowed
+  definition total_aptc_amount_taken equals a.total_aptc_amount_taken
+  rule ko_dependent_tp_requires_allocations under condition a.ko_dependent_tp_requires_allocations consequence fulfilled
+  rule ko_has_ptc_qualifying_plan_and_qsehra under condition a.ko_has_ptc_qualifying_plan_and_qsehra consequence fulfilled
+  rule ko_needs_allocations under condition a.ko_needs_allocations consequence fulfilled
+  rule ko_has_employer_sponsored_plan under condition a.ko_has_employer_sponsored_plan consequence fulfilled
+  rule ko_dependents_required_to_file under condition a.ko_dependents_required_to_file consequence fulfilled
+  rule ko_self_reported_has_multiple1095_as under condition a.ko_self_reported_has_multiple1095_as consequence fulfilled
+  rule ko_has_immigration_status_not_eligible_for_marketplace under condition a.ko_has_immigration_status_not_eligible_for_marketplace consequence fulfilled
+  rule ko_wants_to_use_alt_calculations under condition a.ko_wants_to_use_alt_calculations consequence fulfilled
+  rule ko_tp_needs_to_add1095_a under condition a.ko_tp_needs_to_add1095_a consequence fulfilled
+  rule ko_tp_needs_to_delete1095_a under condition a.ko_tp_needs_to_delete1095_a consequence fulfilled
+  rule unsupported under condition a.unsupported consequence fulfilled
+  definition jan_has_active_policy equals (ptc_month of a.ptc_months, 1).has_active_policy
+  definition jan_enrollment_premium equals (ptc_month of a.ptc_months, 1).enrollment_premium
+  definition jan_slcsp_premium equals (ptc_month of a.ptc_months, 1).slcsp_premium
+  definition jan_contribution_amount equals (ptc_month of a.ptc_months, 1).contribution_amount
+  definition jan_max_premium_assistance equals (ptc_month of a.ptc_months, 1).max_premium_assistance
+  definition jan_ptc_allowed equals (ptc_month of a.ptc_months, 1).ptc_allowed
+  definition jan_advance_payment equals (ptc_month of a.ptc_months, 1).advance_payment
+  definition feb_has_active_policy equals (ptc_month of a.ptc_months, 2).has_active_policy
+  definition feb_enrollment_premium equals (ptc_month of a.ptc_months, 2).enrollment_premium
+  definition feb_slcsp_premium equals (ptc_month of a.ptc_months, 2).slcsp_premium
+  definition feb_contribution_amount equals (ptc_month of a.ptc_months, 2).contribution_amount
+  definition feb_max_premium_assistance equals (ptc_month of a.ptc_months, 2).max_premium_assistance
+  definition feb_ptc_allowed equals (ptc_month of a.ptc_months, 2).ptc_allowed
+  definition feb_advance_payment equals (ptc_month of a.ptc_months, 2).advance_payment
+  definition mar_has_active_policy equals (ptc_month of a.ptc_months, 3).has_active_policy
+  definition mar_enrollment_premium equals (ptc_month of a.ptc_months, 3).enrollment_premium
+  definition mar_slcsp_premium equals (ptc_month of a.ptc_months, 3).slcsp_premium
+  definition mar_contribution_amount equals (ptc_month of a.ptc_months, 3).contribution_amount
+  definition mar_max_premium_assistance equals (ptc_month of a.ptc_months, 3).max_premium_assistance
+  definition mar_ptc_allowed equals (ptc_month of a.ptc_months, 3).ptc_allowed
+  definition mar_advance_payment equals (ptc_month of a.ptc_months, 3).advance_payment
+  definition apr_has_active_policy equals (ptc_month of a.ptc_months, 4).has_active_policy
+  definition apr_enrollment_premium equals (ptc_month of a.ptc_months, 4).enrollment_premium
+  definition apr_slcsp_premium equals (ptc_month of a.ptc_months, 4).slcsp_premium
+  definition apr_contribution_amount equals (ptc_month of a.ptc_months, 4).contribution_amount
+  definition apr_max_premium_assistance equals (ptc_month of a.ptc_months, 4).max_premium_assistance
+  definition apr_ptc_allowed equals (ptc_month of a.ptc_months, 4).ptc_allowed
+  definition apr_advance_payment equals (ptc_month of a.ptc_months, 4).advance_payment
+  definition may_has_active_policy equals (ptc_month of a.ptc_months, 5).has_active_policy
+  definition may_enrollment_premium equals (ptc_month of a.ptc_months, 5).enrollment_premium
+  definition may_slcsp_premium equals (ptc_month of a.ptc_months, 5).slcsp_premium
+  definition may_contribution_amount equals (ptc_month of a.ptc_months, 5).contribution_amount
+  definition may_max_premium_assistance equals (ptc_month of a.ptc_months, 5).max_premium_assistance
+  definition may_ptc_allowed equals (ptc_month of a.ptc_months, 5).ptc_allowed
+  definition may_advance_payment equals (ptc_month of a.ptc_months, 5).advance_payment
+  definition jun_has_active_policy equals (ptc_month of a.ptc_months, 6).has_active_policy
+  definition jun_enrollment_premium equals (ptc_month of a.ptc_months, 6).enrollment_premium
+  definition jun_slcsp_premium equals (ptc_month of a.ptc_months, 6).slcsp_premium
+  definition jun_contribution_amount equals (ptc_month of a.ptc_months, 6).contribution_amount
+  definition jun_max_premium_assistance equals (ptc_month of a.ptc_months, 6).max_premium_assistance
+  definition jun_ptc_allowed equals (ptc_month of a.ptc_months, 6).ptc_allowed
+  definition jun_advance_payment equals (ptc_month of a.ptc_months, 6).advance_payment
+  definition jul_has_active_policy equals (ptc_month of a.ptc_months, 7).has_active_policy
+  definition jul_enrollment_premium equals (ptc_month of a.ptc_months, 7).enrollment_premium
+  definition jul_slcsp_premium equals (ptc_month of a.ptc_months, 7).slcsp_premium
+  definition jul_contribution_amount equals (ptc_month of a.ptc_months, 7).contribution_amount
+  definition jul_max_premium_assistance equals (ptc_month of a.ptc_months, 7).max_premium_assistance
+  definition jul_ptc_allowed equals (ptc_month of a.ptc_months, 7).ptc_allowed
+  definition jul_advance_payment equals (ptc_month of a.ptc_months, 7).advance_payment
+  definition aug_has_active_policy equals (ptc_month of a.ptc_months, 8).has_active_policy
+  definition aug_enrollment_premium equals (ptc_month of a.ptc_months, 8).enrollment_premium
+  definition aug_slcsp_premium equals (ptc_month of a.ptc_months, 8).slcsp_premium
+  definition aug_contribution_amount equals (ptc_month of a.ptc_months, 8).contribution_amount
+  definition aug_max_premium_assistance equals (ptc_month of a.ptc_months, 8).max_premium_assistance
+  definition aug_ptc_allowed equals (ptc_month of a.ptc_months, 8).ptc_allowed
+  definition aug_advance_payment equals (ptc_month of a.ptc_months, 8).advance_payment
+  definition sep_has_active_policy equals (ptc_month of a.ptc_months, 9).has_active_policy
+  definition sep_enrollment_premium equals (ptc_month of a.ptc_months, 9).enrollment_premium
+  definition sep_slcsp_premium equals (ptc_month of a.ptc_months, 9).slcsp_premium
+  definition sep_contribution_amount equals (ptc_month of a.ptc_months, 9).contribution_amount
+  definition sep_max_premium_assistance equals (ptc_month of a.ptc_months, 9).max_premium_assistance
+  definition sep_ptc_allowed equals (ptc_month of a.ptc_months, 9).ptc_allowed
+  definition sep_advance_payment equals (ptc_month of a.ptc_months, 9).advance_payment
+  definition oct_has_active_policy equals (ptc_month of a.ptc_months, 10).has_active_policy
+  definition oct_enrollment_premium equals (ptc_month of a.ptc_months, 10).enrollment_premium
+  definition oct_slcsp_premium equals (ptc_month of a.ptc_months, 10).slcsp_premium
+  definition oct_contribution_amount equals (ptc_month of a.ptc_months, 10).contribution_amount
+  definition oct_max_premium_assistance equals (ptc_month of a.ptc_months, 10).max_premium_assistance
+  definition oct_ptc_allowed equals (ptc_month of a.ptc_months, 10).ptc_allowed
+  definition oct_advance_payment equals (ptc_month of a.ptc_months, 10).advance_payment
+  definition nov_has_active_policy equals (ptc_month of a.ptc_months, 11).has_active_policy
+  definition nov_enrollment_premium equals (ptc_month of a.ptc_months, 11).enrollment_premium
+  definition nov_slcsp_premium equals (ptc_month of a.ptc_months, 11).slcsp_premium
+  definition nov_contribution_amount equals (ptc_month of a.ptc_months, 11).contribution_amount
+  definition nov_max_premium_assistance equals (ptc_month of a.ptc_months, 11).max_premium_assistance
+  definition nov_ptc_allowed equals (ptc_month of a.ptc_months, 11).ptc_allowed
+  definition nov_advance_payment equals (ptc_month of a.ptc_months, 11).advance_payment
+  definition dec_has_active_policy equals (ptc_month of a.ptc_months, 12).has_active_policy
+  definition dec_enrollment_premium equals (ptc_month of a.ptc_months, 12).enrollment_premium
+  definition dec_slcsp_premium equals (ptc_month of a.ptc_months, 12).slcsp_premium
+  definition dec_contribution_amount equals (ptc_month of a.ptc_months, 12).contribution_amount
+  definition dec_max_premium_assistance equals (ptc_month of a.ptc_months, 12).max_premium_assistance
+  definition dec_ptc_allowed equals (ptc_month of a.ptc_months, 12).ptc_allowed
+  definition dec_advance_payment equals (ptc_month of a.ptc_months, 12).advance_payment
+```

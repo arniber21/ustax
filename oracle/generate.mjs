@@ -153,6 +153,15 @@ const EXTRA = [
   '/maritalStatusAllowsFilingMarried', '/eligibleForMFJ', '/eligibleForMFS', '/eligibleForSingle', '/eligibleForHoh',
   '/eligibleForQss', '/filerCouldQualifyForHoh', '/filerCouldQualifyForQss', '/isFilingStatusValid',
   '/hasMultipleEligibleFilingStatuses', '/recommendedFilingStatus', '/treatAsMFJ', '/treatAsMFS', '/treatAsHoh',
+  // Issue #33 (PTC part 2): the filer/W-2 facts ptc.xml reads, its eligibility gates and its knockouts.
+  '/isMFJDependent', '/primaryFilerIsClaimedAsDependent',
+  '/notMfjAndPrimaryFilerCouldBeDependentAndClaimerIsRequiredToFileOrFilingForCredits', '/isMarried',
+  '/secondaryFilerResidencyEligibleForMFJ', '/livedApartLastSixMonths', '/allEligibleFilersAreUSCitizensOrNationals',
+  '/hasQsehra', '/claimedDependentsCount', '/maybeEligibleForPtc', '/hasPtcQualifyingPlan', '/hasAdvancedPtc',
+  '/notPtcApplicableTaxPayer', '/potentiallyApplicableTaxPayer', '/mayNeedToFileForm8962',
+  '/dependentTpRequiresAllocations', '/hasPtcQualifyingPlanAndQsehra', '/needsAllocations', '/hasEmployerSponsoredPlan',
+  '/dependentsRequiredToFile', '/selfReportedHasMultiple1095As', '/hasImmigrationStatusNotEligibleForMarketplace',
+  '/wantsToUseAltCalculations', '/tpNeedsToAdd1095A', '/tpNeedsToDelete1095A',
 ].filter((p) => !REQUIRED.includes(p) && !mefPaths.includes(p));
 const missingExtra = EXTRA.filter((p) => !derivedPaths.has(p));
 if (missingExtra.length) throw new Error(`extra paths not derived facts in dictionary: ${missingExtra}`);
