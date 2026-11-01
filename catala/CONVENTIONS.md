@@ -299,6 +299,7 @@ to revisit.
 | Q9 | Schedule R and other constants carry no `TaxYear` tag | **Use official values, which equal DF.** Schedule R amounts come from IRC 22(c), (d) and are not indexed; checked against `i1040sr--2024.pdf` p 7 and `f1040sr--2024.pdf` p 2 in `sources/VERIFICATION.md`. Owner #30. |
 | Q10 | `Rational` to `Dollar` conversion through `Float` | **Do not reproduce; compute exactly, [HUMAN].** Confirmed in `types/Dollar.scala` (`Conversion[Rational, Dollar]`, `numerator.toFloat / denominator`), used by `Add` and `Subtract` of a Dollar and a Rational. It is an engine artefact, not a tax rule, and a `Float` (24-bit mantissa) loses cents once a numerator passes 16,777,216. The oracle (#6) reports any case where this changes a result. Owner #60. |
 | Q11 | `scopedStateOptions` reconstructed from a grep | **Reproduce.** Re-read (`constants.xml` lines 327-360): 25 states plus `moreThanOne` and `noneOfThese`, Louisiana commented out. Encoded as `Types.ScopedState`. Owner #36. |
+| Q12 | CDCC allocation of taxable dependent-care benefits between spouses (proposed by #28, needed to match `ticket-12386`) | **Reproduce.** The form is silent on the allocation; DF's rule is reproduced and marked `# QUIRK(Q12)`. Owner #28. |
 
 Rounding items found while writing section 4 (not in scope.md section 11):
 
