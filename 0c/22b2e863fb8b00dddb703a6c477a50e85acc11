@@ -1,0 +1,63 @@
+web/src/docs/DocsRoutes.tsx
+  s_3031b504518be3::t_507655f1ffe283 2-107,109-176,178-201,203-216,218,220-231,233-266
+  s_3031b504518be3::t_fde89d591c5960 1,177,202,217,219,232
+  s_3031b504518be3::t_16345315ffe31c 108
+web/src/docs/docs.css
+  s_3031b504518be3::t_162630eae74014 1-7,9-41
+  s_3031b504518be3::t_2f5b36fd8d3ffb 8
+web/src/docs/remarkCallouts.ts
+  s_3031b504518be3::t_8dfa2bf5d68fe7 1-32
+web/src/docs/docs.test.tsx
+  s_3031b504518be3::t_a570e0866efba5 1-107,109-208,210-213,215-269
+  s_3031b504518be3::t_c9a03c5c8aec27 209
+  s_3031b504518be3::t_b342b7faa728f3 214
+  s_3031b504518be3::t_c95fd2d83dec83 108
+docs/site/_nav.json
+  s_3031b504518be3::t_fc8b8eee5dae57 1-15
+web/src/docs/config.ts
+  s_3031b504518be3::t_262542b54b77f3 1-9
+web/src/docs/frontmatter.ts
+  s_3031b504518be3::t_498c063085d7a4 1-12,15-28
+  s_3031b504518be3::t_ce8d8988c263dc 13-14
+web/src/docs/toc.ts
+  s_3031b504518be3::t_5f50e2b0d1807a 1-25
+docs/site/how-we-built-this.md
+  s_3031b504518be3::t_76abf3f5b2ebc1 1-116
+web/src/docs/highlight.ts
+  s_3031b504518be3::t_d5f569655e16aa 1-54
+docs/site/index.md
+  s_3031b504518be3::t_568e0d7f2e3b33 1-64
+web/package.json
+  s_3031b504518be3::t_d6424f731c3f96 48,50-52
+web/src/docs/content.ts
+  s_3031b504518be3::t_e10cf0bb683da0 1-76
+web/src/docs/Markdown.tsx
+  s_3031b504518be3::t_439b5e55a13514 1-119,121-126
+  s_3031b504518be3::t_785570afe8fd85 120
+web/src/docs/links.ts
+  s_3031b504518be3::t_2e3925947b0863 1-49
+web/src/layout/AppShell.tsx
+  s_3031b504518be3::t_652a59b89a01d8 60-62,81-82
+README.md
+  s_3031b504518be3::t_0fbcbb19c9c01f 172
+web/src/App.tsx
+  s_3031b504518be3::t_652a59b89a01d8 1,14-16,39-46
+web/package-lock.json
+  s_3031b504518be3::t_4eaf269a070720 21,23-25,3227-3235,3256-3264,3297-3302,3755-3764,3832-3841,3862-3871,4006-4018,4286-4295,4326-4331,4454-4459,4492-4517,4541-4580,4614-4623,4664-4703,4727-4748,5187-5196,5243-5256,5260-5262,5269-5279,5281-5284,5287-5295,5297-5302,5305-5308,5311-5321,5324,5326-6100,6276-6300,6594-6620,6750-6850,7026-7034,7156-7165,7262-7280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0c22b2e863fb8b00dddb703a6c477a50e85acc11",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
