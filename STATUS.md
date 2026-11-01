@@ -2,17 +2,24 @@
 
 Updated by the orchestrator after each merge round. Last update: 2026-11-01 (wave 4).
 
-## Done (merged, each verified by the orchestrator by rebuilding and rerunning difftests)
-M0: #5 #6 #7 #8 #9. Spikes: #50 (Std.Http), #55 (TLS doc; TLS not in critical path).
-Catala: #10 rates, #11 std ded, #12 W-2, #13 interest, #14 1040 spine, #15 filers, #16 QC, #17 QR, #18 benefit split, #21 1099-G/PFD, #22 1099-R, #23 SS, #24 adjustments, #25 est. payments, #26 EITC, #27 CTC/ODC/ACTC, #29 Saver's, #30 Schedule R, #35 HSA, #36 knockouts A.
-Lean: #39 money lib, #40 helpers, #41 rate schedule (+nonneg/monotone proofs), #42 three-way difftest harness, #43 spine (std ded, W-2, interest, 1040; refund/balance-due exclusivity proven), #51 request parsing/validation (+soundness proof).
-Contract/FE/infra: #49 JSON contract, #74 FE API client, #70 (partial) CI + `make audit` + Comparator in Apple container (`make comparator`).
+## Done (merged, each re-verified by the orchestrator)
+Catala (whole 1040, all modules incl. PTC): `Calculator` scope passes 157/157 non-knocked-out Direct File scenarios, 5,360/5,360 fact checks; `ApiCalculator` (#38) 157/157, 3,105/3,105 through the API request shape.
+Lean: money lib, helpers, rate schedule, spine, income types, household/filing status, CDCC/Saver's/Schedule R (#139), request validation. Proofs: Comparator set (tax table <$100k and >=$100k worksheet, refund/balance-due, credits within liability, total tax nonneg) + `make comparator-extra` (23 spec-vs-implementation theorems). `make audit` passes.
+Product: devbox + CI, shadcn "US Tax" UI, provenance index (data side), README + write-up draft, Docker, TLS doc, API contract 1.2.0 (dependents, credits, PTC inputs).
+DF bug log: 33 entries (docs/direct-file-bugs.md), DF-BUG-8 confirmed.
+
+## KNOWN RED ON MAIN (fix in progress)
+`make api-conformance` and `make test-server` fail: contract 1.2.0 (#146) added optional fields the Lean request validator/server do not accept yet. Fixed by the Lean Calculator + API sync (#48/#52), starts after #46a (Lean EITC/CTC) lands.
 
 ## In progress
-Catala #19 HoH/QSS persons (+ wiring benefit split into QR). Lean #45 income types port. #63 Lean spec file (Opus; human must review the spec). Server vertical slice (#52/#54/#56/#53/#57). FE shell (#73/#75).
+#46a Lean EITC/CTC (rebasing onto moved main; EITC bounds theorem to Comparator set). 
 
 ## Not yet done
-CDCC #28, filing status #20, Sch 2/3 + credit order #31, PTC #32-34, knockouts B/aggregation #37/#38, wiring merged Catala modules into Form_1040, Lean ports #44/#46/#47/#48, FE screens #76-#82, proofs #64-#69, README trusted surface #59/#71, quirk decisions #60, spec reviews #61/#62/#68, final fresh-clone check.
+Lean Calculator (#48) + server sync (#52/#53/#57), provenance viewer in the UI, wizard steps for dependents/credits, Lean PTC/HSA port (#47), proofs #66/#69 composed over the Calculator, spec review by the human (docs/spec-surface.md), #60 quirk decisions, #59/#71 README trusted-surface, LICENSE decision, fresh-clone `make install && make run` check on Linux/CI.
+
+## Process notes
+- Merge guard (after the #143 incident, where a stale-base squash deleted merged work): before every merge, `git diff --diff-filter=D --name-only origin/main...<branch>` must be empty and the branch must contain origin/main.
+- Local `sources/reference-catala/` (gitignored) breaks `make check` in the main checkout (clerk finds it); move it aside when running there.
 
 ## DECISIONS NEEDING THE HUMAN (defaults applied; reversible)
 1. **Catala -> Lean strategy (#8): DECIDED by human: option (c)**: write the calculator directly in Lean, keep Catala as readable spec + test oracle, link them by differential testing (docs/catala-to-lean.md). Alternative (b) translator plugin is 50-80h. Part 2 issues (#39-48, #63, #64, #70) need re-scoping from "port" to "implement in Lean, difftest vs Catala". Server runs the Lean calculator.
