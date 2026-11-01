@@ -1,0 +1,41 @@
+catala/tests/test_tax_rates_table.catala_en
+  s_3031b504518be3::t_6e9e4d04b88fd1 7,11,35-36
+docs/spec-surface.md
+  s_3031b504518be3::t_6e9e4d04b88fd1 207-211
+lean/UsTax/Proofs/TaxTable.lean
+  s_3031b504518be3::t_6e9e4d04b88fd1 11,70-100
+lean/UsTax/TaxRates/TaxTableData.lean
+  s_3031b504518be3::t_6e9e4d04b88fd1 5,32-33,130,134-135,233,237-238,336,340-341,439,443-444,542,546-547,645,649-650,748,752-753,851,855-856,954,958-959,1057,1061-1062,1160,1164-1165,1263,1267-1268,1366,1370-1371,1469,1473-1474,1572,1576-1577,1675,1679-1680,1778,1782-1783,1881,1885-1886,1984,1988-1989,2087,2089,2091-2092
+sources/forms-instructions/derived-tax-table-2024.csv
+  s_3031b504518be3::t_83c056032e5d61 3-4
+lean/README.md
+  s_3031b504518be3::t_70c1635e07219d 90-91
+lean/UsTax/Spec/TaxTable.lean
+  s_3031b504518be3::t_ff4d102d65dbc6 13
+lean/UsTax/TaxRates/TaxTable.lean
+  s_3031b504518be3::t_3fd6090f16a25e 8,12,35
+scripts/gen_lean_tax_table.py
+  s_3031b504518be3::t_3b6b3a0dc35388 4,9,20
+scripts/gen_tax_rates_tests.py
+  s_3031b504518be3::t_e030027ac46d17 39,61,65
+sources/INDEX.md
+  s_3031b504518be3::t_332a24421c5cf6 31
+sources/VERIFICATION.md
+  s_3031b504518be3::t_ccf1a4519f9779 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "170bbb223db0e0974e66c347119f3c87f73a34a9",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
