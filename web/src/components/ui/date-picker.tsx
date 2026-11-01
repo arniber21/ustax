@@ -3,7 +3,8 @@ import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fromLocalDate, parseIso, parseUs, toIso, toLocalDate, toLong, toUs } from '@/lib/isoDate';
 import { Button } from './button';
-import { Calendar } from './calendar';
+// react-day-picker loads with the first opened calendar; typing a date needs none of it.
+const Calendar = React.lazy(() => import('./calendar').then((m) => ({ default: m.Calendar })));
 import { Input } from './input';
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from './popover';
 
@@ -119,6 +120,7 @@ export function DatePicker({
           </div>
         </PopoverAnchor>
         <PopoverContent>
+          <React.Suspense fallback={<div className="grid h-72 w-64 place-items-center text-sm text-muted-foreground">Loading calendar…</div>}>
           <Calendar
             mode="single"
             captionLayout="dropdown"
@@ -136,6 +138,7 @@ export function DatePicker({
             }}
             autoFocus
           />
+          </React.Suspense>
         </PopoverContent>
       </Popover>
       <p className="m-0 text-sm text-muted-foreground empty:hidden" aria-live="polite">

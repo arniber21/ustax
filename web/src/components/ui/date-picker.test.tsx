@@ -35,7 +35,11 @@ function Harness({ initial = '', min, max, spy }: { initial?: string; min?: stri
 }
 
 const input = () => screen.getByLabelText('Date of birth') as HTMLInputElement;
-const openCalendar = () => userEvent.click(screen.getByRole('button', { name: /^Choose date of birth/ }));
+// The calendar is a lazy chunk: wait for its grid after opening.
+const openCalendar = async () => {
+  await userEvent.click(screen.getByRole('button', { name: /^Choose date of birth/ }));
+  await screen.findByRole('grid');
+};
 
 describe('DatePicker', () => {
   it('shows an ISO value as MM/DD/YYYY and as a long date', () => {
