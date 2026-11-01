@@ -1,0 +1,34 @@
+.github/workflows/ci.yml
+  s_3031b504518be3::t_8d938f54a5666d 110
+  s_3031b504518be3::t_c67d0031d8cdf5 1-2,4-5,7,25,29-30,32-33,35-41,43-44,46-47,54,73-75,81-85,88,91,102,109,128,131,134,137
+docs/deploy.md
+  s_3031b504518be3::t_c03f7020bfa24d 66-69
+docs/devbox.md
+  s_3031b504518be3::t_e5e48ebb1388e5 1-60
+docs/audit.md
+  s_3031b504518be3::t_c03f7020bfa24d 83-86,89-90,93-95,106
+docs/comparator.md
+  s_3031b504518be3::t_c03f7020bfa24d 217
+lean/README.md
+  s_3031b504518be3::t_c03f7020bfa24d 32-33
+README.md
+  s_3031b504518be3::t_c03f7020bfa24d 16
+Makefile
+  s_3031b504518be3::t_5df2edc0bc73de 10,36-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9e684088c8b2f35ec2b39a8636b8ee9fe8d6f586",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}

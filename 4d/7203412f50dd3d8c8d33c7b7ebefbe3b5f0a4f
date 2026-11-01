@@ -1,0 +1,38 @@
+scripts/devbox-env.sh
+  s_3031b504518be3::t_e7c412ccaf7387 1-14
+scripts/devbox-exec.sh
+  s_3031b504518be3::t_47ab10bb6c5257 1-37
+scripts/catala-setup.sh
+  s_3031b504518be3::t_06bb67dc6bae3e 1-30
+scripts/install.sh
+  s_3031b504518be3::t_7fe449f946718e 2-10,12-14,19,25,37,39
+Makefile
+  s_3031b504518be3::t_0c8562e46b26a7 2-11,43-51,107,140
+devbox.json
+  s_3031b504518be3::t_6d2b90d7c500ab 1-3,5-43
+  s_3031b504518be3::t_4f775de1dcd18b 4
+.gitignore
+  s_3031b504518be3::t_55209d0c9ef7c0 15-16
+devbox.d/caddy/Caddyfile
+  s_3031b504518be3::t_1925fbf336f0c6 1-15
+devbox.d/web/index.html
+  s_3031b504518be3::t_fdd1ddeebdef76 1-10
+devbox.lock
+  s_3031b504518be3::t_448c46a8960a98 1-983
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4d7203412f50dd3d8c8d33c7b7ebefbe3b5f0a4f",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
