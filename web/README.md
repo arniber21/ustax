@@ -75,3 +75,9 @@ draftFromRequest(req)    // inverse, used for api/examples round-trip tests
 ```
 
 The wizard only collects what `api/schema.json` accepts. Dependents, HSA, EITC, CDCC and the Saver's credit are not in the contract yet, so there are no questions for them (the household step just warns that child-related credits are not in the math).
+
+## Provenance viewer (`src/provenance/`)
+
+Each Form 1040 line on `/results` has a "How was this calculated?" button (also inside the "How this was calculated" accordion) that opens a sheet: the law (citations), the Catala rule (Shiki, vendored Catala grammar, definition lines marked), what is proved (Lean theorems from `proofs.theorems`, or "No theorem covers this line yet"), how it is tested, and the Direct File fact. Data: `api/provenance.json` (docs/provenance.md). Catala is shown as a readable rule validated by tests, never as proved.
+
+`npm run dev` and `npm run build` first run `scripts/sync-provenance.mjs`: it fails if `api/provenance.json` is stale (same check as `make provenance-check`; run `make provenance` and commit), then copies it and the referenced sources to `public/provenance.json` and `public/sources/` (gitignored). Running `npx vite` directly skips this: run `node scripts/sync-provenance.mjs` once. Shiki, its grammars and themes are dynamic imports (separate chunks).

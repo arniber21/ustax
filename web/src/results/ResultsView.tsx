@@ -6,6 +6,7 @@ import { UnsupportedView } from '../knockout/UnsupportedView';
 import { Page, PageHeader } from '../layout/Page';
 import { ResultsHero } from '../pages/ResultsHero';
 import { FILING_STATUS_OPTIONS } from '../wizard/AboutStep';
+import { ProvenanceProvider } from '../provenance';
 import { HowCalculated, LineWalk } from './LineWalk';
 import { WhatIf } from './WhatIf';
 import { useLiveCalculation } from './useLiveCalculation';
@@ -93,13 +94,15 @@ export function ResultsView({ request, client, debounceMs }: { request: Calculat
       {state.status === 'error' && <ErrorNotice error={state.error} onRetry={retry} hasPrevious={shown !== null} />}
 
       {shown && (
-        <div className="grid gap-10">
-          <ResultsHero outcome={shown.outcome} lines={shown.lines} stale={state.status !== 'ok'} />
-          {shown.warnings && shown.warnings.length > 0 && <WarningsAlert warnings={shown.warnings} />}
-          <LineWalk lines={shown.lines} filingStatus={request.filing_status} />
-          <HowCalculated lines={shown.lines} filingStatus={request.filing_status} />
-          <WhatIf request={request} client={client} />
-        </div>
+        <ProvenanceProvider lines={shown.lines}>
+          <div className="grid gap-10">
+            <ResultsHero outcome={shown.outcome} lines={shown.lines} stale={state.status !== 'ok'} />
+            {shown.warnings && shown.warnings.length > 0 && <WarningsAlert warnings={shown.warnings} />}
+            <LineWalk lines={shown.lines} filingStatus={request.filing_status} />
+            <HowCalculated lines={shown.lines} filingStatus={request.filing_status} />
+            <WhatIf request={request} client={client} />
+          </div>
+        </ProvenanceProvider>
       )}
     </Page>
   );

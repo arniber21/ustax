@@ -1,0 +1,16 @@
+/* Shiki emits both themes as CSS variables; pick one following the app's light/dark switch. */
+.prov-code span[data-scope] { color: var(--shiki-light); }
+html[data-theme='dark'] .prov-code span[data-scope] { color: var(--shiki-dark); }
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .prov-code span[data-scope] { color: var(--shiki-dark); }
+}
+.prov-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.75rem; line-height: 1.5; }
+.prov-code .prov-line[data-hl='true'] { background: color-mix(in oklab, var(--primary) 16%, transparent); box-shadow: inset 3px 0 0 var(--primary); }
+
+@media print {
+  body:has(.prov-sheet) #root, .prov-overlay, .prov-noprint { display: none !important; }
+  .prov-sheet { position: static !important; width: 100% !important; max-width: none !important; height: auto !important; border: 0 !important; box-shadow: none !important; }
+  .prov-sheet .prov-scroll, .prov-code { max-height: none !important; overflow: visible !important; }
+  .prov-code { white-space: pre-wrap; }
+  .prov-section { break-inside: avoid; }
+}
