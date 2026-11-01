@@ -1,0 +1,39 @@
+api/knockout-reasons.json
+  s_3031b504518be3::t_1240ac69c7273d 555-557,562-564,569-571,576-578,583-585,590-592,597-599,604-634,639-641,646-648,653-655,660-662,667-669,674-676,681-683,688-690,693-697,700,702-704,707-711,714,716-718,721,723-746
+api/scripts/gen-reasons.mjs
+  s_3031b504518be3::t_e9e8804c59873f 34,43-44
+catala/calculator.catala_en
+  s_3031b504518be3::t_520434154d53ce 25,311-312,335-336,339,593,1592-1622,1626-1627,1636
+catala/knockouts_household.catala_en
+  s_3031b504518be3::t_3de1cd25cf633f 1-286
+catala/knockouts_income.catala_en
+  s_3031b504518be3::t_207cc3ebcc9f55 132-160
+catala/tests/test_calculator.catala_en
+  s_3031b504518be3::t_b7615b39e7eefb 314,618,855
+catala/tests/test_knockouts_household.catala_en
+  s_3031b504518be3::t_82bd3014786c9e 1-575
+difftest/mappings/calculator.mjs
+  s_3031b504518be3::t_795563435d8a4a 253-261
+docs/knockout-inventory.md
+  s_3031b504518be3::t_8cee59dcf9ce04 3,8-9,16-17,19,25-27,29-30,75-78,105-114,120-122,127-128
+scripts/gen_knockout_inventory.mjs
+  s_3031b504518be3::t_da8bd6dbf63a58 31,52-57,78-82,86-87,102,107-108,119,130-131
+web/src/knockout/reasonCopy.ts
+  s_3031b504518be3::t_ba717150cc722c 209-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f287dd535d50ddd3a3b03aa8452b0c52555f3402",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
