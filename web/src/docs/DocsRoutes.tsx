@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, Route, Routes, useLocation, useOutletContext, useParams } from 'react-router';
 import { ArrowLeft, ArrowRight, Pencil, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,9 @@ import { activeHeading, tocFromElement, type TocItem } from './toc';
 interface Ctx {
   query: string;
 }
+
+// The OpenAPI reference (api/openapi.json) is its own page, not markdown.
+const ApiReference = lazy(() => import('./api/ApiReference'));
 
 const PAGE_TITLE = 'Documentation';
 
@@ -257,6 +260,14 @@ function DocNotFound({ slug }: { slug: string }) {
 export default function DocsRoutes() {
   return (
     <Routes>
+      <Route
+        path="api"
+        element={
+          <Suspense fallback={<p className="px-6 py-12 text-muted-foreground">Loading the API reference...</p>}>
+            <ApiReference />
+          </Suspense>
+        }
+      />
       <Route element={<DocsLayout />}>
         <Route index element={<DocsLanding />} />
         <Route path=":slug" element={<DocRoute />} />
