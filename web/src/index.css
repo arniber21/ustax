@@ -186,7 +186,47 @@
   }
 }
 
+@layer components {
+  /* "Where to find it" help inside hints. */
+  .where {
+    @apply text-muted-foreground;
+  }
+  /* First-visit tour: a soft ring that breathes around the line 15 "Law & proof" button. */
+  .prov-tour {
+    animation: prov-tour 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes prov-tour {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 40%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in oklab, var(--primary) 0%, transparent);
+  }
+}
+
+/* Print: the result and its table, without the app chrome or controls. */
+@media print {
+  .prov-noprint,
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+  body {
+    background: white;
+    color: black;
+  }
+  thead th {
+    position: static !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .prov-tour {
+    animation: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 35%, transparent);
+  }
   *,
   *::before,
   *::after {

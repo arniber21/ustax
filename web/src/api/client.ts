@@ -1,6 +1,9 @@
 import type { CalculateRequest, CalculateSuccess, CalculateUnsupported, ErrorResponse } from './types.gen';
-import { contractProblems } from './validate';
-import { mockFetch } from './mock';
+import type { ContractType } from './validate';
+
+// The contract validator (ajv + api/schema.json) and the fixture mock load on first use, so neither is in the main bundle.
+const contractProblems = async (type: ContractType, doc: unknown): Promise<string[]> => (await import('./validate')).contractProblems(type, doc);
+const mockFetch: typeof fetch = async (input, init) => (await import('./mock')).mockFetch(input, init);
 
 export const DEFAULT_API_URL = 'http://localhost:8080';
 
@@ -65,17 +68,17 @@ export async function calculate(request: CalculateRequest, opts: ClientOptions =
   }
 
   if (res.status === 200) {
-    const problems = contractProblems('CalculateSuccess', body);
+    const problems = await contractProblems('CalculateSuccess', body);
     return problems.length ? contractError(200, problems, body) : { kind: 'ok', status: 200, data: body as CalculateSuccess };
   }
   if (res.status === 422) {
-    const problems = contractProblems('CalculateUnsupported', body);
+    const problems = await contractProblems('CalculateUnsupported', body);
     return problems.length
       ? contractError(422, problems, body)
       : { kind: 'knockout', status: 422, data: body as CalculateUnsupported };
   }
   if ([400, 404, 405, 413, 415, 500].includes(res.status)) {
-    const problems = contractProblems('ErrorResponse', body);
+    const problems = await contractProblems('ErrorResponse', body);
     return problems.length
       ? contractError(res.status, problems, body)
       : { kind: 'error', error: { type: 'http', status: res.status, body: body as ErrorResponse } };

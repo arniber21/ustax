@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { resolvedTheme } from '@/lib/theme';
 import { globeDots, type DotKind } from './globeGeometry';
 
 /**
@@ -29,7 +30,8 @@ const DARK: Palette = {
 };
 
 function isDark(): boolean {
-  return typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+  // The app themes with <html data-theme> or the OS setting (lib/theme.ts); a `dark` class is honoured too.
+  return typeof document !== 'undefined' && (document.documentElement.classList.contains('dark') || resolvedTheme() === 'dark');
 }
 
 export interface DotGlobeProps {
@@ -93,12 +95,16 @@ export function DotGlobe({ className, sway = 5 }: DotGlobeProps) {
     window.addEventListener('resize', onResize);
     // redraw when the theme class changes
     const mo = new MutationObserver(() => draw(0));
-    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+    const mq = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    const onScheme = () => draw(0);
+    mq?.addEventListener?.('change', onScheme);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
       mo.disconnect();
+      mq?.removeEventListener?.('change', onScheme);
     };
   }, [sway]);
 

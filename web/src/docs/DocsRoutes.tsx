@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'rea
 import { Link, NavLink, Outlet, Route, Routes, useLocation, useOutletContext, useParams } from 'react-router';
 import { ArrowLeft, ArrowRight, Pencil, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Page } from '@/layout/Page';
+import { Crumbs, Page } from '@/layout/Page';
 import { ButtonLink } from '@/components';
 import { cn } from '@/lib/utils';
 import { findPage, PAGES, searchPages, type DocPage } from './content';
@@ -33,7 +33,7 @@ function useDocumentTitle(title: string) {
 function Sidebar({ query, onQuery }: { query: string; onQuery: (q: string) => void }) {
   const shown = searchPages(PAGES, query);
   return (
-    <aside className="lg:sticky lg:top-6 lg:self-start">
+    <aside className="lg:sticky lg:top-24 lg:self-start">
       <div className="relative">
         <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <label htmlFor="docs-search" className="sr-only">
@@ -108,7 +108,7 @@ function EditLink({ source }: { source: string }) {
 function Toc({ items, active }: { items: TocItem[]; active: string | null }) {
   if (items.length < 2) return null;
   return (
-    <nav aria-label="On this page" className="hidden min-w-0 break-words xl:sticky xl:top-6 xl:block xl:max-h-[calc(100vh-3rem)] xl:self-start xl:overflow-y-auto [overflow-wrap:anywhere]">
+    <nav aria-label="On this page" className="hidden min-w-0 break-words xl:sticky xl:top-24 xl:block xl:max-h-[calc(100vh-7rem)] xl:self-start xl:overflow-y-auto [overflow-wrap:anywhere]">
       <p className="m-0 mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">On this page</p>
       <ul className="m-0 list-none space-y-1 border-l p-0">
         {items.map((it) => (
@@ -166,7 +166,7 @@ function PageList({ pages }: { pages: DocPage[] }) {
       {pages
         .filter((p) => p.slug !== 'index')
         .map((p) => (
-          <li key={p.slug} className="rounded-md border p-4">
+          <li key={p.slug} className="rounded-xl border bg-card p-4 shadow-xs transition-colors hover:border-primary/40">
             <Link to={docRoute(p.slug)} className="font-medium">
               {p.title}
             </Link>
@@ -201,6 +201,10 @@ function DocArticle({ page, children }: { page: DocPage; children?: ReactNode })
   return (
     <div className="grid gap-10 xl:grid-cols-[minmax(0,44rem)_13rem]">
       <article ref={articleRef} aria-label={page.title} className="min-w-0">
+        <Crumbs
+          className="mb-6"
+          items={page.slug === 'index' ? [{ label: 'Home', to: '/' }, { label: 'Docs' }] : [{ label: 'Home', to: '/' }, { label: 'Docs', to: '/docs' }, { label: page.title }]}
+        />
         <Markdown body={page.body} source={page.source} />
         {children}
         <div className="mt-10">

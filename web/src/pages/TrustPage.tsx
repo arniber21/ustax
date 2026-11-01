@@ -1,7 +1,63 @@
+import { ExternalLink, Scale } from 'lucide-react';
 import { Page, PageHeader, PageSection } from '../layout/Page';
 import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { AS_OF, BUGS, EXTRA, MAIN, NOT_COVERED, OTHER_PROOFS, PROOF_CHECKS, TESTED, TRUSTED, type ProofSet } from '../trust/facts';
+import { githubBlobUrl } from '../docs/config';
+import { ProvenanceProvider, useOpenProvenance } from '../provenance';
+import { AS_OF, BUGS, CATALA, EXTRA, MAIN, NOT_COVERED, OTHER_PROOFS, PROOF_CHECKS, TESTED, TRUSTED, type ProofSet } from '../trust/facts';
+import { TierBadge, TierLegend } from '../trust/TierBadge';
+
+/** Opens "The rule" pane of the provenance drawer for a Form 1040 line. */
+function OpenRule({ line, what }: { line: string; what: string }) {
+  const open = useOpenProvenance();
+  if (!open) return null;
+  return (
+    <Button variant="outline" size="sm" className="h-7 rounded-full px-2.5 text-xs" onClick={() => open(line)} aria-label={`Open the Catala rule for ${what}`}>
+      <Scale aria-hidden="true" className="size-3.5" />
+      Open the rule
+    </Button>
+  );
+}
+
+/** Tier 2: the Catala rules and how they are checked against IRS Direct File. */
+function CatalaTier() {
+  return (
+    <>
+      <ul className="m-0 mb-5 grid list-none gap-2 p-0 text-sm sm:grid-cols-2">
+        {CATALA.checks.map((c) => (
+          <li key={c} className="rounded-lg border bg-muted/40 px-3 py-2">
+            {c}
+          </li>
+        ))}
+      </ul>
+      <ul className="m-0 grid list-none divide-y rounded-xl border bg-card p-0 shadow-xs">
+        {CATALA.items.map((it) => (
+          <li key={it.file} className="grid gap-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-5">
+            <div className="grid min-w-0 gap-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold">{it.title}</span>
+                <TierBadge status="tested" />
+              </div>
+              <p className="m-0 text-sm text-muted-foreground">{it.result}.</p>
+              <a href={githubBlobUrl(it.file)} target="_blank" rel="noopener noreferrer" className="inline-flex w-fit items-center gap-1 text-xs">
+                <code>{it.file}</code>, scope <code>{it.scope}</code>
+                <ExternalLink aria-hidden="true" className="size-3" />
+                <span className="sr-only">(opens in a new tab)</span>
+              </a>
+            </div>
+            {'line' in it && it.line && <OpenRule line={it.line} what={it.title} />}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-4 mb-0 text-sm text-muted-foreground">
+        {CATALA.moduleFiles} Catala rule files in <code className="text-xs">catala/</code>, {CATALA.testFiles} test files in{' '}
+        <code className="text-xs">catala/tests/</code>, {CATALA.mappings} differential-test mappings in{' '}
+        <code className="text-xs">difftest/mappings/</code>. {CATALA.caveat}
+      </p>
+    </>
+  );
+}
 
 function Bullets({ items }: { items: readonly string[] }) {
   return (
@@ -51,18 +107,27 @@ function Files({ set }: { set: ProofSet }) {
 /** Route /trust: what is proved, what is tested, what you still have to trust. Data: src/trust/facts.ts. */
 export function TrustPage() {
   return (
+    <ProvenanceProvider>
     <Page narrow>
       <PageHeader
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Verification' }]}
         eyebrow="Verification"
         title="What is verified, and what is not"
         lead="The calculator is written in Lean 4, a language with a proof checker. Some properties are proved for every possible return; the rest is checked by testing. This page lists both, and what you have to take on trust."
       />
 
-      <nav aria-label="On this page" className="mb-10 rounded-lg border bg-muted px-5 py-4 text-sm">
+      <div className="mb-6 rounded-xl border bg-card px-5 py-4 shadow-xs">
+        <TierLegend />
+      </div>
+
+      <nav aria-label="On this page" className="mb-10 rounded-xl border bg-muted/50 px-5 py-4 text-sm">
         <p className="m-0 mb-2 font-semibold">On this page</p>
         <ol className="m-0 grid list-decimal gap-1 pl-5">
           <li>
             <a href="#proven">Proved in Lean</a>
+          </li>
+          <li>
+            <a href="#catala">Verified in Catala (not a proof)</a>
           </li>
           <li>
             <a href="#tested">Tested, not proved</a>
@@ -82,6 +147,7 @@ export function TrustPage() {
       <PageSection
         id="proven"
         title="Proved in Lean"
+        badge={<TierBadge status="proven" />}
         intro={`Every statement below is proved in Lean and compared with its trusted statement by Comparator (the additional list is run by hand). ${PROOF_CHECKS.main} Allowed axioms: ${PROOF_CHECKS.axioms.join(', ')}.`}
       >
         <h3 className="m-0 mb-1 text-base font-semibold">Main statements</h3>
@@ -149,6 +215,15 @@ export function TrustPage() {
       </PageSection>
 
       <PageSection
+        id="catala"
+        title="Verified in Catala (not a proof)"
+        badge={<TierBadge status="tested" />}
+        intro={`The legal rules are also written in Catala, a language for law, and verified against the IRS Direct File engine: on all ${TESTED.calculator.scenarios} scenarios that Direct File can run, ${TESTED.calculator.factChecks.toLocaleString('en-US')} fact checks agree end to end (as of ${AS_OF}). This is evidence from testing. It is not a proof, and it is labelled differently on purpose.`}
+      >
+        <CatalaTier />
+      </PageSection>
+
+      <PageSection
         id="tested"
         title="Tested, not proved"
         intro={`The Catala rules and the Lean code are linked to IRS Direct File by differential testing: the same inputs go through independent implementations and every output is compared. Counts as of ${AS_OF}.`}
@@ -196,5 +271,6 @@ export function TrustPage() {
         </p>
       </PageSection>
     </Page>
+    </ProvenanceProvider>
   );
 }

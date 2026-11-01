@@ -2,7 +2,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { App } from './App';
+import { App, preloadRoutes } from './App';
+
+beforeAll(preloadRoutes);
 import { STORAGE_KEY, draftFromRequest } from './draft';
 import { EXAMPLES } from './examples';
 
@@ -52,9 +54,9 @@ describe('routing', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('About you');
   });
 
-  it('trust page lists the verification story', () => {
+  it('trust page lists the verification story', async () => {
     at('/trust');
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/What is verified/);
+    expect(await screen.findByRole('heading', { level: 1, name: /What is verified/ })).toBeInTheDocument();
     for (const h of ['Proved in Lean', 'Tested, not proved', 'Trusted base', 'Not covered', 'Bugs we found in the IRS reference implementation']) {
       expect(screen.getByRole('heading', { level: 2, name: h })).toBeInTheDocument();
     }
@@ -82,9 +84,9 @@ describe('results (mock mode, $50,000 single)', () => {
 });
 
 describe('results without answers', () => {
-  it('sends a first-time visitor back to the start of the wizard', () => {
+  it('sends a first-time visitor back to the start of the wizard', async () => {
     at('/results');
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/./);
+    expect(await screen.findByRole('heading', { level: 1, name: 'About you' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Your refund' })).not.toBeInTheDocument();
   });
 });

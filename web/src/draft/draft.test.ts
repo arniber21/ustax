@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { contractProblems, type CalculateRequest } from '../api';
+import type { CalculateRequest } from '../api';
+import { contractProblems } from '../api/validate';
 import {
   buildRequest,
   canBuildRequest,

@@ -1,30 +1,58 @@
-import { lazy, Suspense } from 'react';
+import { useEffect } from 'react';
 import { Route, Routes } from 'react-router';
+import { Compass } from 'lucide-react';
 import { DraftProvider } from './draft';
 import { AppShell } from './layout/AppShell';
-import { Page, PageHeader } from './layout/Page';
-import { WizardLayout } from './layout/WizardLayout';
+import { Page } from './layout/Page';
 import { HomePage } from './pages/HomePage';
-import { StepPage } from './pages/StepPage';
-import { ResultsPage } from './pages/ResultsPage';
-import { UnsupportedPage } from './pages/UnsupportedPage';
-import { TrustPage } from './pages/TrustPage';
-import { ButtonLink } from './components';
+import { ButtonLink } from './components/Button';
+import { lazyRoute } from '@/lib/lazyRoute';
 
-// Docs (markdown, react-markdown, Shiki) load on first visit to /docs.
-const DocsRoutes = lazy(() => import('./docs/DocsRoutes'));
+// Every page but Home loads on first visit (AppShell's Suspense shows a skeleton meanwhile). The wizard is
+// preloaded when the browser is idle, so "Start your return" is instant.
+const WizardLayout = lazyRoute(() => import('./layout/WizardLayout').then((m) => m.WizardLayout));
+const StepPage = lazyRoute(() => import('./pages/StepPage').then((m) => m.StepPage));
+const ResultsPage = lazyRoute(() => import('./pages/ResultsPage').then((m) => m.ResultsPage));
+const TrustPage = lazyRoute(() => import('./pages/TrustPage').then((m) => m.TrustPage));
+const UnsupportedPage = lazyRoute(() => import('./pages/UnsupportedPage').then((m) => m.UnsupportedPage));
+const DocsRoutes = lazyRoute(() => import('./docs/DocsRoutes').then((m) => m.default));
 
-function NotFound() {
+/** Load every lazy page now (tests call this in beforeAll so routes render synchronously). */
+export const preloadRoutes = () =>
+  Promise.all([WizardLayout, StepPage, ResultsPage, TrustPage, UnsupportedPage, DocsRoutes].map((r) => r.preload())).then(() => undefined);
+
+export function NotFound() {
   return (
     <Page narrow>
-      <PageHeader eyebrow="Error 404" title="Page not found" lead="The address may be mistyped, or the page may have moved." />
-      <ButtonLink to="/">Go to the home page</ButtonLink>
+      <div className="grid justify-items-center gap-4 py-12 text-center">
+        <span aria-hidden="true" className="grid size-12 place-items-center rounded-full bg-muted text-muted-foreground">
+          <Compass className="size-6" />
+        </span>
+        <p className="m-0 text-xs font-semibold tracking-wide text-primary uppercase">Error 404</p>
+        <h1 className="m-0 text-3xl font-semibold tracking-tight">Page not found</h1>
+        <p className="m-0 max-w-md text-muted-foreground">The address may be mistyped, or the page may have moved.</p>
+        <div className="mt-2 flex flex-wrap justify-center gap-2">
+          <ButtonLink to="/">Go to the home page</ButtonLink>
+          <ButtonLink variant="secondary" to="/docs">
+            Read the docs
+          </ButtonLink>
+        </div>
+      </div>
     </Page>
   );
 }
 
 /** Route table. Router itself is provided by main.tsx (or MemoryRouter in tests). */
 export function App() {
+  useEffect(() => {
+    const warm = () => void Promise.all([WizardLayout.preload(), StepPage.preload()]);
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(warm, { timeout: 4000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const t = setTimeout(warm, 2000);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <DraftProvider>
       <Routes>
@@ -36,14 +64,7 @@ export function App() {
           <Route path="results" element={<ResultsPage />} />
           <Route path="cant-do-yet" element={<UnsupportedPage />} />
           <Route path="trust" element={<TrustPage />} />
-          <Route
-            path="docs/*"
-            element={
-              <Suspense fallback={<p className="px-6 py-12 text-muted-foreground">Loading documentation...</p>}>
-                <DocsRoutes />
-              </Suspense>
-            }
-          />
+          <Route path="docs/*" element={<DocsRoutes />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

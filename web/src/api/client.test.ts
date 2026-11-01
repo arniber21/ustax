@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { calculate, contractProblems, mockFetch } from './index';
+import { calculate } from './index';
+import { contractProblems } from './validate';
+import { mockFetch } from './mock';
 import type { CalculateRequest } from './index';
 
 const apiDir = join(__dirname, '../../../api');

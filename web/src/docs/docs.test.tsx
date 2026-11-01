@@ -1,10 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { App } from '../App';
+import { App, preloadRoutes } from '../App';
+
+beforeAll(preloadRoutes);
 import { buildPages, findPage, NAV, PAGES, SLUG_BY_SOURCE, searchPages } from './content';
 import { parseFrontMatter } from './frontmatter';
 import { rewriteHref, rewriteSrc } from './links';
