@@ -1,0 +1,23 @@
+docs/site/what-verified-means.md
+  s_3031b504518be3::t_165d78c3f7cf2e 1-83
+docs/site/_nav.json
+  s_3031b504518be3::t_dc258208888a0d 4-69
+web/src/docs/docs.test.tsx
+  s_3031b504518be3::t_f68c0457f2ab5e 247-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "290bb8d20adcba500710ce09eaae9a33b98d459c",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
