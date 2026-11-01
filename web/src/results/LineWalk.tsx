@@ -3,6 +3,7 @@ import { formatCents, type FilingStatus, type Lines } from '../api';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { cn } from '@/lib/utils';
+import { ProvenanceButton } from '../provenance';
 import { WALK } from './walkData';
 
 /** Lines printed in bold: the subtotals people look for. */
@@ -43,7 +44,10 @@ export function LineWalk({ lines }: { lines: Lines; filingStatus?: FilingStatus 
                   return (
                     <TableRow key={l.key}>
                       <TableCell className="pl-4 text-muted-foreground tabular-nums sm:pl-5">{l.line}</TableCell>
-                      <TableCell className={cn(strong && 'font-semibold')}>{l.label}</TableCell>
+                      <TableCell className={cn(strong && 'font-semibold')}>
+                        {l.label}
+                        <ProvenanceButton lineKey={l.key} lineName={`line ${l.line}, ${l.label}`} className="mt-0.5 block font-normal" />
+                      </TableCell>
                       <TableCell className={cn('pr-4 text-right whitespace-nowrap tabular-nums sm:pr-5', strong && 'font-semibold')}>
                         {formatCents(lines[l.key] ?? 0)}
                       </TableCell>
@@ -80,6 +84,7 @@ export function HowCalculated({ lines, filingStatus }: { lines: Lines; filingSta
               </AccordionTrigger>
               <AccordionContent className="max-w-2xl pl-[4.75rem] leading-relaxed text-muted-foreground max-sm:pl-0">
                 {l.explain!({ lines, filingStatus })}
+                <ProvenanceButton lineKey={l.key} lineName={`line ${l.line}, ${l.label}`} className="mt-2 block" />
               </AccordionContent>
             </AccordionItem>
           ))}

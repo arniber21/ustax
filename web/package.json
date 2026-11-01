@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/sync-provenance.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/sync-provenance.mjs",
     "build": "tsc --noEmit && vite build",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
@@ -33,6 +35,8 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "5.3.0",
+    "@shikijs/langs": "4.5.0",
+    "@shikijs/themes": "4.5.0",
     "@tailwindcss/vite": "4.3.3",
     "ajv": "8.17.1",
     "class-variance-authority": "0.7.1",
@@ -40,6 +44,7 @@
     "lucide-react": "1.66.0",
     "radix-ui": "1.8.1",
     "react-router": "^7.18.5",
+    "shiki": "4.5.0",
     "tailwind-merge": "3.7.0",
     "tailwindcss": "4.3.3"
   }
