@@ -130,4 +130,12 @@ export default {
   outputs: [
     { oracle: '/hsaTotalDeductibleAmount', catala: 'hsa_total_deductible_amount', type: 'money' },
   ],
+  // No oracle row (/requiresForm8889 and /numberOfFilersRequiredToFileForm8889 are not in facts.csv): compared
+  // Lean = Catala only (issue #47). The 157 non-knocked-out scenarios are supported returns, so `unsupported`
+  // is expected to be false there.
+  extraOutputs: [
+    { catala: 'requires_form_8889', type: 'bool' },
+    { catala: 'number_of_filers_required_to_file_form_8889', type: 'int' },
+    { catala: 'unsupported', type: 'bool' },
+  ],
 };
