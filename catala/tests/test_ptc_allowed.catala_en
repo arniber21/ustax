@@ -539,3 +539,28 @@ scope TestAltCalculationNotAskedWithoutExcessAptc:
   definition c.forms equals [full_year_form of $8,000, $7,200, $5,000]
   assertion not c.unsupported
 ```
+
+## DF-BUG(33): annual totals only if every Form 1095-A allows them
+
+Form 8962 instructions, line 11: annual totals are used only if the
+conditions hold "for each qualified health plan". One full-year form ($4,000
+premium, $3,600 SLCSP) and one form from January 1 to June 30 ($300 a month):
+the second does not allow annual totals, so the monthly lines are used. DF's
+`/ptcCanReportAnnualTotals` is true when *any* form allows them. Two forms are
+a knockout in DF and here (`ko_multiple`), so no oracle value changes; the
+decision is pinned anyway. Mirrored in `lean/UsTax/Tests/Quirks.lean`.
+
+```catala
+#[test]
+declaration scope TestDfBug33EveryFormMustAllowAnnualTotals:
+  c scope Case
+
+scope TestDfBug33EveryFormMustAllowAnnualTotals:
+  definition c.forms equals
+    [full_year_form of $4,000, $3,600, $0;
+     part_year_form of |2024-01-01|, |2024-06-30|, 1, 6, $300, $300, $0]
+  assertion not c.annual_path
+  assertion c.allowed = $4,200
+  assertion c.ko_multiple
+  assertion c.unsupported
+```

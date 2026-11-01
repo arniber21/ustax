@@ -3445,14 +3445,14 @@
     {
       "path": "catala/tests/test_calculator.catala_en",
       "kind": "catala_test",
-      "sha256": "3cf0e90de87c64369f5cbdb8a4e93c7d1ae7f104241a52a0bfdb2ff59d4e02fa",
-      "lines": 856
+      "sha256": "d213abd9a98627541969c84862e08287a546f36f766ed3b340fc125f02c73236",
+      "lines": 932
     },
     {
       "path": "catala/tests/test_form_1040.catala_en",
       "kind": "catala_test",
-      "sha256": "7a7890b60c48e6469f1f518d337d54b86de0fe88f1a001c7fbb99edd94ab3f36",
-      "lines": 534
+      "sha256": "9a9d432c2fdf7646ec79c941fa700032238f4ab3239cbb662b9a8cb71f99db6b",
+      "lines": 564
     },
     {
       "path": "lean/UsTax/Form1040.lean",

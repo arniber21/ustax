@@ -45,15 +45,26 @@ declaration scope Case:
   context primary_combat_pay content money
   context primary_elects_combat_for_credit content boolean
   context household_employee condition
+  context child_tp_claims content boolean
+  context child_upkeep content boolean
+  context second_child_upkeep content boolean
+  context second_child_residency content Q.ResidencyDuration
+  context lived_apart condition
   output f scope C.Form2441
 
 declaration scope MkChild:
   context date_of_birth content date
   context expenses content money
   context unable content boolean
+  context tp_claims content boolean
+  context upkeep content boolean
+  context residency content Q.ResidencyDuration
   output child content C.CdccMember
 
 scope MkChild:
+  definition tp_claims equals true
+  definition upkeep equals true
+  definition residency equals Q.ResidencyDuration.AllYear
   definition child equals C.CdccMember {
     -- member: R.Member {
       -- person: Q.Person {
@@ -61,7 +72,7 @@ scope MkChild:
            -- date_of_birth: date_of_birth
            -- full_time_student: false
            -- permanent_total_disability: false
-           -- residency_duration: Q.ResidencyDuration.AllYear
+           -- residency_duration: residency
            -- own_support: false
            -- married: false
            -- writable_joint_return: false
@@ -79,7 +90,7 @@ scope MkChild:
            -- writable_us_resident: false
            -- writable_us_national: false
            -- writable_canada_mexico_resident: false
-           -- tp_claims: true }
+           -- tp_claims: tp_claims }
       -- split: B.BenefitSplitAnswers {
            -- has_other_biological_or_adoptive_parent: false
            -- non_parental_some_parent_not_claiming: false
@@ -101,7 +112,7 @@ scope MkChild:
          -- has_dependent_care_expenses: expenses > $0
          -- expenses_paid_to_qualifying_provider: true
          -- writable_qualifying_expense_amount: expenses
-         -- tp_paid_most_of_home_upkeep: true } }
+         -- tp_paid_most_of_home_upkeep: upkeep } }
 
 declaration scope MkFiler:
   context wages content money
@@ -153,25 +164,36 @@ scope Case:
   definition primary_combat_pay equals $0
   definition primary_elects_combat_for_credit equals false
   definition household_employee equals false
+  definition child_tp_claims equals true
+  definition child_upkeep equals true
+  definition second_child_upkeep equals true
+  definition second_child_residency equals Q.ResidencyDuration.AllYear
+  definition lived_apart equals false
 
   definition f.filing_status equals filing_status
   definition f.household equals
     (if second_child
      then [ (output of MkChild with { -- date_of_birth: child_date_of_birth
                                      -- expenses: child_expenses
-                                     -- unable: child_unable_to_care }).child;
+                                     -- unable: child_unable_to_care
+                                     -- tp_claims: child_tp_claims
+                                     -- upkeep: child_upkeep }).child;
             (output of MkChild with { -- date_of_birth: |2018-05-05|
                                      -- expenses: second_child_expenses
-                                     -- unable: false }).child ]
+                                     -- unable: false
+                                     -- upkeep: second_child_upkeep
+                                     -- residency: second_child_residency }).child ]
      else [ (output of MkChild with { -- date_of_birth: child_date_of_birth
                                      -- expenses: child_expenses
-                                     -- unable: child_unable_to_care }).child ])
+                                     -- unable: child_unable_to_care
+                                     -- tp_claims: child_tp_claims
+                                     -- upkeep: child_upkeep }).child ])
   definition f.minimum_filer_date_of_birth equals |1985-06-15|
   definition f.treat_filers_as_dependents equals false
   definition f.either_filer_us_citizen_or_national equals true
   definition f.treat_as_mfj equals
     filing_status = Types.FilingStatus.MarriedFilingJointly
-  definition f.lived_apart_last_six_months equals false
+  definition f.lived_apart_last_six_months equals lived_apart
   definition f.spouse_same_abode_more_than_half_year equals spouse_same_abode
   definition f.primary_filer equals
     (output of MkFiler with { -- wages: primary_wages
@@ -558,3 +580,134 @@ scope TestRejectsOldChild:
   assertion not (c.f.benefits.count_of_qualifying_persons = 1)
   assertion c.f.cdcc_total_credit = $0
 ```
+
+## Direct File discrepancies DF-BUG(25) to DF-BUG(28) (`docs/quirk-decisions.md`)
+
+Each test asserts the statute's value and that Direct File's value is not
+produced. Mirrored in `lean/UsTax/Tests/Quirks.lean`.
+
+### DF-BUG(25): the married-filing-separately exception needs one person
+
+IRC 21(e)(4): the filer lived apart from the spouse for the last six months
+and maintains a home that is "the principal place of abode of a qualifying
+individual" for more than half the year, paying over half its cost. The son
+lives with the filer all year but the filer did not pay over half the upkeep;
+the second child (born 2018) lived with the filer less than six months, so is
+not a qualifying person, though the filer paid that upkeep. No single person
+passes both tests: married filing separately, no credit. DF tests the two
+facts on possibly different persons and allows the credit. With the upkeep
+paid for the son, the exception applies: $1,050.
+
+```catala
+#[test]
+declaration scope TestDfBug25MfsExceptionOnePerson:
+  split scope Case
+  same scope Case
+
+scope TestDfBug25MfsExceptionOnePerson:
+  definition split.filing_status equals Types.FilingStatus.MarriedFilingSeparately
+  definition split.lived_apart equals true
+  definition split.child_upkeep equals false
+  definition split.second_child equals true
+  definition split.second_child_expenses equals $0
+  definition split.second_child_upkeep equals true
+  definition split.second_child_residency equals Q.ResidencyDuration.LessThanSixMonths
+  definition same.filing_status equals Types.FilingStatus.MarriedFilingSeparately
+  definition same.lived_apart equals true
+  assertion not split.f.benefits.mfs_but_eligible_for_cdcc
+  assertion split.f.benefits.married_separate_not_allowed
+  assertion split.f.cdcc_total_credit = $0
+  assertion split.f.cdcc_total_credit != $1,050
+  assertion same.f.benefits.mfs_but_eligible_for_cdcc
+  assertion same.f.cdcc_total_credit = $1,050
+```
+
+### DF-BUG(26): a qualifying surviving spouse's line 19 is line 18
+
+Form 2441 line 19: "All others, enter the amount from line 18". A qualifying
+surviving spouse with $45,000 of wages and $1,000 of benefits: line 19 is
+$45,000. DF reads the empty secondary filer and gets $0.
+
+```catala
+#[test]
+declaration scope TestDfBug26QssLine19:
+  c scope Case
+
+scope TestDfBug26QssLine19:
+  definition c.filing_status equals Types.FilingStatus.QualifyingSurvivingSpouse
+  definition c.primary_benefits equals $1,000
+  definition c.primary_plan_max equals $5,000
+  assertion c.f.benefits.line19_earned_income = $45,000
+  assertion c.f.benefits.line19_earned_income != $0
+```
+
+### DF-BUG(27): a forfeited amount counts without box 10
+
+Form 2441 line 14 covers amounts "reported on line 12 or 13". No W-2 box 10,
+a $1,000 carryover (line 13), $400 forfeited: line 14 $400, line 15 $600. DF
+counts line 14 only when box 10 is positive, giving line 15 $1,000.
+
+```catala
+#[test]
+declaration scope TestDfBug27ForfeitedWithoutBox10:
+  c scope Case
+
+scope TestDfBug27ForfeitedWithoutBox10:
+  definition c.carryover equals $1,000
+  definition c.forfeited equals $400
+  assertion c.f.benefits.line14_forfeited = $400
+  assertion c.f.benefits.line15_adjusted_benefits = $600
+  assertion c.f.benefits.line15_adjusted_benefits != $1,000
+```
+
+### DF-BUG(28): a child the filer can claim is a qualifying person
+
+IRC 21(b)(1)(A) asks whether the child is a dependent the filer may claim,
+not whether the filer chose to. The son is not claimed (`tp_claims` false):
+still one qualifying person and $1,050. DF requires the claim: $0.
+
+```catala
+#[test]
+declaration scope TestDfBug28UnclaimedChildQualifies:
+  c scope Case
+
+scope TestDfBug28UnclaimedChildQualifies:
+  definition c.child_tp_claims equals false
+  assertion c.f.benefits.count_of_qualifying_persons = 1
+  assertion c.f.cdcc_total_credit = $1,050
+  assertion c.f.cdcc_total_credit != $0
+```
+
+### QUIRK(Q12): allocation of taxable benefits between spouses (reproduced)
+
+Married filing jointly, wages $10,000 and $40,000, $3,000 of benefits each
+(plan maximum $5,000 each), $1,000 of expenses: $6,000 of taxable benefits.
+DF's `/cdccAllTaxableDependentCareBenefitsShouldBeAddedtoPrimaryEarnedIncome`
+compares "secondary minus primary" ($30,000) with "primary plus its
+adjustment" ($13,000) in its second alternative, so `allocate_all_to_primary`
+holds; the form is silent and the rule is reproduced as DF has it. Pinned so
+that a change to the allocation is a visible decision.
+
+```catala
+#[test]
+declaration scope TestQ12AllocationReproduced:
+  c scope Case
+
+scope TestQ12AllocationReproduced:
+  definition c.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.primary_wages equals $10,000
+  definition c.secondary_wages equals $40,000
+  definition c.primary_benefits equals $3,000
+  definition c.secondary_benefits equals $3,000
+  definition c.primary_plan_max equals $5,000
+  definition c.secondary_plan_max equals $5,000
+  definition c.child_expenses equals $1,000
+  definition c.agi equals $50,000
+  assertion c.f.benefits.taxable_benefits = $6,000
+  assertion c.f.allocate_all_to_primary
+  assertion not c.f.allocate_all_to_secondary
+  assertion c.f.primary_taxable_benefits = $3,000
+  assertion c.f.secondary_taxable_benefits = $3,000
+  assertion c.f.cdcc_total_credit = $200
+```
+

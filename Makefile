@@ -151,6 +151,13 @@ docker-run:   ## build and start API (127.0.0.1:8080) and web (http://localhost:
 audit:     ## fail on sorry, admit, native_decide, new axioms, vacuous theorems (SKIP_FORENSICS=1 skips step 3)
 	./scripts/audit.sh
 
+# Spec checks (docs/spec-checks.md, issues #61, #62, #68): each comparator statement has a concrete
+# instance with every hypothesis discharged and at least two rejected bad outputs.
+.PHONY: spec-checks
+spec-checks: ## check every comparator*.json statement has a _sat instance and 2+ _bad_ outputs; regenerate docs/spec-checks.md (ARGS=--check: fail if stale)
+	cd lean && lake build UsTax.Spec.Checks.Main UsTax.Spec.Checks.Extra UsTax.Tests.Quirks
+	python3 -I scripts/gen_spec_checks.py $(ARGS)
+
 # --- Web frontend (see web/README.md) ---
 .PHONY: web-build web-test web-dev
 web-build: ## typecheck, lint and production-build the frontend
