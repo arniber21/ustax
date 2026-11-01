@@ -1,0 +1,52 @@
+lean/UsTax/Spec/TaxTable.lean
+  s_3031b504518be3::t_61237192f783f6 65-69,75-79
+  s_3031b504518be3::t_bac8787529cd37 56-59
+  s_3031b504518be3::t_75f67e089968a7 1-55,60-64,70-74,80-81
+lean/UsTax/Proofs/TaxTable.lean
+  s_3031b504518be3::t_83fe237cee0329 1-80
+lean/UsTax/Spec/Eitc.lean
+  s_3031b504518be3::t_2467d433422b0f 1-84
+docs/spec-surface.md
+  s_3031b504518be3::t_b701bd39feac5c 1-221
+lean/UsTax/Comparator/Pending.lean
+  s_3031b504518be3::t_f4e5a7bd6ae37d 1-62
+lean/UsTax/Proofs/Form1040.lean
+  s_3031b504518be3::t_cf6083b647414d 16-17
+  s_3031b504518be3::t_167bffd121a7f4 1-15,18-56
+docs/comparator.md
+  s_3031b504518be3::t_184befe88eb950 144-147
+lean/UsTax/Spec/TaxMonotone.lean
+  s_3031b504518be3::t_61237192f783f6 24-25,39
+  s_3031b504518be3::t_2ebc9d88cb0f51 1-23,26-38,40-41
+lean/UsTax.lean
+  s_3031b504518be3::t_844a40013b061e 24-31
+lean/UsTax/Spec/Credits.lean
+  s_3031b504518be3::t_a2460f123e81b7 1-57
+lean/UsTax/Comparator/Challenge.lean
+  s_3031b504518be3::t_ea31de59e0d513 1-6,9,11,13-16,21-29,32-55,57-58,61-64,67-71,74
+lean/README.md
+  s_3031b504518be3::t_92039ad1662aae 26-31
+lean/UsTax/Spec/RefundBalance.lean
+  s_3031b504518be3::t_f37e2212ac5ddb 1-54
+lean/UsTax/Proofs/Main.lean
+  s_3031b504518be3::t_aab06bf3da9704 1-97,100-138
+  s_3031b504518be3::t_455a594f21be6a 98-99
+lean/comparator.json
+  s_3031b504518be3::t_7e63ce25f105d4 3,5-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b80f608b8de18331da2e93ac02777dcfc6b27400",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
