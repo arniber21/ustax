@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { centsToDollarString, parseDollars, type Cents } from '../api/money';
 import { Field } from './Field';
+import { Input } from './ui/input';
 
 export interface MoneyInputProps {
   label: string;
@@ -12,6 +13,8 @@ export interface MoneyInputProps {
   nonNegative?: boolean;
   /** Problem found by step validation (shown when the typed text itself parses fine). */
   error?: string;
+  /** Draft path, for the wizard's error summary. */
+  path?: string;
 }
 
 const show = (c: Cents | null) => (c === null ? '' : centsToDollarString(c));
@@ -20,7 +23,7 @@ const show = (c: Cents | null) => (c === null ? '' : centsToDollarString(c));
  * Dollar input that speaks integer cents. The user types "$1,234.5"; the parent only ever sees
  * 123450 or null. Invalid text is never silently rounded: it shows a message and reports null.
  */
-export function MoneyInput({ label, hint, value, onChange, nonNegative = true, error: outerError }: MoneyInputProps) {
+export function MoneyInput({ label, hint, value, onChange, nonNegative = true, error: outerError, path }: MoneyInputProps) {
   const [text, setText] = useState(show(value));
   const [error, setError] = useState<string | undefined>();
 
@@ -47,15 +50,15 @@ export function MoneyInput({ label, hint, value, onChange, nonNegative = true, e
   };
 
   return (
-    <Field label={label} hint={hint} error={error ?? outerError}>
+    <Field label={label} hint={hint} error={error ?? outerError} path={path}>
       {(control) => (
-        <div className="money">
-          <span className="money__sign" aria-hidden="true">
+        <div className="relative w-full max-w-[16rem]">
+          <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground" aria-hidden="true">
             $
           </span>
-          <input
+          <Input
             {...control}
-            className="input money__input num"
+            className="pl-7 text-right tabular-nums"
             inputMode="decimal"
             autoComplete="off"
             value={text}

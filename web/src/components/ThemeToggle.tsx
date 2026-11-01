@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { Moon, Sun } from 'lucide-react';
+import { Button } from './ui/button';
 
 type Theme = 'light' | 'dark';
-const KEY = 'sumsure-theme';
+export const THEME_KEY = 'ustax-theme';
 
 const systemTheme = (): Theme =>
   typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -15,22 +17,24 @@ const current = (): Theme => {
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(current);
   const next: Theme = theme === 'dark' ? 'light' : 'dark';
+  const Icon = theme === 'dark' ? Sun : Moon;
   return (
-    <button
+    <Button
       type="button"
-      className="theme-toggle"
+      variant="ghost"
+      size="icon"
       aria-label={`Switch to ${next} mode`}
       onClick={() => {
         document.documentElement.dataset.theme = next;
         try {
-          localStorage.setItem(KEY, next);
+          localStorage.setItem(THEME_KEY, next);
         } catch {
           /* private mode: the choice just won't persist */
         }
         setTheme(next);
       }}
     >
-      <span aria-hidden="true">{theme === 'dark' ? '☀️' : '🌙'}</span>
-    </button>
+      <Icon aria-hidden="true" />
+    </Button>
   );
 }

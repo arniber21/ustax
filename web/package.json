@@ -32,9 +32,15 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
-    "@fontsource-variable/fraunces": "^5.3.0",
-    "@fontsource-variable/nunito": "^5.3.0",
+    "@fontsource-variable/inter": "5.3.0",
+    "@tailwindcss/vite": "4.3.3",
     "ajv": "8.17.1",
-    "react-router": "^7.18.5"
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "lucide-react": "1.66.0",
+    "radix-ui": "1.8.1",
+    "react-router": "^7.18.5",
+    "tailwind-merge": "3.7.0",
+    "tailwindcss": "4.3.3"
   }
 }

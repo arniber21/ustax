@@ -124,9 +124,15 @@ describe('Stepper / ProgressBar', () => {
     { id: 'b', label: 'Two' },
     { id: 'c', label: 'Three' },
   ];
+  it('links completed steps when given hrefFor', () => {
+    render(<MemoryRouter><Stepper steps={steps} current={2} hrefFor={(id) => `/s/${id}`} /></MemoryRouter>);
+    expect(screen.getByRole('link', { name: /One/ })).toHaveAttribute('href', '/s/a');
+    expect(screen.queryByRole('link', { name: /Three/ })).toBeNull();
+  });
   it('marks the current step and exposes progress', () => {
     render(<Stepper steps={steps} current={1} />);
-    expect(screen.getByText('Two', { selector: '.stepper__label' }).closest('li')).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByText('Two', { selector: '.stepper-label' }).closest('li')).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByText('One', { selector: '.stepper-label' }).closest('li')).not.toHaveAttribute('aria-current');
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '2');
     expect(screen.getByText(/Step 2 of 3/)).toBeInTheDocument();
   });
@@ -184,7 +190,7 @@ describe('ThemeToggle', () => {
     render(<ThemeToggle />);
     await userEvent.click(screen.getByRole('button', { name: 'Switch to dark mode' }));
     expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(localStorage.getItem('sumsure-theme')).toBe('dark');
+    expect(localStorage.getItem('ustax-theme')).toBe('dark');
     expect(screen.getByRole('button', { name: 'Switch to light mode' })).toBeInTheDocument();
   });
 });

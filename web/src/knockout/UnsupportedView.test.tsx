@@ -17,10 +17,14 @@ describe('UnsupportedView', () => {
   it('groups reasons by category with what it means and what to do', () => {
     view(reasons);
     expect(groupReasons(reasons).map((g) => g.category)).toEqual(['interest', 'w2', 'income']);
-    const interest = screen.getByRole('region', { name: 'Interest and investments' });
+    expect(screen.getAllByRole('row')).toHaveLength(1 + 3); // header + one row per category
+    for (const col of ['Category', 'What we found', 'What this means', 'What to do instead']) {
+      expect(screen.getByRole('columnheader', { name: col })).toBeInTheDocument();
+    }
+    const interest = screen.getByRole('row', { name: 'Interest and investments' });
     expect(within(interest).getByText(/Foreign tax was paid/)).toBeInTheDocument();
-    expect(within(interest).getByText('What this means')).toBeInTheDocument();
-    expect(within(interest).getByText('What to do instead')).toBeInTheDocument();
+    expect(within(interest).getByText(/Free-filing programs handle these/)).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/does not support/);
     expect(screen.getByText(/irs\.gov\/freefile/)).toBeInTheDocument();
   });
 

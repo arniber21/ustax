@@ -1,4 +1,5 @@
 import { ButtonLink, Callout } from '../components';
+import { Page } from '../layout/Page';
 import { UnsupportedView } from '../knockout/UnsupportedView';
 import { EXAMPLES } from '../examples';
 import { useLiveCalculation } from '../results/useLiveCalculation';
@@ -14,17 +15,19 @@ export function UnsupportedPage() {
   if (state.status === 'knockout') return <UnsupportedView reasons={state.reasons} />;
   if (state.status === 'loading') {
     return (
-      <p role="status" className="container">
-        Checking…
-      </p>
+      <Page>
+        <p role="status" className="text-muted-foreground">
+          Checking…
+        </p>
+      </Page>
     );
   }
   return (
-    <div className="container narrow">
-      <Callout tone="good" title="Nothing to explain">
-        We have no unsupported situation to show right now.
+    <Page narrow>
+      <Callout tone="good" title="Nothing to explain" className="mb-6">
+        There is no unsupported situation to show right now.
       </Callout>
       <ButtonLink to="/results">See my result</ButtonLink>
-    </div>
+    </Page>
   );
 }

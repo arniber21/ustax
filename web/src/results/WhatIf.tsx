@@ -1,6 +1,6 @@
 import { useId, useMemo, useState } from 'react';
 import { formatCents, type CalculateRequest, type ClientOptions, type Outcome } from '../api';
-import { Callout, Card } from '../components';
+import { Callout } from '../components';
 import { useLiveCalculation } from './useLiveCalculation';
 
 /** Slider range in whole dollars of extra (or less) tax withheld from the first paycheck source. */
@@ -36,18 +36,20 @@ export function WhatIf({ request, client }: { request: CalculateRequest; client?
   const label = delta === 0 ? 'As entered' : `${sign}${formatCents(Math.abs(delta) * 100, { showCents: false })} withheld`;
 
   return (
-    <Card tone="sun" className="whatif" aria-labelledby={`${id}-h`}>
-      <h2 id={`${id}-h`}>What if…?</h2>
+    <section aria-labelledby={`${id}-h`} className="rounded-lg border bg-card p-5 sm:p-6">
+      <h2 id={`${id}-h`} className="m-0 text-lg font-semibold">
+        What if your withholding were different?
+      </h2>
       {!usable ? (
-        <p className="muted">Add a W-2 to your answers and you can slide the tax your employer holds back to see what it would change.</p>
+        <p className="mt-2 mb-0 text-sm text-muted-foreground">Add a W-2 to your answers and you can slide the tax your employer holds back to see what it would change.</p>
       ) : (
         <>
-          <label htmlFor={id} className="whatif__label">
-            If your employer held back different tax: <strong>{label}</strong>
+          <label htmlFor={id} className="mt-3 block text-sm">
+            Change in federal tax withheld on your first W-2: <strong className="tabular-nums">{label}</strong>
           </label>
           <input
             id={id}
-            className="whatif__slider"
+            className="mt-3 h-6 w-full max-w-md cursor-pointer accent-primary"
             type="range"
             min={WHAT_IF.min}
             max={WHAT_IF.max}
@@ -56,26 +58,26 @@ export function WhatIf({ request, client }: { request: CalculateRequest; client?
             aria-valuetext={label}
             onChange={(e) => setDelta(Number(e.target.value))}
           />
-          <div className="whatif__scale" aria-hidden="true">
+          <div className="flex max-w-md justify-between text-xs text-muted-foreground tabular-nums" aria-hidden="true">
             <span>{formatCents(WHAT_IF.min * -100, { showCents: false })} less</span>
             <span>{formatCents(WHAT_IF.max * 100, { showCents: false })} more</span>
           </div>
-          <div className="whatif__answer" role="status" aria-live="polite">
-            {delta === 0 && <span className="muted">Move the slider to try it.</span>}
-            {delta !== 0 && state.status === 'ok' && <strong>{describe(state.data.outcome, state.data.lines)}</strong>}
-            {delta !== 0 && state.status === 'loading' && <span className="muted">Working it out…</span>}
+          <div className="mt-4 min-h-7 text-base tabular-nums" role="status" aria-live="polite">
+            {delta === 0 && <span className="text-muted-foreground">Move the slider to try it.</span>}
+            {delta !== 0 && state.status === 'ok' && <strong className="font-semibold">{describe(state.data.outcome, state.data.lines)}</strong>}
+            {delta !== 0 && state.status === 'loading' && <span className="text-muted-foreground">Working it out…</span>}
             {delta !== 0 && state.status === 'knockout' && <span>That change takes this return outside what we can do.</span>}
           </div>
           {delta !== 0 && state.status === 'error' && (
-            <Callout tone="info" title="We can’t preview that one">
+            <Callout tone="info" title="No preview for this amount" className="mt-3">
               {isMock()
                 ? 'This demo only has a few ready-made scenarios. The live calculator works for any amount.'
                 : 'We couldn’t reach the calculator for this preview. Your real result above is unaffected.'}
             </Callout>
           )}
-          <p className="muted whatif__note">Nothing is saved. This is just for playing around.</p>
+          <p className="mt-2 mb-0 text-xs text-muted-foreground">A preview only. Your answers are not changed.</p>
         </>
       )}
-    </Card>
+    </section>
   );
 }
