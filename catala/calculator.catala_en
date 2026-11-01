@@ -366,11 +366,11 @@ not `disqualifiedDueToParentalCustody`; not `isQualifyingChildOfAnother` or
 
 Two of these read "claimed" where the statute reads "entitled":
 
-- DF-BUG(48-a) (candidate): `isClaimedIfClaimable` makes a child who is an
+- DF-BUG(29) (candidate): `isClaimedIfClaimable` makes a child who is an
   eligible dependent the filer chose not to claim (`tpClaims` false) fail the
   EITC test. IRC 32(c)(3) does not require the child to be claimed (the same
   reading as DF-BUG(20) for HoH). Implemented per the statute: not required.
-- DF-BUG(48-b) (candidate): a married child must be a *claimed* dependent in
+- DF-BUG(30) (candidate): a married child must be a *claimed* dependent in
   DF; 32(c)(3)(B) needs only that the filer be *entitled* to the deduction.
   Implemented per the statute: `eligible_dependent`.
 
@@ -423,7 +423,7 @@ scope EitcQualifyingChildTest:
     and dep.qc.joint_return_test
   consequence fulfilled
 
-  # DF-BUG(48-a), DF-BUG(48-b): see the text above.
+  # DF-BUG(29), DF-BUG(30): see the text above.
   rule eitc_qualifying_child under condition
     eitc_rel_age_res_joint_test
     and not dep.split.disqualified_due_to_parental_custody
