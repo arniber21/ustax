@@ -1,0 +1,29 @@
+catala/DIFFTEST.md
+  s_3031b504518be3::t_3d6c9602e43f24 114-120
+difftest/mappings/calculator.mjs
+  s_3031b504518be3::t_ea1e60366f2c2d 187-195
+  s_3031b504518be3::t_656eba807878b7 9-11,77,81-115,138-144,246,251-252
+catala/tests/test_calculator.catala_en
+  s_3031b504518be3::t_3d6c9602e43f24 563-591
+  s_3031b504518be3::t_a5a9124a72d71d 144-148,159,200-209,282-292,342,383,423,463,507,557
+catala/calculator.catala_en
+  s_3031b504518be3::t_69c7c8a5469c3c 25-26,57-59,66-67,77,119-166,208-209,318-319,494,509-510,517-518,547-550,605-606,722-727,731-741,744
+  s_3031b504518be3::t_733dabc525976f 784-882,915-916,1097-1131,1327-1329,1472-1475,1491-1492
+  s_3031b504518be3::t_8f3a6e325bc69f 1075
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "272397794892adabfacb6598c6cef133e8b710c8",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
