@@ -1,0 +1,51 @@
+api/knockout-reasons.json
+  s_3031b504518be3::t_42900bf8790aae 555-557,562-564,569-571,576-578,583-585,591-592,595-596,598-599,602-606,609-613,618-620,625-627,632-634,639-641,646-648,653-655,660-662,667-669,672-673,675-676,679-680,682-683,686-687,689-690,693-697,700-704
+api/scripts/gen-reasons.mjs
+  s_3031b504518be3::t_5350c5fddefbd4 34,43
+catala/calculator.catala_en
+  s_3031b504518be3::t_11efa319123141 332-333,336-349,1604-1633
+catala/tests/test_calculator.catala_en
+  s_3031b504518be3::t_998e818b695873 617,854
+difftest/lean.mjs
+  s_3031b504518be3::t_529736f0ea6593 33,64,76-77
+difftest/lib.mjs
+  s_3031b504518be3::t_c014dc537277b2 45-65
+difftest/mappings/calculator.mjs
+  s_3031b504518be3::t_cb5df56b88c0fd 253
+difftest/run.mjs
+  s_3031b504518be3::t_c2ed2334a74620 11,33,44-45
+difftest/selftest.mjs
+  s_3031b504518be3::t_78502210b73a09 4,48-63
+docs/comparator.md
+  s_3031b504518be3::t_128c0bf09fd189 144
+docs/knockout-inventory.md
+  s_3031b504518be3::t_5b1cce6b978ec7 3,8-9,16-17,19,25-27,29-30,75-78,105-114,120-122
+docs/spec-surface.md
+  s_3031b504518be3::t_cfcb311642df99 12,15,51-55,144,202-206
+lean/UsTax/Cli.lean
+  s_3031b504518be3::t_7b22a8d0f41bda 979
+lean/UsTax/Spec/TaxTable.lean
+  s_3031b504518be3::t_3b832fd56a4e86 18-20
+lean/comparator.json
+  s_3031b504518be3::t_ce6cde475cbab2 10
+scripts/gen_knockout_inventory.mjs
+  s_3031b504518be3::t_3509e292680521 74-75,90,95-96,107
+web/src/knockout/reasonCopy.ts
+  s_3031b504518be3::t_701ffa9a7bcc1b 206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c20cf3c10718770c91cd99f39f52b5f432d696ed",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
