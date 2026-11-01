@@ -1,0 +1,52 @@
+web/src/components/ui/button.tsx
+  s_3031b504518be3::t_77ff918235f5e5 7
+web/src/results/ResultsView.tsx
+  s_3031b504518be3::t_765e3c13a480fe 98
+web/src/index.css
+  s_3031b504518be3::t_77ff918235f5e5 2
+web/src/components/ui/accordion.tsx
+  s_3031b504518be3::t_77ff918235f5e5 20,26,34
+web/src/components/ui/sheet.tsx
+  s_3031b504518be3::t_77ff918235f5e5 14,18
+web/src/components/ui/checkbox.tsx
+  s_3031b504518be3::t_77ff918235f5e5 11
+web/src/layout/WizardLayout.tsx
+  s_3031b504518be3::t_77ff918235f5e5 103
+web/src/components/ui/popover.tsx
+  s_3031b504518be3::t_77ff918235f5e5 22
+web/src/components/ui/badge.tsx
+  s_3031b504518be3::t_5bb2d99cf0c4c1 7
+web/src/layout/AppShell.tsx
+  s_3031b504518be3::t_aa9aa00e805573 65
+  s_3031b504518be3::t_77ff918235f5e5 66-67
+web/src/components/ui/radio-group.tsx
+  s_3031b504518be3::t_77ff918235f5e5 14
+web/src/components/ui/animations.test.tsx
+  s_3031b504518be3::t_2602068d0337b3 2,8-9
+  s_3031b504518be3::t_1a34ed64580c66 1,3-7,10-21,28-82
+  s_3031b504518be3::t_7b7e1581afd3b5 22-27
+web/src/components/ui/progress.tsx
+  s_3031b504518be3::t_77ff918235f5e5 17
+web/package.json
+  s_3031b504518be3::t_2abac3b27d212e 51-52
+web/src/components/ui/input.tsx
+  s_3031b504518be3::t_77ff918235f5e5 10
+web/package-lock.json
+  s_3031b504518be3::t_6b382a139d08dc 24-25,6009-6017
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6426c56e802a70354c49c777eaffb2f4856d045e",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
