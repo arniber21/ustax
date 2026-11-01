@@ -1,0 +1,541 @@
+# Tests for the Ptc_allowed module (Form 8962 lines 9 to 25)
+
+Run with `clerk test`. Named scopes with the concrete cases of issue #33,
+worked out by hand from IRC 36B(b) and (c) and the Instructions for Form 8962
+(2024) (`sources/forms-instructions/i8962--2024.pdf`: line 10 p 12 to 13,
+line 11 p 13 to 14, lines 12 to 23 p 14 to 15, lines 24 and 25 p 15). Oracle
+comparison: `make difftest SCOPE=ptc_allowed`.
+
+> Using Types
+> Using Ptc_allowed as A
+
+## Helpers
+
+```catala-metadata
+## `amount` in months `first` to `last` (1 to 12), $0 in the others.
+declaration amounts_in content list of money
+  depends on
+    first content integer,
+    last content integer,
+    amount content money
+  equals
+    map each m among (List.sequence of 1, 13) to
+      (if first <= m and m <= last then amount else $0)
+
+## The month numbers `first` to `last`.
+declaration months_between content list of integer
+  depends on
+    first content integer,
+    last content integer
+  equals
+    List.sequence of first, (last + 1)
+
+## A 1095-A for the whole of 2024 with no change: DF asks the line 33
+## annual amounts.
+declaration full_year_form content A.Form1095A
+  depends on
+    annual_premium content money,
+    annual_slcsp content money,
+    annual_aptc content money
+  equals
+    A.Form1095A {
+      -- writable_policy_start_date: |2024-01-01|
+      -- writable_policy_end_date: |2024-12-31|
+      -- writable_special_policy_modification_in_starting_month: false
+      -- writable_has_policy_date_exception: false
+      -- has_coverage_months: true
+      -- coverage_months: months_between of 1, 12
+      -- writable_premiums_or_slcsp_change: false
+      -- has_change_in_circumstance: false
+      -- writable_ptc_annual_premium: annual_premium
+      -- writable_slcsp_annual_premium: annual_slcsp
+      -- writable_aptc_annual_amount: annual_aptc
+      -- writable_ptc_monthly_premium: amounts_in of 1, 12, $0
+      -- writable_ptc_monthly_slcsp_premium: amounts_in of 1, 12, $0
+      -- writable_ptc_monthly_aptc_premium: amounts_in of 1, 12, $0
+    }
+
+## A 1095-A from `start` to `ends`, coverage months `first` to `last`, with
+## the same monthly amounts in those months: DF asks the monthly amounts.
+declaration part_year_form content A.Form1095A
+  depends on
+    start content date,
+    ends content date,
+    first content integer,
+    last content integer,
+    premium content money,
+    slcsp content money,
+    aptc content money
+  equals
+    A.Form1095A {
+      -- writable_policy_start_date: start
+      -- writable_policy_end_date: ends
+      -- writable_special_policy_modification_in_starting_month: false
+      -- writable_has_policy_date_exception: false
+      -- has_coverage_months: true
+      -- coverage_months: months_between of first, last
+      -- writable_premiums_or_slcsp_change: false
+      -- has_change_in_circumstance: false
+      -- writable_ptc_annual_premium: $0
+      -- writable_slcsp_annual_premium: $0
+      -- writable_aptc_annual_amount: $0
+      -- writable_ptc_monthly_premium: amounts_in of first, last, premium
+      -- writable_ptc_monthly_slcsp_premium: amounts_in of first, last, slcsp
+      -- writable_ptc_monthly_aptc_premium: amounts_in of first, last, aptc
+    }
+```
+
+By default: a single applicable taxpayer at 200 percent of the poverty line
+with a qualifying plan, no APTC, a contribution amount of $1,200 a year
+(line 8a) and $100 a month (line 8b), one full-year Form 1095-A with $8,000 of
+premiums and a $7,200 SLCSP, and every knockout question answered no. A test
+overrides only what it tests.
+
+```catala
+declaration scope Case:
+  context filing_status content Types.FilingStatus
+  context forms content list of A.Form1095A
+  context has_aptc condition
+  context percent content decimal
+  context annual_contribution content money
+  context monthly_contribution content money
+  context mfs_exception condition
+  context below100_immigration_exception condition
+  context married condition
+  context qsehra condition
+  context employer_plan condition
+  context multiple_1095_as condition
+  context wants_alt_calculation condition
+  a scope A.PtcAllowed
+  output annual_path condition
+  output allowed content money
+  output aptc content money
+  output annual_allowed content money
+  output applicable condition
+  output needs_8962 condition
+  output months content list of A.PtcMonth
+  output unsupported condition
+  output ko_multiple condition
+
+scope Case:
+  definition filing_status equals Types.FilingStatus.Single
+  definition forms equals [full_year_form of $8,000, $7,200, $0]
+  definition percent equals 200.0
+  definition annual_contribution equals $1,200
+  definition monthly_contribution equals $100
+
+  definition a.filing_status equals filing_status
+  definition a.is_mfj_dependent equals false
+  definition a.not_mfj_and_primary_filer_could_be_dependent_and_claimer_is_required_to_file_or_filing_for_credits equals false
+  definition a.primary_filer_is_claimed_as_dependent equals false
+  definition a.is_married equals married
+  definition a.secondary_filer_residency_eligible_for_mfj equals true
+  definition a.lived_apart_last_six_months equals false
+  definition a.all_eligible_filers_are_us_citizens_or_nationals equals true
+  definition a.claimed_dependents_count equals 0
+  definition a.has_qsehra equals qsehra
+  definition a.household_income_as_percent equals percent
+  definition a.ptc_annual_contribution_amount equals annual_contribution
+  definition a.ptc_monthly_contribution_amount equals monthly_contribution
+  definition a.form1095_as equals forms
+  definition a.writable_has_ptc_qualifying_plan equals true
+  definition a.writable_has_advanced_ptc equals has_aptc
+  definition a.dependent_tp_self_enrolled equals false
+  definition a.dependent_tp_enrolled_someone_else equals false
+  definition a.writable_dependent_tp_other_members_are_part_of_different_tax_family equals false
+  definition a.writable_has_mfs_exception equals mfs_exception
+  definition a.writable_claiming_mfs_exception_for_fourth_straight_year equals false
+  definition a.writable_below100_threshold_and_not_eligible_for_medicaid_because_of_immigration_status
+    equals below100_immigration_exception
+  definition a.writable_has_employer_sponsored_plan equals employer_plan
+  definition a.writable_dependents_required_to_file equals false
+  definition a.writable_self_reported_has_multiple1095_as equals multiple_1095_as
+  definition a.writable_is_additional_person_in_enrollment_family equals false
+  definition a.writable_is_additional_person_partof_different_tax_family equals false
+  definition a.writable_is_enrolled_with_other_family equals false
+  definition a.writable_has_immigration_status_not_eligible_for_marketplace equals false
+  definition a.writable_wants_to_use_alt_calculations equals wants_alt_calculation
+
+  rule annual_path under condition a.ptc_can_report_annual_totals consequence fulfilled
+  definition allowed equals a.total_ptc_amount_allowed
+  definition aptc equals a.total_aptc_amount_taken
+  definition annual_allowed equals a.annual_ptc_allowed
+  rule applicable under condition a.potentially_applicable_tax_payer consequence fulfilled
+  rule needs_8962 under condition a.needs_to_file_form8962 consequence fulfilled
+  definition months equals a.ptc_months
+  rule unsupported under condition a.unsupported consequence fulfilled
+  rule ko_multiple under condition a.ko_tp_needs_to_delete1095_a consequence fulfilled
+```
+
+## Line 11: a 12-month policy uses the annual path
+
+Full year, no change: line 10 "Yes". Line 11(d) = $7,200 - $1,200 = $6,000;
+line 11(e) = lesser of $8,000 and $6,000 = $6,000. A bad output (the SLCSP,
+the premium, or the monthly path's amount) is rejected.
+
+```catala
+#[test]
+declaration scope TestTwelveMonthPolicyAnnualPath:
+  c scope Case
+
+scope TestTwelveMonthPolicyAnnualPath:
+  assertion c.annual_path
+  assertion c.needs_8962
+  assertion c.allowed = $6,000
+  assertion c.annual_allowed = $6,000
+  assertion c.aptc = $0
+  assertion c.allowed != $7,200
+  assertion c.allowed != $8,000
+  assertion not c.unsupported
+```
+
+## Lines 12 to 23: a policy starting in July
+
+July 1 to December 31: six coverage months, monthly path. Each month: (b)
+$600 - (c) $100 = (d) $500; (e) lesser of (a) $500 and $500 = $500; six
+months give $3,000. APTC of $50 a month gives line 25 = $300. January to June
+are blank ($0).
+
+```catala
+#[test]
+declaration scope TestJulyStartMonthlyPath:
+  c scope Case
+
+scope TestJulyStartMonthlyPath:
+  definition c.has_aptc equals true
+  definition c.forms equals
+    [part_year_form of |2024-07-01|, |2024-12-31|, 7, 12, $500, $600, $50]
+  assertion not c.annual_path
+  assertion c.allowed = $3,000
+  assertion c.aptc = $300
+  assertion c.allowed != $6,000
+  assertion (number of (list of r among c.months such that r.ptc_allowed > $0)) = 6
+  assertion (number of (list of r among c.months such that r.contribution_amount > $0)) = 6
+  assertion exists r among c.months such that
+    r.month_number = 7 and r.enrollment_premium = $500 and r.slcsp_premium = $600
+    and r.contribution_amount = $100 and r.max_premium_assistance = $500
+    and r.ptc_allowed = $500 and r.advance_payment = $50
+  assertion exists r among c.months such that
+    r.month_number = 6 and r.enrollment_premium = $0 and r.ptc_allowed = $0
+    and not r.has_active_policy
+```
+
+## Two Forms 1095-A
+
+January to June in one state ($400 premium, $450 SLCSP), July to December in
+another ($300 premium, $500 SLCSP); line 10 "No" since neither is full year.
+January to June: lesser of $400 and $450 - $100 = $350, six months $2,100.
+July to December: lesser of $300 and $400 = $300, six months $1,800. Line 24
+= $3,900. Direct File refuses two forms (`/tpNeedsToDelete1095A`), so the
+return is unsupported.
+
+```catala
+#[test]
+declaration scope TestTwo1095As:
+  c scope Case
+
+scope TestTwo1095As:
+  definition c.forms equals
+    [part_year_form of |2024-01-01|, |2024-06-30|, 1, 6, $400, $450, $0;
+     part_year_form of |2024-07-01|, |2024-12-31|, 7, 12, $300, $500, $0]
+  assertion not c.annual_path
+  assertion c.allowed = $3,900
+  assertion c.allowed != $2,100
+  assertion c.ko_multiple
+  assertion c.unsupported
+```
+
+## Column (d) below zero
+
+SLCSP $600 a year, contribution $1,200: line 11(d) "If the result is zero or
+less, enter -0-", so nothing is allowed, never a negative amount.
+
+```catala
+#[test]
+declaration scope TestSlcspBelowContributionAllowsNothing:
+  c scope Case
+
+scope TestSlcspBelowContributionAllowsNothing:
+  definition c.forms equals [full_year_form of $8,000, $600, $0]
+  assertion c.annual_path
+  assertion c.allowed = $0
+  assertion c.allowed != -$600
+```
+
+Monthly: a $90 SLCSP against a $100 contribution gives $0 for the month.
+
+```catala
+#[test]
+declaration scope TestMonthlySlcspBelowContribution:
+  c scope Case
+
+scope TestMonthlySlcspBelowContribution:
+  definition c.forms equals
+    [part_year_form of |2024-03-01|, |2024-05-31|, 3, 5, $500, $90, $0]
+  assertion c.allowed = $0
+  assertion c.allowed != -$30
+```
+
+## Allowed amount capped by the premium
+
+Premium $4,000 a year, SLCSP $7,200: lesser of $4,000 and $6,000 = $4,000
+(IRC 36B(b)(2)(A)).
+
+```catala
+#[test]
+declaration scope TestAllowedCappedByPremium:
+  c scope Case
+
+scope TestAllowedCappedByPremium:
+  definition c.forms equals [full_year_form of $4,000, $7,200, $0]
+  assertion c.allowed = $4,000
+  assertion c.allowed != $6,000
+```
+
+## Annual APTC and rounding
+
+APTC of $2,400.60 reported for the year: line 25 is $2,401 (whole dollars).
+
+```catala
+#[test]
+declaration scope TestAnnualAptcRounded:
+  c scope Case
+
+scope TestAnnualAptcRounded:
+  definition c.has_aptc equals true
+  definition c.forms equals [full_year_form of $8,000, $7,200, $2,400.60]
+  assertion c.annual_path
+  assertion c.allowed = $6,000
+  assertion c.aptc = $2,401
+```
+
+## DF-BUG(31): a policy starting on December 1
+
+Covered on December 1, so December is a coverage month (IRC 36B(c)(2)(A)(i)):
+lesser of $500 and $600 - $100 = $500. Direct File gives $0.
+
+```catala
+#[test]
+declaration scope TestDecemberFirstStartIsCoverageMonth:
+  c scope Case
+
+scope TestDecemberFirstStartIsCoverageMonth:
+  definition c.forms equals
+    [part_year_form of |2024-12-01|, |2024-12-31|, 12, 12, $500, $600, $0]
+  assertion c.allowed = $500
+  assertion c.allowed != $0
+```
+
+A policy starting on December 15 (no birth or adoption exception) has no
+coverage month.
+
+```catala
+#[test]
+declaration scope TestMidDecemberStartNoCoverageMonth:
+  c scope Case
+
+scope TestMidDecemberStartNoCoverageMonth:
+  definition c.forms equals
+    [part_year_form of |2024-12-15|, |2024-12-31|, 12, 12, $500, $600, $0]
+  assertion c.allowed = $0
+```
+
+## Policy-date exception (26 CFR 1.36B-3(c)(2))
+
+A policy starting on March 15 for a newborn, with the exception claimed:
+March counts. Without the exception it does not.
+
+```catala
+#[test]
+declaration scope TestPolicyDateExceptionCountsStartMonth:
+  c scope Case
+
+scope TestPolicyDateExceptionCountsStartMonth:
+  definition c.forms equals
+    [A.Form1095A {
+       -- writable_policy_start_date: |2024-03-15|
+       -- writable_policy_end_date: |2024-04-30|
+       -- writable_special_policy_modification_in_starting_month: true
+       -- writable_has_policy_date_exception: true
+       -- has_coverage_months: true
+       -- coverage_months: [3; 4]
+       -- writable_premiums_or_slcsp_change: false
+       -- has_change_in_circumstance: false
+       -- writable_ptc_annual_premium: $0
+       -- writable_slcsp_annual_premium: $0
+       -- writable_aptc_annual_amount: $0
+       -- writable_ptc_monthly_premium: amounts_in of 3, 4, $500
+       -- writable_ptc_monthly_slcsp_premium: amounts_in of 3, 4, $600
+       -- writable_ptc_monthly_aptc_premium: amounts_in of 3, 4, $0
+     }]
+  assertion c.allowed = $1,000
+
+#[test]
+declaration scope TestMidMonthStartWithoutException:
+  c scope Case
+
+scope TestMidMonthStartWithoutException:
+  definition c.forms equals
+    [part_year_form of |2024-03-15|, |2024-04-30|, 3, 4, $500, $600, $0]
+  assertion c.allowed = $500
+  assertion c.allowed != $1,000
+```
+
+## DF-BUG(32): full-year policy with 11 coverage months
+
+A policy from January 20 to December 31 with no exception and no change: DF
+asks the annual amounts and uses line 11, allowing $6,000. January is not a
+coverage month (not covered on January 1), so the monthly path is used:
+eleven months of lesser of $8,000 / 12 = $666.67 and $600 - $100 = $500,
+that is $5,500.
+
+```catala
+#[test]
+declaration scope TestFullYearPolicyWithElevenCoverageMonths:
+  c scope Case
+
+scope TestFullYearPolicyWithElevenCoverageMonths:
+  definition c.forms equals
+    [A.Form1095A {
+       -- writable_policy_start_date: |2024-01-20|
+       -- writable_policy_end_date: |2024-12-31|
+       -- writable_special_policy_modification_in_starting_month: false
+       -- writable_has_policy_date_exception: false
+       -- has_coverage_months: true
+       -- coverage_months: months_between of 1, 12
+       -- writable_premiums_or_slcsp_change: false
+       -- has_change_in_circumstance: false
+       -- writable_ptc_annual_premium: $8,000
+       -- writable_slcsp_annual_premium: $7,200
+       -- writable_aptc_annual_amount: $0
+       -- writable_ptc_monthly_premium: amounts_in of 1, 12, $0
+       -- writable_ptc_monthly_slcsp_premium: amounts_in of 1, 12, $0
+       -- writable_ptc_monthly_aptc_premium: amounts_in of 1, 12, $0
+     }]
+  assertion not c.annual_path
+  assertion c.allowed = $5,500
+  assertion c.allowed != $6,000
+```
+
+## Who may claim the credit
+
+Married filing separately without the domestic abuse or abandonment
+exception: not an applicable taxpayer (IRC 36B(c)(1)(C)). Line 24 is $0 and
+all the APTC is repaid (i8962 p 14, "Not an applicable taxpayer").
+
+```catala
+#[test]
+declaration scope TestMfsWithoutExceptionRepaysAllAptc:
+  c scope Case
+
+scope TestMfsWithoutExceptionRepaysAllAptc:
+  definition c.filing_status equals Types.FilingStatus.MarriedFilingSeparately
+  definition c.married equals true
+  definition c.has_aptc equals true
+  definition c.forms equals [full_year_form of $8,000, $7,200, $3,000]
+  assertion not c.applicable
+  assertion c.needs_8962
+  assertion c.allowed = $0
+  assertion c.aptc = $3,000
+  assertion c.allowed != $6,000
+
+#[test]
+declaration scope TestMfsWithExceptionIsApplicable:
+  c scope Case
+
+scope TestMfsWithExceptionIsApplicable:
+  definition c.filing_status equals Types.FilingStatus.MarriedFilingSeparately
+  definition c.married equals true
+  definition c.mfs_exception equals true
+  assertion c.applicable
+  assertion c.allowed = $6,000
+```
+
+Below 100 percent of the poverty line with no APTC and no immigration-status
+exception: not applicable, no Form 8962. With APTC paid, 26 CFR
+1.36B-2(b)(6) keeps the taxpayer applicable.
+
+```catala
+#[test]
+declaration scope TestBelowPovertyLineNoAptcNotApplicable:
+  c scope Case
+
+scope TestBelowPovertyLineNoAptcNotApplicable:
+  definition c.percent equals 90.0
+  definition c.annual_contribution equals $0
+  definition c.monthly_contribution equals $0
+  assertion not c.applicable
+  assertion not c.needs_8962
+  assertion c.allowed = $0
+
+#[test]
+declaration scope TestBelowPovertyLineWithAptcApplicable:
+  c scope Case
+
+scope TestBelowPovertyLineWithAptcApplicable:
+  definition c.percent equals 90.0
+  definition c.annual_contribution equals $0
+  definition c.monthly_contribution equals $0
+  definition c.has_aptc equals true
+  definition c.forms equals [full_year_form of $8,000, $7,200, $7,000]
+  assertion c.applicable
+  assertion c.allowed = $7,200
+  assertion c.aptc = $7,000
+```
+
+## Knockouts
+
+```catala
+#[test]
+declaration scope TestQsehraKnockedOut:
+  c scope Case
+
+scope TestQsehraKnockedOut:
+  definition c.qsehra equals true
+  assertion c.unsupported
+
+#[test]
+declaration scope TestEmployerPlanKnockedOut:
+  c scope Case
+
+scope TestEmployerPlanKnockedOut:
+  definition c.employer_plan equals true
+  assertion c.unsupported
+
+#[test]
+declaration scope TestSelfReportedMultipleKnockedOut:
+  c scope Case
+
+scope TestSelfReportedMultipleKnockedOut:
+  definition c.multiple_1095_as equals true
+  assertion c.unsupported
+```
+
+The alternative calculation for year of marriage is asked only of a married
+couple filing jointly with excess APTC.
+
+```catala
+#[test]
+declaration scope TestAltCalculationKnockedOut:
+  c scope Case
+
+scope TestAltCalculationKnockedOut:
+  definition c.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.married equals true
+  definition c.has_aptc equals true
+  definition c.wants_alt_calculation equals true
+  definition c.forms equals [full_year_form of $8,000, $7,200, $7,000]
+  assertion c.unsupported
+
+#[test]
+declaration scope TestAltCalculationNotAskedWithoutExcessAptc:
+  c scope Case
+
+scope TestAltCalculationNotAskedWithoutExcessAptc:
+  definition c.filing_status equals Types.FilingStatus.MarriedFilingJointly
+  definition c.married equals true
+  definition c.has_aptc equals true
+  definition c.wants_alt_calculation equals true
+  definition c.forms equals [full_year_form of $8,000, $7,200, $5,000]
+  assertion not c.unsupported
+```

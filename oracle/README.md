@@ -54,8 +54,10 @@ Rows per scenario: every writable fact in the scenario (inputs), the 16 required
 /earnedIncomeCredit /totalCtcAndOdc /additionalCtc /cdccTotalCredit /qualifiedSaverCreditAmount /totalEdc
 /netPtcAmount /flowIsKnockedOut`), plus 313 further derived facts marked `Export mef="true"` that have no `*` in
 their path (excluding the 16 above), plus the non-MeF derived facts of the `EXTRA` list in `generate.mjs`
-(append only; issue #20 added 14 filing-status facts such as `/eligibleForHoh` and `/recommendedFilingStatus`).
-Total 79,463 rows, 5.7 MB, so the CSV is committed directly.
+(append only; issue #20 added 14 filing-status facts such as `/eligibleForHoh` and `/recommendedFilingStatus`;
+issue #33 added 25 facts read by the PTC module: the filer and W-2 facts `ptc.xml` reads, such as `/isMFJDependent`
+and `/hasQsehra`, its eligibility gates such as `/potentiallyApplicableTaxPayer`, and its knockouts).
+Total 83,488 rows, 5.9 MB, so the CSV is committed directly.
 
 `oracle/fact_graphs.csv` (`make oracle-fact-graphs`, issue #20) is the same dump for the 27 filing-status fact
 graphs of `direct-file/docs/testing/fact-graphs/` (bare fact graphs, not `{ "facts": ... }` scenarios), produced by
@@ -73,8 +75,10 @@ ats-1,/netPtcAmount,,Incomplete
 ats-1,/flowIsKnockedOut,false,Placeholder
 ```
 
-SHA-256 of `facts.csv`: `812bf3bd52d15f96c14141c550bbb7c25b9f0a7177271159e6a3bd103071d44c` (before the issue #20
-EXTRA rows: `a238501f6b8efcb25012e7a423e4dfa46a4ce748a93759459e182e47e7ef8a00`; those 77,209 rows are unchanged)
+SHA-256 of `facts.csv`: `abd0483c51361299c9e35bf57a50741dad8afc3328900b39db4fea9e5875a771` (before the issue #33
+EXTRA rows: `812bf3bd52d15f96c14141c550bbb7c25b9f0a7177271159e6a3bd103071d44c`, and removing the 4,025 new rows gives
+that file byte for byte; before the issue #20 EXTRA rows:
+`a238501f6b8efcb25012e7a423e4dfa46a4ce748a93759459e182e47e7ef8a00`; those 77,209 rows are unchanged)
 
 ## Counts
 
