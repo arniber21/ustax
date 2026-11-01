@@ -141,7 +141,7 @@ changed only on purpose:
    definitions are part of the spec, so they must be identical, which the
    transitive comparison already enforces.
 
-Since #63 the file holds the main tax theorems (eight statements, solution
+Since #63 the file holds the main tax theorems (six statements, solution
 module `UsTax.Proofs.Main`); `docs/spec-surface.md` lists what each depends on.
 Main theorems not yet proved are templates in `UsTax/Comparator/Pending.lean`
 and are not in `comparator.json`.
