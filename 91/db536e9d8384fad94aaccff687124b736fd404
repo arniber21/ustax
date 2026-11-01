@@ -1,0 +1,59 @@
+lean/UsTax/Cli.lean
+  s_3031b504518be3::t_e25457ebf74b92 15-20,653-957,973-979
+lean/UsTax/Household/Lemmas.lean
+  s_3031b504518be3::t_8308abd12a4a83 2,30,71,77-78,85
+  s_3031b504518be3::t_bea4f4badc15f0 86-88
+  s_3031b504518be3::t_8c3ea78393930d 1,3-16,29,32,42-70,72-76,79-84,89-201
+  s_3031b504518be3::t_03f8ea1c7ab209 17-28,31,35-41
+  s_3031b504518be3::t_0ca792e4316776 33-34
+lean/UsTax/Types.lean
+  s_3031b504518be3::t_ba3c72697f96ad 84-96,99-110
+  s_3031b504518be3::t_1c7c35a45af73c 97
+  s_3031b504518be3::t_3ff062da1f7e8a 98
+lean/UsTax.lean
+  s_3031b504518be3::t_77f76b985ed34c 31-36
+  s_3031b504518be3::t_9122f972eb2fcb 37-38
+lean/UsTax/Date.lean
+  s_3031b504518be3::t_ba3c72697f96ad 106-115,172-173
+lean/README.md
+  s_3031b504518be3::t_5a0fc6f13d05a9 236-259
+  s_3031b504518be3::t_e2007e02165904 235
+lean/UsTax/Household/Props.lean
+  s_3031b504518be3::t_11f65c47e3f7b9 1-54,57-58,60-61,69-88
+  s_3031b504518be3::t_913231c1a4fdc7 55-56,59,62-64
+  s_3031b504518be3::t_03f8ea1c7ab209 65-68
+lean/UsTax/Filers.lean
+  s_3031b504518be3::t_8e5bf5c178a244 1-671
+lean/UsTax/FilingStatus.lean
+  s_3031b504518be3::t_65ba9755ba95ff 1-221,223-456
+  s_3031b504518be3::t_6908ab586e4d5a 222
+lean/UsTax/Params2024.lean
+  s_3031b504518be3::t_60ece0d8f09a3b 74-76
+lean/UsTax/QualifyingRelative.lean
+  s_3031b504518be3::t_e70fc25d08f6d8 1-435
+lean/UsTax/HohQssPersons.lean
+  s_3031b504518be3::t_5d9eed2428c6e6 1-467
+lean/UsTax/DependentsBenefitSplit.lean
+  s_3031b504518be3::t_d9761a76e50186 1-370
+Makefile
+  s_3031b504518be3::t_77f76b985ed34c 82,85-88
+lean/UsTax/QualifyingChild.lean
+  s_3031b504518be3::t_a9a0af99fd1b23 4,201,210
+  s_3031b504518be3::t_040c3390a98cf9 1-3,5-200,202-209,211-418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91db536e9d8384fad94aaccff687124b736fd404",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
