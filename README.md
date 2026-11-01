@@ -17,6 +17,8 @@ The sections below say exactly which is which.
 | Home and verification status | Result with the Form 1040 table |
 | --- | --- |
 | ![US Tax home page: tagline, start button and verification status panel](docs/screenshots/home.png) | ![US Tax results: refund of $981.00, key figures and the Form 1040 line table](docs/screenshots/results-refund.png) |
+| **Wizard with the running estimate** | **Law & proof for line 15: the statute, the Catala rule, the Lean theorems** |
+| ![Income step: W-2 form, the W-2 box diagram, and the running estimate of a $981 refund](docs/screenshots/step-4-income.png) | ![Provenance drawer for line 15: law citations and the highlighted Catala rule](docs/screenshots/provenance-drawer.png) |
 
 More screenshots (every wizard step, amount owed, unsupported return, verification page, phone width, dark mode) are in [`docs/screenshots/`](docs/screenshots/).
 
