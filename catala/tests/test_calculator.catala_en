@@ -854,3 +854,79 @@ scope TestPtcKnockout:
   assertion r.unsupported
   assertion r.fired_knockouts = [Calc.CalculatorKnockout.Household content KI.KnockoutReason.HasEmployerSponsoredPlan]
 ```
+
+## DF-BUG(29), DF-BUG(30): the EITC child need not be claimed
+
+IRC 32(c)(3) requires a qualifying child (IRC 152(c)), and for a married child
+only that the filer be *entitled* to claim them (32(c)(3)(B)); it does not
+require the filer to claim the child. `docs/quirk-decisions.md`; mirrored in
+`lean/UsTax/Tests/Quirks.lean`.
+
+DF-BUG(29): `TestHoh` with the son not claimed (`tp_claims` false). The
+earned income credit is still the one-child amount, $1,448 (DF: the childless
+credit at $40,000 of AGI, $0); the child tax credit, which does require the
+claim, is $0.
+
+DF-BUG(30): a single filer with $40,000 of wages and a married 16-year-old
+daughter (no joint return) who is not claimed: one qualifying child, $1,448
+(DF requires a married child to be claimed: $0).
+
+```catala
+#[test]
+declaration scope TestDfBug29UnclaimedChildEitc:
+  d scope Defaults
+  output r content Calc.Calculator
+
+scope TestDfBug29UnclaimedChildEitc:
+  definition r equals
+    let m equals (output of MkChild with { -- date_of_birth: |2014-09-10| }).member in
+    output of Calc.Calculator with {
+    -- filing_status: Types.FilingStatus.HeadOfHousehold
+    -- filers: d.filers
+    -- primary_extra: d.extra
+    -- secondary_extra: d.extra
+    -- household: [ m but replace {
+         -- dependent: m.dependent but replace {
+              -- answers: m.dependent.answers but replace { -- tp_claims: false } } } ]
+    -- income: d.income but replace {
+         -- w2s: [(output of MkW2 with { -- wages: $40,000 -- withholding: $2,000 }).w2] }
+    -- adjustments: d.adjustments
+    -- payments: d.payments
+    -- credits: d.credits
+    -- cdcc_answers: d.cdcc_answers
+    -- ptc_answers: d.ptc_answers
+    -- screening: d.screening }
+  assertion r.earned_income_credit = $1,448
+  assertion r.earned_income_credit != $0
+  assertion r.total_ctc_and_odc = $0
+  assertion not r.unsupported
+
+#[test]
+declaration scope TestDfBug30MarriedUnclaimedChildEitc:
+  d scope Defaults
+  output r content Calc.Calculator
+
+scope TestDfBug30MarriedUnclaimedChildEitc:
+  definition r equals
+    let m equals (output of MkChild with { -- date_of_birth: |2008-09-10| }).member in
+    output of Calc.Calculator with {
+    -- filing_status: Types.FilingStatus.Single
+    -- filers: d.filers
+    -- primary_extra: d.extra
+    -- secondary_extra: d.extra
+    -- household: [ m but replace {
+         -- dependent: m.dependent but replace {
+              -- person: m.dependent.person but replace { -- married: true }
+              -- answers: m.dependent.answers but replace { -- tp_claims: false } } } ]
+    -- income: d.income but replace {
+         -- w2s: [(output of MkW2 with { -- wages: $40,000 -- withholding: $2,000 }).w2] }
+    -- adjustments: d.adjustments
+    -- payments: d.payments
+    -- credits: d.credits
+    -- cdcc_answers: d.cdcc_answers
+    -- ptc_answers: d.ptc_answers
+    -- screening: d.screening }
+  assertion r.earned_income_credit = $1,448
+  assertion r.earned_income_credit != $0
+  assertion not r.unsupported
+```

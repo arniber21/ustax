@@ -145,6 +145,8 @@ declaration scope Run1040:
   output non_refundable_credits content money
   output tax_less_non_refundable_credits content money
   output line21_of_schedule2 content money
+  output qualified_business_income_deduction content money
+  output american_opportunity_credit content money
   output total_tax content money
   output total_withholding content money
   output total_other_payments_refundable_credits content money
@@ -213,6 +215,9 @@ scope Run1040:
   definition non_refundable_credits equals form.non_refundable_credits
   definition tax_less_non_refundable_credits equals form.tax_less_non_refundable_credits
   definition line21_of_schedule2 equals form.line21_of_schedule2
+  definition qualified_business_income_deduction equals
+    form.qualified_business_income_deduction
+  definition american_opportunity_credit equals form.american_opportunity_credit
   definition total_tax equals form.total_tax
   definition total_withholding equals form.total_withholding
   definition total_other_payments_refundable_credits equals form.total_other_payments_refundable_credits
@@ -457,6 +462,31 @@ scope TestLine23NotAdded:
   definition r.w2s equals [w.w2]
   assertion r.line21_of_schedule2 = $0
   assertion r.total_tax = r.tax_less_non_refundable_credits
+```
+
+## QUIRK(Q4), DF-BUG-2: QBI (line 13) and the AOC (line 29) are `$0` stubs
+
+DF defines `/qualifiedBusinessIncomeDeduction` and `/americanOpportunityCredit`
+as `$0` (`taxCalculations.xml` line 1473 for the AOC); both are reproduced
+(`docs/quirk-decisions.md`). QBI is `$0` by law for the supported income (no
+business income). The AOC stub under-credits a filer who qualifies under IRC
+25A; that decision is open (Questions for the human). The test pins the
+current behaviour on the $50,000 single return: both lines are `$0`, so line
+32 holds only the refundable credits and line 14 only the standard deduction.
+
+```catala
+#[test]
+declaration scope TestQ4QbiAndAocStubs:
+  w scope MkW2
+  r scope Run1040
+
+scope TestQ4QbiAndAocStubs:
+  definition w.wages equals $50,000
+  definition r.w2s equals [w.w2]
+  assertion r.qualified_business_income_deduction = $0
+  assertion r.american_opportunity_credit = $0
+  assertion r.total_other_payments_refundable_credits = $0
+  assertion r.taxable_income = $35,400
 ```
 
 ## Knockouts are aggregated into `unsupported`

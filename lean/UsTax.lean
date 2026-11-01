@@ -114,3 +114,7 @@ import UsTax.Api.Calculate
 import UsTax.Api.Props
 import UsTax.Api.Tests
 import UsTax.Proofs.Calculator
+import UsTax.Spec.Checks.Requests
+import UsTax.Spec.Checks.Main
+import UsTax.Spec.Checks.Extra
+import UsTax.Tests.Quirks
