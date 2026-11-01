@@ -1,0 +1,24 @@
+web/src/components/brand/DotGlobe.test.tsx
+  s_3031b504518be3::t_fa57b4833e2035 1-51
+web/src/components/brand/DotGlobe.tsx
+  s_3031b504518be3::t_25784ceb05b5ce 1,3-113
+  s_3031b504518be3::t_fa57b4833e2035 2
+web/src/components/brand/globeGeometry.ts
+  s_3031b504518be3::t_7165dab00d913a 1-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "647b879e179464058bac33a3afbb2778685e20dc",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
