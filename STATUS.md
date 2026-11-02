@@ -66,7 +66,7 @@ issues #59, #71).
    7. DF-BUG-13, DF-BUG-23: add unit tests (today only difftest `knownDivergence`).
    8. Inconsistent DF-BUG labels in comments: fix or leave.
    9. Promote DF-BUG statuses from `candidate` to `confirmed`/`fixed`.
-3. **LICENSE**: the repository has none. Choose one (for example Apache-2.0, matching Lean and Catala).
+3. *(Done: MIT.)* LICENSE.
 
 Decided earlier: Catala -> Lean option (c) (#8); statute beats Direct File (2026-11-01); no TLS in the
 critical path, plain HTTP on localhost via `Std.Http`, body cap 256 KiB; Comparator on Linux via Apple
