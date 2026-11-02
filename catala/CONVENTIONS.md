@@ -2,7 +2,7 @@
 
 Rules every Catala module in this repository follows. Fixed by issue #5 before
 any tax module is written. Sources: `scope.md` sections 1, 3.1, 5.4, 8, 9 and
-11; `sources/CATALA_PATTERNS.md`; the Direct File XML under
+11; the Direct File XML under
 `../direct-file/direct-file/backend/src/main/resources/tax/` ("DF" below) and
 its reference engine under `../direct-file/direct-file/fact-graph-scala/`.
 
@@ -59,7 +59,7 @@ rename, not a judgment call.
 
 ### Literate style and citations
 
-Follow `sources/CATALA_PATTERNS.md` section 3:
+Follow this pattern:
 
 - Markdown headings carry the legal structure (`## 26 U.S.C. § 63`,
   `### (c) Standard deduction`, `#### (2) Basic standard deduction`).
@@ -295,8 +295,8 @@ to revisit.
 | Q5 | `disabilityStatusMayAffectBenefits` "possibly inverted" | **Reproduce; not inverted.** Re-read (`familyAndHousehold.xml` lines 803-845): the description says "younger than the filer" but the code tests `dateOfBirth < minimumFilerDateOfBirth`, i.e. *older* than the oldest filer, which is exactly the case where disability matters for the QC age test (IRC 152(c)(3)(B)). The description is wrong, the code is right. The gate is ANDed into `/familyAndHousehold/*/ageTest` (line 1853), so it is reproduced; it differs from the statute only for a disabled person under 18 born on the same day as the oldest filer. Owner #16, #18. |
 | Q6 | Qualifying-child tie-breakers (IRC 152(c)(4)) not implemented | **Reproduce, [HUMAN].** DF takes "is the qualifying child of another taxpayer" as answers, not computed from a second return. We model the same inputs and do not encode 152(c)(4). Results differ from the statute when two taxpayers can claim the same child and the other has priority. Owner #16. |
 | Q7 | `lastYearAgiFromOLA` typed `Int` | **Not modelled.** `signing.xml` is identity verification, not tax computation (scope.md section 4.4). |
-| Q8 | Descriptions mention TY2023 while constants are tagged 2024 | **Use official TY2024 values.** Constants come from `Params_2024`, each checked in `sources/VERIFICATION.md`; DF descriptions are ignored. A DF constant that differs from the official value is a new quirk. None found so far. |
-| Q9 | Schedule R and other constants carry no `TaxYear` tag | **Use official values, which equal DF.** Schedule R amounts come from IRC 22(c), (d) and are not indexed; checked against `i1040sr--2024.pdf` p 7 and `f1040sr--2024.pdf` p 2 in `sources/VERIFICATION.md`. Owner #30. |
+| Q8 | Descriptions mention TY2023 while constants are tagged 2024 | **Use official TY2024 values.** Constants come from `Params_2024`; DF descriptions are ignored. A DF constant that differs from the official value is a new quirk. None found so far. |
+| Q9 | Schedule R and other constants carry no `TaxYear` tag | **Use official values, which equal DF.** Schedule R amounts come from IRC 22(c), (d) and are not indexed; checked against `i1040sr--2024.pdf` p 7 and `f1040sr--2024.pdf` p 2 in the verification notes. Owner #30. |
 | Q10 | `Rational` to `Dollar` conversion through `Float` | **Do not reproduce; compute exactly, [HUMAN].** Confirmed in `types/Dollar.scala` (`Conversion[Rational, Dollar]`, `numerator.toFloat / denominator`), used by `Add` and `Subtract` of a Dollar and a Rational. It is an engine artefact, not a tax rule, and a `Float` (24-bit mantissa) loses cents once a numerator passes 16,777,216. The oracle (#6) reports any case where this changes a result. Owner #60. |
 | Q11 | `scopedStateOptions` reconstructed from a grep | **Reproduce.** Re-read (`constants.xml` lines 327-360): 25 states plus `moreThanOne` and `noneOfThese`, Louisiana commented out. Encoded as `Types.ScopedState`. Owner #36. |
 | Q12 | CDCC allocation of taxable dependent-care benefits between spouses (proposed by #28, needed to match `ticket-12386`) | **Reproduce.** The form is silent on the allocation; DF's rule is reproduced and marked `# QUIRK(Q12)`. Owner #28. |
