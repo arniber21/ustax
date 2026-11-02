@@ -215,14 +215,13 @@ for `SCOPE=calculator`, PR #151). A harness that cannot fail proves nothing.
 US Tax was built during the hackathon by one person and an orchestrated team of AI agents (Claude).
 Git history starts 2026-10-31; by 2026-11-01 there were 77 merged pull requests. One orchestrator agent
 split the work into issues (the roadmap is issue #1), started worker agents in separate git worktrees,
-re-ran the builds and difftests on each pull request before merging, and kept
-[`STATUS.md`](../STATUS.md) current.
+re-ran the builds and difftests on each pull request before merging.
 
 The division of labour follows `CLAUDE.md` section 8:
 
 - **The human owns the specification and the policy**: the properties in `lean/UsTax/Spec/`, the
   statements Comparator checks, and the decisions (write the calculator directly in Lean; statute beats
-  Direct File; no TLS in the Lean process; which quirks to keep). `STATUS.md` lists the open ones.
+  Direct File; no TLS in the Lean process; which quirks to keep).
 - **Models write code and proofs.**
 - **A mechanical check accepts or rejects.**
 

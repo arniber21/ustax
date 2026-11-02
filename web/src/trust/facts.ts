@@ -7,13 +7,13 @@
  *   - lean/UsTax/Comparator/Challenge.lean and Extra.lean   where each statement is written
  *   - docs/direct-file-bugs.md                              the bug counts
  *   - docs/spec-surface.md, docs/audit.md, docs/comparator.md, lean/README.md, README.md ("What you have to trust")
- *   - STATUS.md                                             the test counts and their dates
+ *   - README.md                                             the test counts
  *
  * Rules for editing: never claim the Catala-to-Lean link is proved (it is tested); never state a count
  * without its date; say when a check is run by hand and not in CI.
  */
 
-/** Date the counts below were last recorded (STATUS.md, wave 4). */
+/** Date the counts below were last recorded (README.md). */
 export const AS_OF = '2026-11-01';
 
 export type ClaimStatus = 'proven' | 'tested';
@@ -161,7 +161,7 @@ export const PROOF_CHECKS = {
   note: 'Comparator needs Linux. CI runs it for the main list on every push. The additional list is run by hand with make comparator-extra, not in CI.',
 } as const;
 
-/** Differential-testing facts. Numbers from STATUS.md and README.md, as of AS_OF. */
+/** Differential-testing facts. Numbers from README.md, as of AS_OF. */
 export const TESTED = {
   asOf: AS_OF,
   scenarios: { shipped: 161, runnable: 157, rejected: 4 },
@@ -174,7 +174,7 @@ export const TESTED = {
   audit: { declarations: 7981, highSeverity: 0 },
   items: [
     'The Catala encoding of the law is compared with the IRS Direct File engine (its own compiled rules, run as an oracle). Direct File ships 161 test returns; its engine wrongly rejects 4 of them (DF-BUG-8), which leaves 157.',
-    'On those 157 scenarios the calculator’s 5,360 fact checks agree between Catala and Direct File, and the API shape (3,105 checks) agrees too (STATUS.md, 2026-11-01).',
+    'On those 157 scenarios the calculator’s 5,360 fact checks agree between Catala and Direct File, and the API shape (3,105 checks) agrees too (re-run 2026-11-01).',
     'The Lean calculator is compared with Catala and Direct File the same way (make lean-difftest). This is how the Lean code is tied to the Catala rules: by testing, not by proof.',
     'Line 16 is compared with the Catala rate schedules on 2,402 incomes for each filing status (36,030 checks), and each of the 2,062 Tax Table rows is checked at its lowest dollar and highest cent in all four columns (16,496 checks).',
     'The proof audit (make audit, 2026-11-01) passed over 7,981 declarations with no sorry, no native_decide, no extra axiom and 0 high-severity findings.',
@@ -186,7 +186,7 @@ export const TESTED = {
  * Tier 2, "Verified in Catala": NOT a proof. The rules are written in Catala (literate source that quotes the
  * statute; the Catala compiler checks types and default logic; unit tests in catala/tests) and are run against
  * the IRS Direct File engine as an oracle (difftest/mappings). `facts.test.ts` counts the files on disk and
- * checks each item's Catala file and mapping exist, and the numbers against STATUS.md and lean/README.md.
+ * checks each item's Catala file and mapping exist, and the numbers against README.md and lean/README.md.
  */
 export const CATALA = {
   asOf: AS_OF,
@@ -287,7 +287,7 @@ export const TRUSTED: readonly { what: string; why: string }[] = [
   { what: 'Our JSON reader', why: 'lean/UsTax/Api/Json.lean. Tested, not proved. (That an accepted request meets the written input specification is proved; that the reader parses JSON correctly is not.)' },
   {
     what: 'The spec files a human must review',
-    why: 'The properties in lean/UsTax/Spec/, the statements in lean/UsTax/Comparator/Challenge.lean and Extra.lean, and the Tax Table data transcribed from the printed IRS table. A theorem means only what its statement says. The review of the statements is listed in docs/spec-surface.md and is not finished (STATUS.md).',
+    why: 'The properties in lean/UsTax/Spec/, the statements in lean/UsTax/Comparator/Challenge.lean and Extra.lean, and the Tax Table data transcribed from the printed IRS table. A theorem means only what its statement says. The review of the statements is listed in docs/spec-surface.md and was accepted by the owner without a detailed review.',
   },
   { what: 'Three standard axioms', why: 'propext, Classical.choice and Quot.sound. make audit and Comparator reject sorry, native_decide and any other axiom.' },
   { what: 'The Catala toolchain (tests only)', why: 'Catala 1.3.0 runs the readable rules in the differential tests. It is not part of the running calculator.' },

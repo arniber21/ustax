@@ -47,7 +47,7 @@ jobs:
         run: devbox run check
 
       # Report, do not gate: the difftest lists known Direct File differences
-      # (see STATUS.md). The summary goes to the job page.
+      # (see docs/direct-file-bugs.md). The summary goes to the job page.
       - name: make difftest SCOPE=all (summary)
         run: |
           set -o pipefail

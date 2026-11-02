@@ -29,7 +29,7 @@ browser (web/, React)  --HTTP JSON-->  ustax-server (lean/ServerMain.lean on Std
 | **No 500 on a valid request** | | **Proved**: `Extra.calculateRequest_ne_fault` | |
 | **Response serialisation** `lean/UsTax/Api/Response.lean`, `J.render` | Writes the reply JSON | Tested, not proved | `make test-server` compares every fixture in `api/fixtures` byte for byte; `server_vs_cli.mjs` compares the server with `ustax api-calc` on 315 requests. |
 | **Port, host and CORS** | Binds `HOST` (default `127.0.0.1`), `PORT` (default 8080); allows the origins in `ALLOW_ORIGIN` (default `http://localhost:5173`) | Configuration | Loopback by default, so the plain-HTTP API is not reachable from the network unless you change `HOST`. |
-| **Body cap** | Requests over 256 KiB get 413; a non-JSON content type gets 415 | Tested (`make test-server`) | Human decision (STATUS.md, "Decided earlier"). |
+| **Body cap** | Requests over 256 KiB get 413; a non-JSON content type gets 415 | Tested (`make test-server`) | Human decision. |
 | **Data** | The server stores nothing. It logs method, path and status only, never the request body. An internal error's text goes to the server's stderr, not to the client. The web app keeps your answers in your own browser (local storage) so a reload does not lose them. | By construction (`ServerMain.lean`) | |
 | **TLS** | None in the Lean process | Optional: Caddy | `Std.Http` has no TLS. `make tls` and `make docker-run` put Caddy in front (`docs/tls.md`, `docs/deploy.md`). Caddy is trusted only if you use it. |
 | **The web app** `web/` | Asks the questions, shows the reply | Not verified | It holds no tax logic: it displays the server's numbers. Unit tests (`make web-test`) and end-to-end tests (`make e2e`) only. |
@@ -42,7 +42,7 @@ enforces this on every declaration under `UsTax`; Comparator enforces it on the 
 
 A theorem means what its statement says, and the statement means what every definition it mentions
 means. These files are the specification. They are written by a model, checked by tools, and still
-need a human to confirm that they say the right thing (not done yet; see `STATUS.md`).
+need a human to confirm that they say the right thing (accepted by the owner without a detailed review; see `docs/writeup.md`).
 
 - `lean/UsTax/Spec/*.lean`: the properties (`NonnegMonotone`, `RefundOrBalanceDue`,
   `CreditsWithinLiability`, `EitcWithinBounds`, `MatchesTaxTable`, `worksheetTax`, the module specs,

@@ -85,7 +85,7 @@ Last run: 6 of 6 injections failed the audit and the unmodified copy passed.
   `catala.1.3.0` into the project-local opam root `.opam`, cached),
   `devbox run check`, then `make difftest SCOPE=all`. The difftest summary
   is written to the job summary and does not gate the job (known Direct File
-  differences are listed in STATUS.md).
+  differences are listed in docs/direct-file-bugs.md).
 - **lean**: devbox provides bubblewrap and elan; the pinned toolchain from
   `lean/lean-toolchain` goes to `/opt/elan` (cached); copies `lean/` to `/opt/ustax-lean`
   (outside `/home` and `/root`, which the sandbox covers with a tmpfs, as in the

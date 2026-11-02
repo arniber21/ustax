@@ -64,8 +64,6 @@ Other ways to run it:
 - `make docker-run`: API on 127.0.0.1:8080 and web app on <http://localhost:8081>, with Docker Compose.
 - `make tls`: an HTTPS front on <https://localhost:8443> through Caddy (optional; see [`docs/tls.md`](docs/tls.md)).
 
-A three-minute demo script is in [`scripts/demo.md`](scripts/demo.md).
-
 ## How it works
 
 There are three layers. Each one is checked against the one before it.
@@ -299,8 +297,7 @@ it uses Apple's `container` tool (`container system start` once first). See
   and `make comparator` all pass.
 - If you find a place where Direct File disagrees with the law, add a row to `docs/direct-file-bugs.md`.
 
-The roadmap is [issue #1](https://github.com/arniber21/ustax/issues/1); the current state is
-[`STATUS.md`](STATUS.md).
+The roadmap is [issue #1](https://github.com/arniber21/ustax/issues/1).
 
 ## Limitations
 

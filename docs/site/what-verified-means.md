@@ -203,7 +203,7 @@ search for `DF-BUG(n)`. Some older comments use provisional labels; see Question
    **157 of 157 returns and 5,360 of 5,360 fact checks pass** (754 oracle values are incomplete and not
    checked). 9 checks are reported apart as known divergences and never counted as passes: DF-BUG-3,
    DF-BUG-23, and one return whose chosen filing status DF's own validity check rejects. Source:
-   [STATUS.md](https://github.com/arniber21/ustax/blob/main/STATUS.md), [PR #136](https://github.com/arniber21/ustax/pull/136),
+   [PR #136](https://github.com/arniber21/ustax/pull/136),
    re-run on 2026-11-01.
 
 The runner, its mappings and the knocked-out scenarios are described in

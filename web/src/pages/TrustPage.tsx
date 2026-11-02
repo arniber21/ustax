@@ -267,7 +267,7 @@ export function TrustPage({ embedded = false }: { embedded?: boolean }) {
         <p className="mt-2 mb-0 text-sm text-muted-foreground">Found by {BUGS.credit}. Full log with law citations: {BUGS.file}.</p>
         <p className="mt-6 mb-0 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Badge variant="outline">Sources</Badge>
-          docs/spec-surface.md, docs/audit.md, docs/comparator.md, README.md and STATUS.md in the repository.
+          docs/spec-surface.md, docs/audit.md, docs/comparator.md, and README.md in the repository.
         </p>
       </PageSection>
     </Page>

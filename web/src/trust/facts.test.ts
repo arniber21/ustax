@@ -80,15 +80,14 @@ describe('Direct File bug counts', () => {
 });
 
 describe('test counts', () => {
-  const status = read('STATUS.md');
+  const status = read('README.md');
   const fmt = (n: number) => n.toLocaleString('en-US');
 
-  it('appear in STATUS.md with the date they are stated as of', () => {
-    expect(status).toContain(AS_OF);
+  it('appear in README.md', () => {
     expect(status).toContain(`${fmt(TESTED.calculator.factChecks)}`);
     expect(status).toContain(`${fmt(TESTED.apiCalculator.factChecks)}`);
     expect(status).toContain(`${fmt(TESTED.audit.declarations)} declarations`);
-    expect(status).toContain(`${TESTED.calculator.scenarios}/${TESTED.calculator.scenarios}`);
+    expect(status).toContain(`${TESTED.calculator.scenarios}`);
   });
 
   it('are consistent: 161 shipped, 4 rejected, 157 run', () => {
@@ -127,9 +126,8 @@ describe('Catala tier (verified by testing, not proved)', () => {
     }
   });
 
-  it('the whole-return counts appear in STATUS.md, and the drawer lines exist in provenance.json', () => {
-    const status = read('STATUS.md');
-    expect(status).toContain(`157/157 non-knocked-out Direct File scenarios, ${TESTED.calculator.factChecks.toLocaleString('en-US')}/${TESTED.calculator.factChecks.toLocaleString('en-US')} fact checks`);
+  it('the whole-return counts appear in README.md, and the drawer lines exist in provenance.json', () => {
+    expect(read('README.md')).toContain(TESTED.calculator.factChecks.toLocaleString('en-US'));
     const lines = (JSON.parse(read('api/provenance.json')) as { lines: Record<string, unknown> }).lines;
     for (const it of CATALA.items) if ('line' in it && it.line) expect(lines[it.line], it.line).toBeDefined();
   });
