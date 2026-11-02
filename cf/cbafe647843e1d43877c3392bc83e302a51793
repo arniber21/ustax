@@ -1,0 +1,25 @@
+LICENSE
+  s_3031b504518be3::t_ddb6c42d10bef8 1-21
+README.md
+  s_3031b504518be3::t_ddb6c42d10bef8 189,319
+docs/writeup.md
+  s_3031b504518be3::t_ddb6c42d10bef8 255-263,267
+STATUS.md
+  s_3031b504518be3::t_5de673bf6df726 54,86-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cfcbafe647843e1d43877c3392bc83e302a51793",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
