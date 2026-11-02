@@ -23,6 +23,8 @@ What makes it different:
 
 > US Tax is a research and hackathon project. It does not file anything, and it is not tax advice.
 
+**Read the write-up:** [`docs/pdf/ustax-docs.pdf`](docs/pdf/ustax-docs.pdf), all the documentation in one PDF (the same pages are at `/docs` in the web app).
+
 | Home and verification status | Result with the Form 1040 table |
 | --- | --- |
 | ![US Tax home page: tagline, start button and verification status panel](docs/screenshots/home.png) | ![US Tax results: refund of $981.00, key figures and the Form 1040 line table](docs/screenshots/results-refund.png) |
