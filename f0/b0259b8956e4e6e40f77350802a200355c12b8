@@ -1,0 +1,47 @@
+lean/README.md
+  s_3031b504518be3::t_80ea768682d560 32
+  s_3031b504518be3::t_52026ee3c3e02c 215,238
+docker-compose.yml
+  s_3031b504518be3::t_52026ee3c3e02c 1
+deploy/Caddyfile
+  s_3031b504518be3::t_52026ee3c3e02c 1
+scripts/install.sh
+  s_3031b504518be3::t_52026ee3c3e02c 21,27
+docs/api.md
+  s_3031b504518be3::t_52026ee3c3e02c 5
+web/src/trust/facts.ts
+  s_3031b504518be3::t_52026ee3c3e02c 295
+deploy/Caddyfile.docker
+  s_3031b504518be3::t_52026ee3c3e02c 1-2
+README.md
+  s_3031b504518be3::t_80ea768682d560 67,217
+Makefile
+  s_3031b504518be3::t_52026ee3c3e02c 2,133,143
+scripts/devbox-exec.sh
+  s_3031b504518be3::t_52026ee3c3e02c 3,29
+docs/comparator.md
+  s_3031b504518be3::t_52026ee3c3e02c 217
+docs/trusted-base.md
+  s_3031b504518be3::t_52026ee3c3e02c 80-81
+  s_3031b504518be3::t_80ea768682d560 34
+Dockerfile
+  s_3031b504518be3::t_52026ee3c3e02c 2,66
+.github/workflows/ci.yml
+  s_3031b504518be3::t_52026ee3c3e02c 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f0b0259b8956e4e6e40f77350802a200355c12b8",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
