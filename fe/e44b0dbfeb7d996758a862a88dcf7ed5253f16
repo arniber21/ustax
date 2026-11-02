@@ -1,0 +1,23 @@
+catala/CONVENTIONS.md
+  s_3031b504518be3::t_4b4dfb14fde83e 5,62,298-299
+docs/quirk-decisions.md
+  s_3031b504518be3::t_759639c8317f94 76
+docs/trusted-base.md
+  s_3031b504518be3::t_6480375a629a99 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fee44b0dbfeb7d996758a862a88dcf7ed5253f16",
+  "prompts": {},
+  "sessions": {
+    "s_3031b504518be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aab269eb-1588-4020-b1c9-2fea954ef005",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Arnab Ghosh <arnabcare21@gmail.com>"
+    }
+  }
+}
