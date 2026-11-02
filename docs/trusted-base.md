@@ -31,7 +31,7 @@ browser (web/, React)  --HTTP JSON-->  ustax-server (lean/ServerMain.lean on Std
 | **Port, host and CORS** | Binds `HOST` (default `127.0.0.1`), `PORT` (default 8080); allows the origins in `ALLOW_ORIGIN` (default `http://localhost:5173`) | Configuration | Loopback by default, so the plain-HTTP API is not reachable from the network unless you change `HOST`. |
 | **Body cap** | Requests over 256 KiB get 413; a non-JSON content type gets 415 | Tested (`make test-server`) | Human decision. |
 | **Data** | The server stores nothing. It logs method, path and status only, never the request body. An internal error's text goes to the server's stderr, not to the client. The web app keeps your answers in your own browser (local storage) so a reload does not lose them. | By construction (`ServerMain.lean`) | |
-| **TLS** | None in the Lean process | Optional: Caddy | `Std.Http` has no TLS. `make tls` and `make docker-run` put Caddy in front (`docs/tls.md`, `docs/deploy.md`). Caddy is trusted only if you use it. |
+| **TLS** | None in the Lean process | Optional: Caddy | `Std.Http` has no TLS. `make tls` and `make docker-run` put Caddy in front. Caddy is trusted only if you use it. |
 | **The web app** `web/` | Asks the questions, shows the reply | Not verified | It holds no tax logic: it displays the server's numbers. Unit tests (`make web-test`) and end-to-end tests (`make e2e`) only. |
 
 There are no `opaque` contracts and no `axiom` declarations in `lean/UsTax`. The accepted axioms are
@@ -77,8 +77,8 @@ an answer.
 | **Comparator** (`lake check`, `lake comparator`) and its **bubblewrap** sandbox, inside an Apple `container` Linux VM on a Mac (`docs/comparator.md`) | Replays the build through the kernel and checks the proved statements equal the trusted ones, with only the allowed axioms. |
 | **for-all-dev/forensics** (pinned commit, `scripts/audit.sh`) | Flags vacuous theorems in `make audit`. |
 | **plausible** (v4.35.0) | Property-based tests before proving. |
-| **devbox** (and Nix under it) | Pins Node, elan, bun, ninja, opam and the rest of the tooling (`docs/devbox.md`). |
-| **Docker / OCI images** (`ubuntu`, `node`, `caddy`) | Only for `make docker-run` (`docs/deploy.md`). |
+| **devbox** (and Nix under it) | Pins Node, elan, bun, ninja, opam and the rest of the tooling. |
+| **Docker / OCI images** (`ubuntu`, `node`, `caddy`) | Only for `make docker-run`. |
 | Node, ajv, the difftest harness (`difftest/`) | Test code. Untrusted by design: each harness has a negative control that must fail. |
 
 ## 5. What we did NOT verify

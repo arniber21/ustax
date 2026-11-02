@@ -2,7 +2,7 @@
 
 Contract version: `api_version` 1, schema file `api/schema.json` (JSON Schema draft 2020-12,
 `schema_version` 1.2.0), tax year 2024. Consumers: the Lean server (#51 validation, #52 endpoint),
-the React frontend (#72 to #82). Plain HTTP; TLS is terminated by a proxy (`docs/lean-http-server.md`).
+the React frontend (#72 to #82). Plain HTTP; TLS is terminated by a proxy.
 
 Files:
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Run a command inside the project's devbox environment (devbox.json). Used by the Makefile
-# so that `make <target>` works from a plain shell. See docs/devbox.md.
+# so that `make <target>` works from a plain shell.
 #   scripts/devbox-exec.sh make check
 # If devbox is missing: print the official one-line installer and exit 1, or run it
 # when INSTALL_DEVBOX=1. Skipped entirely when USTAX_NO_DEVBOX=1 (you provide the tools).
@@ -26,7 +26,7 @@ Install it (one line, official installer; it also installs Nix if needed):
     $INSTALLER
 
 then open a new shell and re-run. Or let make do it:  INSTALL_DEVBOX=1 make install
-Already have every tool yourself?  USTAX_NO_DEVBOX=1 make <target>   (see docs/devbox.md)
+Already have every tool yourself?  USTAX_NO_DEVBOX=1 make <target>
 EOF
     exit 1
   fi

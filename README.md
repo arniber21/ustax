@@ -64,7 +64,7 @@ Other ways to run it:
 
 - `make server`: only the API, on port 8080.
 - `make docker-run`: API on 127.0.0.1:8080 and web app on <http://localhost:8081>, with Docker Compose.
-- `make tls`: an HTTPS front on <https://localhost:8443> through Caddy (optional; see [`docs/tls.md`](docs/tls.md)).
+- `make tls`: an HTTPS front on <https://localhost:8443> through Caddy (optional).
 
 ## How it works
 
@@ -214,7 +214,7 @@ declarations, no `native_decide`.
   income above $1 trillion gets 400 rather than a capped tax result.
 - **No data is stored.** The server logs method, path and status only, never a request body. The web
   app keeps your answers in your own browser's local storage.
-- No TLS in the Lean process; see [`docs/tls.md`](docs/tls.md).
+- No TLS in the Lean process; put a reverse proxy such as Caddy in front if you need HTTPS.
 
 ### What we did NOT verify
 

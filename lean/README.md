@@ -29,7 +29,7 @@ the proofs in `UsTax/Proofs/Main.lean` (the comparator solution module), and
 statements still to be proved in `UsTax/Comparator/Pending.lean`. The spec
 surface of each, reviewed, is `docs/spec-surface.md`.
 
-Tools (elan, bun, ninja, ...) come from devbox: see `docs/devbox.md`.
+Tools (elan, bun, ninja, ...) come from devbox.
 
 `make forensics` clones for-all-dev/forensics into `.forensics-tool/` (gitignored)
 and runs, from `.forensics-tool/app`, `bun server.ts <abs path to lean/> --dump forensics-out.json`.
@@ -212,7 +212,7 @@ converter, left to #52).
 ## HTTP server (`ServerMain.lean`, `UsTax/Api/{Bridge,Calculate}.lean`, issues #52 to #54, #56, #57)
 
 `lake build ustax-server`; `make server` / `make run` (root `Makefile`). Plain HTTP on `Std.Http`
-(`docs/lean-http-server.md`), env `PORT` (8080), `HOST` (127.0.0.1), `ALLOW_ORIGIN` (comma separated,
+Environment: `PORT` (8080), `HOST` (127.0.0.1), `ALLOW_ORIGIN` (comma separated,
 default `http://localhost:5173`). `POST /calculate`, `GET /health`, `GET /version`, `OPTIONS` preflight;
 body cap 256 KiB (413), 415 for a non-JSON content type, 404/405, 422 knockouts, 500 generic.
 
@@ -235,7 +235,7 @@ body cap 256 KiB (413), 415 for a non-JSON content type, 404/405, 422 knockouts,
 **Trusted code added by the server.** `ServerMain.lean` (IO only, no theorem; routing, CORS, body cap,
 content-type check, logging of method, path and status only, generic 500), `Std.Http` and `Std.Async`
 from the Lean toolchain (parser, serializer, libuv sockets), and `Lean.Json` is *not* used (the strict
-reader `Api/Json.lean` is). The server binds to loopback by default and speaks no TLS (`docs/tls.md`).
+reader `Api/Json.lean` is). The server binds to loopback by default and speaks no TLS.
 Not proved: that the handler maps every `Reply` to the right status line (checked by the integration
 test), and that the exception text never reaches a client (by construction: `handle` discards it).
 `ServerMain` is outside `lean/UsTax`, so `make audit` neither scans nor lints it; the audit's forensics

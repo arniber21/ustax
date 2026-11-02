@@ -1,5 +1,5 @@
 # CI (issue #70). All tools come from devbox.json (pinned in devbox.lock); jobs run the same
-# `devbox run` scripts as local development (docs/devbox.md).
+# `devbox run` scripts as local development.
 #   catala : type-check + run Catala tests, summarize the three-way difftest.
 #   lean   : lake build, lake check, lake comparator (Lean kernel replay and Comparator,
 #            sandboxed by bubblewrap), then scripts/audit.sh.

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Reproducible container for the ustax Lean server and web app (issue #58, docs/deploy.md).
+# Reproducible container for the ustax Lean server and web app.
 #
 #   docker build -t ustax-server .                    # default target: the Lean HTTP API
 #   docker build --target web -t ustax-web .          # static web app + same-origin proxy (Caddy)
@@ -63,7 +63,7 @@ RUN apt-get update \
 COPY --from=lean-build /src/lean/.lake/build/bin/ustax-server /usr/local/bin/ustax-server
 USER ustax
 # Plain HTTP. In a container the process must listen on all interfaces; publish the port only
-# to trusted networks, or put Caddy in front (docs/tls.md).
+# to trusted networks, or put Caddy in front.
 ENV HOST=0.0.0.0 PORT=8080 ALLOW_ORIGIN=http://localhost:8081
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/ustax-server"]

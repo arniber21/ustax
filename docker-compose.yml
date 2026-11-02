@@ -1,4 +1,4 @@
-# ustax: Lean API + static web app. `make docker-run` (docs/deploy.md).
+# ustax: Lean API + static web app. `make docker-run`.
 #   server: plain HTTP :8080 (the Lean calculator)
 #   web:    http://localhost:8081  static app, proxies /calculate /health /version to server
 # HTTPS (optional): `SITE_ADDRESS=localhost docker compose up` then open https://localhost:8443

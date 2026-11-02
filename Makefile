@@ -1,5 +1,5 @@
 # ustax: Catala formalization of the US income tax subset covered by IRS Direct File.
-# Dependencies are managed by devbox (devbox.json, docs/devbox.md). Every target below runs inside
+# Dependencies are managed by devbox (devbox.json). Every target below runs inside
 # `devbox run` automatically: from a plain shell the rule just below re-invokes `make <goal>` through
 # scripts/devbox-exec.sh (which explains how to install devbox if it is missing, or does it with
 # INSTALL_DEVBOX=1). USTAX_NO_DEVBOX=1 skips devbox and uses the tools on your PATH.
@@ -130,7 +130,7 @@ lean-difftest-filing-status-graphs:  ## Direct File / Catala / Lean three-way on
 lean-difftest-rates:  ## Lean TentativeTax vs Catala and vs oracle/facts.csv
 	node difftest/lean_rates.mjs $(ARGS)
 
-# --- TLS (see docs/tls.md): Caddy terminates HTTPS, Lean server stays on plain loopback HTTP ---
+# --- TLS: Caddy terminates HTTPS, Lean server stays on plain loopback HTTP ---
 # caddy comes from devbox.
 .PHONY: tls tls-trust tls-check
 tls:       ## HTTPS front for the Lean server: https://localhost:8443 -> 127.0.0.1:8080
@@ -140,7 +140,7 @@ tls-trust: ## one-time: trust Caddy's local CA so browsers/curl accept the dev c
 tls-check: ## validate deploy/Caddyfile syntax
 	caddy validate --config deploy/Caddyfile --adapter caddyfile
 
-# --- Docker (see docs/deploy.md): Dockerfile targets `server` (Lean API :8080) and `web` (Caddy + static app) ---
+# --- Docker: Dockerfile targets `server` (Lean API :8080) and `web` (Caddy + static app) ---
 # DOCKER=docker (default) or DOCKER=container (Apple's CLI; it has no compose, so docker-run needs docker).
 DOCKER ?= docker
 .PHONY: docker-build docker-run

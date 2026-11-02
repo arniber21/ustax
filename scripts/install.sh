@@ -18,13 +18,13 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 die() { echo "error: $1" >&2; exit 1; }
 
 echo "== Lean"
-command -v elan >/dev/null 2>&1 || die "elan not found. It comes with devbox (docs/devbox.md); with USTAX_NO_DEVBOX=1 install it yourself: https://elan.lean-lang.org"
+command -v elan >/dev/null 2>&1 || die "elan not found. It comes with devbox; with USTAX_NO_DEVBOX=1 install it yourself: https://elan.lean-lang.org"
 TOOLCHAIN="$(cat "$REPO/lean/lean-toolchain")"
 elan toolchain install "$TOOLCHAIN" || die "could not install Lean toolchain $TOOLCHAIN"
 (cd "$REPO/lean" && lake build UsTax ustax ustax-server) || die "lake build failed"
 
 echo "== Node"
-command -v node >/dev/null 2>&1 || die "node not found (devbox provides it; see docs/devbox.md)"
+command -v node >/dev/null 2>&1 || die "node not found (devbox provides it)"
 NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
 [ "$NODE_MAJOR" -ge 18 ] || die "node $NODE_MAJOR is too old; need >= 18"
 command -v npm >/dev/null 2>&1 || die "npm not found (it ships with Node.js)"

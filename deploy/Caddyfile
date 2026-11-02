@@ -1,4 +1,4 @@
-# TLS terminator for the ustax Lean server (see docs/tls.md, issue #55).
+# TLS terminator for the ustax Lean server.
 # Caddy speaks HTTPS to clients and plain HTTP/1.1 to the Lean process on loopback.
 #
 # Dev:  `make tls` (runs `caddy run --config deploy/Caddyfile`); `make tls-trust` once

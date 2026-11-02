@@ -292,7 +292,7 @@ export const TRUSTED: readonly { what: string; why: string }[] = [
   { what: 'Three standard axioms', why: 'propext, Classical.choice and Quot.sound. make audit and Comparator reject sorry, native_decide and any other axiom.' },
   { what: 'The Catala toolchain (tests only)', why: 'Catala 1.3.0 runs the readable rules in the differential tests. It is not part of the running calculator.' },
   { what: 'The Direct File oracle bundle (tests only)', why: 'The prebuilt Scala.js bundle of the IRS Direct File engine (oracle/README.md). The tests are only as good as this reference, and it has bugs (below).' },
-  { what: 'Caddy (optional)', why: 'Only if you use the optional HTTPS front (docs/tls.md). Not needed to run the calculator.' },
+  { what: 'Caddy (optional)', why: 'Only if you use the optional HTTPS front. Not needed to run the calculator.' },
   { what: 'This web app', why: 'It collects your answers, builds the request and formats the numbers. It is tested (unit and end-to-end tests), not verified.' },
 ];
 

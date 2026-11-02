@@ -1,5 +1,5 @@
-# Static web app + same-origin API proxy for the container image (issue #58, docs/deploy.md).
-# Default: plain HTTP on :80. For HTTPS set SITE_ADDRESS to a host name (docs/tls.md):
+# Static web app + same-origin API proxy for the container image.
+# Default: plain HTTP on :80. For HTTPS set SITE_ADDRESS to a host name:
 #   SITE_ADDRESS=localhost            -> Caddy local CA, https on 443
 #   SITE_ADDRESS=tax.example.com      -> public ACME certificate
 # UPSTREAM is the Lean server (default server:8080 on the compose network).
