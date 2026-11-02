@@ -51,7 +51,7 @@ issues #59, #71).
 
 ## DECISIONS NEEDING THE HUMAN
 
-1. **Spec review**: read `docs/spec-surface.md` (both "Choices to confirm (human)" lists) and the spec
+1. *(Done for the hackathon, see checklist.)* **Spec review**: read `docs/spec-surface.md` (both "Choices to confirm (human)" lists) and the spec
    files `lean/UsTax/Spec/`, `Comparator/Challenge.lean`, `Comparator/Extra.lean`, `Api/Spec.lean`; sign
    off or change them. Also decide which of the 8 whole-return theorems in `comparator.extra.json` become
    main theorems.
@@ -83,9 +83,9 @@ critical path, plain HTTP on localhost via `Std.Http`, body cap 256 KiB; Compara
 - [x] README: what is proved / verified / tested / trusted; trusted base; not verified (#59, #71)
 - [x] Write-up `docs/writeup.md` final, no `TODO(final)` left
 - [x] Demo script `scripts/demo.md`, screenshots `docs/screenshots/`
-- [ ] Human spec review of `docs/spec-surface.md`
-- [ ] LICENSE
-- [ ] `docs/site/how-we-built-this.md` (human)
+- [x] Spec sign-off by the owner (2026-11-01): accepted as-is for the hackathon, no detailed review (see `docs/writeup.md`)
+- [x] LICENSE (MIT)
+- [x] `docs/site/how-we-built-this.md` (owner)
 - [ ] Final green CI run on `main`
 
 ## Process notes

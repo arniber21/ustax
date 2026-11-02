@@ -186,7 +186,7 @@ proofs pass. The full list, with the reason for each, is [`docs/trusted-base.md`
 - **The spec files a human must review**: `lean/UsTax/Spec/`, the statements in
   `lean/UsTax/Comparator/Challenge.lean` and `Extra.lean`, and `Request.Valid` in
   `lean/UsTax/Api/Spec.lean`, with [`docs/spec-surface.md`](docs/spec-surface.md) as the guide.
-  A theorem only means what its statement says. (The human review is not done yet.)
+  A theorem only means what its statement says. (The owner accepted these files for the hackathon submission without a line-by-line review; see the write-up.)
 - **The Tax Table data**, `sources/forms-instructions/derived-tax-table-2024.csv`: derived by us from
   the IRS PDF, not an IRS file. The EIC Table likewise.
 - **The Catala rules as a reading of the law.** They quote the statute so a person can check them,
@@ -316,8 +316,7 @@ The roadmap is [issue #1](https://github.com/arniber21/ustax/issues/1); the curr
 
 ## License and credits
 
-- **License: TODO (owner).** This repository has no license file yet. Until one is chosen, no
-  license is granted.
+- **License:** MIT, see [`LICENSE`](LICENSE).
 - IRS Direct File is US-government work in the public domain, with a CC0 1.0 waiver. We use its rules,
   test returns and engine as a reference.
 - [Catala](https://github.com/CatalaLang/catala) is Apache-2.0.

@@ -252,41 +252,19 @@ household knockouts and their tests. It was caught, reverted and re-applied the 
 every merge goes through a guard: `git diff --diff-filter=D --name-only origin/main...<branch>` must be
 empty (a branch may not delete files it did not mean to), and the branch must contain `origin/main`.
 
-**What we did not do.** No human has yet done the full review of the spec files that `CLAUDE.md` asks
-for. Until then, the theorem statements were written by a model and checked by tools
-(`docs/spec-surface.md` lists the "choices to confirm"), not signed off by a person.
+**What we did not do.** Nobody has done the full line-by-line review of the spec files that `CLAUDE.md`
+asks for. The theorem statements were written by a model and checked by tools (`docs/spec-surface.md`
+lists the "choices to confirm").
 
-> **Spec review sign-off: PENDING HUMAN REVIEW.** The owner has not yet reviewed or signed off the
-> spec files (`lean/UsTax/Spec/`, `lean/UsTax/Comparator/Challenge.lean`, `Extra.lean`,
-> `lean/UsTax/Api/Spec.lean`, with `docs/spec-surface.md` as the guide). This note is replaced by
-> the sign-off statement once that review is done.
-
-## Trusted base and what is not verified
-
-The full list, with the reason for each item, is [`docs/trusted-base.md`](trusted-base.md). In short:
-the Lean kernel, compiler and runtime; `Std.Http` and our socket glue (`lean/ServerMain.lean`); the JSON
-reader and response writer (tested, not proved); the spec files a human must review; the Tax Table
-and EIC Table data we derived from the IRS PDFs; the Catala rules as a reading of the law; and, for
-tests only, the Direct File engine bundle, the Catala toolchain, Comparator's sandbox and devbox/Nix.
-The accepted axioms are `propext`, `Classical.choice` and `Quot.sound`.
-
-Not verified: HTTP framing, the browser UI, the Catala-to-Lean link (tested, not proved), the meaning
-of the Catala rules against the statute, tax years after 2024, itemized deductions, state taxes, and
-any return that knocks out.
-
-## Limitations
-
-- Tax year 2024 only. Federal only. Standard deduction only.
-- Only the situations Direct File supported. Everything else is a knockout; Direct File's knockout
-  conditions and our coverage of them are in [`docs/knockout-inventory.md`](knockout-inventory.md).
-- The American opportunity credit is `$0`, as in Direct File (DF-BUG-2, owner to decide).
-- The link from Catala to Lean is differential testing, not proof. The link from the law to Catala is
-  human reading.
-- Not tax advice. Nothing is filed.
+> **Spec sign-off.** The owner (Arnab Ghosh) accepted the spec files (`lean/UsTax/Spec/`,
+> `lean/UsTax/Comparator/Challenge.lean`, `Extra.lean`, `lean/UsTax/Api/Spec.lean`) as they stand for
+> the hackathon submission, on 2026-11-01, **without a detailed review**. Treat that as acceptance of
+> the defaults, not as an independent audit. The open questions in `docs/quirk-decisions.md` keep their
+> documented defaults.
 
 ## Future work
 
-- A human review of every spec file, recorded in `docs/spec-surface.md`, and decisions on the open
+- A detailed independent review of every spec file, recorded in `docs/spec-surface.md`, and decisions on the open
   quirk questions ([`docs/quirk-decisions.md`](quirk-decisions.md), "Questions for the human").
 - Prove the pending per-credit statement, and decide which of the whole-return theorems become main
   theorems.
